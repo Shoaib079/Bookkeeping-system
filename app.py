@@ -9409,6 +9409,14 @@ class _MobAtChipOption:
 
 def _mob_at_close_picker() -> None:
     st.session_state.pop("mob_at_picker", None)
+    st.session_state.pop("mob_at_picker_search", None)
+
+
+def _mob_at_filter_options(options: list, query: str) -> list:
+    q = (query or "").strip().lower()
+    if not q:
+        return options
+    return [o for o in options if q in o.label.lower()]
 
 
 def _mob_at_picker_txn_type(picker_kind: str) -> str:
@@ -9471,6 +9479,47 @@ def _mob_at_vendor_pool(vendors: list) -> list[_MobAtChipOption]:
     return [
         _MobAtChipOption(str(v.id), v.name, value_name=v.name)
         for v in vendors
+    ]
+
+
+def _mob_at_invoice_options(open_sales: list) -> list[_MobAtChipOption]:
+    return [
+        _MobAtChipOption(
+            str(s.id),
+            f"{s.invoice_number} — {s.customer_name} (bal: {s.balance:,.2f})",
+            value_id=s.id,
+            value_name=(
+                f"{s.invoice_number} — {s.customer_name} (bal: {s.balance:,.2f})"
+            ),
+        )
+        for s in open_sales
+    ]
+
+
+def _mob_at_payable_options(
+    session, vendor_id: int, currency_default: str
+) -> list[_MobAtChipOption]:
+    payables = (
+        cq(session, Payable)
+        .filter_by(vendor_id=vendor_id, paid=False, is_void=False)
+        .order_by(Payable.date)
+        .all()
+    )
+    options: list[_MobAtChipOption] = []
+    for p in payables:
+        bal = _payable_balance(p)
+        pref = f"PUR#{p.purchase_id}" if p.purchase_id else f"PAY#{p.id}"
+        label = f"{p.date.strftime('%d %b')} · {pref} · {currency_default} {bal:,.2f}"
+        options.append(
+            _MobAtChipOption(str(p.id), label, value_id=p.id, value_name=label)
+        )
+    return options
+
+
+def _mob_at_bank_options(bank_accounts: list) -> list[_MobAtChipOption]:
+    return [
+        _MobAtChipOption(str(a.id), a.name, value_id=a.id, value_name=a.name)
+        for a in bank_accounts
     ]
 
 
@@ -9596,6 +9645,7 @@ def _mob_at_render_vendor_trigger(vendors: list) -> bool:
     selected = st.session_state.get("at_vendor") or vendors[0].name
     if not st.session_state.get("at_vendor"):
         st.session_state["at_vendor"] = selected
+        st.session_state["mob_at_vendor_sel"] = selected
     label = selected or _tf("txn.mob.pick_vendor", "Supplier ▼")
     with st.container(border=False, key="mob_at_vendor_trigger"):
         if st.button(
@@ -9612,10 +9662,11 @@ def _mob_at_render_vendor_trigger(vendors: list) -> bool:
 def _mob_at_render_grid_picker_sheet(
     *,
     title: str,
-    options: list[_MobAtGridPick],
+    options: list,
     picker_kind: str,
     selected_key: str | None,
     on_pick,
+    searchable: bool = True,
 ) -> bool:
     if not options:
         _mob_at_close_picker()
@@ -9638,9 +9689,23 @@ def _mob_at_render_grid_picker_sheet(
                     _mob_at_close_picker()
                     return True
 
+        display_options = options
+        if searchable:
+            query = st.text_input(
+                _tf("txn.mob.search", "Search"),
+                key="mob_at_picker_search",
+                label_visibility="collapsed",
+                placeholder=_tf("txn.mob.search_ph", "Type to filter…"),
+            )
+            display_options = _mob_at_filter_options(options, query)
+
+        if not display_options:
+            st.caption(_tf("txn.mob.search_empty", "No matches"))
+            return False
+
         with st.container(border=False, key="mob_at_picker_grid"):
-            for i in range(0, len(options), 3):
-                chunk = options[i : i + 3]
+            for i in range(0, len(display_options), 3):
+                chunk = display_options[i : i + 3]
                 pcols = st.columns(len(chunk), gap="small")
                 for col, pick in zip(pcols, chunk):
                     is_active = pick.key == selected_key
@@ -9698,11 +9763,6 @@ def _mob_at_render_subcategory_picker_sheet(
 
 def _mob_at_render_vendor_picker_sheet(vendors: list) -> bool:
     options = _mob_at_vendor_pool(vendors)
-    if not options:
-        _mob_at_close_picker()
-        return False
-
-    title = _tf("txn.mob.pick_vendor", "Choose supplier")
     selected_key = next(
         (o.key for o in options if o.value_name == st.session_state.get("at_vendor")),
         None,
@@ -9710,39 +9770,162 @@ def _mob_at_render_vendor_picker_sheet(vendors: list) -> bool:
 
     def _apply_vendor(opt: _MobAtChipOption) -> None:
         st.session_state["at_vendor"] = opt.value_name or opt.label
+        st.session_state["mob_at_vendor_sel"] = opt.value_name or opt.label
+        st.session_state.pop("at_payable_id", None)
 
-    with st.container(border=False, key="erp_mob_at_picker_sheet"):
-        st.markdown(
-            '<div class="erp-mob-at-picker-grab"></div>',
-            unsafe_allow_html=True,
-        )
-        with st.container(border=False, key="mob_at_picker_hdr"):
-            hc, xc = st.columns([6, 1], gap="small")
-            with hc:
-                st.markdown(
-                    f'<div class="erp-mob-at-picker-title">{html.escape(title)}</div>',
-                    unsafe_allow_html=True,
-                )
-            with xc:
-                if st.button("×", key="mob_at_picker_close", help=_t("common.cancel")):
-                    _mob_at_close_picker()
-                    return True
+    return _mob_at_render_grid_picker_sheet(
+        title=_tf("txn.mob.pick_vendor", "Choose supplier"),
+        options=options,
+        picker_kind="vendor",
+        selected_key=selected_key,
+        on_pick=_apply_vendor,
+    )
 
-        with st.container(border=False, key="mob_at_picker_grid"):
-            for i in range(0, len(options), 3):
-                chunk = options[i : i + 3]
-                pcols = st.columns(len(chunk), gap="small")
-                for col, opt in zip(pcols, chunk):
-                    is_active = opt.key == selected_key
-                    if col.button(
-                        opt.label,
-                        key=f"mob_at_pick_vendor_{opt.key}",
-                        use_container_width=True,
-                        type="primary" if is_active else "secondary",
-                    ):
-                        _apply_vendor(opt)
-                        _mob_at_close_picker()
-                        return True
+
+def _mob_at_render_invoice_picker_sheet(open_sales: list) -> bool:
+    options = _mob_at_invoice_options(open_sales)
+    selected_key = next(
+        (
+            o.key
+            for o in options
+            if o.value_name == st.session_state.get("mob_at_inv_sel")
+            or o.value_name == st.session_state.get("at_inv")
+        ),
+        None,
+    )
+
+    def _apply_invoice(opt: _MobAtChipOption) -> None:
+        st.session_state["mob_at_inv_sel"] = opt.value_name or opt.label
+        st.session_state["at_inv"] = opt.value_name or opt.label
+
+    return _mob_at_render_grid_picker_sheet(
+        title=_tf("txn.mob.pick_invoice", "Choose invoice"),
+        options=options,
+        picker_kind="invoice",
+        selected_key=selected_key,
+        on_pick=_apply_invoice,
+    )
+
+
+def _mob_at_render_payable_picker_sheet(
+    session, vendors: list, currency_default: str
+) -> bool:
+    vendor_name = st.session_state.get("at_vendor") or (
+        vendors[0].name if vendors else None
+    )
+    vendor = next((v for v in vendors if v.name == vendor_name), None)
+    if not vendor:
+        _mob_at_close_picker()
+        return False
+    options = _mob_at_payable_options(session, vendor.id, currency_default)
+    selected_key = str(st.session_state.get("at_payable_id") or "")
+
+    def _apply_payable(opt: _MobAtChipOption) -> None:
+        if opt.value_id is not None:
+            st.session_state["at_payable_id"] = opt.value_id
+        st.session_state["mob_at_payable_sel"] = opt.value_name or opt.label
+
+    return _mob_at_render_grid_picker_sheet(
+        title=_tf("txn.mob.pick_payable", "Choose payable"),
+        options=options,
+        picker_kind="payable",
+        selected_key=selected_key if selected_key in {o.key for o in options} else None,
+        on_pick=_apply_payable,
+    )
+
+
+def _mob_at_render_bank_picker_sheet(bank_accounts: list) -> bool:
+    options = _mob_at_bank_options(bank_accounts)
+    selected_key = next(
+        (
+            o.key
+            for o in options
+            if o.value_name == st.session_state.get("mob_at_bank_acct_sel")
+            or o.value_name == st.session_state.get("at_bank_acct")
+        ),
+        None,
+    )
+
+    def _apply_bank(opt: _MobAtChipOption) -> None:
+        st.session_state["mob_at_bank_acct_sel"] = opt.value_name or opt.label
+        st.session_state["at_bank_acct"] = opt.value_name or opt.label
+
+    return _mob_at_render_grid_picker_sheet(
+        title=_tf("txn.mob.pick_bank", "Choose bank account"),
+        options=options,
+        picker_kind="bank_acct",
+        selected_key=selected_key,
+        on_pick=_apply_bank,
+    )
+
+
+def _mob_at_render_invoice_trigger(open_sales: list) -> bool:
+    if not open_sales:
+        return False
+    options = _mob_at_invoice_options(open_sales)
+    selected = (
+        st.session_state.get("mob_at_inv_sel")
+        or st.session_state.get("at_inv")
+        or options[0].label
+    )
+    with st.container(border=False, key="mob_at_inv_trigger"):
+        if st.button(
+            selected,
+            key="mob_at_inv_open",
+            use_container_width=True,
+            type="secondary",
+        ):
+            st.session_state["mob_at_picker"] = "invoice"
+            return True
+    return False
+
+
+def _mob_at_render_payable_trigger(
+    session, vendors: list, currency_default: str
+) -> bool:
+    vendor_name = st.session_state.get("at_vendor") or (
+        vendors[0].name if vendors else None
+    )
+    vendor = next((v for v in vendors if v.name == vendor_name), None)
+    if not vendor:
+        return False
+    options = _mob_at_payable_options(session, vendor.id, currency_default)
+    if not options:
+        return False
+    payable_id = st.session_state.get("at_payable_id")
+    selected = next(
+        (o.label for o in options if o.value_id == payable_id),
+        options[0].label,
+    )
+    with st.container(border=False, key="mob_at_payable_trigger"):
+        if st.button(
+            selected,
+            key="mob_at_payable_open",
+            use_container_width=True,
+            type="secondary",
+        ):
+            st.session_state["mob_at_picker"] = "payable"
+            return True
+    return False
+
+
+def _mob_at_render_bank_trigger(bank_accounts: list) -> bool:
+    if not bank_accounts:
+        return False
+    selected = (
+        st.session_state.get("mob_at_bank_acct_sel")
+        or st.session_state.get("at_bank_acct")
+        or bank_accounts[0].name
+    )
+    with st.container(border=False, key="mob_at_bank_trigger"):
+        if st.button(
+            selected,
+            key="mob_at_bank_open",
+            use_container_width=True,
+            type="secondary",
+        ):
+            st.session_state["mob_at_picker"] = "bank_acct"
+            return True
     return False
 
 
@@ -9751,10 +9934,21 @@ def _mob_at_render_picker_sheet(
     *,
     picker_kind: str,
     vendors: list,
+    open_sales: list,
+    bank_accounts: list,
+    currency_default: str,
 ) -> bool:
     """Scrollable picker above the blue entry panel. Returns True if rerun needed."""
     if picker_kind == "vendor":
         return _mob_at_render_vendor_picker_sheet(vendors)
+    if picker_kind == "invoice":
+        return _mob_at_render_invoice_picker_sheet(open_sales)
+    if picker_kind == "payable":
+        return _mob_at_render_payable_picker_sheet(
+            session, vendors, currency_default
+        )
+    if picker_kind == "bank_acct":
+        return _mob_at_render_bank_picker_sheet(bank_accounts)
     if _mob_at_is_subcat_picker(picker_kind):
         return _mob_at_render_subcategory_picker_sheet(session, picker_kind=picker_kind)
     return _mob_at_render_category_picker_sheet(session, picker_kind=picker_kind)
@@ -10430,16 +10624,8 @@ def _render_add_transaction_mobile(
                 st.rerun()
         elif txn_type in ("Supplier Payment", "Customer Payment", "Bank Transaction"):
             if txn_type == "Customer Payment" and open_sales:
-                invoice_choices = [
-                    f"{s.invoice_number} — {s.customer_name} (bal: {s.balance:,.2f})"
-                    for s in open_sales
-                ]
-                st.selectbox(
-                    _t("txn.open_invoice_label"),
-                    invoice_choices,
-                    key="mob_at_inv_sel",
-                    label_visibility="collapsed",
-                )
+                if _mob_at_render_invoice_trigger(open_sales):
+                    st.rerun()
                 if _mob_at_button_row(
                     [(pm, _i18n_db(PAYMENT_METHOD_I18N, pm)) for pm in ("Cash", "Bank")],
                     st.session_state.get("at_pm", "Cash"),
@@ -10449,39 +10635,21 @@ def _render_add_transaction_mobile(
                 ):
                     st.rerun()
             elif txn_type == "Supplier Payment" and vendors:
-                vnames = [v.name for v in vendors]
-                st.selectbox(
-                    _t("txn.supplier_label"),
-                    vnames,
-                    key="mob_at_vendor_sel",
-                    label_visibility="collapsed",
-                )
+                if _mob_at_render_vendor_trigger(vendors):
+                    st.rerun()
                 _mob_at_sync_select_widgets()
+                if _mob_at_render_payable_trigger(session, vendors, currency_default):
+                    st.rerun()
                 _sp_vendor = next(
                     (v for v in vendors if v.name == st.session_state.get("at_vendor")),
                     vendors[0],
                 )
-                _open_pays = (
-                    cq(session, Payable)
-                    .filter_by(vendor_id=_sp_vendor.id, paid=False, is_void=False)
-                    .order_by(Payable.date)
-                    .all()
+                _pay_opts = _mob_at_payable_options(
+                    session, _sp_vendor.id, currency_default
                 )
-                if _open_pays:
-                    _pay_labels = []
-                    for _p in _open_pays:
-                        _pbal = _payable_balance(_p)
-                        _pref = f"PUR#{_p.purchase_id}" if _p.purchase_id else f"PAY#{_p.id}"
-                        _pay_labels.append(
-                            f"{_p.date.strftime('%d %b')} · {_pref} · {currency_default} {_pbal:,.2f}"
-                        )
-                    _sel = st.selectbox(
-                        _tf("txn.mob.payable", "Payable"),
-                        _pay_labels,
-                        key="mob_at_payable_sel",
-                        label_visibility="collapsed",
-                    )
-                    st.session_state["at_payable_id"] = _open_pays[_pay_labels.index(_sel)].id
+                if _pay_opts and not st.session_state.get("at_payable_id"):
+                    st.session_state["at_payable_id"] = _pay_opts[0].value_id
+                    st.session_state["mob_at_payable_sel"] = _pay_opts[0].label
                 if _mob_at_button_row(
                     [(pm, _i18n_db(PAYMENT_METHOD_I18N, pm)) for pm in ("Cash", "Bank")],
                     st.session_state.get("at_pm", "Cash"),
@@ -10491,13 +10659,8 @@ def _render_add_transaction_mobile(
                 ):
                     st.rerun()
             elif txn_type == "Bank Transaction" and bank_accounts:
-                acct_names = [a.name for a in bank_accounts]
-                st.selectbox(
-                    _t("txn.bank_account_label"),
-                    acct_names,
-                    key="mob_at_bank_acct_sel",
-                    label_visibility="collapsed",
-                )
+                if _mob_at_render_bank_trigger(bank_accounts):
+                    st.rerun()
                 if _mob_at_button_row(
                     [("Deposit", "Deposit"), ("Withdrawal", "Withdrawal")],
                     st.session_state.get("at_bank_sub", "Deposit"),
@@ -10518,7 +10681,12 @@ def _render_add_transaction_mobile(
 
     _picker = st.session_state.get("mob_at_picker")
     if _picker and _mob_at_render_picker_sheet(
-        session, picker_kind=_picker, vendors=vendors
+        session,
+        picker_kind=_picker,
+        vendors=vendors,
+        open_sales=open_sales,
+        bank_accounts=bank_accounts,
+        currency_default=currency_default,
     ):
         st.rerun()
 

@@ -120,6 +120,31 @@ def test_mob_at_category_and_subcategory_options():
     assert fuel_subs == []
 
 
+def test_mob_at_filter_options():
+    options = [
+        erp._MobAtGridPick("1", "Rent"),
+        erp._MobAtGridPick("2", "Fuel"),
+        erp._MobAtGridPick("3", "Office Supplies"),
+    ]
+    assert [o.label for o in erp._mob_at_filter_options(options, "fuel")] == ["Fuel"]
+    assert len(erp._mob_at_filter_options(options, "")) == 3
+    assert erp._mob_at_filter_options(options, "zzz") == []
+
+
+def test_mob_at_invoice_options():
+    class _Sale:
+        def __init__(self):
+            self.id = 9
+            self.invoice_number = "INV-1"
+            self.customer_name = "Acme"
+            self.balance = 12.5
+
+    opts = erp._mob_at_invoice_options([_Sale()])
+    assert len(opts) == 1
+    assert "INV-1" in opts[0].label
+    assert opts[0].value_id == 9
+
+
 def test_mob_at_is_subcat_picker():
     assert erp._mob_at_is_subcat_picker("expense_subcat")
     assert erp._mob_at_is_subcat_picker("sale_subcat")
