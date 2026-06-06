@@ -1,0 +1,78 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Commands
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the app
+streamlit run app.py
+
+# Run all tests
+pytest tests/
+
+# Run a single test
+pytest tests/test_models.py::test_customer_model_can_be_created
+```
+
+## Architecture
+
+This is a single-file Streamlit accounting ERP. The entire UI and business logic lives in `app.py` (~5,500 lines). The supporting files are:
+
+| File | Role |
+|---|---|
+| `db.py` | SQLAlchemy engine + `Base` + `SessionLocal`; connects to `erp_data.db` (SQLite) |
+| `models.py` | All ORM models |
+| `exports.py` | `df_to_excel_bytes` and `df_to_pdf_bytes` helpers used by every page |
+| `registry/` | Phase 14D-B2a settings & module metadata catalog (`get_setting`, `get_effective_config`) |
+| `ROADMAP.md` | Phase plan and status |
+| `ARCHITECTURE_HANDOFF.md` | Non-coder architecture summary |
+| `settings.json.migrated` | Legacy settings file; settings now live in the database |
+
+### Navigation flow
+
+`main()` renders a sidebar radio from `MENU_OPTIONS` and dispatches to a top-level `render_*` function for each page. The **Advanced** page is further broken into sub-pages tracked via `st.session_state["advanced_subpage"]`. Page-transition logic clears transient `confirm_`, `void_`, `paying_` session-state keys to prevent stale dialogs from persisting across pages.
+
+Sidebar filters (global search + date range) are stored in `st.session_state` and only rendered on Transaction History and Reports pages.
+
+### Database session lifecycle
+
+`get_session()` returns `SessionLocal()`. In `main()`, every page call happens inside `with get_session() as session:`, which also runs all startup tasks (schema migrations, seeds) on each request.
+
+### Schema evolution
+
+- **`migrate_schema()`** runs on every startup. It issues `ALTER TABLE ADD COLUMN` statements and silently rolls back if the column already exists — safe to run repeatedly.
+- **`MigrationFlag`** table guards one-time operations: `initialize_chart_of_accounts`, `migrate_sales_v1`, `migrate_expenses_v1`, `initialize_categories_v1`. These must never re-run after the first success.
+
+### Double-entry accounting
+
+All financial transactions post through `create_journal_entry(session, date, description, reference_type, reference_id, lines)` where `lines` is a list of `(account_id, debit, credit)` tuples. This function:
+1. Blocks posting to closed fiscal periods (except `reference_type="PeriodClose"`).
+2. Enforces `sum(debit) == sum(credit)` within 1 cent — rolls back and raises `ValueError` if unbalanced.
+3. Updates `ChartOfAccounts.balance` in-place using normal/contra balance rules (Asset/Expense: debit increases; Liability/Equity/Income: credit increases).
+
+Convenience wrappers like `post_cash_sale`, `post_purchase`, `post_expense`, etc. call `create_journal_entry` with the correct account pairs and `reference_type` strings.
+
+### Void/reversal pattern
+
+Each transactional entity has a `void_*()` function (e.g. `void_sale`, `void_purchase`). Voiding:
+1. Calls `create_reversing_journal_entry()` which swaps every debit/credit from the original journal entry.
+2. Sets `is_void=True`, `voided_at`, `void_reason` on the record.
+3. Writes an `AuditLog` entry.
+
+Credit purchases cascade void to their auto-created `Payable`. Bank transfer voids cascade to the paired destination transaction.
+
+### Legacy model migration
+
+`CashSale`, `CreditSale`, `Salary`, and `Expense` tables exist only for backward compatibility. On first startup they are migrated into the unified `Sale` and `ExpenseRecord` tables. New code should only write to `Sale` and `ExpenseRecord`.
+
+### Amount input
+
+Use `amount_input(label, key, ...)` instead of `st.number_input` for monetary fields. It wraps a text input and calls `_parse_amount_str()` which handles both US (`1,000.50`) and European (`1.000,50`) number formats.
+
+### Export
+
+Call `render_export_buttons(df, prefix)` to add an Excel/PDF download popover to any page. The `prefix` string becomes the filename stem and PDF title.

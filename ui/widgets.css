@@ -1,0 +1,834 @@
+/* Phase 16B — Streamlit native widgets (main content + shared chrome)
+ * Scoped to [data-testid="stMain"] / stAppViewContainer where possible so sidebar nav rules win.
+ */
+
+/* ── App shell ─────────────────────────────────────────────────────────── */
+[data-testid="stAppViewContainer"],
+[data-testid="stAppViewBlockContainer"] {
+  background-color: var(--theme-bg) !important;
+}
+
+[data-testid="stMain"],
+[data-testid="stMain"] .block-container,
+[data-testid="stMainBlockContainer"],
+[data-testid="stMain"] [data-testid="stVerticalBlock"],
+[data-testid="stMain"] [data-testid="stColumn"] {
+  background-color: var(--theme-bg) !important;
+  color: var(--theme-text);
+}
+
+[data-testid="stMain"] .block-container {
+  color: var(--theme-text);
+}
+
+[data-testid="stMain"] [data-testid="stVerticalBlock"] {
+  gap: 0.5rem;
+}
+
+/* Page titles (st.title / st.header) — Streamlit theme.toml uses light textColor */
+[data-testid="stMain"] h1,
+[data-testid="stMain"] h2,
+[data-testid="stMain"] h3,
+[data-testid="stMain"] [data-testid="stHeading"] h1,
+[data-testid="stMain"] [data-testid="stHeading"] h2,
+[data-testid="stMain"] [data-testid="stHeading"] h3,
+[data-testid="stMain"] [data-testid="stHeading"] p,
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] h1,
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] h2,
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] h3 {
+  color: var(--theme-text) !important;
+}
+
+/* ── Typography / labels ─────────────────────────────────────────────────── */
+[data-testid="stMain"] label[data-testid="stWidgetLabel"] p,
+[data-testid="stMain"] [data-testid="stWidgetLabel"] p {
+  color: var(--theme-text) !important;
+}
+
+[data-testid="stMain"] [data-testid="stCaptionContainer"],
+[data-testid="stMain"] [data-testid="stCaptionContainer"] p {
+  color: var(--theme-muted) !important;
+}
+
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] li,
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] h1,
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] h2,
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] h3 {
+  color: var(--theme-text);
+}
+
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] a {
+  color: var(--theme-info);
+}
+
+/* ── Text / number / date inputs ───────────────────────────────────────── */
+[data-testid="stMain"] [data-testid="stTextInput"] input,
+[data-testid="stMain"] [data-testid="stTextInput"] textarea,
+[data-testid="stMain"] [data-testid="stTextArea"] textarea,
+[data-testid="stMain"] [data-testid="stNumberInput"] input,
+[data-testid="stMain"] [data-testid="stDateInput"] input {
+  background-color: var(--theme-card) !important;
+  color: var(--theme-text) !important;
+  border: 1px solid var(--theme-input-border) !important;
+  border-radius: 8px !important;
+}
+
+[data-testid="stMain"] [data-testid="stTextInput"] input:focus,
+[data-testid="stMain"] [data-testid="stTextArea"] textarea:focus,
+[data-testid="stMain"] [data-testid="stNumberInput"] input:focus,
+[data-testid="stMain"] [data-testid="stDateInput"] input:focus {
+  border-color: var(--theme-focus) !important;
+  box-shadow: 0 0 0 1px var(--theme-focus) !important;
+}
+
+[data-testid="stMain"] [data-testid="stTextInput"] input::placeholder,
+[data-testid="stMain"] [data-testid="stTextArea"] textarea::placeholder {
+  color: var(--theme-muted) !important;
+  opacity: 0.85;
+}
+
+/* ── Select / multiselect (BaseWeb) ────────────────────────────────────── */
+[data-testid="stMain"] div[data-baseweb="select"] > div,
+[data-testid="stMain"] div[data-baseweb="input"] {
+  background-color: var(--theme-card) !important;
+  border-color: var(--theme-input-border) !important;
+  border-radius: 8px !important;
+}
+
+[data-testid="stMain"] div[data-baseweb="select"] span,
+[data-testid="stMain"] div[data-baseweb="select"] div[value] {
+  color: var(--theme-text) !important;
+}
+
+[data-testid="stMain"] [data-testid="stSelectbox"] svg,
+[data-testid="stMain"] [data-testid="stMultiSelect"] svg {
+  fill: var(--theme-muted) !important;
+}
+
+/* Dropdown popovers (portaled — not under section.main) */
+div[data-baseweb="popover"] div[data-baseweb="menu"],
+ul[data-testid="stSelectboxVirtualDropdown"] {
+  background-color: var(--theme-card) !important;
+  border: 1px solid var(--theme-border) !important;
+}
+
+div[data-baseweb="menu"] li,
+div[data-baseweb="menu"] ul li {
+  color: var(--theme-text) !important;
+  background-color: var(--theme-card) !important;
+}
+
+div[data-baseweb="menu"] li:hover,
+div[data-baseweb="menu"] li[aria-selected="true"] {
+  background-color: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%) !important;
+}
+
+/* ── Checkbox / radio / toggle ─────────────────────────────────────────── */
+[data-testid="stMain"] [data-testid="stCheckbox"] label span,
+[data-testid="stMain"] [data-testid="stRadio"] label span,
+[data-testid="stMain"] [data-testid="stRadio"] label p {
+  color: var(--theme-text) !important;
+}
+
+[data-testid="stMain"] [data-testid="stCheckbox"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stMain"] [data-testid="stRadio"] [data-testid="stMarkdownContainer"] p {
+  color: var(--theme-text) !important;
+}
+
+/* ── Slider ────────────────────────────────────────────────────────────── */
+[data-testid="stMain"] [data-testid="stSlider"] label div[data-testid="stMarkdownContainer"] p {
+  color: var(--theme-text) !important;
+}
+
+[data-testid="stMain"] [data-testid="stSlider"] [data-baseweb="slider"] div[role="slider"] {
+  background: var(--theme-info) !important;
+}
+
+/* ── Tabs ──────────────────────────────────────────────────────────────── */
+[data-testid="stMain"] [data-testid="stTabs"] {
+  margin-top: 0.75rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+[data-testid="stMain"] [data-testid="stTabs"] [data-baseweb="tab-list"] {
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+  padding: 4px 2px 10px !important;
+  margin-bottom: 2px !important;
+}
+
+[data-testid="stMain"] [data-testid="stTabs"] button[role="tab"] {
+  color: var(--theme-muted) !important;
+  background-color: var(--theme-card) !important;
+  border: 1px solid var(--theme-border) !important;
+  border-radius: 8px !important;
+  padding: 8px 16px !important;
+  margin: 0 !important;
+  min-height: 36px !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+}
+
+[data-testid="stMain"] [data-testid="stTabs"] button[role="tab"]:hover {
+  border-color: color-mix(in srgb, var(--theme-info) 45%, var(--theme-border) 55%) !important;
+  color: var(--theme-text) !important;
+}
+
+[data-testid="stMain"] [data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+  color: var(--theme-info) !important;
+  background-color: color-mix(in srgb, var(--theme-info) 10%, var(--theme-card) 90%) !important;
+  border-color: var(--theme-info) !important;
+  border-bottom: 2px solid var(--theme-info) !important;
+  font-weight: 600 !important;
+}
+
+[data-testid="stMain"] [data-testid="stTabs"] [data-baseweb="tab-border"] {
+  background-color: var(--theme-border) !important;
+  height: 1px !important;
+  margin-top: 0 !important;
+}
+
+[data-testid="stMain"] [data-testid="stTabs"] [data-baseweb="tab-panel"] {
+  background-color: transparent !important;
+  padding-top: 1rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+/* ── Horizontal section nav (st.radio horizontal=True) ─────────────────── */
+[data-testid="stMain"] [data-testid="stRadio"] [role="radiogroup"] {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  row-gap: 10px !important;
+  padding: 8px 0 14px !important;
+  margin-bottom: 4px !important;
+}
+
+[data-testid="stMain"] [data-testid="stRadio"] [role="radiogroup"] > label {
+  background-color: var(--theme-card) !important;
+  border: 1px solid var(--theme-border) !important;
+  border-radius: 8px !important;
+  padding: 8px 14px !important;
+  margin: 0 !important;
+  min-height: 36px !important;
+  align-items: center !important;
+}
+
+[data-testid="stMain"] [data-testid="stRadio"] [role="radiogroup"] > label:hover {
+  border-color: color-mix(in srgb, var(--theme-info) 40%, var(--theme-border) 60%) !important;
+}
+
+[data-testid="stMain"] [data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked) {
+  background-color: color-mix(in srgb, var(--theme-info) 10%, var(--theme-card) 90%) !important;
+  border-color: var(--theme-info) !important;
+}
+
+[data-testid="stMain"] [data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked) p,
+[data-testid="stMain"] [data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked) span {
+  color: var(--theme-info) !important;
+  font-weight: 600 !important;
+}
+
+/* ── Dataframes / tables ───────────────────────────────────────────────── */
+[data-testid="stMain"] [data-testid="stDataFrame"] {
+  border: 1px solid var(--theme-border) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+[data-testid="stMain"] [data-testid="stDataFrame"] th {
+  background-color: var(--theme-card) !important;
+  color: var(--theme-muted) !important;
+}
+
+[data-testid="stMain"] [data-testid="stDataFrame"] td {
+  color: var(--theme-text) !important;
+}
+
+/* ── Expanders ─────────────────────────────────────────────────────────── */
+[data-testid="stMain"] [data-testid="stExpander"] {
+  background-color: var(--theme-card) !important;
+  border: 1px solid var(--theme-border) !important;
+  border-radius: 10px !important;
+}
+
+[data-testid="stMain"] [data-testid="stExpander"] summary {
+  color: var(--theme-text) !important;
+}
+
+/* ── Popovers ──────────────────────────────────────────────────────────── */
+[data-testid="stMain"] [data-testid="stPopover"] button {
+  background-color: var(--theme-card) !important;
+  border: 1px solid var(--theme-border) !important;
+  color: var(--theme-text) !important;
+}
+
+/* ── Header toolbar compact buttons (notifications / profile) ──────────── */
+[data-testid="stMain"] [class*="st-key-hdr_notif"] button,
+[data-testid="stMain"] [class*="st-key-hdr_profile"] button,
+[data-testid="stMain"] [class*="st-key-hdr_search_toggle"] button,
+[data-testid="stMain"] [class*="st-key-hdr_search"] button {
+  width: 34px !important;
+  min-width: 34px !important;
+  max-width: 34px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 8px !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* ── Mobile chrome — bottom tabs + hub sheets (≤968px; desktop at ≥969px) ─ */
+.erp-mobile-chrome-active,
+.erp-mobile-top-nav-host,
+.erp-bottom-nav-host,
+.erp-mobile-hub-host,
+.erp-mobile-chrome-footer,
+.erp-mobile-hub-grab {
+  display: none !important;
+}
+
+@media (min-width: 969px) {
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-top-nav-host),
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-bottom-nav-host),
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-hub-host),
+  [data-testid="stMain"] [data-testid="stElementContainer"]:has(.erp-mobile-chrome-active) {
+    display: none !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_bar_"],
+  [data-testid="stMain"] [class*="st-key-mob_hub_"],
+  [data-testid="stMain"] [class*="st-key-mob_hub_close"],
+  [data-testid="stMain"] [class*="st-key-mob_grp_btn"],
+  [data-testid="stMain"] [class*="st-key-mob_nav_btn"],
+  [data-testid="stMain"] [class*="st-key-mob_qc_"],
+  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] {
+    display: none !important;
+  }
+}
+
+@media (max-width: 968px) {
+  /* Strip Streamlit bordered-container chrome on fixed nav layers */
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-top-nav-host)
+    [data-testid="stVerticalBlockBorderWrapper"],
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-bottom-nav-host)
+    [data-testid="stVerticalBlockBorderWrapper"],
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-hub-host)
+    [data-testid="stVerticalBlockBorderWrapper"] {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  /* Hub open — dim content behind sheet */
+  [data-testid="stAppViewContainer"]:has(.erp-mobile-hub-host)::before {
+    content: "" !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 10060 !important;
+    background: color-mix(in srgb, var(--theme-text) 42%, transparent) !important;
+    pointer-events: none !important;
+  }
+
+  /* Collapse in-flow chrome markers (fixed layers handle layout) */
+  [data-testid="stMain"] [data-testid="stElementContainer"]:has(.erp-mobile-chrome-active) {
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* ── Bottom tab bar (5 items: Home | New FAB | hubs) ── */
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-bottom-nav-host) {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 10080 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    background: color-mix(in srgb, var(--theme-card) 94%, transparent) !important;
+    backdrop-filter: blur(14px) saturate(1.2) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(1.2) !important;
+    border: none !important;
+    border-top: 1px solid var(--theme-border) !important;
+    border-radius: 0 !important;
+    box-shadow: 0 -1px 0 color-mix(in srgb, var(--theme-border) 55%, transparent),
+      0 -6px 20px color-mix(in srgb, var(--theme-shadow) 50%, transparent) !important;
+    padding: 2px 4px calc(2px + env(safe-area-inset-bottom, 0px)) !important;
+    margin: 0 !important;
+  }
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-bottom-nav-host)
+    [data-testid="stHorizontalBlock"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-bottom-nav-host)
+    [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+    padding: 0 !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_bar_"] {
+    position: relative !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_bar_"] button {
+    width: 100% !important;
+    min-height: 48px !important;
+    max-height: none !important;
+    padding: 6px 2px 4px !important;
+    font-size: 11px !important;
+    line-height: 1.15 !important;
+    white-space: pre-line !important;
+    border-radius: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    font-weight: 600 !important;
+    color: var(--theme-muted) !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_bar_"] button p,
+  [data-testid="stMain"] [class*="st-key-mob_bar_"] button span {
+    font-size: 11px !important;
+    line-height: 1.15 !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button {
+    width: 56px !important;
+    min-width: 56px !important;
+    max-width: 56px !important;
+    height: 56px !important;
+    min-height: 56px !important;
+    margin: -22px auto 2px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    background: var(--theme-info) !important;
+    color: #fff !important;
+    font-size: 30px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    box-shadow:
+      0 8px 22px color-mix(in srgb, var(--theme-info) 50%, transparent),
+      0 2px 8px color-mix(in srgb, var(--theme-shadow) 35%, transparent) !important;
+    border: 4px solid var(--theme-card) !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button p,
+  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button span {
+    font-size: 30px !important;
+    font-weight: 700 !important;
+    color: #fff !important;
+    line-height: 1 !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button[kind="secondary"] {
+    background: var(--theme-info) !important;
+    color: #fff !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_bar_"] button[kind="primary"]:not([class*="mob_bar_new"]) {
+    color: var(--theme-info) !important;
+    background: transparent !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_bar_"] button:disabled {
+    opacity: 0.35 !important;
+  }
+
+  /* ── Hub sheet ── */
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-hub-host) {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: var(--bottom-nav-h) !important;
+    z-index: 10070 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    max-height: min(
+      72vh,
+      calc(100vh - var(--hdr-h) - var(--bottom-nav-h) - 12px)
+    ) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    background: var(--theme-card) !important;
+    border: none !important;
+    border-top: 1px solid var(--theme-border) !important;
+    border-radius: 16px 16px 0 0 !important;
+    box-shadow: 0 -12px 40px color-mix(in srgb, var(--theme-shadow) 80%, transparent) !important;
+    padding: 4px 14px 14px !important;
+    margin: 0 !important;
+  }
+  .erp-mobile-hub-grab {
+    display: block !important;
+    width: 36px !important;
+    height: 4px !important;
+    border-radius: 99px !important;
+    background: var(--theme-border) !important;
+    margin: 8px auto 10px !important;
+  }
+  .erp-mobile-hub-title {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: var(--theme-text) !important;
+    padding: 2px 0 4px !important;
+    letter-spacing: -0.01em !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_hub_close"] button {
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    background: var(--theme-bg) !important;
+    border: 1px solid var(--theme-border) !important;
+    color: var(--theme-muted) !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_hub_"]:not([class*="mob_hub_close"]) button {
+    min-height: 44px !important;
+    font-size: 14px !important;
+    line-height: 1.3 !important;
+    border-radius: 0 !important;
+    text-align: left !important;
+    justify-content: space-between !important;
+    padding: 10px 4px 10px 2px !important;
+    border: none !important;
+    border-bottom: 1px solid var(--theme-border) !important;
+    background: transparent !important;
+    color: var(--theme-text) !important;
+    font-weight: 500 !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_hub_"]:not([class*="mob_hub_close"]) button::after {
+    content: "›" !important;
+    color: var(--theme-muted) !important;
+    font-size: 18px !important;
+    font-weight: 400 !important;
+    margin-left: 8px !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_hub_"] button[kind="primary"] {
+    background: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%) !important;
+    color: var(--theme-info) !important;
+    border-color: color-mix(in srgb, var(--theme-info) 40%, var(--theme-border) 60%) !important;
+    font-weight: 700 !important;
+  }
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-hub-host)
+    hr {
+    margin: 10px 0 6px !important;
+    border-color: var(--theme-border) !important;
+  }
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-hub-host)
+    [data-testid="stCaptionContainer"] p {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    color: var(--theme-muted) !important;
+  }
+}
+
+.erp-hdr-role-marker {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+}
+[data-testid="stMain"] .st-key-hdr_toolbar_row {
+  margin-left: auto !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+}
+[data-testid="stMain"] [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+}
+[data-testid="stMain"] .st-key-hdr_notif_pop button,
+[data-testid="stMain"] .st-key-hdr_dark_toggle button {
+  width: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+}
+[data-testid="stMain"] .st-key-hdr_profile_pop button {
+  width: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+  font-size: 11px !important;
+  border: 2px solid var(--theme-card) !important;
+  box-shadow: 0 0 0 1px var(--theme-border), 0 1px 3px var(--theme-shadow) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-owner) .st-key-hdr_profile_pop button {
+  background: var(--role-owner) !important;
+}
+[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-manager) .st-key-hdr_profile_pop button {
+  background: var(--role-manager) !important;
+}
+[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-cashier) .st-key-hdr_profile_pop button {
+  background: var(--role-cashier) !important;
+}
+[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-partner) .st-key-hdr_profile_pop button {
+  background: var(--role-partner) !important;
+}
+[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-viewer) .st-key-hdr_profile_pop button {
+  background: var(--role-viewer) !important;
+}
+[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-notif-active) .st-key-hdr_notif_pop button {
+  background: color-mix(in srgb, var(--theme-warning) 14%, var(--theme-card) 86%) !important;
+  border-color: color-mix(in srgb, var(--theme-warning) 45%, var(--theme-border) 55%) !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+}
+
+/* Keyed mobile chrome — CSS grid on st.columns horizontal blocks */
+@media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
+  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 56px 1fr 1fr !important;
+    align-items: end !important;
+    gap: 0 !important;
+  }
+  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] [data-testid="stColumn"] {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: unset !important;
+    max-width: none !important;
+  }
+  [data-testid="stMain"] [class*="st-key-erp_mob_quick_create"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  [data-testid="stMain"] [class*="st-key-erp_mob_quick_create"] [data-testid="stColumn"] {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: unset !important;
+    max-width: none !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(76px, 92px) !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_at_tabs"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    width: 100% !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_at_pm3"] [data-testid="stHorizontalBlock"],
+  [data-testid="stMain"] [class*="st-key-mob_at_keypad"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    width: 100% !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_at_pm2"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    width: 100% !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_at_cat_rows"] [data-testid="stHorizontalBlock"],
+  [data-testid="stMain"] [class*="st-key-mob_at_vendor_row"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    width: 100% !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_at_vendor_row"] [data-testid="stHorizontalBlock"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_hub_hdr"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: minmax(0, 6fr) minmax(0, 1fr) !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+  [data-testid="stMain"] [class*="st-key-erp_mob_rpt_filters"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_rpt_date_"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+  [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] .erp-bottom-nav-host,
+  [data-testid="stMain"] [class*="st-key-erp_mob_quick_create"] .erp-mobile-quick-create-host {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 10080 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    background: color-mix(in srgb, var(--theme-card) 94%, transparent) !important;
+    backdrop-filter: blur(14px) saturate(1.2) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(1.2) !important;
+    border: none !important;
+    border-top: 1px solid var(--theme-border) !important;
+    border-radius: 0 !important;
+    box-shadow: 0 -1px 0 color-mix(in srgb, var(--theme-border) 55%, transparent),
+      0 -6px 20px color-mix(in srgb, var(--theme-shadow) 50%, transparent) !important;
+    padding: 2px 4px calc(2px + env(safe-area-inset-bottom, 0px)) !important;
+    margin: 0 !important;
+  }
+  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"]
+    [data-testid="stVerticalBlockBorderWrapper"] {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 56px 1fr 1fr !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    align-items: end !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button {
+    font-size: 24px !important;
+    line-height: 1 !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button p,
+  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button span {
+    font-size: 24px !important;
+    line-height: 1 !important;
+    color: #fff !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_qc_"] button {
+    min-height: 52px !important;
+    max-height: 56px !important;
+    padding: 4px 2px !important;
+    font-size: 9px !important;
+    border-radius: 10px !important;
+    border: 1px solid var(--theme-border) !important;
+    background: var(--theme-card) !important;
+  }
+  [data-testid="stMain"] [class*="st-key-erp_mob_hub_sheet"] {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: var(--bottom-nav-h) !important;
+    z-index: 10070 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    max-height: min(
+      72vh,
+      calc(100vh - var(--hdr-h) - var(--bottom-nav-h) - 12px)
+    ) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    background: var(--theme-card) !important;
+    border: none !important;
+    border-top: 1px solid var(--theme-border) !important;
+    border-radius: 16px 16px 0 0 !important;
+    box-shadow: 0 -12px 40px color-mix(in srgb, var(--theme-shadow) 80%, transparent) !important;
+    padding: 4px 14px 14px !important;
+    margin: 0 !important;
+  }
+  [data-testid="stMain"] [class*="st-key-erp_mob_hub_sheet"]
+    [data-testid="stVerticalBlockBorderWrapper"] {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button {
+    font-size: 24px !important;
+    line-height: 1 !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button p,
+  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button span {
+    font-size: 24px !important;
+    line-height: 1 !important;
+    color: #fff !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_qc_"] button {
+    min-height: 52px !important;
+    max-height: 56px !important;
+    padding: 4px 2px !important;
+    font-size: 9px !important;
+    border-radius: 10px !important;
+    border: 1px solid var(--theme-border) !important;
+    background: var(--theme-card) !important;
+  }
+  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] .erp-mobile-chrome-footer,
+  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] .erp-bottom-nav-host,
+  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] .erp-mobile-chrome-footer ~ [data-testid="stMarkdown"] {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+  [data-testid="stMain"] [class*="st-key-erp_mob_quick_create"] .erp-mobile-quick-create-host {
+    margin-bottom: 10px !important;
+  }
+  [data-testid="stMain"] [class*="st-key-erp_mob_quick_create"] [data-testid="stVerticalBlockBorderWrapper"] {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+}
+@media (min-width: 969px) {
+  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"],
+  [data-testid="stMain"] [class*="st-key-erp_mob_hub_sheet"] {
+    display: none !important;
+  }
+}

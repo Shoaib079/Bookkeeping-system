@@ -1,0 +1,24 @@
+# Local database and runtime artifacts
+*.db
+*.db.*
+*.db-journal
+erp_data.db
+registry/erp_data.db
+
+uploads/
+backups/
+registry/backups/
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+.DS_Store
+*.bak
+
+# IDE / local tooling
+.claude/
+.cursor/
+.vscode/

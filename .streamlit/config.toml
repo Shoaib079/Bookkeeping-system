@@ -1,0 +1,12 @@
+# Streamlit baseline theme — aligned with ui/theme.py LIGHT_ROOT_VARS (Phase 16A).
+# Custom ERP chrome still comes from ui/theme.css; this reduces default-widget flash.
+
+[theme]
+primaryColor = "#2563EB"
+backgroundColor = "#F8FAFC"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#0F172A"
+font = "sans serif"
+
+[server]
+headless = true

@@ -1,0 +1,6 @@
+streamlit>=1.28,<2
+SQLAlchemy>=1.4
+pandas>=1.5
+openpyxl>=3.0
+lxml>=4.9
+reportlab>=3.6

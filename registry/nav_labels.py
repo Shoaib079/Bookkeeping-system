@@ -1,0 +1,39 @@
+"""Canonical nav page keys → i18n message keys (Phase 15)."""
+
+from __future__ import annotations
+
+# Streamlit nav_selection / _PAGE_DISPATCH keys (emoji + English title).
+NAV_PAGE_I18N: dict[str, str] = {
+    "🏠 Home": "nav.home",
+    "📅 Today's Summary": "nav.today_summary",
+    "➕ New Transaction": "nav.new_transaction",
+    "💼 Sales": "nav.sales",
+    "💳 Expenses": "nav.expenses",
+    "🔁 Recurring Expenses": "nav.recurring_expenses",
+    "🛒 Purchases": "nav.purchases",
+    "💸 Cash Reconciliation": "nav.cash_reconciliation",
+    "🌙 End-of-Day Close": "nav.end_of_day_close",
+    "👥 Customers": "nav.customers",
+    "🏢 Vendors": "nav.vendors",
+    "📄 Receivables": "nav.receivables",
+    "📌 Payables": "nav.payables",
+    "📦 Inventory": "nav.inventory",
+    "🏦 Banking": "nav.banking",
+    "📊 Reports": "nav.reports",
+    "🗂 General Ledger": "nav.general_ledger",
+    "⚖️ Trial Balance": "nav.trial_balance",
+    "📓 Journal Entries": "nav.journal_entries",
+    "🗓 Fiscal Periods": "nav.fiscal_periods",
+    "📆 Year-End Close": "nav.year_end_close",
+    "💰 Budget": "nav.budget",
+    "🔍 Chart of Accounts": "nav.chart_of_accounts",
+    "🩺 Recon Health": "nav.recon_health",
+    "🏦 Partner Accounts": "nav.partner_accounts",
+    "👷 Workers": "nav.workers",
+    "🏢 Company Settings": "nav.company_settings",
+    "👤 Members": "nav.members",
+    "🕵️ Audit Log": "nav.audit_log",
+    "💾 Backup & Restore": "nav.backup_restore",
+    "⚡ Opening Balances": "nav.opening_balances",
+    "👤 My Account": "nav.my_account",
+}
