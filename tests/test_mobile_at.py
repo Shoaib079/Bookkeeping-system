@@ -27,17 +27,51 @@ def test_mob_at_append_amount_digit(monkeypatch):
     state = _FakeSessionState({"at_amount_display": "12"})
     monkeypatch.setattr(erp.st, "session_state", state)
 
-    erp._mob_at_append_amount_digit("3")
+    assert erp._mob_at_append_amount_digit("3") is True
     assert state["at_amount_display"] == "123"
 
-    erp._mob_at_append_amount_digit("bksp")
+    assert erp._mob_at_append_amount_digit("bksp") is True
     assert state["at_amount_display"] == "12"
 
-    erp._mob_at_append_amount_digit(".")
+    assert erp._mob_at_append_amount_digit(".") is True
     assert state["at_amount_display"] == "12."
 
-    erp._mob_at_append_amount_digit("clr")
+    assert erp._mob_at_append_amount_digit("clr") is True
     assert state["at_amount_display"] == ""
+
+
+def test_mob_at_append_amount_digit_ignores_duplicate_decimal(monkeypatch):
+    state = _FakeSessionState({"at_amount_display": "12.5"})
+    monkeypatch.setattr(erp.st, "session_state", state)
+    assert erp._mob_at_append_amount_digit(".") is False
+    assert state["at_amount_display"] == "12.5"
+
+
+def test_mob_at_append_amount_digit_ignores_decimal_when_comma_present(monkeypatch):
+    state = _FakeSessionState({"at_amount_display": "1,50"})
+    monkeypatch.setattr(erp.st, "session_state", state)
+    assert erp._mob_at_append_amount_digit(".") is False
+
+
+def test_mob_at_append_amount_digit_noop_backspace_on_empty(monkeypatch):
+    state = _FakeSessionState({"at_amount_display": ""})
+    monkeypatch.setattr(erp.st, "session_state", state)
+    assert erp._mob_at_append_amount_digit("bksp") is False
+
+
+def test_mob_at_amount_display_text(monkeypatch):
+    state = _FakeSessionState({"at_amount_display": ""})
+    monkeypatch.setattr(erp.st, "session_state", state)
+    assert erp._mob_at_amount_display_text() == "0"
+    assert erp._mob_at_amount_display_text("42.5") == "42.5"
+
+
+def test_mob_at_keypad_fragment_registered():
+    import inspect
+
+    src = inspect.getsource(erp._mob_at_render_amount_keypad_fragment)
+    assert "@st.fragment" in src or "st.fragment" in src
+    assert callable(erp._mob_at_render_amount_keypad_fragment)
 
 
 def test_mob_at_tabs_config():
@@ -129,6 +163,12 @@ def test_mob_at_filter_options():
     assert [o.label for o in erp._mob_at_filter_options(options, "fuel")] == ["Fuel"]
     assert len(erp._mob_at_filter_options(options, "")) == 3
     assert erp._mob_at_filter_options(options, "zzz") == []
+
+
+def test_mob_at_types_with_currency():
+    assert erp._mob_at_types_with_currency("Sale")
+    assert erp._mob_at_types_with_currency("Customer Payment")
+    assert not erp._mob_at_types_with_currency("Bank Transaction")
 
 
 def test_mob_at_invoice_options():
@@ -225,5 +265,20 @@ def test_mob_at_mobile_select_keys_distinct_from_desktop():
         "mob_at_vendor_sel",
         "mob_at_payable_sel",
         "mob_at_bank_acct_sel",
+        "mob_at_bank_pay_sel",
+        "mob_at_card_bank_sel",
     }
     assert desktop_keys.isdisjoint(mobile_keys)
+
+
+def test_mob_at_sync_select_widgets_bank_pay(monkeypatch):
+    state = _FakeSessionState(
+        {
+            "mob_at_bank_pay_sel": "Main TRY",
+            "mob_at_card_bank_sel": "Visa Card",
+        }
+    )
+    monkeypatch.setattr(erp.st, "session_state", state)
+    erp._mob_at_sync_select_widgets()
+    assert state["at_bank_pay_acct"] == "Main TRY"
+    assert state["at_card_bank_acct"] == "Visa Card"

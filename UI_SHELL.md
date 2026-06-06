@@ -198,9 +198,21 @@ Desktop sidebar (≥969px) is unchanged. Mobile uses fixed chrome in `app.py` af
 
 Main content `.block-container` uses `padding-top: calc(var(--hdr-h) + 8px)` and `padding-bottom: calc(var(--bottom-nav-h) + safe-area + 12px)` on mobile.
 
-### Mobile Add Transaction (Phase 18-MUX — active)
+### Mobile Add Transaction (Phase 18-MUX — complete)
 
 Calculator / POS-style entry on ≤968px (`erp-at-mobile-host` / `erp_mob_at_panel`). Desktop form unchanged (`erp_at_desktop_host`, hidden via CSS + `_sync_mobile_ui_flag_from_cookie()`). Single save path: `_at_save`. CSS: `ui/mobile_txn.css`. See [ROADMAP.md](./ROADMAP.md) § Phase 18-MUX.
+
+**Dual-host rule:** Mobile widgets use `mob_at_*` keys; desktop uses `at_*`. Never reuse desktop Streamlit keys in the mobile host (both hosts render on every request; CSS hides one).
+
+**Panel flow (bottom sheet):** type tabs → payment/context chips → amount display + SAVE + keypad. Amount uses `at_amount_display` buffer (no `st.text_input` on mobile). Keypad + amount row run inside `@st.fragment` (`_mob_at_render_amount_keypad_fragment`) so digit taps rerun only that fragment; SAVE sets `mob_at_save_clicked` and triggers `st.rerun(scope="app")`.
+
+**Searchable pickers:** Long lists open `mob_at_picker` bottom sheet (`_mob_at_render_grid_picker_sheet`). Kinds: `expense_cat`, `expense_subcat`, `sale_cat`, `sale_subcat`, `purchase_cat`, `purchase_subcat`, `vendor`, `invoice`, `payable`, `bank_acct`, `card_bank`, `bank_pay`.
+
+**Named bank tracking:** When payment method is Bank (Expense, Purchase, Salary, Supplier/Customer Payment), `mob_at_bank_pay_trigger` → `bank_pay` picker sets `at_bank_pay_acct`. Card sales use `card_bank`. `_at_save` calls `_record_named_bank_movement` so Banking page ledger reflects the chosen account.
+
+**Keyed layout rows (CSS grid contract):** `mob_at_topbar`, `mob_at_tabs`, `mob_at_amount_row`, `mob_at_keypad`, `mob_at_pm2`, `mob_at_pm3`, `mob_at_cat_trigger`, `mob_at_subcat_trigger`, `mob_at_vendor_trigger`, `mob_at_picker_hdr`, `mob_at_picker_grid` — see `tests/test_mobile_layout_contract.py`.
+
+**Smoke script:** `scripts/browser_mobile_at_keypad.py` (Playwright, requires `streamlit run app.py` on `:8501`).
 
 ---
 
@@ -475,6 +487,6 @@ Examples: `sales_void_confirm_42`, `banking_import_page_size`, `upload_form_sale
 
 ---
 
-| Spec version | 1.0 |
-| Phase | 16A–16D |
-| Updated | 2026-06-06 |
+| Spec version | 1.1 |
+| Phase | 16A–18-MUX |
+| Updated | 2026-06-05 |

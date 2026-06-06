@@ -4124,10 +4124,54 @@ def _has_active_workers(session) -> bool:
     return cq(session, Worker).filter_by(is_active=True).count() > 0
 
 
+def _record_named_bank_movement(
+    session,
+    bank_accounts: list,
+    acct_name: str | None,
+    *,
+    amount: float,
+    date: datetime.date,
+    description: str,
+    txn_type: str,
+) -> BankAccount | None:
+    """Update a named BankAccount balance and append a BankTransaction row."""
+    if not acct_name or not bank_accounts or amount <= 0:
+        return None
+    from reconciliation.company_card import apply_account_balance_delta
+
+    ba = next((a for a in bank_accounts if a.name == acct_name), None)
+    if not ba:
+        return None
+    apply_account_balance_delta(ba, txn_type, amount)
+    session.add(
+        BankTransaction(
+            account_id=ba.id,
+            date=date,
+            amount=amount,
+            type=txn_type,
+            description=description,
+        )
+    )
+    session.add(ba)
+    return ba
+
+
 def _bank_account_for_payment(
     session, payment_method: str, *, currency: str | None = None,
+    preferred_name: str | None = None,
 ) -> BankAccount | None:
     """Pick a BankAccount row for worker payroll / bank-txn posting."""
+    if preferred_name:
+        ba = next(
+            (
+                a
+                for a in cq(session, BankAccount).filter_by(is_active=True).all()
+                if a.name == preferred_name
+            ),
+            None,
+        )
+        if ba:
+            return ba
     accounts = (
         cq(session, BankAccount).filter_by(is_active=True).order_by(BankAccount.name).all()
     )
@@ -9949,6 +9993,10 @@ def _mob_at_render_picker_sheet(
         )
     if picker_kind == "bank_acct":
         return _mob_at_render_bank_picker_sheet(bank_accounts)
+    if picker_kind == "card_bank":
+        return _mob_at_render_card_bank_picker_sheet(bank_accounts)
+    if picker_kind == "bank_pay":
+        return _mob_at_render_bank_pay_picker_sheet(bank_accounts)
     if _mob_at_is_subcat_picker(picker_kind):
         return _mob_at_render_subcategory_picker_sheet(session, picker_kind=picker_kind)
     return _mob_at_render_category_picker_sheet(session, picker_kind=picker_kind)
@@ -9972,18 +10020,65 @@ def _mob_at_submit_txn_type(type_names: list[str]) -> str:
     return type_names[st.session_state["at_type_idx"]]
 
 
-def _mob_at_append_amount_digit(digit: str) -> None:
-    """Append/backspace/clear into at_amount_display (mobile keypad)."""
+def _mob_at_amount_display_text(raw: str | None = None) -> str:
+    """Formatted amount line for the mobile calculator display."""
+    val = raw if raw is not None else st.session_state.get("at_amount_display", "")
+    return (val or "") or "0"
+
+
+def _mob_at_append_amount_digit(digit: str) -> bool:
+    """Append/backspace/clear into at_amount_display (mobile keypad). Returns True if buffer changed."""
     cur = st.session_state.get("at_amount_display", "") or ""
     if digit == "bksp":
+        if not cur:
+            return False
         st.session_state["at_amount_display"] = cur[:-1]
-    elif digit == "clr":
+        return True
+    if digit == "clr":
+        if not cur:
+            return False
         st.session_state["at_amount_display"] = ""
-    elif digit == ".":
-        if "." not in cur and "," not in cur:
-            st.session_state["at_amount_display"] = cur + "."
-    else:
-        st.session_state["at_amount_display"] = cur + digit
+        return True
+    if digit == ".":
+        if "." in cur or "," in cur:
+            return False
+        st.session_state["at_amount_display"] = cur + "."
+        return True
+    st.session_state["at_amount_display"] = cur + digit
+    return True
+
+
+@st.fragment
+def _mob_at_render_amount_keypad_fragment(currency_default: str) -> None:
+    """Amount display + keypad — fragment rerun keeps type chips from re-rendering."""
+    amount_display = _mob_at_amount_display_text()
+    with st.container(border=False, key="mob_at_amount_row"):
+        ac1, ac2 = st.columns([5, 1], gap="small")
+        with ac1:
+            st.markdown(
+                f'<div class="erp-mob-at-amount-display">'
+                f'<span class="erp-mob-at-ccy">{html.escape(currency_default)}</span>'
+                f'{html.escape(amount_display)}</div>',
+                unsafe_allow_html=True,
+            )
+        with ac2:
+            if st.button(
+                _tf("txn.mob.save", "SAVE"),
+                key="mob_at_save",
+                type="primary",
+                use_container_width=True,
+            ):
+                st.session_state["mob_at_save_clicked"] = True
+                st.rerun(scope="app")
+
+    with st.container(border=False, key="mob_at_keypad"):
+        for row in (("7", "8", "9"), ("4", "5", "6"), ("1", "2", "3"), (".", "0", "⌫")):
+            kc = st.columns(3, gap="small")
+            for col, key in zip(kc, row):
+                digit = "bksp" if key == "⌫" else key
+                if col.button(key, key=f"mob_at_key_{key}", use_container_width=True):
+                    if _mob_at_append_amount_digit(digit):
+                        st.rerun(scope="fragment")
 
 
 def _mob_at_today_metrics(session, today: datetime.date) -> tuple[float, float, float]:
@@ -10103,6 +10198,202 @@ def _mob_at_sync_select_widgets() -> None:
         st.session_state["at_bank_acct"] = st.session_state["mob_at_bank_acct_sel"]
     if "mob_at_worker_id" in st.session_state:
         st.session_state["at_worker_id"] = st.session_state["mob_at_worker_id"]
+    if "mob_at_card_bank_sel" in st.session_state:
+        st.session_state["at_card_bank_acct"] = st.session_state["mob_at_card_bank_sel"]
+    if "mob_at_bank_pay_sel" in st.session_state:
+        st.session_state["at_bank_pay_acct"] = st.session_state["mob_at_bank_pay_sel"]
+    if "mob_at_worker_period" in st.session_state:
+        st.session_state["at_worker_period"] = st.session_state["mob_at_worker_period"]
+
+
+def _at_render_bank_pay_select(bank_accounts: list) -> None:
+    """Desktop: pick which named bank account when payment method is Bank."""
+    if st.session_state.get("at_pm") == "Bank" and bank_accounts:
+        st.selectbox(
+            _t("txn.bank_account_label"),
+            [a.name for a in bank_accounts],
+            key="at_bank_pay_acct",
+        )
+
+
+def _mob_at_types_with_currency(txn_type: str) -> bool:
+    return txn_type in (
+        "Sale",
+        "Expense",
+        "Purchase",
+        "Supplier Payment",
+        "Customer Payment",
+    )
+
+
+def _mob_at_render_currency_chips(currency_default: str) -> bool:
+    active = st.session_state.get("at_currency", currency_default)
+    return _mob_at_button_row(
+        [(c, c) for c in CURRENCIES],
+        active,
+        "mob_at_ccy",
+        "at_currency",
+        row_key="mob_at_ccy4",
+    )
+
+
+def _mob_at_render_fx_hook(currency_default: str) -> None:
+    sel = st.session_state.get("at_currency", currency_default)
+    if not sel or sel == currency_default:
+        return
+    _fx_raw = amount_input(
+        f"FX ({currency_default}/{sel})",
+        key="mob_at_fx_rate",
+        placeholder=_t("txn.fx_placeholder"),
+        default=st.session_state.get("at_fx_rate_val"),
+    )
+    if _fx_raw and _fx_raw > 0:
+        st.session_state["at_fx_rate_val"] = _fx_raw
+    amount = _parse_amount_str(st.session_state.get("at_amount_display", "")) or 0.0
+    rate = float(st.session_state.get("at_fx_rate_val") or 1.0)
+    st.caption(
+        _t(
+            "txn.native_amount",
+            currency=currency_default,
+            amount=amount * rate,
+        )
+    )
+
+
+def _mob_at_render_salary_fields(session, currency_default: str) -> None:
+    st.caption(_tf("txn.mob.salary_net_hint", "Keypad amount = net pay (cash out)"))
+    amount_input(_t("worker.gross"), key="mob_at_worker_gross")
+    sc1, sc2 = st.columns(2, gap="small")
+    amount_input(
+        _t("worker.deductions"),
+        key="mob_at_worker_ded",
+        default=0.0,
+        container=sc1,
+    )
+    amount_input(
+        _t("worker.advance_recovery"),
+        key="mob_at_worker_adv_rec",
+        default=0.0,
+        container=sc2,
+    )
+    st.text_input(
+        _t("worker.pay_period"),
+        key="mob_at_worker_period",
+        label_visibility="collapsed",
+        placeholder=_t("worker.pay_period"),
+    )
+    _wid = st.session_state.get("mob_at_worker_id")
+    if _wid:
+        _adv = get_worker_advance_balance(session, _wid)
+        if _adv > 0.01:
+            st.caption(
+                _t(
+                    "worker.advance_max_hint",
+                    currency=currency_default,
+                    amount=_adv,
+                )
+            )
+
+
+def _mob_at_render_bank_pay_trigger(bank_accounts: list) -> bool:
+    """Which named bank account receives/pays this Bank payment."""
+    if not bank_accounts:
+        return False
+    selected = (
+        st.session_state.get("mob_at_bank_pay_sel")
+        or st.session_state.get("at_bank_pay_acct")
+        or bank_accounts[0].name
+    )
+    if not st.session_state.get("at_bank_pay_acct"):
+        st.session_state["at_bank_pay_acct"] = selected
+    with st.container(border=False, key="mob_at_bank_pay_trigger"):
+        if st.button(
+            selected,
+            key="mob_at_bank_pay_open",
+            use_container_width=True,
+            type="secondary",
+        ):
+            st.session_state["mob_at_picker"] = "bank_pay"
+            return True
+    return False
+
+
+def _mob_at_render_bank_pay_picker_sheet(bank_accounts: list) -> bool:
+    options = _mob_at_bank_options(bank_accounts)
+    selected_key = next(
+        (
+            o.key
+            for o in options
+            if o.value_name == st.session_state.get("mob_at_bank_pay_sel")
+            or o.value_name == st.session_state.get("at_bank_pay_acct")
+        ),
+        None,
+    )
+
+    def _apply(opt: _MobAtChipOption) -> None:
+        st.session_state["mob_at_bank_pay_sel"] = opt.value_name or opt.label
+        st.session_state["at_bank_pay_acct"] = opt.value_name or opt.label
+
+    return _mob_at_render_grid_picker_sheet(
+        title=_tf("txn.mob.pick_bank_pay", "Which bank account?"),
+        options=options,
+        picker_kind="bank_pay",
+        selected_key=selected_key,
+        on_pick=_apply,
+    )
+
+
+def _mob_at_maybe_bank_pay_trigger(
+    bank_accounts: list, *, payment_method: str
+) -> bool:
+    if payment_method != "Bank":
+        return False
+    return _mob_at_render_bank_pay_trigger(bank_accounts)
+
+
+def _mob_at_render_card_bank_trigger(bank_accounts: list) -> bool:
+    if not bank_accounts:
+        return False
+    selected = (
+        st.session_state.get("mob_at_card_bank_sel")
+        or st.session_state.get("at_card_bank_acct")
+        or bank_accounts[0].name
+    )
+    with st.container(border=False, key="mob_at_card_bank_trigger"):
+        if st.button(
+            selected,
+            key="mob_at_card_bank_open",
+            use_container_width=True,
+            type="secondary",
+        ):
+            st.session_state["mob_at_picker"] = "card_bank"
+            return True
+    return False
+
+
+def _mob_at_render_card_bank_picker_sheet(bank_accounts: list) -> bool:
+    options = _mob_at_bank_options(bank_accounts)
+    selected_key = next(
+        (
+            o.key
+            for o in options
+            if o.value_name == st.session_state.get("mob_at_card_bank_sel")
+            or o.value_name == st.session_state.get("at_card_bank_acct")
+        ),
+        None,
+    )
+
+    def _apply_card_bank(opt: _MobAtChipOption) -> None:
+        st.session_state["mob_at_card_bank_sel"] = opt.value_name or opt.label
+        st.session_state["at_card_bank_acct"] = opt.value_name or opt.label
+
+    return _mob_at_render_grid_picker_sheet(
+        title=_tf("txn.mob.pick_card_bank", "Choose card deposit account"),
+        options=options,
+        picker_kind="card_bank",
+        selected_key=selected_key,
+        on_pick=_apply_card_bank,
+    )
 
 
 def _mob_at_sync_type_from_tab() -> None:
@@ -10283,20 +10574,36 @@ def _at_process_submit(
     if _mob_at_is_salary_mode():
         st.session_state["at_expense_mode"] = "worker"
         st.session_state["at_worker_mv_type"] = "Salary"
-        if amount_raw:
-            st.session_state["at_worker_gross"] = amount_raw
-            st.session_state["at_worker_ded"] = "0"
-            st.session_state["at_worker_adv_rec"] = "0"
+        _mob_at_sync_select_widgets()
+        st.session_state["at_worker_gross"] = (
+            st.session_state.get("mob_at_worker_gross") or ""
+        )
+        st.session_state["at_worker_ded"] = str(
+            st.session_state.get("mob_at_worker_ded") or "0"
+        )
+        st.session_state["at_worker_adv_rec"] = str(
+            st.session_state.get("mob_at_worker_adv_rec") or "0"
+        )
         txn_type = "Expense"
 
     if not amount or amount <= 0:
         st.error(_t("txn.invalid_amount_zero"))
     elif _mob_at_is_salary_mode() and not st.session_state.get("at_worker_id"):
         st.error(_t("txn.expense_worker_required"))
+    elif _mob_at_is_salary_mode() and not _parse_amount_str(
+        st.session_state.get("mob_at_worker_gross", "")
+    ):
+        st.error(_t("txn.invalid_amount_zero"))
     elif txn_type == "Supplier Payment" and vendors and st.session_state.get("at_payable_id") is None:
         st.error(_t("txn.no_open_payable"))
     elif txn_type == "Customer Payment" and not open_sales:
         st.error(_t("txn.no_credit_invoices"))
+    elif (
+        ctx["at_payment_method"] == "Bank"
+        and bank_accounts
+        and not st.session_state.get("at_bank_pay_acct")
+    ):
+        st.error(_t("txn.bank_not_selected"))
     else:
         try:
             _selected_currency = st.session_state.get("at_currency", currency_default)
@@ -10325,6 +10632,7 @@ def _at_process_submit(
                 at_subcat_name=ctx["at_subcat_name"],
                 fx_rate=ctx["at_fx_rate"],
                 card_bank_acct_val=st.session_state.get("at_card_bank_acct"),
+                bank_payment_acct_val=st.session_state.get("at_bank_pay_acct"),
                 selected_payable_id=st.session_state.get("at_payable_id"),
             )
             for _k in [
@@ -10456,30 +10764,11 @@ def _render_add_transaction_mobile(
     if _pending_att:
         st.caption(_t("txn.pending_attachment_hint", filename=_pending_att.get("name", "")))
 
-    submitted = False
     with st.container(border=False, key="erp_mob_at_panel"):
         st.markdown(
             '<div class="erp-mob-at-panel-top"><div class="erp-mob-at-panel-caret"></div></div>',
             unsafe_allow_html=True,
         )
-
-        amount_display = st.session_state.get("at_amount_display", "") or "0"
-        with st.container(border=False, key="mob_at_amount_row"):
-            ac1, ac2 = st.columns([5, 1], gap="small")
-            with ac1:
-                st.markdown(
-                    f'<div class="erp-mob-at-amount-display">'
-                    f'<span class="erp-mob-at-ccy">{html.escape(currency_default)}</span>'
-                    f'{html.escape(amount_display)}</div>',
-                    unsafe_allow_html=True,
-                )
-            with ac2:
-                submitted = st.button(
-                    _tf("txn.mob.save", "SAVE"),
-                    key="mob_at_save",
-                    type="primary",
-                    use_container_width=True,
-                )
 
         with st.container(border=False, key="mob_at_tabs"):
             tab_cols = st.columns(len(_MOB_AT_TABS), gap="small")
@@ -10572,6 +10861,13 @@ def _render_add_transaction_mobile(
                 row_key="mob_at_pm2",
             ):
                 st.rerun()
+            if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
+                st.rerun()
+            _mob_at_render_salary_fields(session, currency_default)
+            if _mob_at_types_with_currency("Expense"):
+                if _mob_at_render_currency_chips(currency_default):
+                    st.rerun()
+                _mob_at_render_fx_hook(currency_default)
         elif at_idx == 0:
             if _mob_at_button_row(
                 [(pm, _i18n_db(PAYMENT_METHOD_I18N, pm)) for pm in ("Cash", "Card", "Credit")],
@@ -10581,6 +10877,12 @@ def _render_add_transaction_mobile(
                 row_key="mob_at_pm3",
             ):
                 st.rerun()
+            if st.session_state.get("at_pm") == "Card":
+                if bank_accounts:
+                    if _mob_at_render_card_bank_trigger(bank_accounts):
+                        st.rerun()
+                else:
+                    st.caption(_t("txn.no_bank_add"))
             if _mob_at_render_cat_subcat_triggers(
                 session,
                 "Sale",
@@ -10588,6 +10890,10 @@ def _render_add_transaction_mobile(
                 subcat_picker_kind="sale_subcat",
             ):
                 st.rerun()
+            if _mob_at_types_with_currency("Sale"):
+                if _mob_at_render_currency_chips(currency_default):
+                    st.rerun()
+                _mob_at_render_fx_hook(currency_default)
         elif at_idx == 1 and st.session_state.get("mob_at_tab") == 1:
             if _mob_at_button_row(
                 [(pm, _i18n_db(PAYMENT_METHOD_I18N, pm)) for pm in ("Cash", "Bank")],
@@ -10604,6 +10910,12 @@ def _render_add_transaction_mobile(
                 subcat_picker_kind="expense_subcat",
             ):
                 st.rerun()
+            if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
+                st.rerun()
+            if _mob_at_types_with_currency("Expense"):
+                if _mob_at_render_currency_chips(currency_default):
+                    st.rerun()
+                _mob_at_render_fx_hook(currency_default)
         elif at_idx == 2:
             if _mob_at_button_row(
                 [(pm, _i18n_db(PAYMENT_METHOD_I18N, pm)) for pm in ("Credit", "Cash", "Bank")],
@@ -10622,6 +10934,12 @@ def _render_add_transaction_mobile(
                 subcat_picker_kind="purchase_subcat",
             ):
                 st.rerun()
+            if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
+                st.rerun()
+            if _mob_at_types_with_currency("Purchase"):
+                if _mob_at_render_currency_chips(currency_default):
+                    st.rerun()
+                _mob_at_render_fx_hook(currency_default)
         elif txn_type in ("Supplier Payment", "Customer Payment", "Bank Transaction"):
             if txn_type == "Customer Payment" and open_sales:
                 if _mob_at_render_invoice_trigger(open_sales):
@@ -10634,12 +10952,16 @@ def _render_add_transaction_mobile(
                     row_key="mob_at_pm2",
                 ):
                     st.rerun()
+                if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
+                    st.rerun()
+                if _mob_at_types_with_currency("Customer Payment"):
+                    if _mob_at_render_currency_chips(currency_default):
+                        st.rerun()
+                    _mob_at_render_fx_hook(currency_default)
             elif txn_type == "Supplier Payment" and vendors:
                 if _mob_at_render_vendor_trigger(vendors):
                     st.rerun()
                 _mob_at_sync_select_widgets()
-                if _mob_at_render_payable_trigger(session, vendors, currency_default):
-                    st.rerun()
                 _sp_vendor = next(
                     (v for v in vendors if v.name == st.session_state.get("at_vendor")),
                     vendors[0],
@@ -10647,9 +10969,14 @@ def _render_add_transaction_mobile(
                 _pay_opts = _mob_at_payable_options(
                     session, _sp_vendor.id, currency_default
                 )
-                if _pay_opts and not st.session_state.get("at_payable_id"):
-                    st.session_state["at_payable_id"] = _pay_opts[0].value_id
-                    st.session_state["mob_at_payable_sel"] = _pay_opts[0].label
+                if _pay_opts:
+                    if _mob_at_render_payable_trigger(session, vendors, currency_default):
+                        st.rerun()
+                    if not st.session_state.get("at_payable_id"):
+                        st.session_state["at_payable_id"] = _pay_opts[0].value_id
+                        st.session_state["mob_at_payable_sel"] = _pay_opts[0].label
+                else:
+                    st.caption(_t("txn.no_open_payable"))
                 if _mob_at_button_row(
                     [(pm, _i18n_db(PAYMENT_METHOD_I18N, pm)) for pm in ("Cash", "Bank")],
                     st.session_state.get("at_pm", "Cash"),
@@ -10658,6 +10985,12 @@ def _render_add_transaction_mobile(
                     row_key="mob_at_pm2",
                 ):
                     st.rerun()
+                if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
+                    st.rerun()
+                if _mob_at_types_with_currency("Supplier Payment"):
+                    if _mob_at_render_currency_chips(currency_default):
+                        st.rerun()
+                    _mob_at_render_fx_hook(currency_default)
             elif txn_type == "Bank Transaction" and bank_accounts:
                 if _mob_at_render_bank_trigger(bank_accounts):
                     st.rerun()
@@ -10670,14 +11003,9 @@ def _render_add_transaction_mobile(
                 ):
                     st.rerun()
 
-        with st.container(border=False, key="mob_at_keypad"):
-            for row in (("7", "8", "9"), ("4", "5", "6"), ("1", "2", "3"), (".", "0", "⌫")):
-                kc = st.columns(3, gap="small")
-                for col, key in zip(kc, row):
-                    digit = "bksp" if key == "⌫" else key
-                    if col.button(key, key=f"mob_at_key_{key}", use_container_width=True):
-                        _mob_at_append_amount_digit(digit)
-                        st.rerun()
+        _mob_at_render_amount_keypad_fragment(currency_default)
+
+    submitted = bool(st.session_state.pop("mob_at_save_clicked", False))
 
     _picker = st.session_state.get("mob_at_picker")
     if _picker and _mob_at_render_picker_sheet(
@@ -11001,6 +11329,7 @@ def render_add_transaction(session):
                         else:
                             at_cat, at_cat_id = _inline_cat_row(session, txn_type, cats)
                             at_subcat_name, subcats_list = _inline_subcat_row(session, at_cat)
+                        _at_render_bank_pay_select(bank_accounts)
     
                     elif txn_type == "Purchase":
                         fc1, fc2, fc3 = st.columns(3)
@@ -11016,6 +11345,7 @@ def render_add_transaction(session):
     
                         at_cat, at_cat_id = _inline_cat_row(session, txn_type, cats)
                         at_subcat_name, subcats_list = _inline_subcat_row(session, at_cat)
+                        _at_render_bank_pay_select(bank_accounts)
     
                     elif txn_type == "Supplier Payment":
                         fc1, fc2, fc3 = st.columns(3)
@@ -11083,6 +11413,7 @@ def render_add_transaction(session):
                                 else:
                                     st.warning(_t("txn.no_open_payables", name=vendor_name_val))
                                     st.session_state["at_payable_id"] = None
+                        _at_render_bank_pay_select(bank_accounts)
     
                     elif txn_type == "Customer Payment":
                         if open_sales:
@@ -11097,6 +11428,7 @@ def render_add_transaction(session):
                             fc3.selectbox("💱 " + _t("txn.currency_label"), CURRENCIES,
                                           index=CURRENCIES.index(currency_default) if currency_default in CURRENCIES else 0,
                                           key="at_currency")
+                            _at_render_bank_pay_select(bank_accounts)
                         else:
                             st.info(_t("txn.no_credit_invoices"))
     
@@ -11190,6 +11522,7 @@ def _at_save(
     subcats_list=None, at_subcat_name=None,
     fx_rate: float = 1.0,
     card_bank_acct_val: str = None,
+    bank_payment_acct_val: str = None,
     selected_payable_id: int = None,
 ):
     """Route to the correct posting function based on transaction type."""
@@ -11266,7 +11599,10 @@ def _at_save(
                 st.error(_t("txn.expense_worker_required"))
                 return
             ba = _bank_account_for_payment(
-                session, payment_method, currency=currency,
+                session,
+                payment_method,
+                currency=currency,
+                preferred_name=bank_payment_acct_val,
             )
             if not ba:
                 st.error(_t("form.no_bank_accounts"))
@@ -11353,6 +11689,17 @@ def _at_save(
         session.add(record)
         session.commit()
         post_expense(session, record.id, amount, date, gl_category, payment_method=payment_method, currency=currency)
+        if payment_method == "Bank":
+            _record_named_bank_movement(
+                session,
+                bank_accounts,
+                bank_payment_acct_val,
+                amount=amount,
+                date=date,
+                description=f"Expense EXP#{record.id} — {category}",
+                txn_type="withdrawal",
+            )
+            session.commit()
         log_audit(session, "Create", "ExpenseRecord", record.id, f"{category} expense · {amount:,.2f} {currency}")
         _flush_pending_attachment(session, "ExpenseRecord", record.id)
         st.success(_t("txn.expense_recorded", category=category))
@@ -11403,6 +11750,17 @@ def _at_save(
             _flush_pending_attachment(session, "Purchase", record.id)
             st.success(_t("txn.purchase_recorded_payable", id=record.id))
         else:
+            if payment_method == "Bank":
+                _record_named_bank_movement(
+                    session,
+                    bank_accounts,
+                    bank_payment_acct_val,
+                    amount=amount,
+                    date=date,
+                    description=f"Purchase PUR#{record.id}",
+                    txn_type="withdrawal",
+                )
+                session.commit()
             log_audit(session, "Create", "Purchase", record.id, f"PUR#{record.id} · {amount:,.2f} {currency}")
             _flush_pending_attachment(session, "Purchase", record.id)
             st.success(_t("txn.purchase_recorded", id=record.id))
@@ -11436,6 +11794,17 @@ def _at_save(
         payable.payment_method = payment_method
         session.commit()
         post_payable_payment(session, payable.id, amount, date, payment_method, currency=currency)
+        if payment_method == "Bank":
+            _record_named_bank_movement(
+                session,
+                bank_accounts,
+                bank_payment_acct_val,
+                amount=amount,
+                date=date,
+                description=f"Supplier payment PAY#{payable.id}",
+                txn_type="withdrawal",
+            )
+            session.commit()
         log_audit(session, "Payment", "Payable", payable.id,
                   f"Payable #{payable.id} paid · {amount:,.2f} {currency}")
         st.success(_t("txn.payment_recorded", id=payable.id))
@@ -11454,6 +11823,17 @@ def _at_save(
         if err:
             st.error(err)
         else:
+            if payment_method == "Bank":
+                _record_named_bank_movement(
+                    session,
+                    bank_accounts,
+                    bank_payment_acct_val,
+                    amount=amount,
+                    date=date,
+                    description=f"Customer payment {sale.invoice_number}",
+                    txn_type="deposit",
+                )
+                session.commit()
             log_audit(session, "Payment", "Sale", sale.id,
                       f"Payment {amount:,.2f} {currency} on {sale.invoice_number}")
             st.success(_t("txn.customer_payment", amount=amount, invoice=sale.invoice_number))
@@ -16763,11 +17143,50 @@ def render_banking(session):
 
     st.markdown("---")
     st.subheader(_t("bank.txn_history"))
+    st.caption(_t("bank.tracking_hint"))
     show_void_btxns = st.checkbox(_t("bank.show_void_txns"), value=False, key="banking_show_void_txns")
     all_btxns = cq(session, BankTransaction).order_by(BankTransaction.date.desc()).all()
     display_btxns = [t for t in all_btxns if not t.is_void or show_void_btxns]
+    _filter_names = [_t("bank.filter_all")] + [a.name for a in active_accounts]
+    _filter_pick = st.selectbox(
+        _t("bank.filter_account"),
+        _filter_names,
+        key="bank_ledger_filter",
+    )
 
     if display_btxns:
+        _ledger_rows = display_btxns
+        if _filter_pick != _t("bank.filter_all"):
+            _ledger_rows = [
+                t
+                for t in display_btxns
+                if (session.get(BankAccount, t.account_id) or BankAccount()).name == _filter_pick
+            ]
+        if _filter_pick != _t("bank.filter_all") and _ledger_rows:
+            _chron = sorted(_ledger_rows, key=lambda t: (t.date, t.id))
+            _running = 0.0
+            _run_map: dict[int, float] = {}
+            for t in _chron:
+                if t.type == "deposit":
+                    _running += t.amount
+                elif t.type == "withdrawal":
+                    _running -= t.amount
+                elif t.type == "transfer":
+                    if (t.description or "").startswith("Transfer from"):
+                        _running += t.amount
+                    else:
+                        _running -= t.amount
+                _run_map[t.id] = round(_running, 2)
+            st.markdown("#### " + _t("bank.ledger_running"))
+            for t in sorted(_ledger_rows, key=lambda x: (x.date, x.id), reverse=True):
+                acct_obj = session.get(BankAccount, t.account_id)
+                st.markdown(
+                    f"**{t.date}** · {_i18n_db(BANK_TXN_TYPE_I18N, t.type)} · "
+                    f"{t.amount:,.2f} → **{_run_map.get(t.id, 0):,.2f}** · "
+                    f"{html.escape(t.description or '')}"
+                )
+            st.divider()
+
         txn_data = []
         for t in display_btxns:
             acct_obj = session.get(BankAccount, t.account_id)

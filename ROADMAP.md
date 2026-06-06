@@ -298,7 +298,7 @@ Full design: [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) (APPROVED
 
 ## Phase 18-MUX — Mobile Transaction UX *(partially shipped — stabilize only; no expansion)*
 
-**Status:** Active (stabilization). **Prerequisite:** mobile navigation shell — **met** (header/shell fixes Jun 6, 2026). Calculator MVP shipped; focus on dual-host reliability, layout CSS, and save-path smoke tests — **no new types or accounting changes**.
+**Status:** Complete (18-MUX-1 … 18-MUX-5). **Prerequisite:** mobile navigation shell — **met** (header/shell fixes Jun 6, 2026). Dual-host calculator, searchable pickers, edge-case fields, fragment keypad, and per-bank ledger tracking shipped — **no new posting types**.
 
 **Goal:** Calculator / POS-style **New Transaction** screen on mobile (≤768px) for fast daily entry with minimal phone keyboard use. Desktop Add Transaction form stays unchanged.
 
