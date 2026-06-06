@@ -26,7 +26,7 @@ from reconciliation import (
 from reconciliation import statement_parse as sp
 from registry.locales.transactional import TRANSACTIONAL_EN, TRANSACTIONAL_TR
 
-FIXTURE = Path(__file__).parent / "fixtures" / "bank_statement_sample.csv"
+FIXTURE = Path(__file__).resolve().parents[1] / "data" / "fixtures" / "bank_statement_sample.csv"
 
 
 @pytest.fixture()

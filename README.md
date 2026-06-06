@@ -32,3 +32,7 @@ streamlit run app.py
 ```
 
 The SQLite file `erp_data.db` is created in the project folder automatically.
+
+## Data files
+
+Reference fixtures and example settings live under `data/` (see `data/README.md`). Local runtime data (`erp_data.db`, `uploads/`, `backups/`) stays on your machine and is not committed to git.

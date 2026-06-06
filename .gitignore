@@ -5,8 +5,10 @@
 erp_data.db
 registry/erp_data.db
 
-uploads/
-backups/
+uploads/*
+!uploads/.gitkeep
+backups/*
+!backups/.gitkeep
 registry/backups/
 
 __pycache__/
