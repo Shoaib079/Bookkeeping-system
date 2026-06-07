@@ -8,6 +8,28 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-09 — Legacy UI cleanup Phase 1 + Phase 2
+
+**Task:** Remove dead UI artifacts identified in Legacy UI/Theme Audit (approved items only).
+
+**Phase 1 — files removed (zero runtime references):**
+
+- `app.py.bak`, `models.py.bak` (gitignored backups)
+- `assets/mobile_at_calculator_before.png`, `assets/mobile_at_calculator_after.png` (dev screenshots)
+- `scripts/browser_mobile_at_keypad.py`, `browser_mobile_fix.py`, `browser_mobile_search.py`, `browser_sidebar_pass.py` (Playwright smoke scripts; not imported by app)
+
+**Phase 2 — unreachable CSS removed:**
+
+- Glide / `stDataFrame` / `--gdg-*` rules in `ui/widgets.css`, `ui/theme.css`
+- `_DARK_DATAFRAME_CSS` injection in `ui/theme.py`
+- Orphan host markers `erp-bottom-nav-host`, `erp-mobile-top-nav-host` in `ui/widgets.css` (layout uses `st-key-erp_mob_bottom_bar` in `mobile_shell.css`)
+
+**Tests:** `test_glide_dataframe_css_removed` replaces `_DARK_DATAFRAME_CSS` contract; `test_dark_mode_metric_and_alert_rules_in_widgets` updated.
+
+**Not touched:** accounting, banking, reconciliation, navigation, readable table system, mobile txn history CSS, active theme helpers.
+
+---
+
 ## 2026-06-09 — New Transaction selectbox focus-trap fix
 
 **Task:** New Transaction — selecting Bank or Customer left UI stuck; refresh required.

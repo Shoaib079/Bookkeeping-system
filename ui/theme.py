@@ -149,34 +149,10 @@ _DARK_MONO_KPI_CSS = """
 }
 """
 
-_DARK_DATAFRAME_CSS = """
-/* Glide st.dataframe — token-aligned (canvas reads CSS vars on editor root) */
-[data-testid="stMain"] [data-testid="stDataFrame"],
-[data-testid="stMain"] [data-testid="stDataFrame"] > div,
-[data-testid="stMain"] .dvn-scroller,
-[data-testid="stMain"] div[class*="glide"] {
-  --gdg-bg-cell: var(--theme-card);
-  --gdg-bg-header: color-mix(in srgb, var(--theme-border) 35%, var(--theme-card) 65%);
-  --gdg-bg-header-has-focus: var(--theme-card);
-  --gdg-bg-header-hovered: color-mix(in srgb, var(--theme-border) 28%, var(--theme-card) 72%);
-  --gdg-text-dark: var(--theme-text);
-  --gdg-text-medium: var(--theme-muted);
-  --gdg-text-light: var(--theme-muted);
-  --gdg-text-header: var(--theme-muted);
-  --gdg-text-group-header: var(--theme-muted);
-  --gdg-text-header-selected: var(--theme-text);
-  --gdg-border-color: var(--theme-border);
-  --gdg-accent-color: var(--theme-info);
-  --gdg-accent-light: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%);
-  background: var(--theme-card) !important;
-}
-"""
-
-
 def inject_theme_css(dark_mode: bool) -> None:
     """Override :root for the user's saved light/dark preference."""
     vars_map = DARK_ROOT_VARS if dark_mode else LIGHT_ROOT_VARS
-    extra = (_DARK_MONO_KPI_CSS + _DARK_DATAFRAME_CSS) if dark_mode else ""
+    extra = _DARK_MONO_KPI_CSS if dark_mode else ""
     st.markdown(f"<style>{_vars_to_css_block(vars_map)}{extra}</style>", unsafe_allow_html=True)
 
 

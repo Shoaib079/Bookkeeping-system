@@ -674,59 +674,7 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
   color: var(--theme-text) !important;
 }
 
-/* ── Dataframes / tables ───────────────────────────────────────────────── */
-[data-testid="stMain"] [data-testid="stDataFrame"] {
-  margin-top: 4px !important;
-  margin-bottom: 16px !important;
-  border: 1px solid var(--theme-border) !important;
-  border-radius: 8px !important;
-  overflow: hidden !important;
-  background: var(--theme-card) !important;
-  --gdg-bg-cell: var(--theme-card);
-  --gdg-bg-header: color-mix(in srgb, var(--theme-border) 35%, var(--theme-card) 65%);
-  --gdg-bg-header-has-focus: var(--theme-card);
-  --gdg-bg-header-hovered: color-mix(in srgb, var(--theme-border) 28%, var(--theme-card) 72%);
-  --gdg-text-dark: var(--theme-text);
-  --gdg-text-medium: var(--theme-muted);
-  --gdg-text-light: var(--theme-muted);
-  --gdg-text-header: var(--theme-muted);
-  --gdg-text-group-header: var(--theme-muted);
-  --gdg-text-header-selected: var(--theme-text);
-  --gdg-border-color: var(--theme-border);
-  --gdg-accent-color: var(--theme-info);
-  --gdg-accent-light: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%);
-}
-
-[data-testid="stMain"] [data-testid="stDataFrame"] > div,
-[data-testid="stMain"] [data-testid="stDataFrame"] .dvn-scroller {
-  background: var(--theme-card) !important;
-}
-
-[data-testid="stMain"] [data-testid="stDataFrame"] th {
-  background-color: color-mix(in srgb, var(--theme-border) 35%, var(--theme-card) 65%) !important;
-  color: var(--theme-muted) !important;
-}
-
-[data-testid="stMain"] [data-testid="stDataFrame"] td {
-  color: var(--theme-text) !important;
-  background-color: var(--theme-card) !important;
-}
-
-[data-testid="stMain"] [data-testid="stDataFrame"] div[role="gridcell"] {
-  color: var(--theme-text) !important;
-  min-height: 36px !important;
-  line-height: 1.4 !important;
-  white-space: normal !important;
-  word-break: break-word !important;
-  overflow: visible !important;
-  text-overflow: unset !important;
-}
-
-[data-testid="stMain"] [data-testid="stDataFrame"] div[role="columnheader"] {
-  color: var(--theme-caption) !important;
-  min-height: 32px !important;
-}
-
+/* ── Tables (stTable — display tables use readable HTML, not Glide) ─────── */
 [data-testid="stMain"] [data-testid="stTable"] {
   background: var(--theme-card) !important;
   border: 1px solid var(--theme-border) !important;
@@ -804,8 +752,6 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
 
 /* ── Mobile chrome — bottom tabs + hub sheets (≤968px; desktop at ≥969px) ─ */
 .erp-mobile-chrome-active,
-.erp-mobile-top-nav-host,
-.erp-bottom-nav-host,
 .erp-mobile-hub-host,
 .erp-mobile-chrome-footer,
 .erp-mobile-hub-grab {
@@ -813,8 +759,6 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
 }
 
 @media (min-width: 969px) {
-  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-top-nav-host),
-  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-bottom-nav-host),
   [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-hub-host),
   [data-testid="stMain"] [data-testid="stElementContainer"]:has(.erp-mobile-chrome-active) {
     display: none !important;
@@ -832,10 +776,6 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
 
 @media (max-width: 968px) {
   /* Strip Streamlit bordered-container chrome on fixed nav layers */
-  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-top-nav-host)
-    [data-testid="stVerticalBlockBorderWrapper"],
-  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-bottom-nav-host)
-    [data-testid="stVerticalBlockBorderWrapper"],
   [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-hub-host)
     [data-testid="stVerticalBlockBorderWrapper"] {
     border: none !important;
@@ -862,36 +802,6 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
     overflow: hidden !important;
   }
 
-  /* ── Bottom tab bar (5 items: Home | New FAB | hubs) ── */
-  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-bottom-nav-host) {
-    position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    z-index: 10080 !important;
-    width: 100% !important;
-    max-width: 100vw !important;
-    background: color-mix(in srgb, var(--theme-card) 94%, transparent) !important;
-    backdrop-filter: blur(14px) saturate(1.2) !important;
-    -webkit-backdrop-filter: blur(14px) saturate(1.2) !important;
-    border: none !important;
-    border-top: 1px solid var(--theme-border) !important;
-    border-radius: 0 !important;
-    box-shadow: 0 -1px 0 color-mix(in srgb, var(--theme-border) 55%, transparent),
-      0 -6px 20px color-mix(in srgb, var(--theme-shadow) 50%, transparent) !important;
-    padding: 2px 4px calc(2px + env(safe-area-inset-bottom, 0px)) !important;
-    margin: 0 !important;
-  }
-  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-bottom-nav-host)
-    [data-testid="stHorizontalBlock"] {
-    margin: 0 !important;
-    padding: 0 !important;
-    gap: 0 !important;
-  }
-  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-bottom-nav-host)
-    [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
-    padding: 0 !important;
-  }
   [data-testid="stMain"] [class*="st-key-mob_bar_"] {
     position: relative !important;
   }
@@ -1266,7 +1176,6 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
     height: auto !important;
     width: 100% !important;
   }
-  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] .erp-bottom-nav-host,
   [data-testid="stMain"] [class*="st-key-erp_mob_quick_create"] .erp-mobile-quick-create-host {
     display: none !important;
     height: 0 !important;
@@ -1345,7 +1254,6 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
     background: transparent !important;
   }
   [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] .erp-mobile-chrome-footer,
-  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] .erp-bottom-nav-host,
   [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] .erp-mobile-chrome-footer ~ [data-testid="stMarkdown"] {
     display: none !important;
     height: 0 !important;

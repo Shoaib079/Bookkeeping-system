@@ -688,25 +688,6 @@
 .amt-zero { color: var(--theme-text); }
 .muted { color: var(--theme-caption); }
 
-/* Streamlit dataframe tweaks */
-.stDataFrame table {
-  color: var(--theme-text);
-  background: var(--theme-card);
-  border-color: var(--theme-border);
-}
-.stDataFrame thead th {
-  color: var(--theme-muted);
-}
-.stDataFrame tbody td {
-  color: var(--theme-text);
-}
-.stDataFrame tbody tr:nth-child(odd) {
-  background: color-mix(in srgb, var(--theme-card) 96%, var(--theme-bg) 4%);
-}
-.stDataFrame tbody tr:hover {
-  background: color-mix(in srgb, var(--theme-card) 92%, var(--theme-bg) 8%);
-}
-
 /* Map legacy inline hex colors to theme variables */
 [style*="color:#374151"],
 [style*="color:#111827"],

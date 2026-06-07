@@ -185,15 +185,18 @@ def test_dark_mode_metric_and_alert_rules_in_widgets():
     assert "stMetricValue" in text
     assert "stAlert" in text
     assert "text-overflow: unset" in text
-    assert "--gdg-bg-cell" in text
+    assert "stDataFrame" not in text
     assert "data-baseweb=\"tag\"" in text
 
 
-def test_dark_dataframe_css_injected_from_theme_module():
-    from ui.theme import _DARK_DATAFRAME_CSS
+def test_glide_dataframe_css_removed():
+    widgets = Path(__file__).resolve().parents[1] / "ui" / "widgets.css"
+    theme = Path(__file__).resolve().parents[1] / "ui" / "theme.css"
+    assert "stDataFrame" not in widgets.read_text(encoding="utf-8")
+    assert "stDataFrame" not in theme.read_text(encoding="utf-8")
+    import ui.theme as theme_mod
 
-    assert "--gdg-text-dark" in _DARK_DATAFRAME_CSS
-    assert "stDataFrame" in _DARK_DATAFRAME_CSS
+    assert not hasattr(theme_mod, "_DARK_DATAFRAME_CSS")
 
 
 def test_section_header_escapes_html():
