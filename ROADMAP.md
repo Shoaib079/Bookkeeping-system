@@ -1,8 +1,8 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** June 5, 2026 (Phase A shell stabilization — header, breakpoints, People hub, Reports deep-links)  
-**Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md)
+**Last updated:** June 9, 2026 (AD-UI-001 navigation redesign approved — audit gate)  
+**Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
 
@@ -27,6 +27,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | Localization EN/TR (15) | ✅ Complete |
 | DEVELOPMENT_MODE | ⚠️ **On** in `app.py` (`DEVELOPMENT_MODE = True`) — set `False` before production |
 | Shell / mobile chrome (Phase A) | ✅ Stabilized — fixed header, 968px breakpoint, People hub wired |
+| Sidebar / navigation redesign (AD-UI-001) | 📋 **Approved — not started** — requires [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) first |
 
 ---
 
@@ -241,6 +242,28 @@ Complete dark mode, readability, header/sidebar polish, mobile pass.
 
 ---
 
+## AD-UI-001 — Sidebar & navigation redesign *(approved — gated)*
+
+**Status:** Approved for future work. **Priority: High.** **No implementation yet.**
+
+**Reason:** Feature discoverability and workflow efficiency have become larger issues than accounting correctness (e.g. Balance Sheet exists but is buried under Reports → Executive).
+
+**Prerequisite (mandatory):** Complete [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) — full page inventory, role/mobile parity, workflow paths, IA option recommendation — before changing `_NAV_ACCORDION`, mobile hubs, or Reports tab structure.
+
+**Likely scope (TBD by audit):**
+
+- Financial statements discoverability (Balance Sheet, P&L, Cash Flow vs Books vs Reports)
+- Sidebar accordion IA (Books, Closings, operational vs accounting)
+- Mobile hub alignment with desktop mental model
+- `modules_catalog.py` alignment with visible nav
+- i18n label clarity (“Executive” → “Financial Statements”?)
+
+**Explicitly out of scope:** GL posting rules, AD-001–AD-015 accounting behavior, new report renderers (routing/labels only unless audit finds gaps).
+
+**Reference:** Pre-audit symptoms and checklist in [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §2–6.
+
+---
+
 ## Phase 17 — Foreign currency
 
 Base currency + optional multi-currency; FX accounts; original amount + rate + base amount; exchange transactions; FX gain/loss. Do not hardcode TRY.
@@ -433,6 +456,7 @@ Restaurant (POS, recipes), retail (barcode), services (projects), tourism (booki
 | 2026-06 | 14D-C + 14D-D + nav fix + simplified Company Setup |
 | 2026-06 | 14D-B2a shipped read-only; enforcement in B2b / 14D-C |
 | 2026-06-06 | Phase 18-MUX approved in principle (mobile calculator New Transaction); backlog only — after mobile nav stabilization |
+| 2026-06-09 | **AD-UI-001** sidebar/navigation redesign approved (high priority); implementation gated on NAVIGATION_AUDIT.md |
 
 ---
 

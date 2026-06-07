@@ -127,6 +127,8 @@ Main `.block-container` keeps `padding-top: var(--hdr-h)` (plus 8px on mobile).
 
 Native Streamlit sidebar (`[data-testid="stSidebar"]`), navigation built in `main()`.
 
+**Planned change (AD-UI-001):** Sidebar and navigation redesign is approved (high priority) but **not started**. Complete [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) before altering `_NAV_ACCORDION`, mobile hubs, or Reports IA.
+
 ### Layout
 
 | Viewport | Behavior |

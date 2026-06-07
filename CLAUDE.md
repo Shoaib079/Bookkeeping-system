@@ -28,8 +28,9 @@ This is a single-file Streamlit accounting ERP. The entire UI and business logic
 | `models.py` | All ORM models |
 | `exports.py` | `df_to_excel_bytes` and `df_to_pdf_bytes` helpers used by every page |
 | `registry/` | Phase 14D-B2a settings & module metadata catalog (`get_setting`, `get_effective_config`) |
+| `docs/` | Project memory: banking/CC status, audit log, accounting decisions, test map |
 | `ROADMAP.md` | Phase plan and status |
-| `ARCHITECTURE_HANDOFF.md` | Non-coder architecture summary |
+| `ARCHITECTURE_HANDOFF.md` | Non-coder architecture summary (stale for Phase 18; prefer `docs/`) |
 | `settings.json.migrated` | Legacy settings file; settings now live in the database |
 
 ### Navigation flow
@@ -76,3 +77,14 @@ Use `amount_input(label, key, ...)` instead of `st.number_input` for monetary fi
 ### Export
 
 Call `render_export_buttons(df, prefix)` to add an Excel/PDF download popover to any page. The `prefix` string becomes the filename stem and PDF title.
+
+## Project memory — documentation gate
+
+**No task is complete until documentation is updated** after every feature, bug fix, accounting change, audit, migration, or major test addition:
+
+1. `docs/BANKING_RECON_CC_STATUS.md` — if feature status changed
+2. `docs/AUDIT_HISTORY.md` — append a dated entry for every completed session
+3. `docs/ACCOUNTING_DECISIONS.md` — if accounting behavior changed
+4. `docs/TEST_COVERAGE_MAP.md` — if tests were added or modified
+
+Cursor rule: `.cursor/rules/erp-project-memory.mdc` (also under `registry/.cursor/rules/`).

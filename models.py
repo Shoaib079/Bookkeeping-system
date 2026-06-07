@@ -248,6 +248,7 @@ class ExpenseRecord(Base):
     fx_rate       = Column(Float,      default=1.0)
     native_amount = Column(Float,      nullable=True)
     company_id    = Column(Integer,    nullable=True)  # Phase 14A
+    credit_card_account_id = Column(Integer, ForeignKey("bank_accounts.id"), nullable=True)
 
 
 class Vendor(Base):
@@ -289,6 +290,7 @@ class Purchase(Base):
     fx_rate       = Column(Float,      default=1.0)
     native_amount = Column(Float,      nullable=True)
     company_id    = Column(Integer,    nullable=True)  # Phase 14A
+    credit_card_account_id = Column(Integer, ForeignKey("bank_accounts.id"), nullable=True)
 
     vendor = relationship("Vendor", back_populates="purchases")
 
@@ -312,6 +314,7 @@ class Payable(Base):
     voided_at = Column(Date, nullable=True)
     void_reason = Column(Text, nullable=True)
     company_id = Column(Integer, nullable=True)       # Phase 14A
+    credit_card_account_id = Column(Integer, ForeignKey("bank_accounts.id"), nullable=True)
 
     vendor = relationship("Vendor", back_populates="payables")
 

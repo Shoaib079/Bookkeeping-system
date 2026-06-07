@@ -72,6 +72,27 @@ def test_mob_at_keypad_fragment_registered():
     src = inspect.getsource(erp._mob_at_render_amount_keypad_fragment)
     assert "@st.fragment" in src or "st.fragment" in src
     assert callable(erp._mob_at_render_amount_keypad_fragment)
+    assert "erp-mob-at-amt" in src
+    assert "mob_at_save" in src
+
+
+def test_mob_at_save_label_locale():
+    from registry.i18n import t
+
+    assert t("txn.mob.save", "en") == "✓ Save"
+
+
+def test_mob_at_calculator_typography_contract():
+    from pathlib import Path
+
+    css = (Path(__file__).resolve().parents[1] / "ui" / "mobile_txn.css").read_text(
+        encoding="utf-8"
+    )
+    assert "--mob-at-keypad-font: 36px" in css
+    assert "--mob-at-amount-font: 72px" in css
+    assert "--mob-at-save-font: 15px" in css
+    assert "var(--theme-info)" in css
+    assert "var(--mob-at-save-bg)" in css
 
 
 def test_mob_at_tabs_config():

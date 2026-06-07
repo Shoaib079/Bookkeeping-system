@@ -13,12 +13,12 @@
     --mob-at-surface: var(--theme-card);
     --mob-at-surface-border: var(--theme-border);
     --mob-at-surface-shadow: 0 1px 3px color-mix(in srgb, var(--theme-shadow) 65%, transparent);
-    --mob-at-chip-active-bg: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%);
-    --mob-at-chip-active-fg: var(--theme-info);
-    --mob-at-chip-active-border: color-mix(in srgb, var(--theme-info) 45%, var(--theme-border) 55%);
-    --mob-at-chip-idle-bg: color-mix(in srgb, var(--theme-bg) 55%, var(--theme-card) 45%);
-    --mob-at-chip-idle-fg: var(--theme-text);
-    --mob-at-chip-idle-border: var(--theme-border);
+    --mob-at-chip-active-bg: var(--erp-chip-active-bg);
+    --mob-at-chip-active-fg: var(--erp-chip-active-fg);
+    --mob-at-chip-active-border: var(--erp-chip-active-border);
+    --mob-at-chip-idle-bg: var(--erp-chip-idle-bg);
+    --mob-at-chip-idle-fg: var(--erp-chip-idle-fg);
+    --mob-at-chip-idle-border: var(--erp-chip-idle-border);
     --mob-at-key-bg: var(--theme-card);
     --mob-at-key-fg: var(--theme-text);
     --mob-at-key-border: var(--theme-border);
@@ -26,6 +26,12 @@
     --mob-at-caret: color-mix(in srgb, var(--theme-muted) 40%, transparent);
     --mob-at-save-bg: var(--theme-info);
     --mob-at-save-fg: color-mix(in srgb, var(--theme-card) 8%, #ffffff 92%);
+    /* Typography hierarchy — amount hero > save > keypad */
+    --mob-at-keypad-font: 36px;
+    --mob-at-keypad-min-h: 44px;
+    --mob-at-amount-font: 72px;
+    --mob-at-amount-min-h: 56px;
+    --mob-at-save-font: 15px;
   }
 
   /* Hide desktop add-transaction host on phone */
@@ -48,6 +54,23 @@
     section[data-testid="stMain"] .block-container {
     padding-bottom: calc(
       var(--mob-at-panel-h) + var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 16px
+    ) !important;
+  }
+
+  /* Hub sheet (Reports / Banking / More) must sit above the entry panel */
+  [data-testid="stAppViewContainer"]:has(.erp-mobile-hub-host)
+    [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"],
+  [data-testid="stAppViewContainer"]:has(.erp-mobile-hub-host)
+    [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  [data-testid="stAppViewContainer"]:has(.erp-at-mobile-host):has(.erp-mobile-hub-host)
+    section[data-testid="stMain"] .block-container {
+    padding-bottom: calc(
+      var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px
     ) !important;
   }
 
@@ -136,9 +159,12 @@
   .erp-mob-at-kpi-value {
     font-size: 12px;
     font-weight: 700;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: var(--theme-text);
+    white-space: normal;
+    word-break: break-word;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.25;
   }
 
   .erp-mob-at-kpi-value.kpi-success { color: var(--theme-success); }
@@ -439,48 +465,69 @@
     border: 1px solid var(--mob-at-surface-border);
     box-shadow: var(--mob-at-surface-shadow);
     border-radius: 12px;
-    padding: 10px 14px;
-    font-size: 28px;
+    padding: 6px 12px;
+    font-size: var(--mob-at-amount-font);
     font-weight: 800;
-    color: var(--theme-text);
-    line-height: 1.1;
-    min-height: 48px;
+    color: var(--theme-info);
+    line-height: 1;
+    min-height: var(--mob-at-amount-min-h);
     display: flex;
-    align-items: center;
+    align-items: baseline;
     justify-content: flex-end;
-    letter-spacing: -0.02em;
+    gap: 6px;
+    letter-spacing: -0.03em;
+    overflow: hidden;
   }
 
   [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] .erp-mob-at-amount-display .erp-mob-at-ccy {
     font-size: 11px;
     font-weight: 700;
     color: var(--theme-info);
-    margin-right: 6px;
     align-self: flex-start;
     margin-top: 4px;
+    flex-shrink: 0;
+  }
+
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] .erp-mob-at-amount-display .erp-mob-at-amt {
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+    line-height: inherit;
+    letter-spacing: inherit;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] [class*="st-key-mob_at_save"] button,
   [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] button[kind="primary"],
   [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] button[data-testid="stBaseButton-primary"] {
-    min-height: 48px !important;
-    padding: 0 8px !important;
+    min-height: var(--mob-at-amount-min-h) !important;
+    padding: 6px 8px !important;
     border-radius: 12px !important;
     font-weight: 800 !important;
-    font-size: 12px !important;
-    letter-spacing: 0.04em !important;
-    white-space: nowrap !important;
+    font-size: var(--mob-at-save-font) !important;
+    letter-spacing: 0.01em !important;
+    white-space: pre-line !important;
+    line-height: 1.15 !important;
     background: var(--mob-at-save-bg) !important;
     color: var(--mob-at-save-fg) !important;
     border: none !important;
     box-shadow: 0 2px 8px color-mix(in srgb, var(--theme-info) 35%, transparent) !important;
   }
 
-  [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] button p,
-  [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] button span {
-    white-space: nowrap !important;
-    font-size: 12px !important;
-    line-height: 1 !important;
+  [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] [class*="st-key-mob_at_save"] button p,
+  [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] [class*="st-key-mob_at_save"] button span,
+  [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] button[kind="primary"] p,
+  [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] button[kind="primary"] span,
+  [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] button[data-testid="stBaseButton-primary"] p,
+  [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] button[data-testid="stBaseButton-primary"] span {
+    white-space: pre-line !important;
+    font-size: var(--mob-at-save-font) !important;
+    font-weight: 800 !important;
+    line-height: 1.15 !important;
+    color: var(--mob-at-save-fg) !important;
   }
 
   [data-testid="stMain"] [class*="st-key-mob_at_tabs"] button,
@@ -542,15 +589,23 @@
   /* Keypad keys */
   [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] [class*="st-key-mob_at_key_"] button,
   [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] button[class*="st-key-mob_at_key_"] {
-    min-height: 36px !important;
+    min-height: var(--mob-at-keypad-min-h) !important;
     padding: 0 !important;
-    font-size: 18px !important;
-    font-weight: 600 !important;
+    font-size: var(--mob-at-keypad-font) !important;
+    font-weight: 700 !important;
     border-radius: 10px !important;
     border: 1px solid var(--mob-at-key-border) !important;
     background: var(--mob-at-key-bg) !important;
     color: var(--mob-at-key-fg) !important;
     box-shadow: var(--mob-at-key-shadow) !important;
+    line-height: 1 !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] [class*="st-key-mob_at_key_"] button p,
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] [class*="st-key-mob_at_key_"] button span {
+    font-size: var(--mob-at-keypad-font) !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
   }
 
   [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] [class*="st-key-mob_at_key_⌫"] button,
@@ -621,12 +676,12 @@ html.erp-mobile {
   --mob-at-surface: var(--theme-card);
   --mob-at-surface-border: var(--theme-border);
   --mob-at-surface-shadow: 0 1px 3px color-mix(in srgb, var(--theme-shadow) 65%, transparent);
-  --mob-at-chip-active-bg: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%);
-  --mob-at-chip-active-fg: var(--theme-info);
-  --mob-at-chip-active-border: color-mix(in srgb, var(--theme-info) 45%, var(--theme-border) 55%);
-  --mob-at-chip-idle-bg: color-mix(in srgb, var(--theme-bg) 55%, var(--theme-card) 45%);
-  --mob-at-chip-idle-fg: var(--theme-text);
-  --mob-at-chip-idle-border: var(--theme-border);
+  --mob-at-chip-active-bg: var(--erp-chip-active-bg);
+  --mob-at-chip-active-fg: var(--erp-chip-active-fg);
+  --mob-at-chip-active-border: var(--erp-chip-active-border);
+  --mob-at-chip-idle-bg: var(--erp-chip-idle-bg);
+  --mob-at-chip-idle-fg: var(--erp-chip-idle-fg);
+  --mob-at-chip-idle-border: var(--erp-chip-idle-border);
   --mob-at-key-bg: var(--theme-card);
   --mob-at-key-fg: var(--theme-text);
   --mob-at-key-border: var(--theme-border);
@@ -634,6 +689,11 @@ html.erp-mobile {
   --mob-at-caret: color-mix(in srgb, var(--theme-muted) 40%, transparent);
   --mob-at-save-bg: var(--theme-info);
   --mob-at-save-fg: color-mix(in srgb, var(--theme-card) 8%, #ffffff 92%);
+  --mob-at-keypad-font: 36px;
+  --mob-at-keypad-min-h: 44px;
+  --mob-at-amount-font: 72px;
+  --mob-at-amount-min-h: 56px;
+  --mob-at-save-font: 15px;
 }
 
 html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_at_desktop_host"] {

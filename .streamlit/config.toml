@@ -8,5 +8,15 @@ secondaryBackgroundColor = "#FFFFFF"
 textColor = "#0F172A"
 font = "sans serif"
 
+# Native Glide dataframe theming when Streamlit/OS uses dark mode (ui/theme.py inject wins for app toggle).
+[theme.dark]
+primaryColor = "#3B82F6"
+backgroundColor = "#0B1220"
+secondaryBackgroundColor = "#141C2B"
+textColor = "#E8EDF4"
+dataframeBorderColor = "#2D3A4D"
+dataframeHeaderBackgroundColor = "#1A2332"
+font = "sans serif"
+
 [server]
 headless = true

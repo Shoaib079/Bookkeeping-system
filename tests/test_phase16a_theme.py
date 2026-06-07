@@ -10,7 +10,17 @@ if "streamlit" not in sys.modules:
     sys.modules["streamlit"] = MagicMock()
     sys.modules["streamlit"].session_state = {}
 
-from ui.section import section_header_html, tab_panel_intro
+import pandas as pd
+
+from ui.section import (
+    financial_section_header_html,
+    financial_statement_table_html,
+    infer_column_kind,
+    readable_dataframe_table_html,
+    section_header_html,
+    tab_panel_intro,
+    theme_table_html,
+)
 from ui.theme import (
     DARK_ROOT_VARS,
     LIGHT_ROOT_VARS,
@@ -44,7 +54,12 @@ def test_widgets_css_file_exists():
 
 
 def test_light_and_dark_vars_include_new_tokens():
-    for token in ("--theme-input-border", "--theme-banner-primary-start", "--theme-shadow"):
+    for token in (
+        "--theme-input-border",
+        "--theme-banner-primary-start",
+        "--theme-shadow",
+        "--theme-caption",
+    ):
         assert token in LIGHT_ROOT_VARS
         assert token in DARK_ROOT_VARS
 
@@ -57,6 +72,128 @@ def test_vars_to_css_block_format():
 def test_role_accent_css_var():
     assert "var(--role-owner)" == role_accent_css_var("owner")
     assert "var(--role-default)" == role_accent_css_var("unknown")
+
+
+def test_financial_statement_table_has_code_name_amount():
+    html_out = financial_statement_table_html(
+        [
+            ("Code", "Code", "code"),
+            ("Account", "Account", "name"),
+            ("Amount", "Amount", "amount"),
+        ],
+        [{"Code": "2110", "Account": "Credit Card Payable", "Amount": 1500.0}],
+    )
+    assert "erp-fin-table" in html_out
+    assert "erp-fin-code" in html_out
+    assert "erp-fin-name" in html_out
+    assert "erp-fin-amount" in html_out
+    assert "2110" in html_out
+    assert "Credit Card Payable" in html_out
+    assert "1,500.00" in html_out
+
+
+def test_financial_statement_table_marks_total_row():
+    rows = [
+        {"Code": "1010", "Account": "Bank", "Amount": 100.0},
+        {"Code": "TOTAL", "Account": "TOTAL", "Amount": 100.0},
+    ]
+    html_out = financial_statement_table_html(
+        [
+            ("Code", "Code", "code"),
+            ("Account", "Account", "name"),
+            ("Amount", "Amount", "amount"),
+        ],
+        rows,
+        total_row_indexes={1},
+    )
+    assert "erp-fin-row-total" in html_out
+
+
+def test_financial_section_header_html_uses_token_classes():
+    html_out = financial_section_header_html("Liabilities", "TRY 1,500.00", accent="warning")
+    assert "erp-fin-section-hdr" in html_out
+    assert "erp-fin-section-title" in html_out
+    assert "Liabilities" in html_out
+    assert "TRY 1,500.00" in html_out
+
+
+def test_infer_column_kind_maps_operational_columns():
+    assert infer_column_kind("Customer") == "name"
+    assert infer_column_kind("Total") == "amount"
+    assert infer_column_kind("Code") == "code"
+    assert infer_column_kind("Date") == "text"
+
+
+def test_readable_dataframe_table_html_status_rows():
+    df = pd.DataFrame([
+        {"Account": "Rent", "Budgeted": 1000.0, "Actual": 1200.0, "Status": "Over"},
+        {"Account": "Utilities", "Budgeted": 200.0, "Actual": 150.0, "Status": "On track"},
+    ])
+    html_out = readable_dataframe_table_html(df, status_col="Status")
+    assert "erp-fin-row-over" in html_out
+    assert "erp-fin-row-ok" in html_out
+    assert "Rent" in html_out
+
+
+def test_app_has_render_readable_df_helper():
+    import app as erp_app
+
+    assert hasattr(erp_app, "_render_readable_df")
+
+
+def test_app_display_tables_avoid_st_dataframe():
+    """Sweep 2: read-only tables use _render_readable_df, not Glide clip."""
+    src = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+    assert "st.dataframe(" not in src
+    assert "_render_readable_df(" in src
+
+
+def test_theme_css_includes_financial_readability_rules():
+    css = _theme_css_text()
+    for cls in (
+        ".erp-fin-table",
+        ".erp-fin-code",
+        ".erp-fin-name",
+        ".erp-fin-amount",
+        ".erp-fin-row-total",
+        "--theme-caption",
+    ):
+        assert cls in css
+
+
+def test_theme_table_html_escapes_and_marks_numeric_cols():
+    html_out = theme_table_html(
+        ["Card", "Balance"],
+        [["Visa", "TRY 5,000.00"]],
+        numeric_cols={1},
+    )
+    assert "erp-data-table" in html_out
+    assert 'class="num"' in html_out
+    assert "TRY 5,000.00" in html_out
+
+
+def test_kpi_values_allow_wrap_not_ellipsis():
+    css = _theme_css_text()
+    block = css.split(".kpi-value {", 1)[1].split("}", 1)[0]
+    assert "text-overflow: ellipsis" not in block
+    assert "white-space: normal" in block
+
+
+def test_dark_mode_metric_and_alert_rules_in_widgets():
+    widgets = Path(__file__).resolve().parents[1] / "ui" / "widgets.css"
+    text = widgets.read_text(encoding="utf-8")
+    assert "stMetricValue" in text
+    assert "stAlert" in text
+    assert "text-overflow: unset" in text
+    assert "--gdg-bg-cell" in text
+    assert "data-baseweb=\"tag\"" in text
+
+
+def test_dark_dataframe_css_injected_from_theme_module():
+    from ui.theme import _DARK_DATAFRAME_CSS
+
+    assert "--gdg-text-dark" in _DARK_DATAFRAME_CSS
+    assert "stDataFrame" in _DARK_DATAFRAME_CSS
 
 
 def test_section_header_escapes_html():
@@ -94,6 +231,8 @@ def test_kpi_grid_collapses_on_mobile():
     css = _theme_css_text()
     assert "@media (max-width: 640px)" in css
     assert "grid-template-columns: 1fr" in css
+    assert ".erp-kpi-section" in css
+    assert "min-height: 76px" in css
 
 
 def test_sidebar_has_desktop_and_mobile_rules():

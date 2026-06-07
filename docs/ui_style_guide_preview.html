@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ERP UI Style Guide — Phase UI-1</title>
+  <style>
+    :root {
+      --theme-info: #2563eb;
+      --theme-text: #0f172a;
+      --theme-muted: #475569;
+      --theme-card: #ffffff;
+      --theme-bg: #f8fafc;
+      --theme-border: #e6e9ee;
+      --theme-success: #16a34a;
+      --theme-danger: #dc2626;
+      --theme-warning: #d97706;
+      --erp-on-primary: #ffffff;
+      --erp-field-radius: 8px;
+      --erp-chip-active-bg: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%);
+      --erp-chip-active-fg: var(--theme-info);
+      --erp-chip-active-border: color-mix(in srgb, var(--theme-info) 45%, var(--theme-border) 55%);
+      --erp-chip-idle-bg: color-mix(in srgb, var(--theme-bg) 55%, var(--theme-card) 45%);
+      --erp-chip-idle-fg: var(--theme-text);
+      --erp-chip-idle-border: var(--theme-border);
+      --theme-shadow: rgba(0, 0, 0, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--theme-bg);
+      color: var(--theme-text);
+      padding: 24px 16px 48px;
+      line-height: 1.4;
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 4px; }
+    .sub { color: var(--theme-muted); font-size: 0.85rem; margin-bottom: 28px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .spec {
+      background: var(--theme-card);
+      border: 1px solid var(--theme-border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .spec h2 {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--theme-muted);
+      margin: 0 0 12px;
+      border-left: 4px solid var(--theme-info);
+      padding-left: 8px;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 8px 16px;
+      border-radius: var(--erp-field-radius);
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      cursor: default;
+    }
+    .btn-primary {
+      background: var(--theme-info);
+      color: var(--erp-on-primary);
+      border-color: var(--theme-info);
+    }
+    .btn-secondary {
+      background: var(--theme-card);
+      color: var(--theme-text);
+      border-color: var(--theme-border);
+      font-weight: 600;
+    }
+    .btn-danger {
+      background: color-mix(in srgb, var(--theme-danger) 8%, var(--theme-card) 92%);
+      color: var(--theme-danger);
+      border-color: color-mix(in srgb, var(--theme-danger) 45%, var(--theme-border) 55%);
+    }
+    .chip {
+      min-height: 36px;
+      padding: 6px 12px;
+      border-radius: var(--erp-field-radius);
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid var(--erp-chip-idle-border);
+      background: var(--erp-chip-idle-bg);
+      color: var(--erp-chip-idle-fg);
+    }
+    .chip.on {
+      background: var(--erp-chip-active-bg);
+      color: var(--erp-chip-active-fg);
+      border-color: var(--erp-chip-active-border);
+    }
+    .banner {
+      border-left: 4px solid var(--theme-info);
+      padding-left: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--theme-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    .caption { font-size: 12px; color: var(--theme-muted); margin-bottom: 12px; }
+    .card-demo {
+      border: 1px solid var(--theme-border);
+      border-radius: 10px;
+      padding: 12px;
+      background: var(--theme-card);
+    }
+    .card-demo .label { font-size: 9px; text-transform: uppercase; color: var(--theme-muted); font-weight: 600; }
+    .card-demo .val { font-size: 15px; font-weight: 800; color: var(--theme-success); }
+    .form-demo input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--erp-field-radius);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+    .form-demo label { font-size: 11px; color: var(--theme-muted); font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; color: var(--theme-muted); font-size: 10px; text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid var(--theme-border); }
+    td { padding: 8px; border-bottom: 1px solid var(--theme-border); }
+    .amt { font-weight: 700; color: var(--theme-success); }
+    .mob-row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+    .mob-card {
+      flex: 1;
+      border: 1px solid var(--theme-border);
+      border-radius: 12px;
+      padding: 10px;
+      background: var(--theme-card);
+    }
+    .mob-card .big { font-size: 18px; font-weight: 800; }
+    .mob-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 8px; }
+    .mob-actions .btn { min-height: 32px; padding: 4px; font-size: 10px; font-weight: 600; }
+    .fab-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      height: 72px;
+      background: color-mix(in srgb, var(--theme-card) 94%, transparent);
+      border-top: 1px solid var(--theme-border);
+      margin-top: 8px;
+      padding-top: 8px;
+    }
+    .fab {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--theme-info);
+      color: var(--erp-on-primary);
+      font-size: 30px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 4px solid var(--theme-card);
+      box-shadow: 0 8px 22px color-mix(in srgb, var(--theme-info) 50%, transparent);
+      margin-top: -22px;
+    }
+    .tab-demo { display: flex; gap: 6px; }
+    .tab {
+      padding: 8px 14px;
+      border-radius: var(--erp-field-radius);
+      font-size: 13px;
+      border: 1px solid var(--erp-chip-idle-border);
+      background: var(--erp-chip-idle-bg);
+      color: var(--theme-muted);
+    }
+    .tab.on {
+      background: var(--erp-chip-active-bg);
+      color: var(--erp-chip-active-fg);
+      border-color: var(--erp-chip-active-border);
+      border-bottom: 2px solid var(--theme-info);
+      font-weight: 600;
+    }
+    .hero-amt {
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--theme-info);
+      letter-spacing: -0.03em;
+    }
+    .note { font-size: 11px; color: var(--theme-muted); margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>ERP UI Style Guide</h1>
+  <p class="sub">Phase UI-1 — one primary brand color · status colors when required</p>
+
+  <div class="grid">
+    <div class="spec">
+      <h2>Primary Button</h2>
+      <div class="row">
+        <span class="btn btn-primary">Save</span>
+        <span class="btn btn-primary">✓ Save</span>
+        <span class="btn btn-primary">Pay</span>
+      </div>
+      <p class="note">Solid --theme-info · white label · CTAs only</p>
+    </div>
+
+    <div class="spec">
+      <h2>Secondary Button</h2>
+      <div class="row">
+        <span class="btn btn-secondary">Cancel</span>
+        <span class="btn btn-secondary">Export</span>
+        <span class="btn btn-secondary">View</span>
+      </div>
+    </div>
+
+    <div class="spec">
+      <h2>Danger Button</h2>
+      <div class="row">
+        <span class="btn btn-danger">Void</span>
+        <span class="btn btn-danger">Delete</span>
+      </div>
+    </div>
+
+    <div class="spec">
+      <h2>Selected Chip</h2>
+      <div class="row">
+        <span class="chip on">SALE</span>
+        <span class="chip">EXP</span>
+        <span class="chip on">Cash</span>
+        <span class="chip">Card</span>
+        <span class="chip on">TRY</span>
+      </div>
+    </div>
+
+    <div class="spec">
+      <h2>Active Tab</h2>
+      <div class="tab-demo">
+        <span class="tab on">Executive</span>
+        <span class="tab">Sales</span>
+        <span class="tab">Expenses</span>
+      </div>
+    </div>
+
+    <div class="spec">
+      <h2>Page Banner</h2>
+      <div class="banner">Company Settings</div>
+      <p class="caption">Manage company profile, fiscal year, and defaults.</p>
+    </div>
+
+    <div class="spec">
+      <h2>Section Header</h2>
+      <div class="banner">Financial Defaults</div>
+      <div class="card-demo">
+        <div class="label">Section content</div>
+        <div style="margin-top:6px;font-size:13px;">Bordered container below section title</div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <h2>Card / KPI</h2>
+      <div class="row">
+        <div class="card-demo" style="flex:1">
+          <div class="label">Sales</div>
+          <div class="val">TRY 12,400</div>
+        </div>
+        <div class="card-demo" style="flex:1">
+          <div class="label">Net</div>
+          <div class="val" style="color:var(--theme-danger)">-TRY 800</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <h2>Table</h2>
+      <table>
+        <thead><tr><th>Date</th><th>Party</th><th>Amount</th></tr></thead>
+        <tbody>
+          <tr><td>2026-06-07</td><td>Acme Ltd</td><td class="amt">TRY 1,200</td></tr>
+          <tr><td>2026-06-06</td><td>Rent</td><td style="color:var(--theme-danger);font-weight:700">-TRY 2,600</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="spec">
+      <h2>Form</h2>
+      <div class="form-demo card-demo">
+        <label>Customer</label>
+        <input type="text" placeholder="Search customer…" />
+        <label style="display:block;margin-top:10px">Amount</label>
+        <input type="text" value="1,250.00" />
+        <div style="margin-top:12px"><span class="btn btn-primary" style="width:100%">Save Sale</span></div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <h2>Mobile Action Button</h2>
+      <div class="mob-card">
+        <div class="big">TRY 5,200</div>
+        <div style="font-size:11px;color:var(--theme-muted)">Sale · Cash</div>
+        <div class="mob-actions">
+          <span class="btn btn-secondary">View</span>
+          <span class="btn btn-secondary">Edit</span>
+          <span class="btn btn-danger">Void</span>
+          <span class="btn btn-secondary">⋯</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <h2>Mobile FAB</h2>
+      <div class="fab-wrap">
+        <span class="fab">+</span>
+      </div>
+      <p class="note" style="text-align:center">Center bottom nav · solid primary only</p>
+    </div>
+
+    <div class="spec" style="grid-column: 1 / -1">
+      <h2>Mobile Calculator Amount (reference)</h2>
+      <div class="row" style="align-items:baseline">
+        <span style="font-size:11px;font-weight:700;color:var(--theme-info)">TRY</span>
+        <span class="hero-amt">5,200</span>
+        <span class="btn btn-primary" style="min-height:56px;margin-left:auto">✓ Save</span>
+      </div>
+      <p class="note">Frozen layout — hero amount uses --theme-info at 2× keypad scale</p>
+    </div>
+  </div>
+</body>
+</html>

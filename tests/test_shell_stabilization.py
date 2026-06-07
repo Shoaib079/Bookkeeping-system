@@ -86,11 +86,27 @@ def test_desktop_header_matches_pre_mobile_contract():
     assert "z-index: 9999" in theme
 
 
-def test_search_open_expands_header_height():
-    css = (ROOT / "ui" / "theme.css").read_text(encoding="utf-8")
-    assert ":has(.erp-hdr-shell-search-open)" in css
-    assert "--hdr-h: 104px" in css
-    assert '[class*="st-key-hdr_shell_row"]:has(.erp-hdr-shell-search-open)' in css
+def test_mobile_header_search_always_visible():
+    """Search is a single header field — no nested toggle."""
+    src = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert 'key="hdr_search_toggle"' not in src
+    assert "hdr_search_open" not in src
+    theme = (ROOT / "ui" / "theme.css").read_text(encoding="utf-8")
+    shell = (ROOT / "ui" / "mobile_shell.css").read_text(encoding="utf-8")
+    assert "[class*=\"st-key-hdr_search_panel\"]" in theme
+    assert "display: block !important" in theme
+    assert "erp-hdr-shell-search-open" not in shell
+
+
+def test_form_controls_single_border_contract():
+    """BaseWeb wrappers stripped; native inputs carry one border."""
+    widgets = (ROOT / "ui" / "widgets.css").read_text(encoding="utf-8")
+    assert 'div[data-baseweb="input"]' in widgets
+    assert "border: none !important" in widgets
+    assert "--erp-on-primary" in (ROOT / "ui" / "theme.css").read_text(encoding="utf-8")
+    reports = (ROOT / "ui" / "mobile_reports.css").read_text(encoding="utf-8")
+    assert "mob_rpt_main_tabs" in reports
+    assert "var(--erp-on-primary" in reports
 
 
 def test_people_hub_wired_not_duplicated_in_more():
@@ -131,3 +147,53 @@ def test_mobile_hub_open_hub_visibility():
     assert erp._mobile_hub_entry_visible(
         "more", "open_hub", "people", allowed, erp._NAV_ACCORDION_BY_KEY
     )
+
+
+def test_display_company_name_title_case_preserves_acronyms():
+    assert erp._display_company_name("spice corner") == "Spice Corner"
+    assert erp._display_company_name("india gate restaurant") == "India Gate Restaurant"
+    assert erp._display_company_name("ABC Ltd") == "ABC Ltd"
+    assert erp._display_company_name("ERP Solutions") == "ERP Solutions"
+    assert erp._display_company_name("VAT Services") == "VAT Services"
+
+
+def test_mobile_header_company_name_has_no_dropdown_chevron():
+    css = (ROOT / "ui" / "theme.css").read_text(encoding="utf-8")
+    assert ".erp-hdr-mobile-co::after" not in css
+
+
+def test_mobile_header_has_no_page_subtitle():
+    src = (ROOT / "app.py").read_text(encoding="utf-8")
+    idx = src.index('def render_top_header(')
+    chunk = src[idx : idx + 2200]
+    assert "erp-hdr-mobile-page" not in chunk
+
+
+def test_company_switch_confirm_rendered_outside_popover():
+    src = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert "def _render_company_switch_confirm(" in src
+    assert '_render_company_switch_confirm(key_prefix="main_co_sw")' in src
+    assert "hdr_switch_confirm" not in src
+    assert 'st.session_state["_confirm_company_switch"] = True' in src
+
+
+def test_mobile_multi_company_title_is_switch_popover():
+    src = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert 'key="hdr_mobile_co_switch"' in src
+    assert "st.popover" in src[src.index('key="hdr_mobile_co_switch"') - 200 : src.index('key="hdr_mobile_co_switch"') + 200]
+    assert "_render_company_switch_menu" in src
+    assert "hdr_sw_co_" not in src
+    assert "hdr_all_companies_btn" not in src
+    assert "hdr_my_companies_btn" not in src
+
+
+def test_mobile_header_center_column_stacks_title_and_search():
+    theme = (ROOT / "ui" / "theme.css").read_text(encoding="utf-8")
+    shell = (ROOT / "ui" / "mobile_shell.css").read_text(encoding="utf-8")
+    assert "flex-direction: column" in theme
+    assert "st-key-hdr_col_center" in theme
+    assert "align-items: stretch" in theme
+    assert "min-height: 0" in theme
+    assert "flex-direction: column" in shell
+    assert "min-height: 40px" in theme
+    assert "--hdr-h: 120px" in theme

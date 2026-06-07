@@ -22,7 +22,7 @@
 }
 
 [data-testid="stMain"] [data-testid="stVerticalBlock"] {
-  gap: 0.5rem;
+  gap: 0.875rem;
 }
 
 /* Page titles (st.title / st.header) — Streamlit theme.toml uses light textColor */
@@ -47,7 +47,9 @@
 
 [data-testid="stMain"] [data-testid="stCaptionContainer"],
 [data-testid="stMain"] [data-testid="stCaptionContainer"] p {
-  color: var(--theme-muted) !important;
+  color: var(--theme-caption) !important;
+  font-size: 0.85rem !important;
+  line-height: 1.45 !important;
 }
 
 [data-testid="stMain"] [data-testid="stMarkdownContainer"] p,
@@ -62,24 +64,43 @@
   color: var(--theme-info);
 }
 
-/* ── Text / number / date inputs ───────────────────────────────────────── */
+/* ── Form controls — one border per field (wrapper chrome stripped) ───── */
+[data-testid="stTextInput"] div[data-baseweb="input"],
+[data-testid="stTextInput"] [data-baseweb="base-input"],
+[data-testid="stDateInput"] div[data-baseweb="input"],
+[data-testid="stDateInput"] [data-baseweb="base-input"],
+[data-testid="stNumberInput"] div[data-baseweb="input"],
+[data-testid="stNumberInput"] [data-baseweb="base-input"],
+[data-testid="stTextInput"] > div,
+[data-testid="stDateInput"] > div,
+[data-testid="stNumberInput"] > div {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  outline: none !important;
+}
+
 [data-testid="stMain"] [data-testid="stTextInput"] input,
 [data-testid="stMain"] [data-testid="stTextInput"] textarea,
 [data-testid="stMain"] [data-testid="stTextArea"] textarea,
 [data-testid="stMain"] [data-testid="stNumberInput"] input,
-[data-testid="stMain"] [data-testid="stDateInput"] input {
+[data-testid="stMain"] [data-testid="stDateInput"] input,
+[data-testid="stMain"] [data-testid="stDateInput"] [data-testid="stDateInputField"] {
   background-color: var(--theme-card) !important;
   color: var(--theme-text) !important;
   border: 1px solid var(--theme-input-border) !important;
-  border-radius: 8px !important;
+  border-radius: var(--erp-field-radius, 8px) !important;
+  box-shadow: none !important;
 }
 
 [data-testid="stMain"] [data-testid="stTextInput"] input:focus,
 [data-testid="stMain"] [data-testid="stTextArea"] textarea:focus,
 [data-testid="stMain"] [data-testid="stNumberInput"] input:focus,
-[data-testid="stMain"] [data-testid="stDateInput"] input:focus {
+[data-testid="stMain"] [data-testid="stDateInput"] input:focus,
+[data-testid="stMain"] [data-testid="stDateInput"] [data-testid="stDateInputField"]:focus-within {
   border-color: var(--theme-focus) !important;
-  box-shadow: 0 0 0 1px var(--theme-focus) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-focus) 22%, transparent 78%) !important;
+  outline: none !important;
 }
 
 [data-testid="stMain"] [data-testid="stTextInput"] input::placeholder,
@@ -88,12 +109,27 @@
   opacity: 0.85;
 }
 
-/* ── Select / multiselect (BaseWeb) ────────────────────────────────────── */
-[data-testid="stMain"] div[data-baseweb="select"] > div,
-[data-testid="stMain"] div[data-baseweb="input"] {
+/* Filter/date cards: container border only — not on inner field shells */
+[data-testid="stMain"] [class*="st-key-erp_mob_rpt_filters"] [data-testid="stVerticalBlockBorderWrapper"],
+[data-testid="stMain"] [class*="st-key-txh_filters_card"] [data-testid="stVerticalBlockBorderWrapper"] {
+  border: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* ── Select / multiselect (BaseWeb) — single border on control face ──── */
+[data-testid="stMain"] div[data-baseweb="select"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+[data-testid="stMain"] div[data-baseweb="select"] > div {
   background-color: var(--theme-card) !important;
-  border-color: var(--theme-input-border) !important;
-  border-radius: 8px !important;
+  border: 1px solid var(--theme-input-border) !important;
+  border-radius: var(--erp-field-radius, 8px) !important;
+  box-shadow: none !important;
 }
 
 [data-testid="stMain"] div[data-baseweb="select"] span,
@@ -107,6 +143,10 @@
 }
 
 /* Dropdown popovers (portaled — not under section.main) */
+div[data-baseweb="popover"],
+[data-testid="stPopover"] {
+  z-index: 10050 !important;
+}
 div[data-baseweb="popover"] div[data-baseweb="menu"],
 ul[data-testid="stSelectboxVirtualDropdown"] {
   background-color: var(--theme-card) !important;
@@ -122,6 +162,20 @@ div[data-baseweb="menu"] ul li {
 div[data-baseweb="menu"] li:hover,
 div[data-baseweb="menu"] li[aria-selected="true"] {
   background-color: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%) !important;
+}
+
+/* Multiselect / filter tags */
+[data-testid="stMain"] [data-baseweb="tag"],
+[data-testid="stMain"] span[data-baseweb="tag"] {
+  background-color: color-mix(in srgb, var(--theme-border) 32%, var(--theme-card) 68%) !important;
+  color: var(--theme-text) !important;
+  border: 1px solid var(--theme-border) !important;
+}
+
+[data-testid="stMain"] [data-baseweb="tag"] span,
+[data-testid="stMain"] [data-baseweb="tag"] svg {
+  color: var(--theme-text) !important;
+  fill: var(--theme-muted) !important;
 }
 
 /* ── Checkbox / radio / toggle ─────────────────────────────────────────── */
@@ -176,9 +230,9 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
 }
 
 [data-testid="stMain"] [data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-  color: var(--theme-info) !important;
-  background-color: color-mix(in srgb, var(--theme-info) 10%, var(--theme-card) 90%) !important;
-  border-color: var(--theme-info) !important;
+  color: var(--erp-chip-active-fg) !important;
+  background-color: var(--erp-chip-active-bg) !important;
+  border-color: var(--erp-chip-active-border) !important;
   border-bottom: 2px solid var(--theme-info) !important;
   font-weight: 600 !important;
 }
@@ -220,29 +274,286 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
 }
 
 [data-testid="stMain"] [data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked) {
-  background-color: color-mix(in srgb, var(--theme-info) 10%, var(--theme-card) 90%) !important;
-  border-color: var(--theme-info) !important;
+  background-color: var(--erp-chip-active-bg) !important;
+  border-color: var(--erp-chip-active-border) !important;
 }
 
 [data-testid="stMain"] [data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked) p,
 [data-testid="stMain"] [data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked) span {
-  color: var(--theme-info) !important;
+  color: var(--erp-chip-active-fg) !important;
   font-weight: 600 !important;
+}
+
+/* Solid primary buttons — white label on blue fill */
+[data-testid="stMain"] [data-testid="stButton"] button[kind="primary"],
+[data-testid="stMain"] [data-testid="baseButton-primary"] button,
+[data-testid="stMain"] button[data-testid="stBaseButton-primary"] {
+  background-color: var(--theme-info) !important;
+  color: var(--erp-on-primary, #fff) !important;
+  border: 1px solid var(--theme-info) !important;
+}
+
+[data-testid="stMain"] [data-testid="stButton"] button[kind="primary"] p,
+[data-testid="stMain"] [data-testid="stButton"] button[kind="primary"] span,
+[data-testid="stMain"] [data-testid="baseButton-primary"] button p,
+[data-testid="stMain"] [data-testid="baseButton-primary"] button span,
+[data-testid="stMain"] button[data-testid="stBaseButton-primary"] p,
+[data-testid="stMain"] button[data-testid="stBaseButton-primary"] span {
+  color: var(--erp-on-primary, #fff) !important;
+}
+
+/* UI-1 — Selected chip (primary kind in selection rows, not CTAs) */
+[data-testid="stMain"] [class*="st-key-mob_at_"]:not([class*="st-key-mob_at_save"]):not([class*="st-key-mob_at_amount_row"]) button[kind="primary"],
+[data-testid="stMain"] [class*="st-key-mob_at_"]:not([class*="st-key-mob_at_save"]):not([class*="st-key-mob_at_amount_row"]) button[data-testid="stBaseButton-primary"],
+[data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] button[kind="primary"]:not([class*="mob_at_save"]),
+[data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] button[data-testid="stBaseButton-primary"]:not([class*="mob_at_save"]),
+[data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[kind="primary"],
+[data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[data-testid="stBaseButton-primary"],
+[data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[kind="primary"],
+[data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[data-testid="stBaseButton-primary"] {
+  background: var(--erp-chip-active-bg) !important;
+  color: var(--erp-chip-active-fg) !important;
+  border: 1px solid var(--erp-chip-active-border) !important;
+}
+
+[data-testid="stMain"] [class*="st-key-mob_at_"]:not([class*="st-key-mob_at_save"]):not([class*="st-key-mob_at_amount_row"]) button[kind="primary"] p,
+[data-testid="stMain"] [class*="st-key-mob_at_"]:not([class*="st-key-mob_at_save"]):not([class*="st-key-mob_at_amount_row"]) button[kind="primary"] span,
+[data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] button[kind="primary"]:not([class*="mob_at_save"]) p,
+[data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] button[kind="primary"]:not([class*="mob_at_save"]) span,
+[data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[kind="primary"] p,
+[data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[kind="primary"] span,
+[data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[kind="primary"] p,
+[data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[kind="primary"] span {
+  color: var(--erp-chip-active-fg) !important;
+  font-weight: 700 !important;
+}
+
+/* UI-1 — Global secondary (excludes mobile chrome + popover triggers) */
+[data-testid="stMain"] [data-testid="stButton"] button[kind="secondary"],
+[data-testid="stMain"] button[data-testid="stBaseButton-secondary"] {
+  background-color: var(--theme-card) !important;
+  color: var(--theme-text) !important;
+  border: 1px solid var(--theme-border) !important;
+  font-weight: 600 !important;
+}
+
+[data-testid="stMain"] [data-testid="stButton"] button[kind="secondary"] p,
+[data-testid="stMain"] [data-testid="stButton"] button[kind="secondary"] span,
+[data-testid="stMain"] button[data-testid="stBaseButton-secondary"] p,
+[data-testid="stMain"] button[data-testid="stBaseButton-secondary"] span {
+  color: var(--theme-text) !important;
+  font-weight: 600 !important;
+}
+
+/* UI-1 — Danger actions (key convention for UI-2 page sweep) */
+[data-testid="stMain"] [class*="st-key-erp_void_"] button,
+[data-testid="stMain"] [class*="st-key-erp_danger_"] button {
+  background: color-mix(in srgb, var(--theme-danger) 8%, var(--theme-card) 92%) !important;
+  color: var(--theme-danger) !important;
+  border: 1px solid color-mix(in srgb, var(--theme-danger) 45%, var(--theme-border) 55%) !important;
+  font-weight: 700 !important;
+}
+
+[data-testid="stMain"] [class*="st-key-erp_void_"] button p,
+[data-testid="stMain"] [class*="st-key-erp_void_"] button span,
+[data-testid="stMain"] [class*="st-key-erp_danger_"] button p,
+[data-testid="stMain"] [class*="st-key-erp_danger_"] button span {
+  color: var(--theme-danger) !important;
+  font-weight: 700 !important;
+}
+
+/* UI-1 — Mobile chrome + header: secondary/global rules must not override frozen nav */
+@media (max-width: 968px) {
+  [data-testid="stMain"] [class*="st-key-mob_bar_"]:not([class*="mob_bar_new"]) button[kind="secondary"],
+  [data-testid="stMain"] [class*="st-key-mob_bar_"]:not([class*="mob_bar_new"]) button[kind="primary"] {
+    background: transparent !important;
+    border: none !important;
+    color: var(--theme-muted) !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_bar_"] button[kind="primary"]:not([class*="mob_bar_new"]) {
+    color: var(--theme-info) !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_hub_"]:not([class*="mob_hub_close"]) button[kind="secondary"],
+  [data-testid="stMain"] [class*="st-key-mob_hub_"]:not([class*="mob_hub_close"]) button[kind="primary"] {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid var(--theme-border) !important;
+    color: var(--theme-text) !important;
+    font-weight: 500 !important;
+  }
+}
+
+/* ── Metrics (st.metric) — full values, no ellipsis clipping ───────────── */
+[data-testid="stMain"] [data-testid="stMetric"] {
+  background: var(--theme-card) !important;
+  border: 1px solid var(--theme-border) !important;
+  border-radius: 10px !important;
+  padding: 12px 14px !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+[data-testid="stMain"] [data-testid="stMetricLabel"] {
+  color: var(--theme-muted) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  line-height: 1.3 !important;
+}
+
+[data-testid="stMain"] [data-testid="stMetricLabel"] p {
+  color: var(--theme-muted) !important;
+}
+
+[data-testid="stMain"] [data-testid="stMetricValue"] {
+  color: var(--theme-text) !important;
+  font-size: clamp(14px, 2vw, 20px) !important;
+  font-weight: 800 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  line-height: 1.25 !important;
+}
+
+[data-testid="stMain"] [data-testid="stMetricValue"] div {
+  color: var(--theme-text) !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+}
+
+[data-testid="stMain"] [data-testid="stMetricDelta"] {
+  color: var(--theme-muted) !important;
+}
+
+/* ── Bordered cards / containers ───────────────────────────────────────── */
+[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] {
+  background-color: var(--theme-card) !important;
+  border-color: var(--theme-border) !important;
+  border-radius: 10px !important;
+  padding: 16px 18px !important;
+  margin-bottom: 18px !important;
+  gap: 12px !important;
+}
+
+/* KPI inside bordered section — avoid double-stack crush */
+[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] .erp-kpi-section {
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] .erp-kpi-section .kpi-grid {
+  gap: 14px;
+}
+
+/* Markdown KPI blocks — strip default paragraph margins */
+[data-testid="stMain"] [data-testid="stMarkdownContainer"]:has(.erp-kpi-section) {
+  margin-bottom: 0 !important;
+}
+
+[data-testid="stMain"] [data-testid="stMarkdownContainer"]:has(.erp-kpi-section) p {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Tables/charts after KPI or section cards */
+[data-testid="stMain"] [data-testid="stTable"] {
+  margin-top: 4px !important;
+  margin-bottom: 16px !important;
+}
+
+[data-testid="stMain"] [data-testid="stVegaLiteChart"],
+[data-testid="stMain"] [data-testid="stArrowVegaLiteChart"],
+[data-testid="stMain"] [data-testid="stPlotlyChart"] {
+  margin-top: 8px !important;
+  margin-bottom: 16px !important;
+}
+
+/* ── Alerts / status messages — mono card (same in light and dark) ─────── */
+[data-testid="stMain"] [data-testid="stAlert"] {
+  background-color: var(--theme-card) !important;
+  color: var(--theme-text) !important;
+  border: 1px solid var(--theme-border) !important;
+  border-radius: 8px !important;
+}
+
+[data-testid="stMain"] [data-testid="stAlert"] [data-testid="stMarkdownContainer"],
+[data-testid="stMain"] [data-testid="stAlert"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stMain"] [data-testid="stAlert"] [data-testid="stMarkdownContainer"] span {
+  color: var(--theme-text) !important;
 }
 
 /* ── Dataframes / tables ───────────────────────────────────────────────── */
 [data-testid="stMain"] [data-testid="stDataFrame"] {
+  margin-top: 4px !important;
+  margin-bottom: 16px !important;
   border: 1px solid var(--theme-border) !important;
   border-radius: 8px !important;
   overflow: hidden !important;
+  background: var(--theme-card) !important;
+  --gdg-bg-cell: var(--theme-card);
+  --gdg-bg-header: color-mix(in srgb, var(--theme-border) 35%, var(--theme-card) 65%);
+  --gdg-bg-header-has-focus: var(--theme-card);
+  --gdg-bg-header-hovered: color-mix(in srgb, var(--theme-border) 28%, var(--theme-card) 72%);
+  --gdg-text-dark: var(--theme-text);
+  --gdg-text-medium: var(--theme-muted);
+  --gdg-text-light: var(--theme-muted);
+  --gdg-text-header: var(--theme-muted);
+  --gdg-text-group-header: var(--theme-muted);
+  --gdg-text-header-selected: var(--theme-text);
+  --gdg-border-color: var(--theme-border);
+  --gdg-accent-color: var(--theme-info);
+  --gdg-accent-light: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%);
+}
+
+[data-testid="stMain"] [data-testid="stDataFrame"] > div,
+[data-testid="stMain"] [data-testid="stDataFrame"] .dvn-scroller {
+  background: var(--theme-card) !important;
 }
 
 [data-testid="stMain"] [data-testid="stDataFrame"] th {
-  background-color: var(--theme-card) !important;
+  background-color: color-mix(in srgb, var(--theme-border) 35%, var(--theme-card) 65%) !important;
   color: var(--theme-muted) !important;
 }
 
 [data-testid="stMain"] [data-testid="stDataFrame"] td {
+  color: var(--theme-text) !important;
+  background-color: var(--theme-card) !important;
+}
+
+[data-testid="stMain"] [data-testid="stDataFrame"] div[role="gridcell"] {
+  color: var(--theme-text) !important;
+  min-height: 36px !important;
+  line-height: 1.4 !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+}
+
+[data-testid="stMain"] [data-testid="stDataFrame"] div[role="columnheader"] {
+  color: var(--theme-caption) !important;
+  min-height: 32px !important;
+}
+
+[data-testid="stMain"] [data-testid="stTable"] {
+  background: var(--theme-card) !important;
+  border: 1px solid var(--theme-border) !important;
+  border-radius: 8px !important;
+}
+
+[data-testid="stMain"] [data-testid="stTable"] table {
+  color: var(--theme-text) !important;
+}
+
+[data-testid="stMain"] [data-testid="stTable"] th {
+  background: color-mix(in srgb, var(--theme-border) 35%, var(--theme-card) 65%) !important;
+  color: var(--theme-muted) !important;
+}
+
+[data-testid="stMain"] [data-testid="stTable"] td {
   color: var(--theme-text) !important;
 }
 
@@ -264,10 +575,9 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
   color: var(--theme-text) !important;
 }
 
-/* ── Header toolbar compact buttons (notifications / profile) ──────────── */
-[data-testid="stMain"] [class*="st-key-hdr_notif"] button,
-[data-testid="stMain"] [class*="st-key-hdr_profile"] button,
-[data-testid="stMain"] [class*="st-key-hdr_search_toggle"] button,
+/* ── Header toolbar triggers only (not popover menu actions) ───────────── */
+[data-testid="stMain"] [class*="st-key-hdr_notif_pop"] [data-testid="stPopover"] > button,
+[data-testid="stMain"] [class*="st-key-hdr_profile_pop"] [data-testid="stPopover"] > button,
 [data-testid="stMain"] [class*="st-key-hdr_search"] button {
   width: 34px !important;
   min-width: 34px !important;
@@ -282,6 +592,25 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
+}
+[data-testid="stMain"] [class*="st-key-hdr_profile_pop"] [data-testid="stPopover"] [data-testid="stButton"] button,
+[data-testid="stMain"] [class*="st-key-hdr_notif_pop"] [data-testid="stPopover"] [data-testid="stButton"] button {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 40px !important;
+  padding: 8px 12px !important;
+  margin: 0 0 6px 0 !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
+  white-space: normal !important;
+  text-align: left !important;
+  justify-content: flex-start !important;
+  display: inline-flex !important;
+  align-items: center !important;
 }
 
 /* ── Mobile chrome — bottom tabs + hub sheets (≤968px; desktop at ≥969px) ─ */
@@ -408,7 +737,7 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
     padding: 0 !important;
     border-radius: 50% !important;
     background: var(--theme-info) !important;
-    color: #fff !important;
+    color: var(--erp-on-primary) !important;
     font-size: 30px !important;
     font-weight: 700 !important;
     line-height: 1 !important;
@@ -421,12 +750,12 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
   [data-testid="stMain"] [class*="st-key-mob_bar_new"] button span {
     font-size: 30px !important;
     font-weight: 700 !important;
-    color: #fff !important;
+    color: var(--erp-on-primary) !important;
     line-height: 1 !important;
   }
   [data-testid="stMain"] [class*="st-key-mob_bar_new"] button[kind="secondary"] {
     background: var(--theme-info) !important;
-    color: #fff !important;
+    color: var(--erp-on-primary) !important;
   }
   [data-testid="stMain"] [class*="st-key-mob_bar_"] button[kind="primary"]:not([class*="mob_bar_new"]) {
     color: var(--theme-info) !important;
@@ -510,10 +839,15 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
     margin-left: 8px !important;
   }
   [data-testid="stMain"] [class*="st-key-mob_hub_"] button[kind="primary"] {
-    background: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%) !important;
-    color: var(--theme-info) !important;
-    border-color: color-mix(in srgb, var(--theme-info) 40%, var(--theme-border) 60%) !important;
+    background: var(--theme-info) !important;
+    color: var(--erp-on-primary, #fff) !important;
+    border-color: var(--theme-info) !important;
     font-weight: 700 !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_"] button[kind="primary"] p,
+  [data-testid="stMain"] [class*="st-key-mob_hub_"] button[kind="primary"] span {
+    color: var(--erp-on-primary, #fff) !important;
   }
   [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-hub-host)
     hr {
@@ -547,7 +881,7 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
   justify-content: flex-end !important;
   align-items: center !important;
 }
-[data-testid="stMain"] .st-key-hdr_notif_pop button,
+[data-testid="stMain"] .st-key-hdr_notif_pop [data-testid="stPopover"] > button,
 [data-testid="stMain"] .st-key-hdr_dark_toggle button {
   width: 36px !important;
   min-width: 36px !important;
@@ -563,7 +897,7 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
   font-size: 15px !important;
   line-height: 1 !important;
 }
-[data-testid="stMain"] .st-key-hdr_profile_pop button {
+[data-testid="stMain"] .st-key-hdr_profile_pop [data-testid="stPopover"] > button {
   width: 36px !important;
   min-width: 36px !important;
   max-width: 36px !important;
@@ -572,7 +906,7 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
   padding: 0 !important;
   margin: 0 !important;
   border-radius: 50% !important;
-  color: #fff !important;
+  color: var(--erp-on-primary) !important;
   font-weight: 800 !important;
   font-size: 11px !important;
   border: 2px solid var(--theme-card) !important;
@@ -581,26 +915,39 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
   align-items: center !important;
   justify-content: center !important;
 }
-[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-owner) .st-key-hdr_profile_pop button {
+[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-owner) .st-key-hdr_profile_pop [data-testid="stPopover"] > button {
   background: var(--role-owner) !important;
 }
-[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-manager) .st-key-hdr_profile_pop button {
+[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-manager) .st-key-hdr_profile_pop [data-testid="stPopover"] > button {
   background: var(--role-manager) !important;
 }
-[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-cashier) .st-key-hdr_profile_pop button {
+[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-cashier) .st-key-hdr_profile_pop [data-testid="stPopover"] > button {
   background: var(--role-cashier) !important;
 }
-[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-partner) .st-key-hdr_profile_pop button {
+[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-partner) .st-key-hdr_profile_pop [data-testid="stPopover"] > button {
   background: var(--role-partner) !important;
 }
-[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-viewer) .st-key-hdr_profile_pop button {
+[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-viewer) .st-key-hdr_profile_pop [data-testid="stPopover"] > button {
   background: var(--role-viewer) !important;
 }
-[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-notif-active) .st-key-hdr_notif_pop button {
+[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-notif-active) .st-key-hdr_notif_pop [data-testid="stPopover"] > button {
   background: color-mix(in srgb, var(--theme-warning) 14%, var(--theme-card) 86%) !important;
   border-color: color-mix(in srgb, var(--theme-warning) 45%, var(--theme-border) 55%) !important;
   font-weight: 700 !important;
   font-size: 13px !important;
+}
+[data-testid="stMain"] [class*="st-key-hdr_col_right"],
+[data-testid="stMain"] [class*="st-key-hdr_toolbar_row"] {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+[data-testid="stMain"] [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child
+  [data-testid="stPopover"] > button {
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: var(--theme-text) !important;
+  background: var(--theme-card) !important;
+  border: 1px solid var(--theme-border) !important;
 }
 
 /* Keyed mobile chrome — CSS grid on st.columns horizontal blocks */
@@ -693,12 +1040,49 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
     gap: 6px !important;
     width: 100% !important;
   }
+  [data-testid="stMain"] [class*="st-key-txh_filter_row1"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  [data-testid="stMain"] [class*="st-key-txh_filter_row2"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  [data-testid="stMain"] [class*="st-key-txh_actions_"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  [data-testid="stMain"] [class*="st-key-txh_actions_"] [data-testid="stColumn"] {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: unset !important;
+    max-width: none !important;
+  }
   [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    align-items: center !important;
-    gap: 6px !important;
+    align-items: flex-start !important;
+    gap: 0 !important;
+  }
+  [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+    align-items: stretch !important;
+    min-height: 0 !important;
+    height: auto !important;
+  }
+  [class*="st-key-hdr_col_center"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    min-height: 0 !important;
+    height: auto !important;
+    width: 100% !important;
   }
   [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] .erp-bottom-nav-host,
   [data-testid="stMain"] [class*="st-key-erp_mob_quick_create"] .erp-mobile-quick-create-host {
@@ -741,16 +1125,6 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
     gap: 0 !important;
     align-items: end !important;
   }
-  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button {
-    font-size: 24px !important;
-    line-height: 1 !important;
-  }
-  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button p,
-  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button span {
-    font-size: 24px !important;
-    line-height: 1 !important;
-    color: #fff !important;
-  }
   [data-testid="stMain"] [class*="st-key-mob_qc_"] button {
     min-height: 52px !important;
     max-height: 56px !important;
@@ -787,25 +1161,6 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
     border: none !important;
     padding: 0 !important;
     background: transparent !important;
-  }
-  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button {
-    font-size: 24px !important;
-    line-height: 1 !important;
-  }
-  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button p,
-  [data-testid="stMain"] [class*="st-key-mob_bar_new"] button span {
-    font-size: 24px !important;
-    line-height: 1 !important;
-    color: #fff !important;
-  }
-  [data-testid="stMain"] [class*="st-key-mob_qc_"] button {
-    min-height: 52px !important;
-    max-height: 56px !important;
-    padding: 4px 2px !important;
-    font-size: 9px !important;
-    border-radius: 10px !important;
-    border: 1px solid var(--theme-border) !important;
-    background: var(--theme-card) !important;
   }
   [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] .erp-mobile-chrome-footer,
   [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] .erp-bottom-nav-host,

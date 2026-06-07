@@ -32,7 +32,11 @@ from registry.service import set_setting
 
 
 @pytest.fixture()
-def db():
+def db(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "reconciliation.settlement_import.SETTLEMENT_UPLOAD_ROOT",
+        str(tmp_path / "settlements"),
+    )
     engine = create_engine(
         "sqlite:///:memory:", connect_args={"check_same_thread": False}
     )

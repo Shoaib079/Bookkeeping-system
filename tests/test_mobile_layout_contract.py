@@ -24,18 +24,22 @@ _MOBILE_COLUMN_ROW_KEYS = frozenset({
     "erp_mob_rpt_filters",
     "mob_at_topbar",
     "mob_rpt_cf_kpi",
+    "txh_filter_row1",
+    "txh_filter_row2",
+    "txh_result_hdr",
     "hdr_shell_inner",
 })
 
-# Prefixes for dynamic keys (mob_rpt_sel_rpt_exec_sel, mob_rpt_date_sl, …).
+# Prefixes for dynamic keys (mob_rpt_sel_rpt_exec_sel, txh_actions_Sale_1, …).
 _MOBILE_COLUMN_ROW_PREFIXES = (
     "mob_rpt_sel_",
-    "mob_rpt_date_",
+    "txh_actions_",
 )
 
 _CSS_FILES = (
     ROOT / "ui" / "mobile_shell.css",
     ROOT / "ui" / "mobile_txn.css",
+    ROOT / "ui" / "mobile_txn_history.css",
     ROOT / "ui" / "mobile_reports.css",
     ROOT / "ui" / "widgets.css",
     ROOT / "ui" / "theme.css",

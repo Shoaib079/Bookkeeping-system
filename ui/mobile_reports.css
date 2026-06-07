@@ -33,11 +33,58 @@
     white-space: normal !important;
   }
 
+  /* UI-1 — selected report chips match global chip grammar (not solid CTA) */
   [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[kind="primary"],
-  [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[data-testid="stBaseButton-primary"] {
-    background: color-mix(in srgb, var(--theme-info) 12%, var(--theme-card) 88%) !important;
-    color: var(--theme-info) !important;
-    border: 1px solid var(--theme-info) !important;
+  [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[data-testid="stBaseButton-primary"],
+  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[kind="primary"],
+  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[data-testid="stBaseButton-primary"] {
+    background: var(--erp-chip-active-bg) !important;
+    color: var(--erp-chip-active-fg) !important;
+    border: 1px solid var(--erp-chip-active-border) !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[kind="primary"] p,
+  [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[kind="primary"] span,
+  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[kind="primary"] p,
+  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[kind="primary"] span {
+    color: var(--erp-chip-active-fg) !important;
+    font-weight: 700 !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[kind="secondary"],
+  [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[data-testid="stBaseButton-secondary"],
+  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[kind="secondary"],
+  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[data-testid="stBaseButton-secondary"] {
+    background: var(--erp-chip-idle-bg) !important;
+    color: var(--erp-chip-idle-fg) !important;
+    border: 1px solid var(--erp-chip-idle-border) !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button {
+    min-height: 34px !important;
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] [data-testid="stHorizontalBlock"] {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    gap: 6px !important;
+    width: 100% !important;
+    margin: 0 0 8px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] [data-testid="stColumn"] {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+    padding: 0 !important;
   }
 
   /* Per-tab date range (From / To) */
@@ -83,10 +130,27 @@
     font-size: 14px !important;
   }
 
-  /* Global mobile date filters — always visible, compact */
+  /* Global mobile date bar — single surface (no nested expanders) */
   [data-testid="stMain"] .erp-mobile-report-filters ~ [data-testid="stExpander"],
-  [data-testid="stMain"] [class*="st-key-erp_mob_rpt_filters_wrap"] [data-testid="stExpander"] {
+  [data-testid="stMain"] [class*="st-key-erp_mob_rpt_filters"] [data-testid="stExpander"] {
     display: none !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-erp_mob_rpt_filters"] {
+    margin: 0 0 10px !important;
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--theme-border) !important;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--theme-purple) 6%, var(--theme-card) 94%) 0%,
+      var(--theme-card) 100%
+    ) !important;
+    box-shadow: none !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-erp_mob_rpt_filters"] [data-testid="stDateInput"] input {
+    min-height: 38px !important;
   }
 
   /* Reports tab strip — horizontal scroll instead of wrap/stack */

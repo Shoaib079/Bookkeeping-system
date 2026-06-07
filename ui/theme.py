@@ -11,6 +11,7 @@ _WIDGETS_CSS_PATH = Path(__file__).with_name("widgets.css")
 _MOBILE_SHELL_CSS_PATH = Path(__file__).with_name("mobile_shell.css")
 _MOBILE_TXN_CSS_PATH = Path(__file__).with_name("mobile_txn.css")
 _MOBILE_REPORTS_CSS_PATH = Path(__file__).with_name("mobile_reports.css")
+_MOBILE_TXN_HISTORY_CSS_PATH = Path(__file__).with_name("mobile_txn_history.css")
 _CSS_CACHE: str | None = None
 _CSS_MTIME: float | None = None
 
@@ -22,6 +23,7 @@ LIGHT_ROOT_VARS: dict[str, str] = {
     "--theme-border": "#E6E9EE",
     "--theme-text": "#0F172A",
     "--theme-muted": "#475569",
+    "--theme-caption": "#475569",
     "--theme-success": "#16A34A",
     "--theme-danger": "#DC2626",
     "--theme-warning": "#D97706",
@@ -36,18 +38,19 @@ LIGHT_ROOT_VARS: dict[str, str] = {
 }
 
 DARK_ROOT_VARS: dict[str, str] = {
-    "--hdr-bg": "#1E293B",
+    "--hdr-bg": "#1A2332",
     "--theme-bg": "#0B1220",
-    "--theme-card": "#0F1724",
-    "--theme-border": "#1F2937",
-    "--theme-text": "#E6EEF6",
-    "--theme-muted": "#94A3B8",
-    "--theme-success": "#10B981",
+    "--theme-card": "#141C2B",
+    "--theme-border": "#2D3A4D",
+    "--theme-text": "#E8EDF4",
+    "--theme-muted": "#9CA8B8",
+    "--theme-caption": "#B8C4D0",
+    "--theme-success": "#4ADE80",
     "--theme-danger": "#F87171",
-    "--theme-warning": "#F59E0B",
-    "--theme-info": "#60A5FA",
-    "--theme-purple": "#A78BFA",
-    "--theme-teal": "#2DD4BF",
+    "--theme-warning": "#FBBF24",
+    "--theme-info": "#3B82F6",
+    "--theme-purple": "#8B5CF6",
+    "--theme-teal": "#14B8A6",
     "--theme-input-border": "#334155",
     "--theme-focus": "#60A5FA",
     "--theme-banner-primary-start": "#1e3a8a",
@@ -72,6 +75,7 @@ def load_theme_css() -> str:
         _MOBILE_SHELL_CSS_PATH.stat().st_mtime,
         _MOBILE_TXN_CSS_PATH.stat().st_mtime,
         _MOBILE_REPORTS_CSS_PATH.stat().st_mtime,
+        _MOBILE_TXN_HISTORY_CSS_PATH.stat().st_mtime,
     )
     if _CSS_CACHE is None or _CSS_MTIME != mtime:
         base = _THEME_CSS_PATH.read_text(encoding="utf-8")
@@ -79,7 +83,11 @@ def load_theme_css() -> str:
         mobile = _MOBILE_SHELL_CSS_PATH.read_text(encoding="utf-8")
         mobile_txn = _MOBILE_TXN_CSS_PATH.read_text(encoding="utf-8")
         mobile_reports = _MOBILE_REPORTS_CSS_PATH.read_text(encoding="utf-8")
-        _CSS_CACHE = f"{base}\n\n{widgets}\n\n{mobile}\n\n{mobile_txn}\n\n{mobile_reports}"
+        mobile_txn_history = _MOBILE_TXN_HISTORY_CSS_PATH.read_text(encoding="utf-8")
+        _CSS_CACHE = (
+            f"{base}\n\n{widgets}\n\n{mobile}\n\n{mobile_txn}\n\n"
+            f"{mobile_reports}\n\n{mobile_txn_history}"
+        )
         _CSS_MTIME = mtime
     return _CSS_CACHE
 
@@ -133,10 +141,43 @@ def inject_mobile_viewport_detector() -> None:
     )
 
 
+_DARK_MONO_KPI_CSS = """
+/* Dark mode: KPI amounts stay mono — status color reserved for void/danger actions */
+.kpi-value.kpi-success,.kpi-value.kpi-danger,.kpi-value.kpi-warning,
+.kpi-value.kpi-info,.kpi-value.kpi-purple,.kpi-value.kpi-teal {
+  color: var(--theme-text) !important;
+}
+"""
+
+_DARK_DATAFRAME_CSS = """
+/* Glide st.dataframe — token-aligned (canvas reads CSS vars on editor root) */
+[data-testid="stMain"] [data-testid="stDataFrame"],
+[data-testid="stMain"] [data-testid="stDataFrame"] > div,
+[data-testid="stMain"] .dvn-scroller,
+[data-testid="stMain"] div[class*="glide"] {
+  --gdg-bg-cell: var(--theme-card);
+  --gdg-bg-header: color-mix(in srgb, var(--theme-border) 35%, var(--theme-card) 65%);
+  --gdg-bg-header-has-focus: var(--theme-card);
+  --gdg-bg-header-hovered: color-mix(in srgb, var(--theme-border) 28%, var(--theme-card) 72%);
+  --gdg-text-dark: var(--theme-text);
+  --gdg-text-medium: var(--theme-muted);
+  --gdg-text-light: var(--theme-muted);
+  --gdg-text-header: var(--theme-muted);
+  --gdg-text-group-header: var(--theme-muted);
+  --gdg-text-header-selected: var(--theme-text);
+  --gdg-border-color: var(--theme-border);
+  --gdg-accent-color: var(--theme-info);
+  --gdg-accent-light: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%);
+  background: var(--theme-card) !important;
+}
+"""
+
+
 def inject_theme_css(dark_mode: bool) -> None:
     """Override :root for the user's saved light/dark preference."""
     vars_map = DARK_ROOT_VARS if dark_mode else LIGHT_ROOT_VARS
-    st.markdown(f"<style>{_vars_to_css_block(vars_map)}</style>", unsafe_allow_html=True)
+    extra = (_DARK_MONO_KPI_CSS + _DARK_DATAFRAME_CSS) if dark_mode else ""
+    st.markdown(f"<style>{_vars_to_css_block(vars_map)}{extra}</style>", unsafe_allow_html=True)
 
 
 def role_accent_css_var(role: str | None) -> str:

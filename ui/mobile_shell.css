@@ -3,7 +3,7 @@
  */
 
 html.erp-mobile {
-  --hdr-h: 64px;
+  --hdr-h: 120px;
   --bottom-nav-h: 62px;
   --mob-fab-size: 56px;
   --mob-top-nav-h: 0px;
@@ -11,7 +11,7 @@ html.erp-mobile {
 
 @media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
   :root {
-    --hdr-h: 64px;
+    --hdr-h: 120px;
     --bottom-nav-h: 62px;
     --mob-fab-size: 56px;
   }
@@ -32,7 +32,7 @@ html.erp-mobile {
   }
 
   section[data-testid="stMain"] .block-container {
-    padding-top: calc(var(--hdr-h) + 8px) !important;
+    padding-top: calc(var(--hdr-h) + 16px) !important;
     padding-left: 1rem !important;
     padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
   }
@@ -42,6 +42,12 @@ html.erp-mobile {
     display: none !important;
   }
 
+  [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"],
+  [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] > div {
+    min-height: 0 !important;
+    height: auto !important;
+    align-items: stretch !important;
+  }
   [class*="st-key-hdr_shell_row"] {
     display: block !important;
     visibility: visible !important;
@@ -52,21 +58,45 @@ html.erp-mobile {
     right: 0 !important;
     z-index: 9999 !important;
     min-height: var(--hdr-h) !important;
+    max-height: var(--hdr-h) !important;
+    overflow: hidden !important;
     background: var(--theme-card) !important;
-    padding: 4px 12px 6px !important;
+    padding: 4px 12px 8px !important;
   }
   [class*="st-key-hdr_shell_inner"] {
     display: block !important;
     visibility: visible !important;
     width: 100% !important;
+    position: relative !important;
   }
-  [class*="st-key-hdr_col_center"],
-  [class*="st-key-hdr_mobile_title"] {
+  [class*="st-key-hdr_col_center"] {
     display: flex !important;
-    flex: 1 1 0 !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
     visibility: visible !important;
     opacity: 1 !important;
     min-width: 0 !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    gap: 0 !important;
+  }
+  [class*="st-key-hdr_mobile_title"] {
+    display: flex !important;
+    flex: 0 0 40px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    max-height: 40px !important;
+    min-height: 40px !important;
+    overflow: hidden !important;
+    padding: 0 84px !important;
+    box-sizing: border-box !important;
   }
   [class*="st-key-hdr_col_right"],
   [class*="st-key-hdr_mobile_search_btn"],
@@ -80,9 +110,9 @@ html.erp-mobile {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    align-items: center !important;
+    align-items: flex-start !important;
     width: 100% !important;
-    gap: 6px !important;
+    gap: 0 !important;
   }
 
   [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) {
@@ -97,13 +127,33 @@ html.erp-mobile {
     pointer-events: none !important;
   }
 
+  [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+    align-items: stretch !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
   [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) {
-    flex: 1 1 0 !important;
+    flex: 1 1 100% !important;
     min-width: 0 !important;
-    width: auto !important;
+    width: 100% !important;
+  }
+  [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) > div {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    min-height: 0 !important;
+    height: auto !important;
+    width: 100% !important;
   }
 
   [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(3) {
+    position: absolute !important;
+    top: 4px !important;
+    right: 0 !important;
+    height: 36px !important;
+    max-height: 36px !important;
     flex: 0 0 auto !important;
     display: flex !important;
     flex-direction: row !important;
@@ -111,38 +161,28 @@ html.erp-mobile {
     justify-content: flex-end !important;
     width: auto !important;
     min-width: 0 !important;
-  }
-
-  [class*="st-key-hdr_mobile_title"] {
-    display: block !important;
+    z-index: 10 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    overflow: visible !important;
   }
 
   [class*="st-key-hdr_mobile_title"] .erp-hdr-mobile-title {
-    display: block !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     text-align: center !important;
-  }
-
-  [data-testid="stAppViewContainer"]:not(:has(.erp-hdr-shell-search-open))
-    [class*="st-key-hdr_search_panel"],
-  [data-testid="stAppViewContainer"]:not(:has(.erp-hdr-shell-search-open))
-    [class*="st-key-hdr_col_center"] [data-testid="stTextInput"] {
-    display: none !important;
-    height: 0 !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    width: 100% !important;
     overflow: hidden !important;
   }
 
-  [data-testid="stAppViewContainer"]:has(.erp-hdr-shell-search-open)
-    [class*="st-key-hdr_search_panel"],
-  [data-testid="stAppViewContainer"]:has(.erp-hdr-shell-search-open)
-    [class*="st-key-hdr_col_center"] [data-testid="stTextInput"] {
+  [class*="st-key-hdr_search_panel"],
+  [class*="st-key-hdr_col_center"] [data-testid="stTextInput"] {
     display: block !important;
   }
 
   [class*="st-key-hdr_mobile_search_btn"] {
-    display: block !important;
+    display: none !important;
   }
   /* Single toolbar — right column; no theme toggle on mobile header */
   [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child
@@ -344,7 +384,7 @@ html.erp-mobile {
     padding: 0 !important;
     border-radius: 50% !important;
     background: var(--theme-info) !important;
-    color: #fff !important;
+    color: var(--erp-on-primary) !important;
     font-size: 30px !important;
     font-weight: 700 !important;
     line-height: 1 !important;
@@ -362,12 +402,12 @@ html.erp-mobile {
   [data-testid="stMain"] [class*="st-key-mob_bar_new"] button[kind="secondary"],
   [data-testid="stMain"] [class*="st-key-mob_bar_new"] button[kind="primary"] {
     background: var(--theme-info) !important;
-    color: #fff !important;
+    color: var(--erp-on-primary) !important;
   }
 
   [data-testid="stMain"] [class*="st-key-mob_bar_new"] button p,
   [data-testid="stMain"] [class*="st-key-mob_bar_new"] button span {
-    color: #fff !important;
+    color: var(--erp-on-primary) !important;
     font-size: 30px !important;
     font-weight: 700 !important;
     line-height: 1 !important;
@@ -423,7 +463,7 @@ html.erp-mobile {
     left: 0 !important;
     right: 0 !important;
     bottom: var(--bottom-nav-h) !important;
-    z-index: 99980 !important;
+    z-index: 99992 !important;
     width: 100% !important;
     max-width: 100vw !important;
     max-height: min(72vh, calc(100vh - var(--hdr-h) - var(--bottom-nav-h) - 12px)) !important;
@@ -464,7 +504,7 @@ html.erp-mobile [data-testid="stAppViewContainer"] {
 }
 
 html.erp-mobile section[data-testid="stMain"] .block-container {
-  padding-top: calc(var(--hdr-h) + 8px) !important;
+  padding-top: calc(var(--hdr-h) + 16px) !important;
   padding-left: 1rem !important;
   padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
 }
@@ -477,7 +517,8 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_pm3"] [data-testid
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_pm2"] [data-testid="stHorizontalBlock"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_keypad"] [data-testid="stHorizontalBlock"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_hub_hdr"] [data-testid="stHorizontalBlock"],
-html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_rpt_filters"] [data-testid="stHorizontalBlock"] {
+html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_rpt_filters"] [data-testid="stHorizontalBlock"],
+html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_ar_ap"] [data-testid="stHorizontalBlock"] {
   display: grid !important;
 }
 
@@ -490,13 +531,16 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] {
 }
 
 /* Header row — flex (not grid); grid-without-columns was stacking the bar vertically */
+html.erp-mobile [class*="st-key-hdr_shell_inner"] {
+  position: relative !important;
+}
 html.erp-mobile [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] {
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
-  align-items: center !important;
+  align-items: flex-start !important;
   width: 100% !important;
-  gap: 6px !important;
+  gap: 0 !important;
 }
 html.erp-mobile [class*="st-key-hdr_shell_row"] {
   display: block !important;
@@ -515,20 +559,31 @@ html.erp-mobile [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBloc
   opacity: 0 !important;
   pointer-events: none !important;
 }
-html.erp-mobile [class*="st-key-hdr_col_center"],
-html.erp-mobile [class*="st-key-hdr_mobile_title"],
+html.erp-mobile [class*="st-key-hdr_col_center"] {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
 html.erp-mobile [class*="st-key-hdr_col_right"],
 html.erp-mobile [class*="st-key-hdr_toolbar_row"] {
-  display: block !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
   visibility: visible !important;
   opacity: 1 !important;
 }
 html.erp-mobile [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) {
-  flex: 1 1 0 !important;
+  flex: 1 1 100% !important;
   min-width: 0 !important;
-  width: auto !important;
+  width: 100% !important;
 }
 html.erp-mobile [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child {
+  position: absolute !important;
+  top: 4px !important;
+  right: 0 !important;
   flex: 0 0 auto !important;
   width: auto !important;
   min-width: 0 !important;
@@ -537,6 +592,74 @@ html.erp-mobile [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBloc
   align-items: center !important;
   justify-content: flex-end !important;
   gap: 6px !important;
+  z-index: 10 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+}
+html.erp-mobile [class*="st-key-hdr_col_center"] {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  min-height: 0 !important;
+  height: auto !important;
+}
+html.erp-mobile [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+  align-items: stretch !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+html.erp-mobile [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) > div {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  min-height: 0 !important;
+  height: auto !important;
+  width: 100% !important;
+}
+html.erp-mobile [class*="st-key-hdr_mobile_title"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  padding: 0 84px !important;
+  box-sizing: border-box !important;
+}
+html.erp-mobile [class*="st-key-hdr_mobile_title"] .erp-hdr-mobile-title {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  width: 100% !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+html.erp-mobile [class*="st-key-hdr_mobile_title"] [data-testid="stPopover"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+html.erp-mobile [class*="st-key-hdr_shell_row"] {
+  max-height: var(--hdr-h) !important;
+  overflow: hidden !important;
+}
+html.erp-mobile [class*="st-key-hdr_search_panel"] {
+  width: 100% !important;
+  margin: 6px 0 0 !important;
+  padding: 0 !important;
+}
+html.erp-mobile [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child {
+  top: 4px !important;
+  height: 36px !important;
+  max-height: 36px !important;
+}
+html.erp-mobile [class*="st-key-hdr_search_panel"] [data-testid="stTextInput"] {
+  width: 100% !important;
+  margin: 0 !important;
 }
 html.erp-mobile [class*="st-key-hdr_col_right"] {
   display: flex !important;

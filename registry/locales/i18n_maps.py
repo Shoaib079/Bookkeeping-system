@@ -102,7 +102,7 @@ PAYMENT_METHOD_I18N: dict[str, str] = {
     "Bank": "expense.pay.bank",
     "Card": "expense.pay.card_payment",
     "Credit": "expense.pay.credit",
-    "Credit Card": "expense.pay.card",
+    "Credit Card": "expense.pay.company_cc",
     "Mobile Money": "expense.pay.mobile",
     "Other": "expense.pay.other",
 }

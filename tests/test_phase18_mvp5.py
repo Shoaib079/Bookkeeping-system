@@ -73,6 +73,7 @@ def _company(db):
     _seed_coa(db, co)
     set_setting(db, "banking.company_card_enabled", True, company_id=co.id)
     set_setting(db, "banking.reconciliation_enabled", True, company_id=co.id)
+    _bank(db, co, kind="credit_card", name="Company Visa")
     db.commit()
     return co
 
