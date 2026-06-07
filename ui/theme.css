@@ -328,10 +328,7 @@
   white-space: nowrap;
 }
 
-/* Page background and card */
-.app-body {
-  background: var(--theme-bg);
-}
+/* Page card */
 .card {
   background: var(--theme-card);
   border: 1px solid var(--theme-border);
@@ -671,14 +668,7 @@
   flex-shrink: 0;
 }
 
-/* Tables and rows */
-.table-row {
-  background: var(--theme-card);
-  border-bottom: 1px solid var(--theme-border);
-  padding: 8px 12px;
-  border-radius: 6px;
-  margin-bottom: 6px;
-}
+/* Tables and amounts */
 .table-amount {
   font-weight: 700;
   font-size: 1.05rem;
@@ -686,7 +676,6 @@
 .amt-pos { color: var(--theme-success); }
 .amt-neg { color: var(--theme-danger); }
 .amt-zero { color: var(--theme-text); }
-.muted { color: var(--theme-caption); }
 
 /* Map legacy inline hex colors to theme variables */
 [style*="color:#374151"],
@@ -890,9 +879,7 @@
     padding-left: 1rem !important;
     padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
   }
-  [class*="st-key-hdr_desktop_brand"],
-  [class*="st-key-hdr_desktop_tools"],
-  div[data-testid="stHorizontalBlock"]:has(.erp-hdr-shell-host) .erp-hdr-desktop-brand {
+  [class*="st-key-hdr_desktop_brand"] {
     display: none !important;
   }
   [class*="st-key-hdr_shell_inner"] {
@@ -950,10 +937,6 @@
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-  }
-  [class*="st-key-hdr_mobile_tools"],
-  [class*="st-key-hdr_mobile_search_btn"] {
-    display: none !important;
   }
   [class*="st-key-hdr_shell_row"] {
     background: var(--theme-card) !important;
@@ -1102,9 +1085,6 @@
     color: var(--theme-text) !important;
     box-shadow: none !important;
   }
-  .erp-hdr-mobile-page {
-    display: none !important;
-  }
   [data-testid="stAppViewContainer"] {
     --hdr-h: 120px;
   }
@@ -1154,9 +1134,7 @@
     display: flex !important;
     justify-content: flex-end !important;
   }
-  [class*="st-key-hdr_mobile_title"],
-  [class*="st-key-hdr_mobile_tools"],
-  [class*="st-key-hdr_mobile_search_btn"] {
+  [class*="st-key-hdr_mobile_title"] {
     display: none !important;
   }
   [class*="st-key-hdr_search_panel"] {
@@ -1539,20 +1517,6 @@ section[data-testid="stSidebarContent"] {
   text-overflow: ellipsis;
   max-width: min(280px, 32vw);
 }
-/* Legacy aliases */
-.erp-hdr-co-primary { font-size: 12px; font-weight: 500; color: var(--theme-muted); }
-.erp-hdr-meta,
-.erp-hdr-app-tag,
-.erp-hdr-role-pill,
-.erp-hdr-user-name { display: none; }
-/* Legacy class aliases (tests / old markup) */
-.erp-hdr-brand,
-.erp-hdr-co,
-.erp-hdr-mark { flex-shrink: 0; }
-.erp-hdr-sep { display: none; }
-@media (max-width: 900px) {
-  .erp-hdr-hide-md { display: none !important; }
-}
 @media (max-width: 720px) {
   .erp-hdr-app-title { max-width: 46vw; font-size: 15px; }
   .erp-hdr-co-subtitle { max-width: 46vw; font-size: 11px; }
@@ -1560,16 +1524,12 @@ section[data-testid="stSidebarContent"] {
 .erp-hdr-mobile-title {
   display: block;
 }
-.erp-hdr-greeting-mobile {
-  display: none !important;
-}
 @media (min-width: 969px) {
   .erp-hdr-mobile-title {
     display: none !important;
   }
 }
 @media (max-width: 640px) {
-  .erp-hdr-hide-sm { display: none !important; }
   .erp-hdr-logo { width: 34px; height: 34px; font-size: 15px; }
 }
 
@@ -1614,14 +1574,6 @@ section[data-testid="stSidebarContent"] {
   .erp-dash-welcome-hi {
     font-size: 18px;
   }
-}
-.erp-hdr-divider {
-  border: none;
-  border-top: 1px solid var(--theme-border);
-  margin: 0 0 1rem;
-  padding: 0;
-  height: 0;
-  display: block;
 }
 
 /* Header profile popover card */
@@ -1699,7 +1651,6 @@ section[data-testid="stSidebarContent"] {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-focus) 22%, transparent 78%) !important;
   outline: none !important;
 }
-.erp-hdr-search-wrap { display: none; }
 
 /* DEVELOPMENT_MODE banner — theme-aware, replaces default st.caption */
 .dev-mode-stripe {
@@ -1715,17 +1666,6 @@ section[data-testid="stSidebarContent"] {
 /* Header toolbar (right column) */
 [class*="st-key-hdr_shell_row"] [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child {
   justify-content: flex-end !important;
-}
-.erp-hdr-toolbar-mark {
-  display: none !important;
-}
-[class*="st-key-hdr_shell_row"] [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child [data-testid="stMarkdown"]:has(.erp-hdr-toolbar-mark) {
-  display: none !important;
-  height: 0 !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
 }
 /* Inner toolbar row: bell · theme · profile — compact, right-aligned */
 [class*="st-key-hdr_toolbar_row"] [data-testid="stHorizontalBlock"],
@@ -1813,16 +1753,6 @@ section[data-testid="stSidebarContent"] {
   background: color-mix(in srgb, var(--theme-warning) 12%, var(--theme-card) 88%) !important;
   font-weight: 700 !important;
   font-size: 13px !important;
-}
-/* Profile trigger marker — carries --hdr-profile-bg for avatar button */
-.erp-hdr-profile-trigger {
-  display: none !important;
-}
-[class*="st-key-hdr_shell_row"] [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child [data-testid="stMarkdown"]:has(.erp-hdr-profile-trigger) {
-  display: none !important;
-  height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
 }
 [class*="st-key-hdr_shell_row"] [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child > div > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child [data-testid="stPopover"] > button {
   width: 36px !important;

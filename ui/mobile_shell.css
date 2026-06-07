@@ -37,8 +37,7 @@ html.erp-mobile {
     padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
   }
 
-  [class*="st-key-hdr_desktop_brand"],
-  [class*="st-key-hdr_desktop_tools"] {
+  [class*="st-key-hdr_desktop_brand"] {
     display: none !important;
   }
 
@@ -99,7 +98,6 @@ html.erp-mobile {
     box-sizing: border-box !important;
   }
   [class*="st-key-hdr_col_right"],
-  [class*="st-key-hdr_mobile_search_btn"],
   [class*="st-key-hdr_toolbar_row"] {
     display: flex !important;
     visibility: visible !important;
@@ -181,9 +179,6 @@ html.erp-mobile {
     display: block !important;
   }
 
-  [class*="st-key-hdr_mobile_search_btn"] {
-    display: none !important;
-  }
   /* Single toolbar — right column; no theme toggle on mobile header */
   [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child
     [class*="st-key-hdr_toolbar_row"] {
@@ -344,15 +339,6 @@ html.erp-mobile {
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
-  }
-
-  .erp-mob-bar-fab-col {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    width: 100% !important;
-    margin-top: -8px !important;
   }
 
   .erp-mob-bar-cap {
@@ -687,8 +673,7 @@ html.erp-mobile [class*="st-key-hdr_toolbar_row"] [data-testid="stHorizontalBloc
     display: none !important;
   }
 
-  [class*="st-key-hdr_mobile_title"],
-  [class*="st-key-hdr_mobile_search_btn"] {
+  [class*="st-key-hdr_mobile_title"] {
     display: none !important;
   }
 

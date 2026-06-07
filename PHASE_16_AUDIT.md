@@ -166,8 +166,8 @@ Full list in `ui/theme.css` `:root` and `ui/theme.py` `LIGHT_ROOT_VARS` / `DARK_
 
 | Item | Location |
 |------|----------|
-| Header identity restored | `render_top_header` left zone → `📊 Accounting ERP · {company} · {user}` (HTML-escaped) using `.erp-hdr-brand/.erp-hdr-co/.erp-hdr-user-name` |
-| Progressive truncation | `.erp-hdr-co/.erp-hdr-user-name` ellipsis; `@media` drops user ≤900px, company + brand ≤640px |
+| Header identity restored | `render_top_header` left zone uses `.erp-hdr-brand-block`, `.erp-hdr-app-title`, `.erp-hdr-co-subtitle` (mobile: `.erp-hdr-mobile-title`, `.erp-hdr-mobile-co`) |
+| Progressive truncation | `@media` tightens title/subtitle max-width; desktop brand hidden on mobile via `st-key-hdr_desktop_brand` |
 | Responsive KPI grid | `@media (max-width: 640px) { .kpi-grid { grid-template-columns: 1fr; } }` |
 | Mobile sidebar drawer | desktop rules scoped `@media (min-width: 769px)`; `@media (max-width: 768px)` makes sidebar a fixed overlay + re-enables Streamlit's native expand control |
 | DEVELOPMENT_MODE banner | already slim themed stripe (16B) |

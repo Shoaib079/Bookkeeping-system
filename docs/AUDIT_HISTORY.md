@@ -8,6 +8,33 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-09 — Legacy UI cleanup Phase 3 (SAFE TO REMOVE)
+
+**Task:** Remove orphan CSS classes and dead Streamlit key selectors from Legacy UI Audit Final Pass (36 items; zero runtime usage).
+
+**Removed CSS classes (26):**
+
+- `ui/theme.css` — `.app-body`, `.table-row`, `.muted`, `.erp-hdr-app-tag`, `.erp-hdr-co-primary`, `.erp-hdr-desktop-brand`, `.erp-hdr-divider`, `.erp-hdr-greeting-mobile`, `.erp-hdr-mark`, `.erp-hdr-meta`, `.erp-hdr-profile-trigger`, `.erp-hdr-role-pill`, `.erp-hdr-search-wrap`, `.erp-hdr-sep`, `.erp-hdr-toolbar-mark`, legacy header aliases (`.erp-hdr-brand`, `.erp-hdr-co`, `.erp-hdr-user-name`, `.erp-hdr-hide-sm`, `.erp-hdr-hide-md`), `.erp-hdr-mobile-page`
+- `ui/widgets.css` — `.erp-mobile-chrome-footer`
+- `ui/mobile_txn.css` — `.erp-mob-at-cat-section-title`
+- `ui/mobile_shell.css` — `.erp-mob-bar-fab-col`
+- `ui/mobile_txn_history.css` — `.erp-txh-pill--purple`, `.erp-section-header`
+
+**Removed dead Streamlit key selectors (10):**
+
+- `st-key-hdr_toolbar_mobile_left`, `st-key-hdr_toolbar_primary` (`widgets.css`)
+- `st-key-hdr_desktop_tools`, `st-key-hdr_mobile_search_btn`, `st-key-hdr_mobile_tools` (`theme.css`, `mobile_shell.css`)
+- `st-key-mob_at_cat_rows`, `st-key-mob_at_vendor_row`, `st-key-mob_rpt_date_` (`widgets.css`, `mobile_reports.css`)
+- `st-key-mob_grp_btn`, `st-key-mob_nav_btn` (`widgets.css` desktop-hide rule)
+
+**Tests/docs:** `test_header_identity_classes_present` now asserts active header classes; `UI_SHELL.md` amount-class and toolbar docs updated.
+
+**Not touched:** accounting, banking, reconciliation, navigation, table rendering, mobile shell architecture, KPI system, or any ACTIVE / REFACTOR LATER items.
+
+**Remaining SAFE TO REMOVE count:** 0 (audit list exhausted).
+
+---
+
 ## 2026-06-09 — Legacy UI cleanup Phase 1 + Phase 2
 
 **Task:** Remove dead UI artifacts identified in Legacy UI/Theme Audit (approved items only).

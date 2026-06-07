@@ -325,15 +325,6 @@
     margin: 0 0 6px !important;
   }
 
-  .erp-mob-at-cat-section-title {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--theme-muted);
-    margin: 8px 2px 4px;
-  }
-
   [data-testid="stMain"] [class*="st-key-mob_at_picker_hdr"] [data-testid="stHorizontalBlock"] {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto !important;

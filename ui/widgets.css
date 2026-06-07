@@ -753,7 +753,6 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
 /* ── Mobile chrome — bottom tabs + hub sheets (≤968px; desktop at ≥969px) ─ */
 .erp-mobile-chrome-active,
 .erp-mobile-hub-host,
-.erp-mobile-chrome-footer,
 .erp-mobile-hub-grab {
   display: none !important;
 }
@@ -766,8 +765,6 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
   [data-testid="stMain"] [class*="st-key-mob_bar_"],
   [data-testid="stMain"] [class*="st-key-mob_hub_"],
   [data-testid="stMain"] [class*="st-key-mob_hub_close"],
-  [data-testid="stMain"] [class*="st-key-mob_grp_btn"],
-  [data-testid="stMain"] [class*="st-key-mob_nav_btn"],
   [data-testid="stMain"] [class*="st-key-mob_qc_"],
   [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] {
     display: none !important;
@@ -1015,9 +1012,7 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
   justify-content: center !important;
 }
 /* Profile avatar — mono for all roles (UI Sweep 3) */
-[data-testid="stMain"] .st-key-hdr_toolbar_row .st-key-hdr_profile_pop [data-testid="stPopover"] > button,
-[data-testid="stMain"] .st-key-hdr_toolbar_mobile_left .st-key-hdr_profile_pop [data-testid="stPopover"] > button,
-[data-testid="stMain"] .st-key-hdr_toolbar_primary .st-key-hdr_profile_pop [data-testid="stPopover"] > button {
+[data-testid="stMain"] .st-key-hdr_toolbar_row .st-key-hdr_profile_pop [data-testid="stPopover"] > button {
   background: color-mix(in srgb, var(--theme-info) 16%, var(--theme-card) 84%) !important;
   color: var(--theme-text) !important;
   border-color: var(--theme-border) !important;
@@ -1092,16 +1087,6 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
     gap: 4px !important;
     width: 100% !important;
   }
-  [data-testid="stMain"] [class*="st-key-mob_at_cat_rows"] [data-testid="stHorizontalBlock"],
-  [data-testid="stMain"] [class*="st-key-mob_at_vendor_row"] [data-testid="stHorizontalBlock"] {
-    display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 4px !important;
-    width: 100% !important;
-  }
-  [data-testid="stMain"] [class*="st-key-mob_at_vendor_row"] [data-testid="stHorizontalBlock"] {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  }
   [data-testid="stMain"] [class*="st-key-mob_hub_hdr"] [data-testid="stHorizontalBlock"] {
     display: grid !important;
     grid-template-columns: minmax(0, 6fr) minmax(0, 1fr) !important;
@@ -1118,12 +1103,6 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 6px !important;
-    width: 100% !important;
-  }
-  [data-testid="stMain"] [class*="st-key-mob_rpt_date_"] [data-testid="stHorizontalBlock"] {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 8px !important;
     width: 100% !important;
   }
   [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] [data-testid="stHorizontalBlock"] {
@@ -1252,15 +1231,6 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
     border: none !important;
     padding: 0 !important;
     background: transparent !important;
-  }
-  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] .erp-mobile-chrome-footer,
-  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] .erp-mobile-chrome-footer ~ [data-testid="stMarkdown"] {
-    display: none !important;
-    height: 0 !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
   }
   [data-testid="stMain"] [class*="st-key-erp_mob_quick_create"] .erp-mobile-quick-create-host {
     margin-bottom: 10px !important;

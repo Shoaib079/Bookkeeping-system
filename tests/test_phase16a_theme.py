@@ -256,8 +256,8 @@ def test_sidebar_surface_is_theme_aware():
 
 def test_header_identity_classes_present():
     css = _theme_css_text()
-    for cls in (".erp-hdr-brand", ".erp-hdr-co", ".erp-hdr-user-name",
-                ".erp-hdr-hide-sm", ".erp-hdr-hide-md"):
+    for cls in (".erp-hdr-brand-block", ".erp-hdr-app-title", ".erp-hdr-co-subtitle",
+                ".erp-hdr-mobile-title", ".erp-hdr-mobile-co"):
         assert cls in css
 
 

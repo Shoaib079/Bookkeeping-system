@@ -35,7 +35,7 @@ The header is a **fixed app bar** rendered once per authenticated request via `r
 |------|-----|---------|
 | Left | `hdr_col_left` | Desktop brand (`hdr_desktop_brand`) only — collapsed on mobile |
 | Center | `hdr_col_center` | Mobile title (`hdr_mobile_title`) + search (`hdr_search_panel`) |
-| Right | `hdr_col_right` | Toolbar (`hdr_toolbar_row` via `slot="desktop_right"`) + mobile search toggle (`hdr_mobile_search_btn`) |
+| Right | `hdr_col_right` | Toolbar (`hdr_toolbar_row` via `slot="desktop_right"`) |
 
 Inner layout: `st.container(key="hdr_shell_inner")` → `st.columns([2.8, 5.4, 2.8])`. **Single toolbar** in the right column (no duplicate left/mobile toolbar). On mobile (≤968px): hide brand + theme toggle; show title, bell, profile, 🔍.
 
@@ -348,7 +348,7 @@ Empty: `st.info(_t("table.no_records"))`.
 
 ### Amount classes
 
-`.table-row`, `.table-amount`, `.amt-pos`, `.amt-neg`, `.amt-zero`, `.muted`.
+`.table-amount`, `.amt-pos`, `.amt-neg`, `.amt-zero`.
 
 ### Exports
 

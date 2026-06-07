@@ -130,11 +130,6 @@
   color: var(--theme-info);
 }
 
-.erp-txh-pill--purple {
-  background: color-mix(in srgb, var(--theme-info) 12%, var(--theme-card) 88%);
-  color: var(--theme-text);
-}
-
 .erp-txh-pill--neutral {
   background: color-mix(in srgb, var(--theme-muted) 12%, var(--theme-card) 88%);
   color: var(--theme-muted);
@@ -184,13 +179,6 @@
   [data-testid="stAppViewContainer"]:has(.erp-txh-mobile-host)
     [data-testid="stMain"] .block-container {
     padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
-  }
-
-  [data-testid="stAppViewContainer"]:has(.erp-txh-mobile-host):has(.erp-mobile-report-filters)
-    [data-testid="stMain"] .erp-section-header {
-    margin-bottom: 8px !important;
-    padding: 10px 12px !important;
-    font-size: 14px !important;
   }
 
   [data-testid="stMain"] [class*="st-key-txh_filters_card"] [data-testid="stVerticalBlockBorderWrapper"] {

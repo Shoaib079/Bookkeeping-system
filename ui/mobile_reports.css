@@ -87,23 +87,6 @@
     padding: 0 !important;
   }
 
-  /* Per-tab date range (From / To) */
-  [data-testid="stMain"] [class*="st-key-mob_rpt_date_"] [data-testid="stHorizontalBlock"] {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 8px !important;
-    width: 100% !important;
-    margin: 0 0 8px !important;
-  }
-
-  [data-testid="stMain"] [class*="st-key-mob_rpt_date_"] [data-testid="stColumn"] {
-    width: auto !important;
-    min-width: 0 !important;
-    flex: unset !important;
-    max-width: none !important;
-    padding: 0 !important;
-  }
-
   /* Cash flow KPI row */
   [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] [data-testid="stHorizontalBlock"] {
     display: grid !important;
@@ -189,7 +172,6 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_rpt_sel_desktop_"] {
 }
 
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] [data-testid="stHorizontalBlock"],
-html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_rpt_date_"] [data-testid="stHorizontalBlock"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] [data-testid="stHorizontalBlock"] {
   display: grid !important;
 }
