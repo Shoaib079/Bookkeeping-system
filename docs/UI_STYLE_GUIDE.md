@@ -361,3 +361,44 @@ Backed by `readable_dataframe_table_html()` in `ui/section.py`:
 | `name` | Customer, Vendor, Account, Description, Party, Warnings |
 | `amount` | Total, Amount, Debit, Credit, Balance, Budgeted, Actual, Count |
 | `text` | Date, Month, Status, Type, Active |
+
+---
+
+## Mono Design Enforcement (UI Sweep 3)
+
+**Policy:** The ERP uses **one primary accent** (`--theme-info`). Status colors (`--theme-success`, `--theme-warning`, `--theme-danger`) appear only when semantically required — void/danger actions, overdue balances, validation warnings, audit before/after diffs, opening-balance imbalance notices.
+
+### Required patterns
+
+| UI element | Pattern |
+|---|---|
+| Report page titles (P&L, BS, CF, Budget, Today) | `page_report_banner_html()` → `.erp-page-banner` |
+| AR/AP aging buckets | `aging_buckets_html()` → `.erp-aging-grid` / `.erp-aging-bucket` |
+| Member role labels | `mono_role_pill_html()` → `.erp-mono-pill` |
+| Section headings | `section_header_html()` — default `accent="info"`; no per-module purple/teal |
+| KPI values | `render_kpi_grid()` without inline `color="#…"` hex; amounts use `--theme-text` |
+| Charts (Altair) | `chart_series_color()` / `chart_reference_color()` from `ui.theme` |
+| Banners (login, dashboard welcome) | `.banner.banner-primary` — mono card + left info accent (no gradients) |
+
+### Forbidden
+
+- Rainbow aging buckets (green / yellow / orange / red / maroon per bucket)
+- Per-role avatar or pill hex maps
+- P&L / Budget / report gradient header banners
+- Hardcoded KPI hex (`#111827`, `#2563eb`, etc.)
+- Purple / teal module accents on routine page titles
+- Multi-color expense bar charts (one `--theme-info` fill only)
+
+### Allowed exceptions
+
+| Exception | Why |
+|---|---|
+| `--theme-success` / `--theme-danger` on signed amounts (AR balance, partner net) | Semantic positive/negative |
+| Status pills (Paid / Open / Overdue / Partial) | Workflow status — token tints only |
+| P&L / BS section headers with `accent="success"` / `"danger"` | Income vs expense grouping |
+| Header logo gradient (`.erp-hdr-logo`) | Single brand mark — not per-module color |
+| Theme token definitions in `theme.css` / `theme.py` | Source of truth, not inline UI |
+
+### Regression tests
+
+`tests/test_ui1_design_language.py` — `test_mono_sweep3_*` scans `app.py` for banned patterns.

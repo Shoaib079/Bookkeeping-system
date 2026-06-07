@@ -181,9 +181,22 @@ def inject_theme_css(dark_mode: bool) -> None:
 
 
 def role_accent_css_var(role: str | None) -> str:
-    """CSS var for profile avatar background (16C: use in header HTML)."""
-    key = ROLE_CSS_VARS.get((role or "").lower(), "--role-default")
-    return f"var({key})"
+    """Mono profile avatar background — role shown in label text, not per-role color."""
+    return "color-mix(in srgb, var(--theme-info) 16%, var(--theme-card) 84%)"
+
+
+def chart_series_color() -> str:
+    """Neutral Altair series color aligned with --theme-muted."""
+    dark = bool(st.session_state.get("dark_mode", False))
+    palette = DARK_ROOT_VARS if dark else LIGHT_ROOT_VARS
+    return palette["--theme-muted"]
+
+
+def chart_reference_color() -> str:
+    """Neutral Altair reference/rule color aligned with --theme-border."""
+    dark = bool(st.session_state.get("dark_mode", False))
+    palette = DARK_ROOT_VARS if dark else LIGHT_ROOT_VARS
+    return palette["--theme-border"]
 
 
 def apply_user_theme_from_db(session, user_id: int) -> str | None:

@@ -531,38 +531,144 @@
   margin-top: 6px;
   line-height: 1.35;
 }
-.kpi-value.kpi-success { color: var(--theme-success); }
-.kpi-value.kpi-danger { color: var(--theme-danger); }
-.kpi-value.kpi-warning { color: var(--theme-warning); }
-.kpi-value.kpi-info { color: var(--theme-info); }
-.kpi-value.kpi-purple { color: var(--theme-purple); }
-.kpi-value.kpi-teal { color: var(--theme-teal); }
+/* KPI amounts: mono text in all modes (variants reserved for future semantic use) */
+.kpi-value.kpi-success,
+.kpi-value.kpi-danger,
+.kpi-value.kpi-warning,
+.kpi-value.kpi-info,
+.kpi-value.kpi-purple,
+.kpi-value.kpi-teal {
+  color: var(--theme-text);
+}
 
-/* Banners */
+/* Banners — mono card surface (UI Sweep 3) */
 .banner {
   padding: 18px 24px;
   color: var(--theme-text);
-  border-radius: 14px;
+  border-radius: 10px;
   margin-bottom: 18px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: var(--theme-card);
+  border: 1px solid var(--theme-border);
+  border-left: 4px solid var(--theme-info);
 }
-.banner.banner-info {
-  background: linear-gradient(
-    135deg,
-    var(--theme-info),
-    color-mix(in srgb, var(--theme-info) 60%, transparent)
-  );
-  color: var(--theme-card);
-}
+.banner.banner-info,
 .banner.banner-primary {
-  background: linear-gradient(
-    135deg,
-    var(--theme-banner-primary-start),
-    var(--theme-banner-primary-end)
-  );
-  color: var(--theme-card);
+  background: var(--theme-card);
+  border: 1px solid var(--theme-border);
+  border-left: 4px solid var(--theme-info);
+  color: var(--theme-text);
+}
+
+/* Report page banner */
+.erp-page-banner {
+  background: var(--theme-card);
+  border: 1px solid var(--theme-border);
+  border-left: 4px solid var(--theme-info);
+  border-radius: 10px;
+  padding: 18px 24px;
+  margin-bottom: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  color: var(--theme-text);
+}
+.erp-page-banner-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--theme-text);
+}
+.erp-page-banner-sub {
+  font-size: 12px;
+  color: var(--theme-caption);
+  margin-top: 3px;
+}
+.erp-page-banner-meta {
+  text-align: right;
+  flex-shrink: 0;
+}
+.erp-page-banner-meta-main {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-text);
+}
+.erp-page-banner-meta-sub {
+  font-size: 11px;
+  color: var(--theme-caption);
+  margin-top: 2px;
+}
+
+/* Aging buckets — mono grid */
+.erp-aging-grid {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.erp-aging-bucket {
+  flex: 1;
+  min-width: 100px;
+  background: color-mix(in srgb, var(--theme-border) 12%, var(--theme-card) 88%);
+  border: 1px solid var(--theme-border);
+  border-left: 3px solid var(--theme-info);
+  border-radius: 0 8px 8px 0;
+  padding: 8px 10px;
+}
+.erp-aging-bucket-label {
+  font-size: 10px;
+  color: var(--theme-caption);
+}
+.erp-aging-bucket-amt {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--theme-text);
+}
+
+/* Mono role / status pills */
+.erp-mono-pill {
+  display: inline-block;
+  background: color-mix(in srgb, var(--theme-info) 10%, var(--theme-card) 90%);
+  border: 1px solid color-mix(in srgb, var(--theme-info) 28%, var(--theme-border) 72%);
+  color: var(--theme-text);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+.erp-mono-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--theme-info) 16%, var(--theme-card) 84%);
+  border: 2px solid var(--theme-border);
+  color: var(--theme-text);
+  font-size: 22px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.erp-status-pill-warning {
+  display: inline-block;
+  background: color-mix(in srgb, var(--theme-warning) 12%, var(--theme-card) 88%);
+  border: 1px solid color-mix(in srgb, var(--theme-warning) 35%, var(--theme-border) 65%);
+  color: var(--theme-text);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.erp-status-dot-success {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--theme-success);
+  flex-shrink: 0;
 }
 
 /* Tables and rows */
@@ -1492,21 +1598,22 @@ section[data-testid="stSidebarContent"] {
 .erp-dash-welcome-hi {
   font-size: 20px;
   font-weight: 700;
+  color: var(--theme-text);
 }
 .erp-dash-welcome-sub {
   font-size: 12px;
-  opacity: 0.75;
+  color: var(--theme-caption);
   margin-top: 4px;
 }
 .erp-dash-welcome-date {
   text-align: right;
   font-size: 13px;
-  opacity: 0.85;
+  color: var(--theme-caption);
   flex-shrink: 0;
 }
 .erp-dash-welcome-fy {
   font-size: 11px;
-  opacity: 0.5;
+  color: var(--theme-muted);
   margin-top: 2px;
 }
 @media (max-width: 968px) {

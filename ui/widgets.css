@@ -915,20 +915,13 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
   align-items: center !important;
   justify-content: center !important;
 }
-[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-owner) .st-key-hdr_profile_pop [data-testid="stPopover"] > button {
-  background: var(--role-owner) !important;
-}
-[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-manager) .st-key-hdr_profile_pop [data-testid="stPopover"] > button {
-  background: var(--role-manager) !important;
-}
-[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-cashier) .st-key-hdr_profile_pop [data-testid="stPopover"] > button {
-  background: var(--role-cashier) !important;
-}
-[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-partner) .st-key-hdr_profile_pop [data-testid="stPopover"] > button {
-  background: var(--role-partner) !important;
-}
-[data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-role-viewer) .st-key-hdr_profile_pop [data-testid="stPopover"] > button {
-  background: var(--role-viewer) !important;
+/* Profile avatar — mono for all roles (UI Sweep 3) */
+[data-testid="stMain"] .st-key-hdr_toolbar_row .st-key-hdr_profile_pop [data-testid="stPopover"] > button,
+[data-testid="stMain"] .st-key-hdr_toolbar_mobile_left .st-key-hdr_profile_pop [data-testid="stPopover"] > button,
+[data-testid="stMain"] .st-key-hdr_toolbar_primary .st-key-hdr_profile_pop [data-testid="stPopover"] > button {
+  background: color-mix(in srgb, var(--theme-info) 16%, var(--theme-card) 84%) !important;
+  color: var(--theme-text) !important;
+  border-color: var(--theme-border) !important;
 }
 [data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-notif-active) .st-key-hdr_notif_pop [data-testid="stPopover"] > button {
   background: color-mix(in srgb, var(--theme-warning) 14%, var(--theme-card) 86%) !important;

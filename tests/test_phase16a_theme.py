@@ -70,8 +70,8 @@ def test_vars_to_css_block_format():
 
 
 def test_role_accent_css_var():
-    assert "var(--role-owner)" == role_accent_css_var("owner")
-    assert "var(--role-default)" == role_accent_css_var("unknown")
+    assert "var(--theme-info)" in role_accent_css_var("owner")
+    assert role_accent_css_var("owner") == role_accent_css_var("unknown")
 
 
 def test_financial_statement_table_has_code_name_amount():

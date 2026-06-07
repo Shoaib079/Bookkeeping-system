@@ -164,14 +164,17 @@ from reconciliation.match_post import (
     suggest_withdrawal_match_kind,
 )
 from ui.section import (
+    aging_buckets_html,
     financial_section_header_html,
     financial_statement_table_html,
+    mono_role_pill_html,
+    page_report_banner_html,
     readable_dataframe_table_html,
     section_header_html,
     tab_panel_intro,
     theme_table_html,
 )
-from ui.theme import bootstrap_theme, role_accent_css_var
+from ui.theme import bootstrap_theme, chart_reference_color, chart_series_color, role_accent_css_var
 
 _validate_settings_registry()
 
@@ -4220,12 +4223,10 @@ def render_login(session):
                 f'text-align:center;margin-bottom:12px;">{_t('login.who_signs_in')}</div>',
                 unsafe_allow_html=True,
             )
-            _role_colors = {"owner": "#1e40af", "cashier": "#065f46", "partner": "#6d28d9"}
             cols = st.columns(min(len(users), 3))
             for i, u in enumerate(users):
                 with cols[i % 3]:
                     initials = "".join(w[0].upper() for w in (u.display_name or u.username).split()[:2])
-                    _rc = _role_colors.get(u.role, "#374151")
                     _uname = u.display_name or u.username
                     if st.button(
                         f"{initials}\n{_uname}\n{u.role.title()}",
@@ -7965,7 +7966,7 @@ def render_partner_accounts(session):
     user_id  = user["id"] if user else None
 
     st.markdown(
-        section_header_html(_t("partner.page_banner"), accent="purple"),
+        section_header_html(_t("partner.page_banner")),
         unsafe_allow_html=True,
     )
 
@@ -8255,8 +8256,8 @@ def render_partner_accounts(session):
                 total_cur += cur_bal
                 total_adv += adv_bal
 
-                cur_color  = "#10b981" if cur_bal >= 0 else "#ef4444"
-                adv_color  = "#f59e0b" if adv_bal > 0.01 else "#6b7280"
+                cur_color  = "var(--theme-text)" if cur_bal >= 0 else "var(--theme-danger)"
+                adv_color  = "var(--theme-warning)" if adv_bal > 0.01 else "var(--theme-muted)"
                 with st.container(border=True):
                     _inactive_tag = f"  *{_t('partner.inactive_tag')}*" if not p.is_active else ''
                     st.markdown(f"**{p.name}**{_inactive_tag} — {p.profit_share_pct:.1f}%")
@@ -8317,7 +8318,7 @@ def render_workers(session):
     user_id = user["id"] if user else None
 
     st.markdown(
-        section_header_html(_t("worker.page_banner"), accent="teal"),
+        section_header_html(_t("worker.page_banner")),
         unsafe_allow_html=True,
     )
     st.caption(_t("worker.page_desc"))
@@ -8729,7 +8730,7 @@ def render_equity_movements(session, *, embedded: bool = False):
         st.markdown(f"### {_t('partner.equity_header')}")
     else:
         st.markdown(
-            section_header_html(_t("partner.equity_header"), accent="purple"),
+            section_header_html(_t("partner.equity_header")),
             unsafe_allow_html=True,
         )
     st.caption(_t("partner.equity_caption"))
@@ -8751,7 +8752,7 @@ def render_equity_movements(session, *, embedded: bool = False):
         m1, m2, m3 = st.columns(3)
         m1.metric(_t("partner.total_capital_added"), f"{currency} {total_cap:,.2f}")
         m2.metric(_t("partner.total_drawings"),      f"{currency} {total_draw:,.2f}")
-        net_color = "#10b981" if net_movement >= 0 else "#ef4444"
+        net_color = "var(--theme-success)" if net_movement >= 0 else "var(--theme-danger)"
         m3.markdown(
             f'<div style="padding-top:4px;">'
             f'<div style="font-size:12px;color:var(--theme-muted);">{_t("partner.net_owner_equity_movement")}</div>'
@@ -8762,13 +8763,8 @@ def render_equity_movements(session, *, embedded: bool = False):
 
     bank_accts = cq(session, BankAccount).filter_by(is_active=True).order_by(BankAccount.name).all()
 
-    def _section(label, color="#8b5cf6"):
-        st.markdown(
-            f'<div style="border-left:3px solid {color};padding-left:8px;'
-            f'font-size:11px;font-weight:700;color:var(--theme-muted);text-transform:uppercase;'
-            f'letter-spacing:.06em;margin:16px 0 8px;">{label}</div>',
-            unsafe_allow_html=True,
-        )
+    def _section(label, *, accent: str = "info"):
+        st.markdown(section_header_html(label, accent=accent), unsafe_allow_html=True)
 
     def _entry_amount(je):
         return round(sum(l.debit for l in je.lines), 2)
@@ -8787,7 +8783,7 @@ def render_equity_movements(session, *, embedded: bool = False):
         st.caption(_t("partner.contribution_caption"))
 
         if _can("post_equity_movement"):
-            _section(_t("partner.new_contribution"), "#10b981")
+            _section(_t("partner.new_contribution"))
             if not bank_accts:
                 st.warning(_t("partner.no_bank_add_first"))
             else:
@@ -8870,7 +8866,7 @@ def render_equity_movements(session, *, embedded: bool = False):
         st.caption(_t("partner.drawings_caption"))
 
         if _can("post_equity_movement"):
-            _section(_t("partner.new_drawing"), "#ef4444")
+            _section(_t("partner.new_drawing"), accent="danger")
             if not bank_accts:
                 st.warning(_t("partner.no_bank_add_first"))
             else:
@@ -9056,19 +9052,19 @@ def render_opening_balances(session):
         c1.metric(_t("ob.metric_obe"), f"{currency} {obe_bal:,.2f}")
         if abs(obe_bal) < 0.01:
             c2.markdown(
-                f'<div style="padding-top:20px;font-weight:700;color:#10b981;">{_t("ob.balanced")}</div>',
+                f'<div style="padding-top:20px;font-weight:700;color:var(--theme-success);">{_t("ob.balanced")}</div>',
                 unsafe_allow_html=True,
             )
             c3.caption(_t("ob.balanced_caption"))
         elif obe_bal > 0:
             c2.markdown(
-                f'<div style="padding-top:20px;font-weight:700;color:#f59e0b;">{_t("ob.assets_exceed")}</div>',
+                f'<div style="padding-top:20px;font-weight:700;color:var(--theme-warning);">{_t("ob.assets_exceed")}</div>',
                 unsafe_allow_html=True,
             )
             c3.caption(_t("ob.assets_exceed_caption"))
         else:
             c2.markdown(
-                f'<div style="padding-top:20px;font-weight:700;color:#f59e0b;">{_t("ob.le_exceed")}</div>',
+                f'<div style="padding-top:20px;font-weight:700;color:var(--theme-warning);">{_t("ob.le_exceed")}</div>',
                 unsafe_allow_html=True,
             )
             c3.caption(_t("ob.le_exceed_caption"))
@@ -9087,13 +9083,8 @@ def render_opening_balances(session):
                 return line.debit if line.debit > 0 else line.credit
         return 0.0
 
-    def _section(label, color="#f59e0b"):
-        st.markdown(
-            f'<div style="border-left:3px solid {color};padding-left:8px;'
-            f'font-size:11px;font-weight:700;color:var(--theme-muted);text-transform:uppercase;'
-            f'letter-spacing:.06em;margin:16px 0 8px;">{label}</div>',
-            unsafe_allow_html=True,
-        )
+    def _section(label, *, accent: str = "info"):
+        st.markdown(section_header_html(label, accent=accent), unsafe_allow_html=True)
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         _t("ob.tab_banking"), _t("ob.tab_customers"), _t("ob.tab_vendors"),
@@ -9103,7 +9094,7 @@ def render_opening_balances(session):
     # ── TAB 1 — Banking & Cash ─────────────────────────────────────────────────
     with tab1:
         _cc_on = _company_card_on(session)
-        _section(_t("ob.section_bank"), "#3b82f6")
+        _section(_t("ob.section_bank"))
         bank_accts = cq(session, BankAccount).order_by(BankAccount.name).all()
         rows = []
         for ba in bank_accts:
@@ -9207,7 +9198,7 @@ def render_opening_balances(session):
 
     # ── TAB 2 — Customers (AR) ─────────────────────────────────────────────────
     with tab2:
-        _section(_t("ob.section_customers"), "#3b82f6")
+        _section(_t("ob.section_customers"))
         customers = cq(session, Customer).order_by(Customer.name).all()
         rows = []
         for c in customers:
@@ -9279,7 +9270,7 @@ def render_opening_balances(session):
 
     # ── TAB 3 — Vendors (AP) ──────────────────────────────────────────────────
     with tab3:
-        _section(_t("ob.section_vendors"), "#ef4444")
+        _section(_t("ob.section_vendors"))
         vendors = cq(session, Vendor).filter_by(is_active=True).order_by(Vendor.name).all()
         rows = []
         for v in vendors:
@@ -9352,7 +9343,7 @@ def render_opening_balances(session):
 
     # ── TAB 4 — Inventory ─────────────────────────────────────────────────────
     with tab4:
-        _section(_t("ob.section_inventory"), "#10b981")
+        _section(_t("ob.section_inventory"))
         products = cq(session, Product).filter_by(is_active=True).order_by(Product.name).all()
         rows = []
         for p in products:
@@ -9424,7 +9415,7 @@ def render_opening_balances(session):
     # ── TAB 5 — Capital & Loans ────────────────────────────────────────────────
     with tab5:
         # Owner Capital ──────────────────────────────────────────────────────
-        _section(_t("ob.section_capital"), "#8b5cf6")
+        _section(_t("ob.section_capital"))
         cap_je = _ob_je("OBCapital", 0)
         if cap_je:
             cap_amt = _ob_amount(cap_je)
@@ -9465,7 +9456,7 @@ def render_opening_balances(session):
         st.markdown("---")
 
         # Loans ──────────────────────────────────────────────────────────────
-        _section(_t("ob.section_loans"), "#8b5cf6")
+        _section(_t("ob.section_loans"))
         loan_entries = (
             cq(session, JournalEntry)
             .filter_by(reference_type="OBLoan")
@@ -9796,15 +9787,9 @@ def render_dashboard(session):
         _lbl = lbl if lbl is not None else _t("form.vs_yesterday")
         return f'<span style="font-size:10px;color:{col};">{arrow} {abs(p):.0f}% {_lbl}</span>'
 
-    def _sec(label, color):
-        """Section-heading pill used throughout the dashboard."""
-        return (
-            f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">'
-            f'<span style="display:inline-block;width:4px;height:16px;background:{color};'
-            f'border-radius:2px;flex-shrink:0;"></span>'
-            f'<span style="font-size:11px;font-weight:700;color:var(--theme-muted);'
-            f'text-transform:uppercase;letter-spacing:.07em;">{label}</span></div>'
-        )
+    def _sec(label):
+        """Mono section heading used throughout the dashboard."""
+        return section_header_html(label)
 
     def _fmt(v, c): return f"{c} {v:,.2f}"
 
@@ -9935,7 +9920,7 @@ def render_dashboard(session):
     with st.container(border=True):
         st.markdown('<div class="erp-dash-desktop-today"></div>', unsafe_allow_html=True)
         st.markdown(
-            _sec(_t("dash.today", date=today.strftime("%d %B")), "var(--theme-info)"),
+            _sec(_t("dash.today", date=today.strftime("%d %B"))),
             unsafe_allow_html=True,
         )
         render_kpi_grid([
@@ -9976,7 +9961,7 @@ def render_dashboard(session):
     # ── Phase 10: 7-day trend ─────────────────────────────────────────────────
     with st.container(border=True):
         st.markdown('<div class="erp-dash-hide-mobile"></div>', unsafe_allow_html=True)
-        st.markdown(_sec(_t("dash.last_7_days"), "var(--theme-purple)"), unsafe_allow_html=True)
+        st.markdown(_sec(_t("dash.last_7_days")), unsafe_allow_html=True)
         _trend_data = {
             "Date":     [d.strftime("%d %b") for d in _trend_days],
             "Sales":    [round(_trend_sales[d], 2) for d in _trend_days],
@@ -9994,7 +9979,7 @@ def render_dashboard(session):
     with st.container(border=True):
         st.markdown('<div class="erp-dash-hide-mobile"></div>', unsafe_allow_html=True)
         st.markdown(
-            _sec(_t("dash.this_month", month=today.strftime("%B %Y")), "var(--theme-success)"),
+            _sec(_t("dash.this_month", month=today.strftime("%B %Y"))),
             unsafe_allow_html=True,
         )
         render_kpi_grid([
@@ -10002,7 +9987,7 @@ def render_dashboard(session):
              "sub": _pct(month_sales,    last_month_sales, _t("form.vs_last_month"))},
             {"label": _t("dash.kpi.expenses"),   "value": _fmt(month_expenses,  currency), "variant": "danger",
              "sub": _pct(month_expenses, last_month_exp,   _t("form.vs_last_month"))},
-            {"label": _t("dash.kpi.purchases"),  "value": _fmt(month_purchases, currency), "variant": "purple"},
+            {"label": _t("dash.kpi.purchases"),  "value": _fmt(month_purchases, currency)},
             {"label": _t("dash.kpi.net_profit"), "value": _fmt(month_net,       currency),
              "variant": "success" if month_net >= 0 else "danger",
              "sub": _t("form.margin", pct=margin_pct)},
@@ -10014,7 +9999,7 @@ def render_dashboard(session):
         _c1, _c2, _c3 = st.columns(3)
 
         with _c1:
-            st.markdown(_sec(_t("dash.receivables"), "var(--theme-info)"), unsafe_allow_html=True)
+            st.markdown(_sec(_t("dash.receivables")), unsafe_allow_html=True)
             _ar_sub = (
                 f'<span style="color:var(--theme-danger);">⚠ {currency} {overdue_rec_amount:,.2f} overdue</span>'
                 if overdue_count else "All current"
@@ -10022,30 +10007,14 @@ def render_dashboard(session):
             render_kpi_grid([{"label": _t("dash.kpi.outstanding_ar"), "value": _fmt(outstanding_rec, currency),
                               "variant": "info", "sub": _ar_sub}])
             if _ar_aging:
-                _aging_html = ""
-                _aging_colors = {
-                    "Current":   "var(--theme-success)", "1-30 Days": "var(--theme-warning)",
-                    "31-60 Days":"var(--theme-warning)", "61-90 Days":"var(--theme-danger)",
-                    "90+ Days":  "var(--theme-danger)",
-                }
-                for _bucket, _bamt in _ar_aging.items():
-                    if _bamt > 0:
-                        _bcol = _aging_colors.get(_bucket, "var(--theme-muted)")
-                        _aging_html += (
-                            f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                            f'padding:4px 8px;border-left:3px solid {_bcol};margin-bottom:4px;'
-                            f'background:color-mix(in srgb,var(--theme-border)25%,var(--theme-card)75%);'
-                            f'border-radius:0 6px 6px 0;">'
-                            f'<span style="font-size:11px;color:var(--theme-muted);">'
-                            f'{_i18n_db(AGING_BUCKET_I18N, _bucket)}</span>'
-                            f'<span style="font-size:11px;font-weight:700;color:{_bcol};">'
-                            f'{currency} {_bamt:,.2f}</span></div>'
-                        )
+                _aging_html = aging_buckets_html(
+                    _ar_aging, currency, lambda b: _i18n_db(AGING_BUCKET_I18N, b), decimals=2,
+                )
                 if _aging_html:
                     st.markdown(_aging_html, unsafe_allow_html=True)
 
         with _c2:
-            st.markdown(_sec(_t("dash.payables"), "var(--theme-warning)"), unsafe_allow_html=True)
+            st.markdown(_sec(_t("dash.payables")), unsafe_allow_html=True)
             _ap_sub = (
                 f'<span style="color:var(--theme-danger);">⚠ {overdue_pay_count} overdue · '
                 f'{currency} {overdue_pay_amount:,.2f}</span>'
@@ -10055,7 +10024,7 @@ def render_dashboard(session):
                               "variant": "warning", "sub": _ap_sub}])
 
         with _c3:
-            st.markdown(_sec("Cash & Bank", "var(--theme-teal)"), unsafe_allow_html=True)
+            st.markdown(_sec("Cash & Bank"), unsafe_allow_html=True)
             if _cash_positions:
                 for _ccy, _pos in sorted(_cash_positions.items()):
                     _bal = _pos["total"]
@@ -10081,7 +10050,7 @@ def render_dashboard(session):
 
     with _bleft:
         with st.container(border=True):
-            st.markdown(_sec("Recent Activity", "var(--theme-purple)"), unsafe_allow_html=True)
+            st.markdown(_sec("Recent Activity"), unsafe_allow_html=True)
             _recent: list = []
             for s in _recent_sales:
                 _recent.append({"date": s.date, "type": s.sale_type + " Sale",
@@ -10100,13 +10069,13 @@ def render_dashboard(session):
                 _recent.append({"date": p.date, "type": "Purchase", "ref": f"PUR#{p.id}",
                                  "party": _pv.name if _pv else "—", "amount": p.amount,
                                  "dir": "out", "status": "Active",
-                                 "icon": "🛒", "color": "var(--theme-purple)"})
+                                 "icon": "🛒", "color": "var(--theme-text)"})
             for _bt, _ba in _recent_bank:
                 _recent.append({"date": _bt.date, "type": f"Bank · {_bt.type or 'Transfer'}",
                                  "ref": _ba.name, "party": _bt.description or _ba.name or "—",
                                  "amount": abs(_bt.amount or 0),
                                  "dir": "in" if (_bt.amount or 0) >= 0 else "out",
-                                 "status": "Posted", "icon": "🏦", "color": "var(--theme-teal)"})
+                                 "status": "Posted", "icon": "🏦", "color": "var(--theme-text)"})
             _recent = sorted(_recent, key=lambda x: x["date"], reverse=True)[:15]
 
             if _recent:
@@ -10115,9 +10084,9 @@ def render_dashboard(session):
                     "Open":     ("color-mix(in srgb,var(--theme-warning)15%,var(--theme-card)85%)", "var(--theme-warning)"),
                     "Overdue":  ("color-mix(in srgb,var(--theme-danger)15%,var(--theme-card)85%)",  "var(--theme-danger)"),
                     "Partial":  ("color-mix(in srgb,var(--theme-info)15%,var(--theme-card)85%)",    "var(--theme-info)"),
-                    "Recorded": ("color-mix(in srgb,var(--theme-purple)15%,var(--theme-card)85%)",  "var(--theme-purple)"),
-                    "Active":   ("color-mix(in srgb,var(--theme-muted)12%,var(--theme-card)88%)",   "var(--theme-muted)"),
-                    "Posted":   ("color-mix(in srgb,var(--theme-teal)15%,var(--theme-card)85%)",    "var(--theme-teal)"),
+                    "Recorded": ("color-mix(in srgb,var(--theme-info)12%,var(--theme-card)88%)",    "var(--theme-text)"),
+                    "Active":   ("color-mix(in srgb,var(--theme-muted)12%,var(--theme-card)88%)",   "var(--theme-text)"),
+                    "Posted":   ("color-mix(in srgb,var(--theme-muted)12%,var(--theme-card)88%)",   "var(--theme-text)"),
                 }
                 _rows_html = ""
                 for r in _recent:
@@ -10154,15 +10123,13 @@ def render_dashboard(session):
         st.markdown('<div class="erp-dash-hide-mobile"></div>', unsafe_allow_html=True)
         # Expense bars
         with st.container(border=True):
-            st.markdown(_sec("Expenses by Category", "var(--theme-danger)"), unsafe_allow_html=True)
+            st.markdown(_sec("Expenses by Category"), unsafe_allow_html=True)
             if cat_rows:
                 _max  = max(r[1] for r in cat_rows) or 1
-                _bclr = ["var(--theme-danger)", "var(--theme-warning)", "var(--theme-purple)",
-                         "var(--theme-info)",   "var(--theme-teal)",    "var(--theme-success)"]
                 _bars = ""
                 for i, (cat, val) in enumerate(cat_rows):
                     _pw   = max(int(val / _max * 100), 5)
-                    _clr  = _bclr[i % len(_bclr)]
+                    _clr  = "var(--theme-info)"
                     _lbl  = (cat or "Other")[:13]
                     _bars += (
                         f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">'
@@ -10182,7 +10149,7 @@ def render_dashboard(session):
 
         # Quick Insights
         with st.container(border=True):
-            st.markdown(_sec("Quick Insights", "var(--theme-teal)"), unsafe_allow_html=True)
+            st.markdown(_sec("Quick Insights"), unsafe_allow_html=True)
 
             def _irow(icon, lbl, val, sub=""):
                 _sub_h = (
@@ -12873,7 +12840,7 @@ def _at_render_recent(session, currency):
             "Open":     ("color-mix(in srgb,var(--theme-warning)12%,var(--theme-card)88%)", "var(--theme-warning)"),
             "Overdue":  ("color-mix(in srgb,var(--theme-danger)12%,var(--theme-card)88%)", "var(--theme-danger)"),
             "Partial":  ("color-mix(in srgb,var(--theme-info)12%,var(--theme-card)88%)", "var(--theme-info)"),
-            "Recorded": ("color-mix(in srgb,var(--theme-purple)12%,var(--theme-card)88%)", "var(--theme-purple)"),
+            "Recorded": ("color-mix(in srgb,var(--theme-info)12%,var(--theme-card)88%)", "var(--theme-text)"),
             "Active":   ("color-mix(in srgb,var(--theme-card)8%,var(--theme-bg)92%)", "var(--theme-muted)"),
         }
         _rows_html = ""
@@ -13083,7 +13050,7 @@ _TXH_STATUS_PILL = {
     "Open": "erp-txh-pill erp-txh-pill--warning",
     "Overdue": "erp-txh-pill erp-txh-pill--danger",
     "Partial": "erp-txh-pill erp-txh-pill--info",
-    "Recorded": "erp-txh-pill erp-txh-pill--purple",
+    "Recorded": "erp-txh-pill erp-txh-pill--info",
     "Active": "erp-txh-pill erp-txh-pill--neutral",
     "VOID": "erp-txh-pill erp-txh-pill--void",
 }
@@ -13583,8 +13550,8 @@ def render_transaction_history(session):
                             for _fld, _old in _bef.items():
                                 st.markdown(
                                     f'<div style="font-size:11px;color:var(--theme-muted);padding-left:14px;">'
-                                    f'{_fld}: <span style="color:#ef4444;">{_old}</span>'
-                                    f' → <span style="color:#10b981;">{_aft.get(_fld, "—")}</span></div>',
+                                    f'{_fld}: <span style="color:var(--theme-danger);">{_old}</span>'
+                                    f' → <span style="color:var(--theme-success);">{_aft.get(_fld, "—")}</span></div>',
                                     unsafe_allow_html=True,
                                 )
 
@@ -14596,7 +14563,7 @@ def render_bank_statement_import(session, *, embedded: bool = False):
         st.caption(_t("banking.import.embedded_desc"))
     else:
         st.markdown(
-            section_header_html(_t("banking.import.title"), accent="teal"),
+            section_header_html(_t("banking.import.title")),
             unsafe_allow_html=True,
         )
     cid = current_company_required()
@@ -14639,7 +14606,7 @@ def render_bank_statement_import(session, *, embedded: bool = False):
 
     if section == "upload":
         st.markdown(
-            section_header_html(_t("banking.import.section.upload"), accent="teal"),
+            section_header_html(_t("banking.import.section.upload")),
             unsafe_allow_html=True,
         )
         st.caption(_t("banking.import.section.upload_desc"))
@@ -15256,7 +15223,7 @@ def render_bank_statement_import(session, *, embedded: bool = False):
 
     elif section == "history":
         st.markdown(
-            section_header_html(_t("banking.import.section.history"), accent="purple"),
+            section_header_html(_t("banking.import.section.history")),
             unsafe_allow_html=True,
         )
         st.caption(_t("banking.import.section.history_desc"))
@@ -15324,21 +15291,21 @@ def render_advanced(session):
     )
 
     _GROUPS = [
-        ("adv.group.transactions", "#3b82f6", [
+        ("adv.group.transactions", [
             ("💼", "Sales", "adv.mod.sales", "adv.mod.sales_desc"),
             ("💳", "Expenses", "adv.mod.expenses", "adv.mod.expenses_desc"),
             ("🛒", "Purchases", "adv.mod.purchases", "adv.mod.purchases_desc"),
             ("🏢", "Vendors", "adv.mod.vendors", "adv.mod.vendors_desc"),
         ]),
-        ("adv.group.customers_payables", "#10b981", [
+        ("adv.group.customers_payables", [
             ("📄", "Receivables", "adv.mod.receivables", "adv.mod.receivables_desc"),
             ("📌", "Payables", "adv.mod.payables", "adv.mod.payables_desc"),
         ]),
-        ("adv.group.operations", "#f59e0b", [
+        ("adv.group.operations", [
             ("📦", "Inventory", "adv.mod.inventory", "adv.mod.inventory_desc"),
             ("🏦", "Banking", "adv.mod.banking", "adv.mod.banking_desc"),
         ]),
-        ("adv.group.accounting", "#8b5cf6", [
+        ("adv.group.accounting", [
             ("📊", "General Ledger", "adv.mod.gl", "adv.mod.gl_desc"),
             ("🧾", "Trial Balance", "adv.mod.trial_balance", "adv.mod.trial_balance_desc"),
             ("📅", "Fiscal Periods", "adv.mod.fiscal", "adv.mod.fiscal_desc"),
@@ -15346,13 +15313,8 @@ def render_advanced(session):
         ]),
     ]
 
-    for group_key, accent, modules in _GROUPS:
-        st.markdown(
-            f'<div style="border-left:4px solid {accent};padding-left:8px;'
-            f'font-size:11px;font-weight:700;color:var(--theme-muted);text-transform:uppercase;'
-            f'letter-spacing:.06em;margin:16px 0 8px;">{_t(group_key)}</div>',
-            unsafe_allow_html=True,
-        )
+    for group_key, modules in _GROUPS:
+        st.markdown(section_header_html(_t(group_key)), unsafe_allow_html=True)
         cols = st.columns(4)
         for idx, (icon, name, label_key, desc_key) in enumerate(modules):
             with cols[idx % 4]:
@@ -15897,19 +15859,11 @@ def render_payables(session):
     _open_payables = [r for r, _ in filtered if not r.is_void and not r.paid]
     if _open_payables:
         _pay_aging = get_aging_summary(_open_payables, "amount", "due_date")
-        _aging_colors = {"Current": "#10b981", "1-30 Days": "#f59e0b", "31-60 Days": "#f97316",
-                         "61-90 Days": "#ef4444", "90+ Days": "#991b1b"}
-        _ph = '<div style="display:flex;gap:8px;margin-bottom:12px;">'
-        for _bucket, _amt in _pay_aging.items():
-            _col = _aging_colors.get(_bucket, "var(--theme-muted)")
-            _ph += (
-                f'<div style="flex:1;background:color-mix(in srgb,{_col} 14%,var(--theme-card) 86%);'
-                f'border-left:3px solid {_col};border-radius:0 8px 8px 0;padding:8px 10px;">'
-                f'<div style="font-size:10px;color:var(--theme-muted);">{_i18n_db(AGING_BUCKET_I18N, _bucket)}</div>'
-                f'<div style="font-size:13px;font-weight:700;color:var(--theme-text);">{currency} {_amt:,.0f}</div>'
-                f'</div>'
-            )
-        st.markdown(_ph + '</div>', unsafe_allow_html=True)
+        _aging_html = aging_buckets_html(
+            _pay_aging, currency, lambda b: _i18n_db(AGING_BUCKET_I18N, b),
+        )
+        if _aging_html:
+            st.markdown(_aging_html, unsafe_allow_html=True)
 
     # ── Table ─────────────────────────────────────────────────────────────────
     data = []
@@ -17055,7 +17009,7 @@ def render_cash_reconciliation(session):
                 import altair as alt
                 
                 # Trend chart
-                trend_chart = alt.Chart(df_trend).mark_line(point=True, color='#3b82f6').encode(
+                trend_chart = alt.Chart(df_trend).mark_line(point=True, color=chart_series_color()).encode(
                     x='Date:T',
                     y='Cumulative:Q',
                     tooltip=['Date:T', 'Difference:Q', 'Cumulative:Q']
@@ -17066,7 +17020,9 @@ def render_cash_reconciliation(session):
                 )
                 
                 # Reference line at 0
-                reference_line = alt.Chart(pd.DataFrame({'Cumulative': [0]})).mark_rule(color='red', strokeDash=[5,5]).encode(
+                reference_line = alt.Chart(pd.DataFrame({'Cumulative': [0]})).mark_rule(
+                    color=chart_reference_color(), strokeDash=[5, 5],
+                ).encode(
                     y='Cumulative:Q'
                 )
                 
@@ -17112,7 +17068,7 @@ def render_cash_reconciliation(session):
                     import altair as alt
                     
                     # Histogram of variance amounts
-                    hist_chart = alt.Chart(df_trend).mark_bar(color='#8b5cf6').encode(
+                    hist_chart = alt.Chart(df_trend).mark_bar(color=chart_series_color()).encode(
                         x=alt.X('Difference:Q', bin=alt.Bin(maxbins=10), title="Variance Amount"),
                         y='count()',
                         tooltip=['count()', alt.Tooltip('Difference:Q', format='.2f')]
@@ -17215,23 +17171,23 @@ def render_end_of_day_close(session):
 
         st.subheader(_t("eod.snapshot"))
         render_kpi_grid([
-            {"label": _t("today.cash_sales"),   "value": f"{currency} {snap['cash_sales']:,.2f}",   "color": "#111827"},
-            {"label": _t("today.card_sales"),   "value": f"{currency} {snap['card_sales']:,.2f}",   "color": "#111827"},
-            {"label": _t("today.credit_sales"), "value": f"{currency} {snap['credit_sales']:,.2f}", "color": "#111827"},
-            {"label": _t("today.total_sales"),  "value": f"{currency} {snap['total_sales']:,.2f}",  "color": "#2563eb"},
+            {"label": _t("today.cash_sales"),   "value": f"{currency} {snap['cash_sales']:,.2f}"},
+            {"label": _t("today.card_sales"),   "value": f"{currency} {snap['card_sales']:,.2f}"},
+            {"label": _t("today.credit_sales"), "value": f"{currency} {snap['credit_sales']:,.2f}"},
+            {"label": _t("today.total_sales"),  "value": f"{currency} {snap['total_sales']:,.2f}"},
         ])
         render_kpi_grid([
-            {"label": _t("today.total_expenses"),  "value": f"{currency} {snap['total_expenses']:,.2f}",   "color": "#ef4444"},
-            {"label": _t("today.total_purchases"), "value": f"{currency} {snap['total_purchases']:,.2f}",  "color": "#b45309"},
-            {"label": _t("eod.cust_payments"),     "value": f"{currency} {snap['customer_payments']:,.2f}", "color": "#10b981"},
-            {"label": _t("eod.supp_payments"),     "value": f"{currency} {snap['supplier_payments']:,.2f}", "color": "#f59e0b"},
+            {"label": _t("today.total_expenses"),  "value": f"{currency} {snap['total_expenses']:,.2f}"},
+            {"label": _t("today.total_purchases"), "value": f"{currency} {snap['total_purchases']:,.2f}"},
+            {"label": _t("eod.cust_payments"),     "value": f"{currency} {snap['customer_payments']:,.2f}"},
+            {"label": _t("eod.supp_payments"),     "value": f"{currency} {snap['supplier_payments']:,.2f}"},
         ])
         render_kpi_grid([
-            {"label": _t("eod.bank_deposits"),    "value": f"{currency} {snap['bank_deposits']:,.2f}",      "color": "var(--theme-muted)"},
-            {"label": _t("eod.bank_withdrawals"), "value": f"{currency} {snap['bank_withdrawals']:,.2f}",   "color": "var(--theme-muted)"},
-            {"label": _t("eod.net_cash_mvmt"),    "value": f"{currency} {snap['net_cash_movement']:,.2f}",  "color": "#2563eb"},
+            {"label": _t("eod.bank_deposits"),    "value": f"{currency} {snap['bank_deposits']:,.2f}"},
+            {"label": _t("eod.bank_withdrawals"), "value": f"{currency} {snap['bank_withdrawals']:,.2f}"},
+            {"label": _t("eod.net_cash_mvmt"),    "value": f"{currency} {snap['net_cash_movement']:,.2f}"},
             {"label": _t("eod.daily_profit"),     "value": f"{currency} {snap['daily_profit_estimate']:,.2f}",
-             "color": "#10b981" if snap["daily_profit_estimate"] >= 0 else "#ef4444"},
+             "variant": "success" if snap["daily_profit_estimate"] >= 0 else "danger"},
         ])
 
         recon_key = EOD_RECON_SNAP_I18N.get(snap["recon_status"])
@@ -18809,19 +18765,11 @@ def render_receivables(session):
     # ── Aging buckets ─────────────────────────────────────────────────────────
     if _open_filtered:
         _aging = get_aging_summary(_open_filtered, "balance", "due_date")
-        _aging_colors = {"Current": "#10b981", "1-30 Days": "#f59e0b", "31-60 Days": "#f97316", "61-90 Days": "#ef4444", "90+ Days": "#991b1b"}
-        _aging_html = '<div style="display:flex;gap:8px;margin-bottom:12px;">'
-        for _bucket, _amt in _aging.items():
-            _col = _aging_colors.get(_bucket, "var(--theme-muted)")
-            _aging_html += (
-                f'<div style="flex:1;background:color-mix(in srgb,{_col} 14%,var(--theme-card) 86%);'
-                f'border-left:3px solid {_col};border-radius:0 8px 8px 0;padding:8px 10px;">'
-                f'<div style="font-size:10px;color:var(--theme-muted);">{_i18n_db(AGING_BUCKET_I18N, _bucket)}</div>'
-                f'<div style="font-size:13px;font-weight:700;color:var(--theme-text);">{currency} {_amt:,.0f}</div>'
-                f'</div>'
-            )
-        _aging_html += '</div>'
-        st.markdown(_aging_html, unsafe_allow_html=True)
+        _aging_html = aging_buckets_html(
+            _aging, currency, lambda b: _i18n_db(AGING_BUCKET_I18N, b),
+        )
+        if _aging_html:
+            st.markdown(_aging_html, unsafe_allow_html=True)
 
     # ── Invoice list ──────────────────────────────────────────────────────────
     _STATUS_STYLE = {
@@ -18942,11 +18890,10 @@ def render_budget(session):
     today    = datetime.date.today()
 
     st.markdown(
-        f'<div style="background:linear-gradient(135deg,#14532d,#16a34a);border-radius:14px;'
-        f'padding:18px 24px;color:#fff;margin-bottom:18px;">'
-        f'<div style="font-size:19px;font-weight:700;">📊 Budget vs Actual</div>'
-        f'<div style="font-size:12px;opacity:.75;margin-top:3px;">Compare planned vs actual spending</div>'
-        f'</div>',
+        page_report_banner_html(
+            "📊 Budget vs Actual",
+            subtitle="Compare planned vs actual spending",
+        ),
         unsafe_allow_html=True,
     )
 
@@ -19074,24 +19021,22 @@ def render_today_summary(session):
     net_cash     = cash_collected - total_exp
 
     st.markdown(
-        f'<div class="banner banner-primary" style="padding:18px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
-        f'<div><div style="font-size:19px;font-weight:700;">📅 {_t("today.title")}</div>'
-        f'<div style="font-size:12px;opacity:.75;margin-top:3px;">'
-        f'{today.strftime("%A, %d %B %Y")}</div></div>'
-        f'<div style="text-align:right;">'
-        f'<div style="font-size:13px;font-weight:600;">{company}</div>'
-        f'<div style="font-size:11px;opacity:.65;margin-top:2px;">{_t("today.eod_report")}</div>'
-        f'</div></div>',
+        page_report_banner_html(
+            f"📅 {_t('today.title')}",
+            subtitle=today.strftime("%A, %d %B %Y"),
+            meta=company,
+            meta_sub=_t("today.eod_report"),
+        ),
         unsafe_allow_html=True,
     )
 
     # Sales breakdown
     st.subheader(_t("today.sales_section"))
     sales_items = [
-        {"label": _t("today.cash_sales"), "value": f"{currency} {cash_sales:,.2f}", "color": "#111827"},
-        {"label": _t("today.card_sales"), "value": f"{currency} {card_sales:,.2f}", "color": "#111827"},
-        {"label": _t("today.credit_sales"), "value": f"{currency} {credit_sales:,.2f}", "color": "#111827"},
-        {"label": _t("today.total_sales"), "value": f"{currency} {total_sales:,.2f}", "color": "#2563eb"},
+        {"label": _t("today.cash_sales"), "value": f"{currency} {cash_sales:,.2f}"},
+        {"label": _t("today.card_sales"), "value": f"{currency} {card_sales:,.2f}"},
+        {"label": _t("today.credit_sales"), "value": f"{currency} {credit_sales:,.2f}"},
+        {"label": _t("today.total_sales"), "value": f"{currency} {total_sales:,.2f}"},
     ]
     render_kpi_grid(sales_items)
 
@@ -19099,8 +19044,8 @@ def render_today_summary(session):
 
     # Expenses & Purchases
     expense_items = [
-        {"label": _t("today.total_expenses"), "value": f"{currency} {total_exp:,.2f}", "color": "#ef4444"},
-        {"label": _t("today.total_purchases"), "value": f"{currency} {total_pur:,.2f}", "color": "#b45309"},
+        {"label": _t("today.total_expenses"), "value": f"{currency} {total_exp:,.2f}"},
+        {"label": _t("today.total_purchases"), "value": f"{currency} {total_pur:,.2f}"},
     ]
     render_kpi_grid(expense_items)
 
@@ -19188,7 +19133,7 @@ def render_reports(session):
 
     st.markdown('<div class="erp-reports-mobile-host"></div>', unsafe_allow_html=True)
     st.markdown(
-        section_header_html(_t("reports.hub_title"), accent="purple"),
+        section_header_html(_t("reports.hub_title")),
         unsafe_allow_html=True,
     )
     _mob_rpt_tab = st.session_state.get("mob_reports_tab")
@@ -19316,11 +19261,11 @@ def render_reports(session):
                     if not df.empty:
                         df["Avg Sale"] = (df["Total"] / df["Transactions"].clip(lower=1)).round(2)
                         render_kpi_grid([
-                            {"label": _t("rpt.kpi.total_sales"),   "value": f"{currency} {df['Total'].sum():,.2f}",     "variant": "success"},
-                            {"label": _t("rpt.kpi.cash_sales"),    "value": f"{currency} {df['Cash'].sum():,.2f}",      "color": "#111827"},
-                            {"label": _t("rpt.kpi.card_sales"),    "value": f"{currency} {df['Card'].sum():,.2f}",      "color": "#111827"},
-                            {"label": _t("rpt.kpi.credit_sales"),  "value": f"{currency} {df['Credit'].sum():,.2f}",    "color": "#111827"},
-                            {"label": _t("rpt.kpi.transactions"),  "value": str(int(df['Transactions'].sum())),         "color": "var(--theme-muted)"},
+                            {"label": _t("rpt.kpi.total_sales"),   "value": f"{currency} {df['Total'].sum():,.2f}"},
+                            {"label": _t("rpt.kpi.cash_sales"),    "value": f"{currency} {df['Cash'].sum():,.2f}"},
+                            {"label": _t("rpt.kpi.card_sales"),    "value": f"{currency} {df['Card'].sum():,.2f}"},
+                            {"label": _t("rpt.kpi.credit_sales"),  "value": f"{currency} {df['Credit'].sum():,.2f}"},
+                            {"label": _t("rpt.kpi.transactions"),  "value": str(int(df['Transactions'].sum()))},
                         ])
                         _render_readable_df(df)
                         render_export_buttons(df, "Daily_Sales", pdf=False)
@@ -20471,12 +20416,6 @@ def render_manage_categories(session):
                             st.rerun()
 
 
-_MEMBER_ROLE_COLORS = {
-    "owner": "#10b981", "manager": "#0891b2", "cashier": "#3b82f6",
-    "partner": "#8b5cf6", "viewer": "#6b7280",
-}
-
-
 def _render_members_overview(session, company, settings, stats) -> None:
     """Company + member summary metrics (14D-F)."""
     c1, c2, c3, c4, c5 = st.columns(5)
@@ -20488,12 +20427,7 @@ def _render_members_overview(session, company, settings, stats) -> None:
     role_cols = st.columns(len(COMPANY_ROLES))
     for col, role in zip(role_cols, COMPANY_ROLES):
         n = stats.by_role.get(role, 0)
-        col.markdown(
-            f'<span style="background:{_MEMBER_ROLE_COLORS.get(role, "#6b7280")};'
-            f'color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;">'
-            f'{_company_role_label(role)} {n}</span>',
-            unsafe_allow_html=True,
-        )
+        col.markdown(mono_role_pill_html(f"{_company_role_label(role)} {n}"), unsafe_allow_html=True)
 
 
 def render_member_roster_summary(session) -> None:
@@ -20728,12 +20662,7 @@ def render_user_management(session, *, embedded: bool = False):
                         last_login=entry.last_login_label,
                     )
                 )
-                _rc = _MEMBER_ROLE_COLORS.get(role, "#6b7280")
-                hc3.markdown(
-                    f'<span style="background:{_rc};color:#fff;font-size:10px;font-weight:700;'
-                    f'padding:2px 10px;border-radius:99px;">{_company_role_label(role)}</span>',
-                    unsafe_allow_html=True,
-                )
+                hc3.markdown(mono_role_pill_html(_company_role_label(role)), unsafe_allow_html=True)
 
                 _is_self = u.id == _me.get("id")
                 _confirm_key = f"um_confirm_remove_{u.id}"
@@ -20862,7 +20791,7 @@ def render_setup_wizard(session, *, allow_rerun: bool = True) -> None:
     summary = get_wizard_summary(session, cid)
 
     st.markdown(
-        section_header_html(_t('wizard.title'), accent="purple"),
+        section_header_html(_t('wizard.title')),
         unsafe_allow_html=True,
     )
 
@@ -21224,7 +21153,7 @@ def render_settings(session):
     settings = load_settings()
 
     st.markdown(
-        section_header_html(_t("settings.page_title"), accent="teal"),
+        section_header_html(_t("settings.page_title")),
         unsafe_allow_html=True,
     )
 
@@ -21271,7 +21200,7 @@ def render_settings(session):
     # ── Categories section card ───────────────────────────────────────────────
     with st.container(border=True):
         st.markdown(
-            section_header_html(_t("settings.section.categories"), accent="purple"),
+            section_header_html(_t("settings.section.categories")),
             unsafe_allow_html=True,
         )
         render_manage_categories(session)
@@ -21666,17 +21595,12 @@ def render_profit_loss(session, start_date=None, end_date=None):
 
     # ── Banner ────────────────────────────────────────────────────────────────
     st.markdown(
-        f'<div style="background:linear-gradient(135deg,#1e40af,#3b82f6);border-radius:14px;'
-        f'padding:18px 24px;color:#fff;display:flex;justify-content:space-between;'
-        f'align-items:center;margin-bottom:18px;">'
-        f'<div><div style="font-size:19px;font-weight:700;">📈 {_t("pnl.title")}</div>'
-        f'<div style="font-size:12px;opacity:.75;margin-top:3px;">'
-        f'{start_date.strftime("%d %b %Y")} — {end_date.strftime("%d %b %Y")}</div></div>'
-        f'<div style="text-align:right;">'
-        f'<div style="font-size:13px;font-weight:600;">{company}</div>'
-        f'<div style="font-size:11px;opacity:.65;margin-top:2px;">'
-        f'{_t("pnl.generated", date=today.strftime("%d %b %Y"))}</div>'
-        f'</div></div>',
+        page_report_banner_html(
+            f"📈 {_t('pnl.title')}",
+            subtitle=f"{start_date.strftime('%d %b %Y')} — {end_date.strftime('%d %b %Y')}",
+            meta=company,
+            meta_sub=_t("pnl.generated", date=today.strftime("%d %b %Y")),
+        ),
         unsafe_allow_html=True,
     )
 
@@ -21784,23 +21708,20 @@ def render_balance_sheet(session, end_date=None):
 
     # ── Banner ────────────────────────────────────────────────────────────────
     st.markdown(
-        f'<div class="banner banner-primary" style="padding:18px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
-        f'<div><div style="font-size:19px;font-weight:700;">⚖️ {_t("bs.title")}</div>'
-        f'<div style="font-size:12px;opacity:.75;margin-top:3px;">'
-        f'{_t("bs.as_of", date=as_of.strftime("%d %b %Y"))}</div></div>'
-        f'<div style="text-align:right;">'
-        f'<div style="font-size:13px;font-weight:600;">{company}</div>'
-        f'<div style="font-size:11px;opacity:.65;margin-top:2px;">'
-        f'{_t("pnl.generated", date=today.strftime("%d %b %Y"))}</div>'
-        f'</div></div>',
+        page_report_banner_html(
+            f"⚖️ {_t('bs.title')}",
+            subtitle=_t("bs.as_of", date=as_of.strftime("%d %b %Y")),
+            meta=company,
+            meta_sub=_t("pnl.generated", date=today.strftime("%d %b %Y")),
+        ),
         unsafe_allow_html=True,
     )
 
     # ── KPI row ───────────────────────────────────────────────────────────────
     bs_items = [
-        {"label": _t("bs.total_assets"), "value": f"{currency} {total_assets:,.2f}", "variant": "info"},
-        {"label": _t("bs.total_liabilities"), "value": f"{currency} {total_liabilities:,.2f}", "variant": "warning"},
-        {"label": _t("bs.equity_ni"), "value": f"{currency} {total_equity:,.2f}", "variant": "purple"},
+        {"label": _t("bs.total_assets"), "value": f"{currency} {total_assets:,.2f}"},
+        {"label": _t("bs.total_liabilities"), "value": f"{currency} {total_liabilities:,.2f}"},
+        {"label": _t("bs.equity_ni"), "value": f"{currency} {total_equity:,.2f}"},
     ]
     render_kpi_grid(bs_items)
 
@@ -21824,7 +21745,7 @@ def render_balance_sheet(session, end_date=None):
         _bs_section("warning", _t("bs.liabilities"), total_liabilities, liability_rows)
         st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
         equity_display = equity_rows + [{"Code": "—", "Account": _t("bs.net_income_line"), "Amount": round(net_income, 2)}]
-        _bs_section("purple", _t("bs.equity_ni"), total_equity, equity_display)
+        _bs_section("info", _t("bs.equity_ni"), total_equity, equity_display)
 
     # ── Balanced badge ────────────────────────────────────────────────────────
     balanced = diff < 0.01
@@ -21914,15 +21835,12 @@ def render_cash_flow(session, start_date=None, end_date=None):
 
     # ── Banner ────────────────────────────────────────────────────────────────
     st.markdown(
-        f'<div class="banner banner-info" style="padding:18px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'
-        f'<div><div style="font-size:19px;font-weight:700;">💧 {_t("cf.title")}</div>'
-        f'<div style="font-size:12px;opacity:.75;margin-top:3px;">'
-        f'{start_date.strftime("%d %b %Y")} — {end_date.strftime("%d %b %Y")}</div></div>'
-        f'<div style="text-align:right;">'
-        f'<div style="font-size:13px;font-weight:600;">{company}</div>'
-        f'<div style="font-size:11px;opacity:.65;margin-top:2px;">'
-        f'{_t("pnl.generated", date=today.strftime("%d %b %Y"))}</div>'
-        f'</div></div>',
+        page_report_banner_html(
+            f"💧 {_t('cf.title')}",
+            subtitle=f"{start_date.strftime('%d %b %Y')} — {end_date.strftime('%d %b %Y')}",
+            meta=company,
+            meta_sub=_t("pnl.generated", date=today.strftime("%d %b %Y")),
+        ),
         unsafe_allow_html=True,
     )
 
@@ -22047,10 +21965,6 @@ def render_my_account(session):
         return
 
     _display_role = _current_company_role() or db_user.role
-    _role_colors = {
-        "owner": "#1e40af", "manager": "#0891b2", "cashier": "#065f46",
-        "partner": "#6d28d9", "viewer": "#6b7280",
-    }
 
     st.markdown(
         f'<div style="border-left:4px solid var(--theme-info);padding-left:10px;'
@@ -22073,11 +21987,8 @@ def render_my_account(session):
     # ── Compute shared avatar HTML ────────────────────────────────────────────
     _words    = (db_user.display_name or db_user.username or "U").split()
     _initials = "".join(w[0].upper() for w in _words[:2]) or "U"
-    _rc       = _role_colors.get(_display_role, "#374151")
     _avatar_html = (
-        f'<div style="width:64px;height:64px;border-radius:50%;background:{_rc};'
-        f'color:#fff;font-size:22px;font-weight:800;display:flex;align-items:center;'
-        f'justify-content:center;margin-bottom:8px;">{_initials}</div>'
+        f'<div class="erp-mono-avatar">{_initials}</div>'
         f'<div style="font-size:10px;color:var(--theme-muted);">{_t("account.profile_photo")}</div>'
         f'<div style="font-size:9px;color:var(--theme-muted);opacity:.7;">'
         f'{_t("account.photo_coming")}</div>'
@@ -22186,8 +22097,7 @@ def render_my_account(session):
             st.markdown(f"**{_t('myaccount.active_sessions')}**")
             st.markdown(
                 '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;">'
-                '<span style="width:8px;height:8px;border-radius:50%;background:#10b981;'
-                'flex-shrink:0;"></span>'
+                '<span class="erp-status-dot-success"></span>'
                 f'<span style="font-size:12px;color:var(--theme-text);">{_t("myaccount.current_session")}</span>'
                 f'<span style="margin-left:auto;font-size:10px;color:var(--theme-muted);">'
                 f'{_t("myaccount.active_now")}</span>'
@@ -22203,8 +22113,7 @@ def render_my_account(session):
             _2fa_c1, _2fa_c2 = st.columns([4, 1])
             _2fa_c1.markdown(f"**{_t('myaccount.2fa_title')}**")
             _2fa_c2.markdown(
-                f'<span style="background:#f59e0b;color:#fff;font-size:9px;'
-                f'font-weight:700;padding:2px 8px;border-radius:99px;">{_t("myaccount.2fa_badge")}</span>',
+                f'<span class="erp-status-pill-warning">{_t("myaccount.2fa_badge")}</span>',
                 unsafe_allow_html=True,
             )
             st.caption(_t("myaccount.2fa_caption"))

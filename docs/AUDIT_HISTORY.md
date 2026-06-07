@@ -8,6 +8,26 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-09 — UI Mono Sweep 3 (colorful UI removal)
+
+**Task:** Remove remaining pre-existing rainbow / per-module colors after Sweeps 1–2 — aging buckets, report KPI hex, P&L/Budget gradient banners, recon charts, opening-balance section accents, member role pills.
+
+**Actions taken (UI/CSS only):**
+
+- New helpers: `page_report_banner_html()`, `aging_buckets_html()`, `mono_role_pill_html()` in `ui/section.py`.
+- `chart_series_color()` / `chart_reference_color()` in `ui/theme.py` for Altair charts.
+- `.banner.banner-primary` / `.banner-info` → mono card + left info accent (no gradients).
+- KPI value classes forced to `--theme-text` in all modes.
+- AR/AP aging, member roles, advanced hub groups, OB/partner sections, dashboard expense bars converted to mono.
+- `docs/UI_STYLE_GUIDE.md` — Mono Design Enforcement section.
+- Tests: `test_mono_sweep3_*` in `test_ui1_design_language.py`.
+
+**Intentional exceptions:** Semantic status pills (Paid/Open/Overdue); signed amount colors; header logo brand gradient; P&L income/expense section accent borders.
+
+**Checkpoint base:** `7f32800`.
+
+---
+
 ## 2026-06-09 — UI readability Sweep 2 (operational tables)
 
 **Task:** Remaining weak spots — Reports management tabs, Banking ledger, Budget, COA summary, AR/AP lists, paginated tables, and other Glide `st.dataframe` clip points.

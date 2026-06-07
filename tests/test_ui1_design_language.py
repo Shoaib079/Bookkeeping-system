@@ -61,3 +61,36 @@ def test_sidebar_primary_uses_chip_tokens():
 def test_section_accent_policy_documented():
     section = _read("ui", "section.py")
     assert "UI-1 accent policy" in section
+
+
+def test_mono_sweep3_helpers_in_section_and_theme():
+    section = _read("ui", "section.py")
+    theme = _read("ui", "theme.css")
+    for name in ("aging_buckets_html", "page_report_banner_html", "mono_role_pill_html"):
+        assert name in section
+    for cls in (".erp-aging-bucket", ".erp-mono-pill", ".erp-page-banner"):
+        assert cls in theme
+
+
+def test_mono_sweep3_no_banned_colorful_patterns_in_app():
+    src = _read("app.py")
+    banned = (
+        '"color": "#111827"',
+        '"color": "#2563eb"',
+        '_aging_colors = {"Current": "#10b981"',
+        "linear-gradient(135deg,#14532d",
+        "linear-gradient(135deg,#1e40af",
+        "_MEMBER_ROLE_COLORS",
+        "mark_bar(color='#8b5cf6')",
+        "mark_line(point=True, color='#3b82f6')",
+        '_role_colors = {"owner": "#1e40af"',
+        'accent="purple"',
+        'accent="teal"',
+    )
+    for pattern in banned:
+        assert pattern not in src, f"colorful UI pattern still in app.py: {pattern}"
+
+
+def test_mono_sweep3_documented_in_style_guide():
+    guide = _read("docs", "UI_STYLE_GUIDE.md")
+    assert "Mono Design Enforcement" in guide

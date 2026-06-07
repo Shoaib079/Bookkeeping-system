@@ -131,8 +131,8 @@
 }
 
 .erp-txh-pill--purple {
-  background: color-mix(in srgb, var(--theme-purple) 14%, var(--theme-card) 86%);
-  color: var(--theme-purple);
+  background: color-mix(in srgb, var(--theme-info) 12%, var(--theme-card) 88%);
+  color: var(--theme-text);
 }
 
 .erp-txh-pill--neutral {

@@ -74,6 +74,65 @@ def section_header_html(title: str, *, accent: str = "info") -> str:
     return f'<div class="{cls}">{safe}</div>'
 
 
+def page_report_banner_html(
+    title: str,
+    *,
+    subtitle: str = "",
+    meta: str = "",
+    meta_sub: str = "",
+) -> str:
+    """Mono report page banner — card surface with left info accent (no gradients)."""
+    safe_title = html.escape(str(title))
+    sub = (
+        f'<div class="erp-page-banner-sub">{html.escape(subtitle)}</div>'
+        if subtitle else ""
+    )
+    meta_block = ""
+    if meta or meta_sub:
+        meta_main = f'<div class="erp-page-banner-meta-main">{html.escape(meta)}</div>' if meta else ""
+        meta_sub_html = (
+            f'<div class="erp-page-banner-meta-sub">{html.escape(meta_sub)}</div>'
+            if meta_sub else ""
+        )
+        meta_block = f'<div class="erp-page-banner-meta">{meta_main}{meta_sub_html}</div>'
+    return (
+        f'<div class="erp-page-banner">'
+        f'<div class="erp-page-banner-left">'
+        f'<div class="erp-page-banner-title">{safe_title}</div>{sub}'
+        f"</div>{meta_block}</div>"
+    )
+
+
+def aging_buckets_html(
+    buckets: dict[str, float],
+    currency: str,
+    label_for,
+    *,
+    decimals: int = 0,
+) -> str:
+    """Mono aging bucket grid — same card style for every bucket; amounts stay readable."""
+    parts: list[str] = []
+    fmt = f",.{decimals}f"
+    for bucket, amt in buckets.items():
+        if amt <= 0:
+            continue
+        label = html.escape(str(label_for(bucket)))
+        parts.append(
+            f'<div class="erp-aging-bucket">'
+            f'<div class="erp-aging-bucket-label">{label}</div>'
+            f'<div class="erp-aging-bucket-amt">{html.escape(currency)} {amt:{fmt}}</div>'
+            f"</div>"
+        )
+    if not parts:
+        return ""
+    return f'<div class="erp-aging-grid">{"".join(parts)}</div>'
+
+
+def mono_role_pill_html(label: str) -> str:
+    """Single-style role pill — role name carries meaning, not background color."""
+    return f'<span class="erp-mono-pill">{html.escape(str(label))}</span>'
+
+
 def theme_table_html(
     columns: list[str],
     rows: list[list[str]],
@@ -246,9 +305,12 @@ def tab_panel_intro(
 
 __all__ = [
     "FinColumn",
+    "aging_buckets_html",
     "financial_section_header_html",
     "financial_statement_table_html",
     "infer_column_kind",
+    "mono_role_pill_html",
+    "page_report_banner_html",
     "readable_dataframe_table_html",
     "section_header_html",
     "tab_panel_intro",
