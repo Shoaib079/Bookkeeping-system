@@ -109,6 +109,15 @@ def test_reports_tab_scope_helpers_exist():
     assert ("sales", "reports.tab.sales") in erp._REPORTS_MOB_TAB_IDS
 
 
+def test_reports_tab_scope_mobile_inactive_yields_false(monkeypatch):
+    state = {"mob_reports_tab": "expenses"}
+    monkeypatch.setattr(erp.st, "session_state", state)
+    with erp._reports_tab_scope("exec", None, mobile_ui=True) as show:
+        assert show is False
+    with erp._reports_tab_scope("expenses", None, mobile_ui=True) as show:
+        assert show is True
+
+
 def test_render_top_header_marker_inside_shell_row():
     src = (ROOT / "app.py").read_text(encoding="utf-8")
     idx = src.index('def render_top_header(')

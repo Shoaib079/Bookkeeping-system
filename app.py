@@ -8,7 +8,7 @@ import os
 import secrets
 import uuid
 import zipfile
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 
 import pandas as pd
 import streamlit as st
@@ -10014,10 +10014,18 @@ def _mob_at_is_salary_mode() -> bool:
     )
 
 
-def _mob_at_submit_txn_type(type_names: list[str]) -> str:
-    if _mob_at_is_salary_mode():
+def _at_effective_txn_type(type_names: list[str]) -> str:
+    """Map at_type_idx to a real posting type (Salary chip uses idx 6 → Expense)."""
+    idx = st.session_state.get("at_type_idx", 0)
+    if idx == _MOB_AT_SALARY_IDX or _mob_at_is_salary_mode():
         return "Expense"
-    return type_names[st.session_state["at_type_idx"]]
+    if 0 <= idx < len(type_names):
+        return type_names[idx]
+    return type_names[0] if type_names else "Expense"
+
+
+def _mob_at_submit_txn_type(type_names: list[str]) -> str:
+    return _at_effective_txn_type(type_names)
 
 
 def _mob_at_amount_display_text(raw: str | None = None) -> str:
@@ -10691,7 +10699,7 @@ def _render_add_transaction_mobile(
         st.session_state["mob_at_more_idx"] = 3
 
     _mob_at_sync_type_from_tab()
-    txn_type = type_names[st.session_state["at_type_idx"]]
+    txn_type = _at_effective_txn_type(type_names)
     _mob_at_ensure_defaults(txn_type, currency_default, vendors)
 
     with st.container(border=False, key="mob_at_topbar"):
@@ -11077,7 +11085,7 @@ def render_add_transaction(session):
     if "at_amount_display" not in st.session_state:
         st.session_state["at_amount_display"] = ""
 
-    txn_type              = _TYPE_NAMES[st.session_state["at_type_idx"]]
+    txn_type              = _at_effective_txn_type(_TYPE_NAMES)
     type_icon, type_color, type_bg, type_border = _TYPE_MAP[txn_type]
     _type_css             = _TYPE_CSS_CLASS.get(txn_type, "sale")
 
@@ -11492,7 +11500,7 @@ def render_add_transaction(session):
     # ── SUBMISSION HANDLER (desktop + mobile) ─────────────────────────────────
     if submitted or mob_submitted:
         _submit_type = (
-            _mob_at_submit_txn_type(_TYPE_NAMES)
+            _at_effective_txn_type(_TYPE_NAMES)
             if mob_submitted
             else _TYPE_NAMES[st.session_state["at_type_idx"]]
         )
@@ -18059,13 +18067,13 @@ def _render_mobile_reports_tab_bar() -> None:
 
 @contextmanager
 def _reports_tab_scope(tab_id: str, tab_widget, *, mobile_ui: bool):
-    """Desktop: st.tabs panel. Mobile: render only the active mob_reports_tab panel."""
+    """Desktop: st.tabs panel. Mobile: yields whether this tab is active."""
+    show = (not mobile_ui) or st.session_state.get("mob_reports_tab", "exec") == tab_id
     if mobile_ui:
-        if st.session_state.get("mob_reports_tab", "exec") == tab_id:
-            yield
+        yield show
     else:
         with tab_widget:
-            yield
+            yield True
 
 
 def render_reports(session):
@@ -18127,930 +18135,937 @@ def render_reports(session):
     # ─────────────────────────────────────────────────────────────────────────
     # EXECUTIVE TAB — existing accounting reports (unchanged render functions)
     # ─────────────────────────────────────────────────────────────────────────
-    with _reports_tab_scope("exec", tab_exec, mobile_ui=_mob_rpt_ui):
-        _render_tab_intro("reports.tab.exec")
-        exec_sel = _mgmt_report_select("rpt_exec_sel", [
-            ("pnl", "reports.exec.pnl"),
-            ("balance_sheet", "reports.exec.balance_sheet"),
-            ("cash_flow", "reports.exec.cash_flow"),
-            ("budget", "reports.exec.budget"),
-            ("trial_balance", "reports.exec.trial_balance"),
-            ("general_ledger", "reports.exec.general_ledger"),
-            ("txn_ledger", "reports.exec.txn_ledger"),
-            ("today_summary", "reports.exec.today_summary"),
-        ])
-        st.markdown("---")
-        if exec_sel == "pnl":
-            render_profit_loss(session, start_date=start_date, end_date=end_date)
-        elif exec_sel == "balance_sheet":
-            render_balance_sheet(session, end_date=end_date)
-        elif exec_sel == "cash_flow":
-            render_cash_flow(session, start_date=start_date, end_date=end_date)
-        elif exec_sel == "budget":
-            render_budget(session)
-        elif exec_sel == "trial_balance":
-            render_trial_balance(session)
-        elif exec_sel == "general_ledger":
-            render_general_ledger(session)
-        elif exec_sel == "txn_ledger":
-            render_transaction_history(session)
-        elif exec_sel == "today_summary":
-            render_today_summary(session)
-
+    if not _mob_rpt_ui or st.session_state.get("mob_reports_tab", "exec") == "exec":
+        with tab_exec if not _mob_rpt_ui else nullcontext():
+            _render_tab_intro("reports.tab.exec")
+            exec_sel = _mgmt_report_select("rpt_exec_sel", [
+                ("pnl", "reports.exec.pnl"),
+                ("balance_sheet", "reports.exec.balance_sheet"),
+                ("cash_flow", "reports.exec.cash_flow"),
+                ("budget", "reports.exec.budget"),
+                ("trial_balance", "reports.exec.trial_balance"),
+                ("general_ledger", "reports.exec.general_ledger"),
+                ("txn_ledger", "reports.exec.txn_ledger"),
+                ("today_summary", "reports.exec.today_summary"),
+            ])
+            st.markdown("---")
+            if exec_sel == "pnl":
+                render_profit_loss(session, start_date=start_date, end_date=end_date)
+            elif exec_sel == "balance_sheet":
+                render_balance_sheet(session, end_date=end_date)
+            elif exec_sel == "cash_flow":
+                render_cash_flow(session, start_date=start_date, end_date=end_date)
+            elif exec_sel == "budget":
+                render_budget(session)
+            elif exec_sel == "trial_balance":
+                render_trial_balance(session)
+            elif exec_sel == "general_ledger":
+                render_general_ledger(session)
+            elif exec_sel == "txn_ledger":
+                render_transaction_history(session)
+            elif exec_sel == "today_summary":
+                render_today_summary(session)
+            
     def _access_denied():
         st.info(f"🔒 {_t('reports.access_denied')}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # SALES TAB
     # ─────────────────────────────────────────────────────────────────────────
-    with _reports_tab_scope("sales", tab_sales, mobile_ui=_mob_rpt_ui):
-        _render_tab_intro("reports.tab.sales")
-        if not _can("view_management_reports"):
-            _access_denied()
-        else:
-            d_from, d_to = _reports_date_bar("sl", month_start, today)
-            sel = _mgmt_report_select("rpt_sales_sel", [
-                ("daily_sales", "reports.mgmt.daily_sales"),
-                ("monthly_sales", "reports.mgmt.monthly_sales"),
-                ("by_payment_method", "reports.mgmt.by_payment_method"),
-                ("top_customers", "reports.mgmt.top_customers"),
-                ("avg_sale_value", "reports.mgmt.avg_sale_value"),
-                ("sales_growth", "reports.mgmt.sales_growth"),
-            ])
-            st.markdown("---")
-
-            sales_q = (
-                cq(session, Sale)
-                .filter(Sale.date.between(d_from, d_to), Sale.is_void == False)
-            )
-
-            if sel == "daily_sales":
-                rows = (
-                    cq(session, Sale).with_entities(
-                        Sale.date,
-                        func.sum(case((Sale.sale_type == "Cash", Sale.amount), else_=0)).label("Cash"),
-                        func.sum(case((Sale.sale_type == "Card", Sale.amount), else_=0)).label("Card"),
-                        func.sum(case((Sale.sale_type == "Credit", Sale.amount), else_=0)).label("Credit"),
-                        func.sum(Sale.amount).label("Total"),
-                        func.count(Sale.id).label("Transactions"),
-                    )
-                    .filter(Sale.date.between(d_from, d_to), Sale.is_void == False)
-                    .group_by(Sale.date)
-                    .order_by(Sale.date.desc())
-                    .all()
-                )
-                df = pd.DataFrame(rows, columns=["Date", "Cash", "Card", "Credit", "Total", "Transactions"])
-                if not df.empty:
-                    df["Avg Sale"] = (df["Total"] / df["Transactions"].clip(lower=1)).round(2)
-                    render_kpi_grid([
-                        {"label": _t("rpt.kpi.total_sales"),   "value": f"{currency} {df['Total'].sum():,.2f}",     "variant": "success"},
-                        {"label": _t("rpt.kpi.cash_sales"),    "value": f"{currency} {df['Cash'].sum():,.2f}",      "color": "#111827"},
-                        {"label": _t("rpt.kpi.card_sales"),    "value": f"{currency} {df['Card'].sum():,.2f}",      "color": "#111827"},
-                        {"label": _t("rpt.kpi.credit_sales"),  "value": f"{currency} {df['Credit'].sum():,.2f}",    "color": "#111827"},
-                        {"label": _t("rpt.kpi.transactions"),  "value": str(int(df['Transactions'].sum())),         "color": "var(--theme-muted)"},
-                    ])
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Daily_Sales", pdf=False)
-                else:
-                    st.info(_t("reports.no_sales_range"))
-
-            elif sel == "monthly_sales":
-                rows = (
-                    cq(session, Sale).with_entities(
-                        func.strftime("%Y-%m", Sale.date).label("Month"),
-                        func.sum(case((Sale.sale_type == "Cash", Sale.amount), else_=0)).label("Cash"),
-                        func.sum(case((Sale.sale_type == "Card", Sale.amount), else_=0)).label("Card"),
-                        func.sum(case((Sale.sale_type == "Credit", Sale.amount), else_=0)).label("Credit"),
-                        func.sum(Sale.amount).label("Total"),
-                        func.count(Sale.id).label("Transactions"),
-                    )
-                    .filter(Sale.date.between(d_from, d_to), Sale.is_void == False)
-                    .group_by(func.strftime("%Y-%m", Sale.date))
-                    .order_by(func.strftime("%Y-%m", Sale.date).desc())
-                    .all()
-                )
-                df = pd.DataFrame(rows, columns=["Month", "Cash", "Card", "Credit", "Total", "Transactions"])
-                if not df.empty:
-                    df["MoM %"] = df["Total"].pct_change(-1).mul(100).round(1).fillna(0).astype(str) + "%"
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    try:
-                        st.bar_chart(df.set_index("Month")["Total"])
-                    except Exception:
-                        pass
-                    render_export_buttons(df, "Monthly_Sales", pdf=False)
-                else:
-                    st.info(_t("reports.no_sales_range"))
-
-            elif sel == "by_payment_method":
-                rows = (
-                    cq(session, Sale).with_entities(
-                        Sale.sale_type.label("Method"),
-                        func.count(Sale.id).label("Count"),
-                        func.sum(Sale.amount).label("Total"),
-                    )
-                    .filter(Sale.date.between(d_from, d_to), Sale.is_void == False)
-                    .group_by(Sale.sale_type)
-                    .order_by(func.sum(Sale.amount).desc())
-                    .all()
-                )
-                df = pd.DataFrame(rows, columns=["Method", "Count", "Total"])
-                if not df.empty:
-                    grand = df["Total"].sum()
-                    df["Share %"] = (df["Total"] / grand * 100).round(1).astype(str) + "%"
-                    render_kpi_grid([
-                        {"label": r["Method"], "value": f"{currency} {r['Total']:,.2f}",
-                         "sub": f"{r['Count']} transactions · {r['Share %']}"}
-                        for r in df.to_dict("records")
-                    ])
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Sales_By_Method", pdf=False)
-                else:
-                    st.info(_t("reports.no_sales_range"))
-
-            elif sel == "top_customers":
-                top_n = st.number_input(_t("reports.show_top"), min_value=5, max_value=100, value=10, key="sl_top_n")
-                rows = (
-                    cq(session, Sale).with_entities(
-                        Sale.customer_name.label("Customer"),
-                        func.count(Sale.id).label("Invoices"),
-                        func.sum(Sale.amount).label("Total"),
-                        func.max(Sale.date).label("Last Sale"),
-                    )
-                    .filter(Sale.date.between(d_from, d_to), Sale.is_void == False)
-                    .group_by(Sale.customer_name)
-                    .order_by(func.sum(Sale.amount).desc())
-                    .limit(int(top_n))
-                    .all()
-                )
-                df = pd.DataFrame(rows, columns=["Customer", "Invoices", "Total", "Last Sale"])
-                if not df.empty:
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Top_Customers", pdf=False)
-                else:
-                    st.info(_t("reports.no_sales_range"))
-
-            elif sel == "avg_sale_value":
-                rows = (
-                    cq(session, Sale).with_entities(
-                        Sale.date,
-                        func.count(Sale.id).label("Count"),
-                        func.sum(Sale.amount).label("Total"),
-                    )
-                    .filter(Sale.date.between(d_from, d_to), Sale.is_void == False)
-                    .group_by(Sale.date)
-                    .order_by(Sale.date.desc())
-                    .all()
-                )
-                df = pd.DataFrame(rows, columns=["Date", "Transactions", "Total"])
-                if not df.empty:
-                    df["Avg Sale"] = (df["Total"] / df["Transactions"].clip(lower=1)).round(2)
-                    overall_avg = df["Total"].sum() / max(df["Transactions"].sum(), 1)
-                    render_kpi_grid([
-                        {"label": _t("rpt.kpi.overall_avg"), "value": f"{currency} {overall_avg:,.2f}", "variant": "success"},
-                        {"label": _t("rpt.kpi.total_transactions"), "value": str(int(df["Transactions"].sum())), "color": "var(--theme-muted)"},
-                    ])
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Avg_Sale_Value", pdf=False)
-                else:
-                    st.info(_t("reports.no_sales_range"))
-
-            elif sel == "sales_growth":
-                st.caption(_t("rpt.kpi.growth_caption"))
-                period_days = max((d_to - d_from).days, 1)
-                prior_to    = d_from - datetime.timedelta(days=1)
-                prior_from  = prior_to - datetime.timedelta(days=period_days - 1)
-                cur_total  = cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(Sale.date.between(d_from, d_to), Sale.is_void == False).scalar() or 0.0
-                prior_total = cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(Sale.date.between(prior_from, prior_to), Sale.is_void == False).scalar() or 0.0
-                change      = cur_total - prior_total
-                pct         = (change / prior_total * 100) if prior_total else 0.0
-                render_kpi_grid([
-                    {"label": _t("rpt.kpi.current_period", frm=d_from, to=d_to),    "value": f"{currency} {cur_total:,.2f}",  "variant": "success"},
-                    {"label": _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), "value": f"{currency} {prior_total:,.2f}", "color": "var(--theme-muted)"},
-                    {"label": _t("rpt.kpi.change"),  "value": f"{currency} {change:+,.2f}", "variant": "success" if change >= 0 else "danger"},
-                    {"label": _t("rpt.kpi.growth_pct"), "value": f"{pct:+.1f}%",              "variant": "success" if pct >= 0 else "danger"},
+    if not _mob_rpt_ui or st.session_state.get("mob_reports_tab", "exec") == "sales":
+        with tab_sales if not _mob_rpt_ui else nullcontext():
+            _render_tab_intro("reports.tab.sales")
+            if not _can("view_management_reports"):
+                _access_denied()
+            else:
+                d_from, d_to = _reports_date_bar("sl", month_start, today)
+                sel = _mgmt_report_select("rpt_sales_sel", [
+                    ("daily_sales", "reports.mgmt.daily_sales"),
+                    ("monthly_sales", "reports.mgmt.monthly_sales"),
+                    ("by_payment_method", "reports.mgmt.by_payment_method"),
+                    ("top_customers", "reports.mgmt.top_customers"),
+                    ("avg_sale_value", "reports.mgmt.avg_sale_value"),
+                    ("sales_growth", "reports.mgmt.sales_growth"),
                 ])
-                df = pd.DataFrame([
-                    {_t("col.period"): _t("rpt.kpi.current_period", frm=d_from, to=d_to), _t("col.total"): round(cur_total, 2)},
-                    {_t("col.period"): _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), _t("col.total"): round(prior_total, 2)},
-                    {_t("col.period"): _t("rpt.kpi.change"),    _t("col.total"): round(change, 2)},
-                    {_t("col.period"): _t("rpt.kpi.growth_pct"), _t("col.total"): round(pct, 2)},
-                ])
-                render_export_buttons(df, "Sales_Growth", pdf=False)
-
+                st.markdown("---")
+            
+                sales_q = (
+                    cq(session, Sale)
+                    .filter(Sale.date.between(d_from, d_to), Sale.is_void == False)
+                )
+            
+                if sel == "daily_sales":
+                    rows = (
+                        cq(session, Sale).with_entities(
+                            Sale.date,
+                            func.sum(case((Sale.sale_type == "Cash", Sale.amount), else_=0)).label("Cash"),
+                            func.sum(case((Sale.sale_type == "Card", Sale.amount), else_=0)).label("Card"),
+                            func.sum(case((Sale.sale_type == "Credit", Sale.amount), else_=0)).label("Credit"),
+                            func.sum(Sale.amount).label("Total"),
+                            func.count(Sale.id).label("Transactions"),
+                        )
+                        .filter(Sale.date.between(d_from, d_to), Sale.is_void == False)
+                        .group_by(Sale.date)
+                        .order_by(Sale.date.desc())
+                        .all()
+                    )
+                    df = pd.DataFrame(rows, columns=["Date", "Cash", "Card", "Credit", "Total", "Transactions"])
+                    if not df.empty:
+                        df["Avg Sale"] = (df["Total"] / df["Transactions"].clip(lower=1)).round(2)
+                        render_kpi_grid([
+                            {"label": _t("rpt.kpi.total_sales"),   "value": f"{currency} {df['Total'].sum():,.2f}",     "variant": "success"},
+                            {"label": _t("rpt.kpi.cash_sales"),    "value": f"{currency} {df['Cash'].sum():,.2f}",      "color": "#111827"},
+                            {"label": _t("rpt.kpi.card_sales"),    "value": f"{currency} {df['Card'].sum():,.2f}",      "color": "#111827"},
+                            {"label": _t("rpt.kpi.credit_sales"),  "value": f"{currency} {df['Credit'].sum():,.2f}",    "color": "#111827"},
+                            {"label": _t("rpt.kpi.transactions"),  "value": str(int(df['Transactions'].sum())),         "color": "var(--theme-muted)"},
+                        ])
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Daily_Sales", pdf=False)
+                    else:
+                        st.info(_t("reports.no_sales_range"))
+            
+                elif sel == "monthly_sales":
+                    rows = (
+                        cq(session, Sale).with_entities(
+                            func.strftime("%Y-%m", Sale.date).label("Month"),
+                            func.sum(case((Sale.sale_type == "Cash", Sale.amount), else_=0)).label("Cash"),
+                            func.sum(case((Sale.sale_type == "Card", Sale.amount), else_=0)).label("Card"),
+                            func.sum(case((Sale.sale_type == "Credit", Sale.amount), else_=0)).label("Credit"),
+                            func.sum(Sale.amount).label("Total"),
+                            func.count(Sale.id).label("Transactions"),
+                        )
+                        .filter(Sale.date.between(d_from, d_to), Sale.is_void == False)
+                        .group_by(func.strftime("%Y-%m", Sale.date))
+                        .order_by(func.strftime("%Y-%m", Sale.date).desc())
+                        .all()
+                    )
+                    df = pd.DataFrame(rows, columns=["Month", "Cash", "Card", "Credit", "Total", "Transactions"])
+                    if not df.empty:
+                        df["MoM %"] = df["Total"].pct_change(-1).mul(100).round(1).fillna(0).astype(str) + "%"
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        try:
+                            st.bar_chart(df.set_index("Month")["Total"])
+                        except Exception:
+                            pass
+                        render_export_buttons(df, "Monthly_Sales", pdf=False)
+                    else:
+                        st.info(_t("reports.no_sales_range"))
+            
+                elif sel == "by_payment_method":
+                    rows = (
+                        cq(session, Sale).with_entities(
+                            Sale.sale_type.label("Method"),
+                            func.count(Sale.id).label("Count"),
+                            func.sum(Sale.amount).label("Total"),
+                        )
+                        .filter(Sale.date.between(d_from, d_to), Sale.is_void == False)
+                        .group_by(Sale.sale_type)
+                        .order_by(func.sum(Sale.amount).desc())
+                        .all()
+                    )
+                    df = pd.DataFrame(rows, columns=["Method", "Count", "Total"])
+                    if not df.empty:
+                        grand = df["Total"].sum()
+                        df["Share %"] = (df["Total"] / grand * 100).round(1).astype(str) + "%"
+                        render_kpi_grid([
+                            {"label": r["Method"], "value": f"{currency} {r['Total']:,.2f}",
+                             "sub": f"{r['Count']} transactions · {r['Share %']}"}
+                            for r in df.to_dict("records")
+                        ])
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Sales_By_Method", pdf=False)
+                    else:
+                        st.info(_t("reports.no_sales_range"))
+            
+                elif sel == "top_customers":
+                    top_n = st.number_input(_t("reports.show_top"), min_value=5, max_value=100, value=10, key="sl_top_n")
+                    rows = (
+                        cq(session, Sale).with_entities(
+                            Sale.customer_name.label("Customer"),
+                            func.count(Sale.id).label("Invoices"),
+                            func.sum(Sale.amount).label("Total"),
+                            func.max(Sale.date).label("Last Sale"),
+                        )
+                        .filter(Sale.date.between(d_from, d_to), Sale.is_void == False)
+                        .group_by(Sale.customer_name)
+                        .order_by(func.sum(Sale.amount).desc())
+                        .limit(int(top_n))
+                        .all()
+                    )
+                    df = pd.DataFrame(rows, columns=["Customer", "Invoices", "Total", "Last Sale"])
+                    if not df.empty:
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Top_Customers", pdf=False)
+                    else:
+                        st.info(_t("reports.no_sales_range"))
+            
+                elif sel == "avg_sale_value":
+                    rows = (
+                        cq(session, Sale).with_entities(
+                            Sale.date,
+                            func.count(Sale.id).label("Count"),
+                            func.sum(Sale.amount).label("Total"),
+                        )
+                        .filter(Sale.date.between(d_from, d_to), Sale.is_void == False)
+                        .group_by(Sale.date)
+                        .order_by(Sale.date.desc())
+                        .all()
+                    )
+                    df = pd.DataFrame(rows, columns=["Date", "Transactions", "Total"])
+                    if not df.empty:
+                        df["Avg Sale"] = (df["Total"] / df["Transactions"].clip(lower=1)).round(2)
+                        overall_avg = df["Total"].sum() / max(df["Transactions"].sum(), 1)
+                        render_kpi_grid([
+                            {"label": _t("rpt.kpi.overall_avg"), "value": f"{currency} {overall_avg:,.2f}", "variant": "success"},
+                            {"label": _t("rpt.kpi.total_transactions"), "value": str(int(df["Transactions"].sum())), "color": "var(--theme-muted)"},
+                        ])
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Avg_Sale_Value", pdf=False)
+                    else:
+                        st.info(_t("reports.no_sales_range"))
+            
+                elif sel == "sales_growth":
+                    st.caption(_t("rpt.kpi.growth_caption"))
+                    period_days = max((d_to - d_from).days, 1)
+                    prior_to    = d_from - datetime.timedelta(days=1)
+                    prior_from  = prior_to - datetime.timedelta(days=period_days - 1)
+                    cur_total  = cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(Sale.date.between(d_from, d_to), Sale.is_void == False).scalar() or 0.0
+                    prior_total = cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(Sale.date.between(prior_from, prior_to), Sale.is_void == False).scalar() or 0.0
+                    change      = cur_total - prior_total
+                    pct         = (change / prior_total * 100) if prior_total else 0.0
+                    render_kpi_grid([
+                        {"label": _t("rpt.kpi.current_period", frm=d_from, to=d_to),    "value": f"{currency} {cur_total:,.2f}",  "variant": "success"},
+                        {"label": _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), "value": f"{currency} {prior_total:,.2f}", "color": "var(--theme-muted)"},
+                        {"label": _t("rpt.kpi.change"),  "value": f"{currency} {change:+,.2f}", "variant": "success" if change >= 0 else "danger"},
+                        {"label": _t("rpt.kpi.growth_pct"), "value": f"{pct:+.1f}%",              "variant": "success" if pct >= 0 else "danger"},
+                    ])
+                    df = pd.DataFrame([
+                        {_t("col.period"): _t("rpt.kpi.current_period", frm=d_from, to=d_to), _t("col.total"): round(cur_total, 2)},
+                        {_t("col.period"): _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), _t("col.total"): round(prior_total, 2)},
+                        {_t("col.period"): _t("rpt.kpi.change"),    _t("col.total"): round(change, 2)},
+                        {_t("col.period"): _t("rpt.kpi.growth_pct"), _t("col.total"): round(pct, 2)},
+                    ])
+                    render_export_buttons(df, "Sales_Growth", pdf=False)
+            
     # ─────────────────────────────────────────────────────────────────────────
     # EXPENSES TAB
     # ─────────────────────────────────────────────────────────────────────────
-    with _reports_tab_scope("expenses", tab_exp, mobile_ui=_mob_rpt_ui):
-        _render_tab_intro("reports.tab.expenses")
-        if not _can("view_management_reports"):
-            _access_denied()
-        else:
-            d_from, d_to = _reports_date_bar("ex", month_start, today)
-            sel = _mgmt_report_select("rpt_exp_sel", [
-                ("by_category", "reports.mgmt.by_category"),
-                ("monthly_trend", "reports.mgmt.monthly_trend"),
-                ("largest_expenses", "reports.mgmt.largest_expenses"),
-                ("expense_growth", "reports.mgmt.expense_growth"),
-                ("vendor_category_spend", "reports.mgmt.vendor_category_spend"),
-            ])
-            st.markdown("---")
-
-            if sel == "by_category":
-                rows = (
-                    cq(session, ExpenseRecord).with_entities(
-                        ExpenseRecord.expense_type.label("Category"),
-                        func.count(ExpenseRecord.id).label("Count"),
-                        func.sum(ExpenseRecord.amount).label("Total"),
+    if not _mob_rpt_ui or st.session_state.get("mob_reports_tab", "exec") == "expenses":
+        with tab_exp if not _mob_rpt_ui else nullcontext():
+            _render_tab_intro("reports.tab.expenses")
+            if not _can("view_management_reports"):
+                _access_denied()
+            else:
+                d_from, d_to = _reports_date_bar("ex", month_start, today)
+                sel = _mgmt_report_select("rpt_exp_sel", [
+                    ("by_category", "reports.mgmt.by_category"),
+                    ("monthly_trend", "reports.mgmt.monthly_trend"),
+                    ("largest_expenses", "reports.mgmt.largest_expenses"),
+                    ("expense_growth", "reports.mgmt.expense_growth"),
+                    ("vendor_category_spend", "reports.mgmt.vendor_category_spend"),
+                ])
+                st.markdown("---")
+            
+                if sel == "by_category":
+                    rows = (
+                        cq(session, ExpenseRecord).with_entities(
+                            ExpenseRecord.expense_type.label("Category"),
+                            func.count(ExpenseRecord.id).label("Count"),
+                            func.sum(ExpenseRecord.amount).label("Total"),
+                        )
+                        .filter(ExpenseRecord.date.between(d_from, d_to), ExpenseRecord.is_void == False)
+                        .group_by(ExpenseRecord.expense_type)
+                        .order_by(func.sum(ExpenseRecord.amount).desc())
+                        .all()
                     )
-                    .filter(ExpenseRecord.date.between(d_from, d_to), ExpenseRecord.is_void == False)
-                    .group_by(ExpenseRecord.expense_type)
-                    .order_by(func.sum(ExpenseRecord.amount).desc())
-                    .all()
-                )
-                df = pd.DataFrame(rows, columns=["Category", "Count", "Total"])
-                if not df.empty:
-                    grand = df["Total"].sum()
-                    df["Share %"] = (df["Total"] / grand * 100).round(1).astype(str) + "%"
+                    df = pd.DataFrame(rows, columns=["Category", "Count", "Total"])
+                    if not df.empty:
+                        grand = df["Total"].sum()
+                        df["Share %"] = (df["Total"] / grand * 100).round(1).astype(str) + "%"
+                        render_kpi_grid([
+                            {"label": _t("rpt.kpi.total_expenses"), "value": f"{currency} {grand:,.2f}", "variant": "danger"},
+                            {"label": _t("rpt.kpi.categories"),     "value": str(len(df)),                "color": "var(--theme-muted)"},
+                        ])
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Expenses_By_Category", pdf=False)
+                    else:
+                        st.info(_t("reports.no_expenses_range"))
+            
+                elif sel == "monthly_trend":
+                    rows = (
+                        cq(session, ExpenseRecord).with_entities(
+                            func.strftime("%Y-%m", ExpenseRecord.date).label("Month"),
+                            func.sum(ExpenseRecord.amount).label("Total"),
+                            func.count(ExpenseRecord.id).label("Count"),
+                        )
+                        .filter(ExpenseRecord.date.between(d_from, d_to), ExpenseRecord.is_void == False)
+                        .group_by(func.strftime("%Y-%m", ExpenseRecord.date))
+                        .order_by(func.strftime("%Y-%m", ExpenseRecord.date))
+                        .all()
+                    )
+                    df = pd.DataFrame(rows, columns=["Month", "Total", "Count"])
+                    if not df.empty:
+                        try:
+                            st.bar_chart(df.set_index("Month")["Total"])
+                        except Exception:
+                            pass
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Monthly_Expense_Trend", pdf=False)
+                    else:
+                        st.info(_t("reports.no_expenses_range"))
+            
+                elif sel == "largest_expenses":
+                    top_n = st.number_input(_t("reports.show_top"), min_value=5, max_value=200, value=20, key="ex_top_n")
+                    rows = (
+                        cq(session, ExpenseRecord)
+                        .filter(ExpenseRecord.date.between(d_from, d_to), ExpenseRecord.is_void == False)
+                        .order_by(ExpenseRecord.amount.desc())
+                        .limit(int(top_n))
+                        .all()
+                    )
+                    data = [{"Date": e.date, "Category": e.expense_type or "—",
+                              "Description": (e.description or "")[:60],
+                              "Method": e.payment_method or "—", "Amount": e.amount} for e in rows]
+                    df = pd.DataFrame(data)
+                    if not df.empty:
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Largest_Expenses", pdf=False)
+                    else:
+                        st.info(_t("reports.no_expenses_range"))
+            
+                elif sel == "expense_growth":
+                    st.caption(_t("rpt.kpi.growth_caption"))
+                    period_days = max((d_to - d_from).days, 1)
+                    prior_to    = d_from - datetime.timedelta(days=1)
+                    prior_from  = prior_to - datetime.timedelta(days=period_days - 1)
+                    cur_total   = cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(ExpenseRecord.date.between(d_from, d_to), ExpenseRecord.is_void == False).scalar() or 0.0
+                    prior_total = cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(ExpenseRecord.date.between(prior_from, prior_to), ExpenseRecord.is_void == False).scalar() or 0.0
+                    change      = cur_total - prior_total
+                    pct         = (change / prior_total * 100) if prior_total else 0.0
                     render_kpi_grid([
-                        {"label": _t("rpt.kpi.total_expenses"), "value": f"{currency} {grand:,.2f}", "variant": "danger"},
-                        {"label": _t("rpt.kpi.categories"),     "value": str(len(df)),                "color": "var(--theme-muted)"},
+                        {"label": _t("rpt.kpi.current_period", frm=d_from, to=d_to),       "value": f"{currency} {cur_total:,.2f}",   "variant": "danger"},
+                        {"label": _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), "value": f"{currency} {prior_total:,.2f}", "color": "var(--theme-muted)"},
+                        {"label": _t("rpt.kpi.change"),    "value": f"{currency} {change:+,.2f}", "variant": "danger" if change > 0 else "success"},
+                        {"label": _t("rpt.kpi.growth_pct"),  "value": f"{pct:+.1f}%",               "variant": "danger" if pct > 0 else "success"},
                     ])
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Expenses_By_Category", pdf=False)
-                else:
-                    st.info(_t("reports.no_expenses_range"))
-
-            elif sel == "monthly_trend":
-                rows = (
-                    cq(session, ExpenseRecord).with_entities(
-                        func.strftime("%Y-%m", ExpenseRecord.date).label("Month"),
-                        func.sum(ExpenseRecord.amount).label("Total"),
-                        func.count(ExpenseRecord.id).label("Count"),
+                    df = pd.DataFrame([
+                        {_t("col.period"): _t("rpt.kpi.current_period", frm=d_from, to=d_to), _t("col.total"): round(cur_total, 2)},
+                        {_t("col.period"): _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), _t("col.total"): round(prior_total, 2)},
+                        {_t("col.period"): _t("rpt.kpi.change"),    _t("col.total"): round(change, 2)},
+                        {_t("col.period"): _t("rpt.kpi.growth_pct"), _t("col.total"): round(pct, 2)},
+                    ])
+                    render_export_buttons(df, "Expense_Growth", pdf=False)
+            
+                elif sel == "vendor_category_spend":
+                    pur_rows = (
+                        cq(session, Purchase).join(Vendor, Purchase.vendor_id == Vendor.id)
+                        .with_entities(Vendor.name.label("Vendor_or_Category"),
+                                       func.sum(Purchase.amount).label("Total"),
+                                       func.count(Purchase.id).label("Count"))
+                        .filter(Purchase.date.between(d_from, d_to), Purchase.is_void == False)
+                        .group_by(Vendor.name)
+                        .order_by(func.sum(Purchase.amount).desc())
+                        .all()
                     )
-                    .filter(ExpenseRecord.date.between(d_from, d_to), ExpenseRecord.is_void == False)
-                    .group_by(func.strftime("%Y-%m", ExpenseRecord.date))
-                    .order_by(func.strftime("%Y-%m", ExpenseRecord.date))
-                    .all()
-                )
-                df = pd.DataFrame(rows, columns=["Month", "Total", "Count"])
-                if not df.empty:
-                    try:
-                        st.bar_chart(df.set_index("Month")["Total"])
-                    except Exception:
-                        pass
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Monthly_Expense_Trend", pdf=False)
-                else:
-                    st.info(_t("reports.no_expenses_range"))
-
-            elif sel == "largest_expenses":
-                top_n = st.number_input(_t("reports.show_top"), min_value=5, max_value=200, value=20, key="ex_top_n")
-                rows = (
-                    cq(session, ExpenseRecord)
-                    .filter(ExpenseRecord.date.between(d_from, d_to), ExpenseRecord.is_void == False)
-                    .order_by(ExpenseRecord.amount.desc())
-                    .limit(int(top_n))
-                    .all()
-                )
-                data = [{"Date": e.date, "Category": e.expense_type or "—",
-                          "Description": (e.description or "")[:60],
-                          "Method": e.payment_method or "—", "Amount": e.amount} for e in rows]
-                df = pd.DataFrame(data)
-                if not df.empty:
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Largest_Expenses", pdf=False)
-                else:
-                    st.info(_t("reports.no_expenses_range"))
-
-            elif sel == "expense_growth":
-                st.caption(_t("rpt.kpi.growth_caption"))
-                period_days = max((d_to - d_from).days, 1)
-                prior_to    = d_from - datetime.timedelta(days=1)
-                prior_from  = prior_to - datetime.timedelta(days=period_days - 1)
-                cur_total   = cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(ExpenseRecord.date.between(d_from, d_to), ExpenseRecord.is_void == False).scalar() or 0.0
-                prior_total = cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(ExpenseRecord.date.between(prior_from, prior_to), ExpenseRecord.is_void == False).scalar() or 0.0
-                change      = cur_total - prior_total
-                pct         = (change / prior_total * 100) if prior_total else 0.0
-                render_kpi_grid([
-                    {"label": _t("rpt.kpi.current_period", frm=d_from, to=d_to),       "value": f"{currency} {cur_total:,.2f}",   "variant": "danger"},
-                    {"label": _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), "value": f"{currency} {prior_total:,.2f}", "color": "var(--theme-muted)"},
-                    {"label": _t("rpt.kpi.change"),    "value": f"{currency} {change:+,.2f}", "variant": "danger" if change > 0 else "success"},
-                    {"label": _t("rpt.kpi.growth_pct"),  "value": f"{pct:+.1f}%",               "variant": "danger" if pct > 0 else "success"},
-                ])
-                df = pd.DataFrame([
-                    {_t("col.period"): _t("rpt.kpi.current_period", frm=d_from, to=d_to), _t("col.total"): round(cur_total, 2)},
-                    {_t("col.period"): _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), _t("col.total"): round(prior_total, 2)},
-                    {_t("col.period"): _t("rpt.kpi.change"),    _t("col.total"): round(change, 2)},
-                    {_t("col.period"): _t("rpt.kpi.growth_pct"), _t("col.total"): round(pct, 2)},
-                ])
-                render_export_buttons(df, "Expense_Growth", pdf=False)
-
-            elif sel == "vendor_category_spend":
-                pur_rows = (
-                    cq(session, Purchase).join(Vendor, Purchase.vendor_id == Vendor.id)
-                    .with_entities(Vendor.name.label("Vendor_or_Category"),
-                                   func.sum(Purchase.amount).label("Total"),
-                                   func.count(Purchase.id).label("Count"))
-                    .filter(Purchase.date.between(d_from, d_to), Purchase.is_void == False)
-                    .group_by(Vendor.name)
-                    .order_by(func.sum(Purchase.amount).desc())
-                    .all()
-                )
-                exp_rows = (
-                    cq(session, ExpenseRecord).with_entities(
-                        ExpenseRecord.expense_type.label("Vendor_or_Category"),
-                        func.sum(ExpenseRecord.amount).label("Total"),
-                        func.count(ExpenseRecord.id).label("Count"))
-                    .filter(ExpenseRecord.date.between(d_from, d_to), ExpenseRecord.is_void == False)
-                    .group_by(ExpenseRecord.expense_type)
-                    .order_by(func.sum(ExpenseRecord.amount).desc())
-                    .all()
-                )
-                data_p = [{"Source": "Purchase/Vendor", "Name": r[0], "Total": r[1], "Count": r[2]} for r in pur_rows]
-                data_e = [{"Source": "Expense/Category", "Name": r[0] or "—", "Total": r[1], "Count": r[2]} for r in exp_rows]
-                df = pd.DataFrame(data_p + data_e).sort_values("Total", ascending=False)
-                if not df.empty:
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Vendor_Category_Spend", pdf=False)
-                else:
-                    st.info(_t("rpt.no_vendor_category_data"))
-
+                    exp_rows = (
+                        cq(session, ExpenseRecord).with_entities(
+                            ExpenseRecord.expense_type.label("Vendor_or_Category"),
+                            func.sum(ExpenseRecord.amount).label("Total"),
+                            func.count(ExpenseRecord.id).label("Count"))
+                        .filter(ExpenseRecord.date.between(d_from, d_to), ExpenseRecord.is_void == False)
+                        .group_by(ExpenseRecord.expense_type)
+                        .order_by(func.sum(ExpenseRecord.amount).desc())
+                        .all()
+                    )
+                    data_p = [{"Source": "Purchase/Vendor", "Name": r[0], "Total": r[1], "Count": r[2]} for r in pur_rows]
+                    data_e = [{"Source": "Expense/Category", "Name": r[0] or "—", "Total": r[1], "Count": r[2]} for r in exp_rows]
+                    df = pd.DataFrame(data_p + data_e).sort_values("Total", ascending=False)
+                    if not df.empty:
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Vendor_Category_Spend", pdf=False)
+                    else:
+                        st.info(_t("rpt.no_vendor_category_data"))
+            
     # ─────────────────────────────────────────────────────────────────────────
     # CUSTOMERS TAB
     # ─────────────────────────────────────────────────────────────────────────
-    with _reports_tab_scope("customers", tab_cust, mobile_ui=_mob_rpt_ui):
-        _render_tab_intro("reports.tab.customers")
-        if not _can("view_management_reports"):
-            _access_denied()
-        else:
-            d_from, d_to = _reports_date_bar("cu", month_start, today)
-            sel = _mgmt_report_select("rpt_cust_sel", [
-                ("top_customers", "reports.mgmt.top_customers"),
-                ("customer_lifetime", "reports.mgmt.customer_lifetime"),
-                ("outstanding_ar", "reports.mgmt.outstanding_ar"),
-                ("slow_paying", "reports.mgmt.slow_paying"),
-                ("customer_payments", "reports.mgmt.customer_payments"),
-            ])
-            st.markdown("---")
-
-            if sel == "top_customers":
-                top_n = st.number_input(_t("reports.show_top"), min_value=5, max_value=200, value=10, key="cu_top_n")
-                rows = (
-                    cq(session, Sale).with_entities(
-                        Sale.customer_name.label("Customer"),
-                        func.count(Sale.id).label("Invoices"),
-                        func.sum(Sale.amount).label("Total"),
-                        func.sum(Sale.paid_amount).label("Paid"),
-                        func.sum(Sale.balance).label("Balance"),
-                        func.max(Sale.date).label("Last Sale"),
-                    )
-                    .filter(Sale.date.between(d_from, d_to), Sale.is_void == False)
-                    .group_by(Sale.customer_name)
-                    .order_by(func.sum(Sale.amount).desc())
-                    .limit(int(top_n))
-                    .all()
-                )
-                df = pd.DataFrame(rows, columns=["Customer", "Invoices", "Total", "Paid", "Balance", "Last Sale"])
-                if not df.empty:
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Top_Customers_AR", pdf=False)
-                else:
-                    st.info(_t("reports.no_sales_range"))
-
-            elif sel == "customer_lifetime":
-                rows = (
-                    cq(session, Sale).with_entities(
-                        Sale.customer_name.label("Customer"),
-                        func.count(Sale.id).label("Invoices"),
-                        func.sum(Sale.amount).label("Total"),
-                        func.min(Sale.date).label("First Sale"),
-                        func.max(Sale.date).label("Last Sale"),
-                    )
-                    .filter(Sale.is_void == False)
-                    .group_by(Sale.customer_name)
-                    .order_by(func.sum(Sale.amount).desc())
-                    .all()
-                )
-                df = pd.DataFrame(rows, columns=["Customer", "Invoices", "Total", "First Sale", "Last Sale"])
-                if not df.empty:
-                    st.caption(_t("rpt.vendor_spend_caption"))
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Customer_Lifetime_Spend", pdf=False)
-                else:
-                    st.info(_t("rpt.no_sales_recorded"))
-
-            elif sel == "outstanding_ar":
-                rows = (
-                    cq(session, Sale).with_entities(
-                        Sale.customer_name.label("Customer"),
-                        func.count(Sale.id).label("Open Invoices"),
-                        func.sum(Sale.balance).label("Outstanding"),
-                        func.min(Sale.due_date).label("Earliest Due"),
-                    )
-                    .filter(Sale.sale_type == "Credit", Sale.is_void == False,
-                            Sale.balance > 0)
-                    .group_by(Sale.customer_name)
-                    .order_by(func.sum(Sale.balance).desc())
-                    .all()
-                )
-                df = pd.DataFrame(rows, columns=["Customer", "Open Invoices", "Outstanding", "Earliest Due"])
-                if not df.empty:
-                    total_ar = df["Outstanding"].sum()
-                    render_kpi_grid([
-                        {"label": _t("rpt.kpi.total_outstanding_ar"), "value": f"{currency} {total_ar:,.2f}", "variant": "warning"},
-                        {"label": _t("rpt.kpi.customers_balance"), "value": str(len(df)), "color": "var(--theme-muted)"},
-                    ])
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Outstanding_Receivables", pdf=False)
-                else:
-                    st.success(_t("rpt.no_outstanding_ar"))
-
-            elif sel == "slow_paying":
-                overdue = (
-                    cq(session, Sale).with_entities(
-                        Sale.customer_name.label("Customer"),
-                        func.count(Sale.id).label("Overdue Invoices"),
-                        func.sum(Sale.balance).label("Overdue Amount"),
-                        func.min(Sale.due_date).label("Oldest Due"),
-                    )
-                    .filter(Sale.sale_type == "Credit", Sale.is_void == False,
-                            Sale.status == "Overdue")
-                    .group_by(Sale.customer_name)
-                    .order_by(func.sum(Sale.balance).desc())
-                    .all()
-                )
-                df = pd.DataFrame(overdue, columns=["Customer", "Overdue Invoices", "Overdue Amount", "Oldest Due"])
-                if not df.empty:
-                    df["Days Overdue"] = df["Oldest Due"].apply(
-                        lambda d: (today - d).days if d else 0
-                    )
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Slow_Paying_Customers", pdf=False)
-                else:
-                    st.success(_t("rpt.no_overdue_ar"))
-
-            elif sel == "customer_payments":
-                pay_rows = (
-                    cq(session, JournalEntryLine).with_entities(
-                        JournalEntry.entry_date.label("Date"),
-                        Sale.customer_name.label("Customer"),
-                        Sale.invoice_number.label("Invoice"),
-                        JournalEntryLine.debit.label("Payment"),
-                    )
-                    .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
-                    .join(Sale, (JournalEntry.reference_type == "ReceivablePayment") &
-                          (JournalEntry.reference_id == Sale.id))
-                    .filter(JournalEntry.entry_date.between(d_from, d_to),
-                            JournalEntryLine.debit > 0)
-                    .order_by(JournalEntry.entry_date.desc())
-                    .all()
-                )
-                df = pd.DataFrame(pay_rows, columns=["Date", "Customer", "Invoice", "Payment"])
-                if not df.empty:
-                    render_kpi_grid([
-                        {"label": _t("rpt.kpi.total_received"), "value": f"{currency} {df['Payment'].sum():,.2f}", "variant": "success"},
-                        {"label": _t("rpt.kpi.payments"), "value": str(len(df)), "color": "var(--theme-muted)"},
-                    ])
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Customer_Payment_History", pdf=False)
-                else:
-                    st.info(_t("rpt.no_customer_payments"))
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # VENDORS TAB
-    # ─────────────────────────────────────────────────────────────────────────
-    with _reports_tab_scope("vendors", tab_vend, mobile_ui=_mob_rpt_ui):
-        _render_tab_intro("reports.tab.vendors")
-        if not _can("view_management_reports"):
-            _access_denied()
-        else:
-            d_from, d_to = _reports_date_bar("vd", month_start, today)
-            sel = _mgmt_report_select("rpt_vend_sel", [
-                ("top_vendors", "reports.mgmt.top_vendors"),
-                ("vendor_payments", "reports.mgmt.vendor_payments"),
-                ("outstanding_ap", "reports.mgmt.outstanding_ap"),
-                ("overdue_ap", "reports.mgmt.overdue_ap"),
-            ])
-            st.markdown("---")
-
-            if sel == "top_vendors":
-                top_n = st.number_input(_t("reports.show_top"), min_value=5, max_value=200, value=10, key="vd_top_n")
-                rows = (
-                    cq(session, Purchase).join(Vendor, Purchase.vendor_id == Vendor.id)
-                    .with_entities(
-                        Vendor.name.label("Vendor"),
-                        func.count(Purchase.id).label("Orders"),
-                        func.sum(Purchase.amount).label("Total"),
-                        func.max(Purchase.date).label("Last Order"),
-                    )
-                    .filter(Purchase.date.between(d_from, d_to), Purchase.is_void == False)
-                    .group_by(Vendor.name)
-                    .order_by(func.sum(Purchase.amount).desc())
-                    .limit(int(top_n))
-                    .all()
-                )
-                df = pd.DataFrame(rows, columns=["Vendor", "Orders", "Total", "Last Order"])
-                if not df.empty:
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Top_Vendors", pdf=False)
-                else:
-                    st.info(_t("rpt.no_purchases"))
-
-            elif sel == "vendor_payments":
-                pay_rows = (
-                    cq(session, JournalEntryLine).with_entities(
-                        JournalEntry.entry_date.label("Date"),
-                        Vendor.name.label("Vendor"),
-                        JournalEntryLine.credit.label("Payment"),
-                    )
-                    .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
-                    .join(Payable, (JournalEntry.reference_type == "PayablePayment") &
-                          (JournalEntry.reference_id == Payable.id))
-                    .join(Vendor, Vendor.id == Payable.vendor_id)
-                    .filter(JournalEntry.entry_date.between(d_from, d_to),
-                            JournalEntryLine.credit > 0)
-                    .order_by(JournalEntry.entry_date.desc())
-                    .all()
-                )
-                df = pd.DataFrame(pay_rows, columns=["Date", "Vendor", "Payment"])
-                if not df.empty:
-                    render_kpi_grid([
-                        {"label": _t("rpt.kpi.total_paid"), "value": f"{currency} {df['Payment'].sum():,.2f}", "variant": "warning"},
-                        {"label": _t("rpt.kpi.payments"), "value": str(len(df)), "color": "var(--theme-muted)"},
-                    ])
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Vendor_Payment_History", pdf=False)
-                else:
-                    st.info(_t("rpt.no_supplier_payments"))
-
-            elif sel == "outstanding_ap":
-                rows = (
-                    cq(session, Payable).join(Vendor, Payable.vendor_id == Vendor.id)
-                    .with_entities(
-                        Vendor.name.label("Vendor"),
-                        func.count(Payable.id).label("Open Payables"),
-                        func.sum(Payable.amount - func.coalesce(Payable.paid_amount, 0)).label("Outstanding"),
-                        func.min(Payable.due_date).label("Earliest Due"),
-                    )
-                    .filter(Payable.paid == False, Payable.is_void == False)
-                    .group_by(Vendor.name)
-                    .order_by(func.sum(Payable.amount - func.coalesce(Payable.paid_amount, 0)).desc())
-                    .all()
-                )
-                df = pd.DataFrame(rows, columns=["Vendor", "Open Payables", "Outstanding", "Earliest Due"])
-                if not df.empty:
-                    total_ap = df["Outstanding"].sum()
-                    render_kpi_grid([
-                        {"label": _t("rpt.kpi.total_outstanding_ap"), "value": f"{currency} {total_ap:,.2f}", "variant": "warning"},
-                    ])
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Outstanding_Payables", pdf=False)
-                else:
-                    st.success(_t("rpt.no_outstanding_ap"))
-
-            elif sel == "overdue_ap":
-                rows = (
-                    cq(session, Payable).join(Vendor, Vendor.id == Payable.vendor_id)
-                    .with_entities(
-                        Vendor.name.label("Vendor"),
-                        Payable.due_date.label("Due Date"),
-                        (Payable.amount - func.coalesce(Payable.paid_amount, 0)).label("Balance"),
-                        Payable.description.label("Description"),
-                    )
-                    .filter(Payable.paid == False, Payable.is_void == False,
-                            Payable.due_date < today)
-                    .order_by(Payable.due_date.asc())
-                    .all()
-                )
-                df = pd.DataFrame(rows, columns=["Vendor", "Due Date", "Balance", "Description"])
-                if not df.empty:
-                    df["Days Overdue"] = df["Due Date"].apply(lambda d: (today - d).days if d else 0)
-                    total = df["Balance"].sum()
-                    render_kpi_grid([
-                        {"label": _t("rpt.kpi.total_overdue_ap"), "value": f"{currency} {total:,.2f}", "variant": "danger"},
-                        {"label": _t("rpt.kpi.overdue_items"), "value": str(len(df)), "color": "var(--theme-muted)"},
-                    ])
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Overdue_Payables", pdf=False)
-                else:
-                    st.success(_t("rpt.no_overdue_ap"))
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # BANKING TAB
-    # ─────────────────────────────────────────────────────────────────────────
-    with _reports_tab_scope("banking", tab_bank, mobile_ui=_mob_rpt_ui):
-        _render_tab_intro("reports.tab.banking")
-        if not _can("view_management_reports"):
-            _access_denied()
-        else:
-            d_from, d_to = _reports_date_bar("bk", month_start, today)
-            sel = _mgmt_report_select("rpt_bank_sel", [
-                ("daily_cash", "reports.mgmt.daily_cash"),
-                ("recon_trend", "reports.mgmt.recon_trend"),
-                ("bank_balances", "reports.mgmt.bank_balances"),
-                ("bank_txn_history", "reports.mgmt.bank_txn_history"),
-                ("owner_equity", "reports.mgmt.owner_equity"),
-            ])
-            st.markdown("---")
-
-            if sel == "daily_cash":
-                cash_acct = get_account_by_name(session, "Cash")
-                if not cash_acct:
-                    st.warning(_t("rpt.cash_gl_missing"))
-                else:
+    if not _mob_rpt_ui or st.session_state.get("mob_reports_tab", "exec") == "customers":
+        with tab_cust if not _mob_rpt_ui else nullcontext():
+            _render_tab_intro("reports.tab.customers")
+            if not _can("view_management_reports"):
+                _access_denied()
+            else:
+                d_from, d_to = _reports_date_bar("cu", month_start, today)
+                sel = _mgmt_report_select("rpt_cust_sel", [
+                    ("top_customers", "reports.mgmt.top_customers"),
+                    ("customer_lifetime", "reports.mgmt.customer_lifetime"),
+                    ("outstanding_ar", "reports.mgmt.outstanding_ar"),
+                    ("slow_paying", "reports.mgmt.slow_paying"),
+                    ("customer_payments", "reports.mgmt.customer_payments"),
+                ])
+                st.markdown("---")
+            
+                if sel == "top_customers":
+                    top_n = st.number_input(_t("reports.show_top"), min_value=5, max_value=200, value=10, key="cu_top_n")
                     rows = (
+                        cq(session, Sale).with_entities(
+                            Sale.customer_name.label("Customer"),
+                            func.count(Sale.id).label("Invoices"),
+                            func.sum(Sale.amount).label("Total"),
+                            func.sum(Sale.paid_amount).label("Paid"),
+                            func.sum(Sale.balance).label("Balance"),
+                            func.max(Sale.date).label("Last Sale"),
+                        )
+                        .filter(Sale.date.between(d_from, d_to), Sale.is_void == False)
+                        .group_by(Sale.customer_name)
+                        .order_by(func.sum(Sale.amount).desc())
+                        .limit(int(top_n))
+                        .all()
+                    )
+                    df = pd.DataFrame(rows, columns=["Customer", "Invoices", "Total", "Paid", "Balance", "Last Sale"])
+                    if not df.empty:
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Top_Customers_AR", pdf=False)
+                    else:
+                        st.info(_t("reports.no_sales_range"))
+            
+                elif sel == "customer_lifetime":
+                    rows = (
+                        cq(session, Sale).with_entities(
+                            Sale.customer_name.label("Customer"),
+                            func.count(Sale.id).label("Invoices"),
+                            func.sum(Sale.amount).label("Total"),
+                            func.min(Sale.date).label("First Sale"),
+                            func.max(Sale.date).label("Last Sale"),
+                        )
+                        .filter(Sale.is_void == False)
+                        .group_by(Sale.customer_name)
+                        .order_by(func.sum(Sale.amount).desc())
+                        .all()
+                    )
+                    df = pd.DataFrame(rows, columns=["Customer", "Invoices", "Total", "First Sale", "Last Sale"])
+                    if not df.empty:
+                        st.caption(_t("rpt.vendor_spend_caption"))
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Customer_Lifetime_Spend", pdf=False)
+                    else:
+                        st.info(_t("rpt.no_sales_recorded"))
+            
+                elif sel == "outstanding_ar":
+                    rows = (
+                        cq(session, Sale).with_entities(
+                            Sale.customer_name.label("Customer"),
+                            func.count(Sale.id).label("Open Invoices"),
+                            func.sum(Sale.balance).label("Outstanding"),
+                            func.min(Sale.due_date).label("Earliest Due"),
+                        )
+                        .filter(Sale.sale_type == "Credit", Sale.is_void == False,
+                                Sale.balance > 0)
+                        .group_by(Sale.customer_name)
+                        .order_by(func.sum(Sale.balance).desc())
+                        .all()
+                    )
+                    df = pd.DataFrame(rows, columns=["Customer", "Open Invoices", "Outstanding", "Earliest Due"])
+                    if not df.empty:
+                        total_ar = df["Outstanding"].sum()
+                        render_kpi_grid([
+                            {"label": _t("rpt.kpi.total_outstanding_ar"), "value": f"{currency} {total_ar:,.2f}", "variant": "warning"},
+                            {"label": _t("rpt.kpi.customers_balance"), "value": str(len(df)), "color": "var(--theme-muted)"},
+                        ])
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Outstanding_Receivables", pdf=False)
+                    else:
+                        st.success(_t("rpt.no_outstanding_ar"))
+            
+                elif sel == "slow_paying":
+                    overdue = (
+                        cq(session, Sale).with_entities(
+                            Sale.customer_name.label("Customer"),
+                            func.count(Sale.id).label("Overdue Invoices"),
+                            func.sum(Sale.balance).label("Overdue Amount"),
+                            func.min(Sale.due_date).label("Oldest Due"),
+                        )
+                        .filter(Sale.sale_type == "Credit", Sale.is_void == False,
+                                Sale.status == "Overdue")
+                        .group_by(Sale.customer_name)
+                        .order_by(func.sum(Sale.balance).desc())
+                        .all()
+                    )
+                    df = pd.DataFrame(overdue, columns=["Customer", "Overdue Invoices", "Overdue Amount", "Oldest Due"])
+                    if not df.empty:
+                        df["Days Overdue"] = df["Oldest Due"].apply(
+                            lambda d: (today - d).days if d else 0
+                        )
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Slow_Paying_Customers", pdf=False)
+                    else:
+                        st.success(_t("rpt.no_overdue_ar"))
+            
+                elif sel == "customer_payments":
+                    pay_rows = (
                         cq(session, JournalEntryLine).with_entities(
                             JournalEntry.entry_date.label("Date"),
-                            func.sum(JournalEntryLine.debit).label("Inflow"),
-                            func.sum(JournalEntryLine.credit).label("Outflow"),
+                            Sale.customer_name.label("Customer"),
+                            Sale.invoice_number.label("Invoice"),
+                            JournalEntryLine.debit.label("Payment"),
                         )
                         .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
-                        .filter(
-                            JournalEntryLine.account_id == cash_acct.id,
-                            JournalEntry.entry_date.between(d_from, d_to),
-                        )
-                        .group_by(JournalEntry.entry_date)
+                        .join(Sale, (JournalEntry.reference_type == "ReceivablePayment") &
+                              (JournalEntry.reference_id == Sale.id))
+                        .filter(JournalEntry.entry_date.between(d_from, d_to),
+                                JournalEntryLine.debit > 0)
                         .order_by(JournalEntry.entry_date.desc())
                         .all()
                     )
-                    df = pd.DataFrame(rows, columns=["Date", "Inflow", "Outflow"])
+                    df = pd.DataFrame(pay_rows, columns=["Date", "Customer", "Invoice", "Payment"])
                     if not df.empty:
-                        df["Net"] = df["Inflow"] - df["Outflow"]
                         render_kpi_grid([
-                            {"label": _t("rpt.kpi.total_inflow"),  "value": f"{currency} {df['Inflow'].sum():,.2f}",  "variant": "success"},
-                            {"label": _t("rpt.kpi.total_outflow"), "value": f"{currency} {df['Outflow'].sum():,.2f}", "variant": "danger"},
-                            {"label": _t("rpt.kpi.net_movement"),  "value": f"{currency} {df['Net'].sum():,.2f}",
-                             "variant": "success" if df["Net"].sum() >= 0 else "danger"},
+                            {"label": _t("rpt.kpi.total_received"), "value": f"{currency} {df['Payment'].sum():,.2f}", "variant": "success"},
+                            {"label": _t("rpt.kpi.payments"), "value": str(len(df)), "color": "var(--theme-muted)"},
                         ])
                         st.dataframe(df, use_container_width=True, hide_index=True)
-                        render_export_buttons(df, "Daily_Cash_Movement", pdf=False)
+                        render_export_buttons(df, "Customer_Payment_History", pdf=False)
                     else:
-                        st.info(_t("rpt.no_cash_activity"))
-
-            elif sel == "recon_trend":
-                rows = (
-                    cq(session, DailyCashReconciliation)
-                    .filter(
-                        DailyCashReconciliation.date.between(d_from, d_to),
-                        DailyCashReconciliation.is_void == False,
-                    )
-                    .order_by(DailyCashReconciliation.date.desc())
-                    .all()
-                )
-                data = [{
-                    "Date": r.date,
-                    "Expected": r.expected_cash,
-                    "Actual":   r.actual_cash,
-                    "Variance": r.difference,
-                    "Type":     r.variance_type,
-                    "Status":   r.status,
-                } for r in rows]
-                df = pd.DataFrame(data)
-                if not df.empty:
-                    shortages = df[df["Type"] == "shortage"]["Variance"].sum()
-                    overages  = df[df["Type"] == "overage"]["Variance"].sum()
-                    render_kpi_grid([
-                        {"label": _t("rpt.kpi.total_shortages"), "value": f"{currency} {abs(shortages):,.2f}", "variant": "danger"},
-                        {"label": _t("rpt.kpi.total_overages"),  "value": f"{currency} {overages:,.2f}",        "variant": "warning"},
-                        {"label": _t("rpt.kpi.reconciliations"), "value": str(len(df)),                          "color": "var(--theme-muted)"},
-                    ])
-                    try:
-                        st.bar_chart(df.set_index("Date")["Variance"])
-                    except Exception:
-                        pass
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Cash_Recon_Trend", pdf=False)
-                else:
-                    st.info(_t("rpt.no_reconciliations"))
-
-            elif sel == "bank_balances":
-                accounts = cq(session, BankAccount).filter_by(is_active=True).order_by(BankAccount.name).all()
-                data = [{"Account": a.name, "Bank": a.bank_name or "—",
-                          "Account #": a.account_number or "—",
-                          "Currency": a.currency or "—", "Balance": a.balance or 0.0} for a in accounts]
-                df = pd.DataFrame(data)
-                if not df.empty:
-                    render_kpi_grid([
-                        {"label": a["Account"], "value": f"{a['Currency']} {a['Balance']:,.2f}",
-                         "variant": "success" if a["Balance"] >= 0 else "danger"}
-                        for a in data
-                    ])
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Bank_Account_Balances", pdf=False)
-                else:
-                    st.info(_t("rpt.no_bank_accounts"))
-
-            elif sel == "bank_txn_history":
-                acct_options = ["All accounts"] + [
-                    a.name for a in cq(session, BankAccount).filter_by(is_active=True).order_by(BankAccount.name).all()
-                ]
-                acct_filter = st.selectbox(_t("col.account"), acct_options, key="bk_acct_filter")
-                q = cq(session, BankTransaction).filter(
-                    BankTransaction.date.between(d_from, d_to),
-                    BankTransaction.is_void == False,
-                )
-                if acct_filter != "All accounts":
-                    acct = cq(session, BankAccount).filter_by(name=acct_filter).first()
-                    if acct:
-                        q = q.filter(BankTransaction.account_id == acct.id)
-                txns = q.order_by(BankTransaction.date.desc()).all()
-                data = [{"Date": t.date, "Account": session.get(BankAccount, t.account_id).name if session.get(BankAccount, t.account_id) else "—",
-                          "Type": t.type, "Amount": t.amount, "Description": (t.description or "")[:60]}
-                        for t in txns]
-                df = pd.DataFrame(data)
-                if not df.empty:
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Bank_Transactions", pdf=False)
-                else:
-                    st.info(_t("rpt.no_bank_txns"))
-
-            elif sel == "owner_equity":
-                contrib_rows = (
-                    cq(session, JournalEntryLine).with_entities(
-                        JournalEntry.entry_date.label("Date"),
-                        JournalEntry.description.label("Description"),
-                        JournalEntryLine.debit.label("Contribution"))
-                    .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
-                    .filter(JournalEntry.entry_date.between(d_from, d_to),
-                            JournalEntry.reference_type == "CapitalContribution",
-                            JournalEntryLine.debit > 0)
-                    .order_by(JournalEntry.entry_date.desc()).all()
-                )
-                draw_rows = (
-                    cq(session, JournalEntryLine).with_entities(
-                        JournalEntry.entry_date.label("Date"),
-                        JournalEntry.description.label("Description"),
-                        JournalEntryLine.credit.label("Drawing"))
-                    .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
-                    .filter(JournalEntry.entry_date.between(d_from, d_to),
-                            JournalEntry.reference_type == "OwnerDrawing",
-                            JournalEntryLine.credit > 0)
-                    .order_by(JournalEntry.entry_date.desc()).all()
-                )
-                total_contrib = sum(r[2] for r in contrib_rows)
-                total_draw    = sum(r[2] for r in draw_rows)
-                render_kpi_grid([
-                    {"label": _t("rpt.kpi.total_contributions"), "value": f"{currency} {total_contrib:,.2f}", "variant": "success"},
-                    {"label": _t("rpt.kpi.total_drawings"),       "value": f"{currency} {total_draw:,.2f}",   "variant": "danger"},
-                    {"label": _t("rpt.kpi.net_equity"),  "value": f"{currency} {total_contrib - total_draw:,.2f}",
-                     "variant": "success" if total_contrib >= total_draw else "danger"},
+                        st.info(_t("rpt.no_customer_payments"))
+            
+    # ─────────────────────────────────────────────────────────────────────────
+    # VENDORS TAB
+    # ─────────────────────────────────────────────────────────────────────────
+    if not _mob_rpt_ui or st.session_state.get("mob_reports_tab", "exec") == "vendors":
+        with tab_vend if not _mob_rpt_ui else nullcontext():
+            _render_tab_intro("reports.tab.vendors")
+            if not _can("view_management_reports"):
+                _access_denied()
+            else:
+                d_from, d_to = _reports_date_bar("vd", month_start, today)
+                sel = _mgmt_report_select("rpt_vend_sel", [
+                    ("top_vendors", "reports.mgmt.top_vendors"),
+                    ("vendor_payments", "reports.mgmt.vendor_payments"),
+                    ("outstanding_ap", "reports.mgmt.outstanding_ap"),
+                    ("overdue_ap", "reports.mgmt.overdue_ap"),
                 ])
-                df_c = pd.DataFrame(contrib_rows, columns=["Date", "Description", "Contribution"])
-                df_d = pd.DataFrame(draw_rows,    columns=["Date", "Description", "Drawing"])
-                if not df_c.empty:
-                    st.markdown(f"**{_t('rpt.capital_contributions')}**")
-                    st.dataframe(df_c, use_container_width=True, hide_index=True)
-                if not df_d.empty:
-                    st.markdown(f"**{_t('rpt.owner_drawings')}**")
-                    st.dataframe(df_d, use_container_width=True, hide_index=True)
-                combined = pd.concat([
-                    df_c.rename(columns={"Contribution": "Amount"}).assign(Type="Contribution"),
-                    df_d.rename(columns={"Drawing": "Amount"}).assign(Type="Drawing"),
-                ], ignore_index=True)
-                if not combined.empty:
-                    render_export_buttons(combined, "Owner_Equity_Movement", pdf=False)
-
+                st.markdown("---")
+            
+                if sel == "top_vendors":
+                    top_n = st.number_input(_t("reports.show_top"), min_value=5, max_value=200, value=10, key="vd_top_n")
+                    rows = (
+                        cq(session, Purchase).join(Vendor, Purchase.vendor_id == Vendor.id)
+                        .with_entities(
+                            Vendor.name.label("Vendor"),
+                            func.count(Purchase.id).label("Orders"),
+                            func.sum(Purchase.amount).label("Total"),
+                            func.max(Purchase.date).label("Last Order"),
+                        )
+                        .filter(Purchase.date.between(d_from, d_to), Purchase.is_void == False)
+                        .group_by(Vendor.name)
+                        .order_by(func.sum(Purchase.amount).desc())
+                        .limit(int(top_n))
+                        .all()
+                    )
+                    df = pd.DataFrame(rows, columns=["Vendor", "Orders", "Total", "Last Order"])
+                    if not df.empty:
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Top_Vendors", pdf=False)
+                    else:
+                        st.info(_t("rpt.no_purchases"))
+            
+                elif sel == "vendor_payments":
+                    pay_rows = (
+                        cq(session, JournalEntryLine).with_entities(
+                            JournalEntry.entry_date.label("Date"),
+                            Vendor.name.label("Vendor"),
+                            JournalEntryLine.credit.label("Payment"),
+                        )
+                        .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
+                        .join(Payable, (JournalEntry.reference_type == "PayablePayment") &
+                              (JournalEntry.reference_id == Payable.id))
+                        .join(Vendor, Vendor.id == Payable.vendor_id)
+                        .filter(JournalEntry.entry_date.between(d_from, d_to),
+                                JournalEntryLine.credit > 0)
+                        .order_by(JournalEntry.entry_date.desc())
+                        .all()
+                    )
+                    df = pd.DataFrame(pay_rows, columns=["Date", "Vendor", "Payment"])
+                    if not df.empty:
+                        render_kpi_grid([
+                            {"label": _t("rpt.kpi.total_paid"), "value": f"{currency} {df['Payment'].sum():,.2f}", "variant": "warning"},
+                            {"label": _t("rpt.kpi.payments"), "value": str(len(df)), "color": "var(--theme-muted)"},
+                        ])
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Vendor_Payment_History", pdf=False)
+                    else:
+                        st.info(_t("rpt.no_supplier_payments"))
+            
+                elif sel == "outstanding_ap":
+                    rows = (
+                        cq(session, Payable).join(Vendor, Payable.vendor_id == Vendor.id)
+                        .with_entities(
+                            Vendor.name.label("Vendor"),
+                            func.count(Payable.id).label("Open Payables"),
+                            func.sum(Payable.amount - func.coalesce(Payable.paid_amount, 0)).label("Outstanding"),
+                            func.min(Payable.due_date).label("Earliest Due"),
+                        )
+                        .filter(Payable.paid == False, Payable.is_void == False)
+                        .group_by(Vendor.name)
+                        .order_by(func.sum(Payable.amount - func.coalesce(Payable.paid_amount, 0)).desc())
+                        .all()
+                    )
+                    df = pd.DataFrame(rows, columns=["Vendor", "Open Payables", "Outstanding", "Earliest Due"])
+                    if not df.empty:
+                        total_ap = df["Outstanding"].sum()
+                        render_kpi_grid([
+                            {"label": _t("rpt.kpi.total_outstanding_ap"), "value": f"{currency} {total_ap:,.2f}", "variant": "warning"},
+                        ])
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Outstanding_Payables", pdf=False)
+                    else:
+                        st.success(_t("rpt.no_outstanding_ap"))
+            
+                elif sel == "overdue_ap":
+                    rows = (
+                        cq(session, Payable).join(Vendor, Vendor.id == Payable.vendor_id)
+                        .with_entities(
+                            Vendor.name.label("Vendor"),
+                            Payable.due_date.label("Due Date"),
+                            (Payable.amount - func.coalesce(Payable.paid_amount, 0)).label("Balance"),
+                            Payable.description.label("Description"),
+                        )
+                        .filter(Payable.paid == False, Payable.is_void == False,
+                                Payable.due_date < today)
+                        .order_by(Payable.due_date.asc())
+                        .all()
+                    )
+                    df = pd.DataFrame(rows, columns=["Vendor", "Due Date", "Balance", "Description"])
+                    if not df.empty:
+                        df["Days Overdue"] = df["Due Date"].apply(lambda d: (today - d).days if d else 0)
+                        total = df["Balance"].sum()
+                        render_kpi_grid([
+                            {"label": _t("rpt.kpi.total_overdue_ap"), "value": f"{currency} {total:,.2f}", "variant": "danger"},
+                            {"label": _t("rpt.kpi.overdue_items"), "value": str(len(df)), "color": "var(--theme-muted)"},
+                        ])
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Overdue_Payables", pdf=False)
+                    else:
+                        st.success(_t("rpt.no_overdue_ap"))
+            
+    # ─────────────────────────────────────────────────────────────────────────
+    # BANKING TAB
+    # ─────────────────────────────────────────────────────────────────────────
+    if not _mob_rpt_ui or st.session_state.get("mob_reports_tab", "exec") == "banking":
+        with tab_bank if not _mob_rpt_ui else nullcontext():
+            _render_tab_intro("reports.tab.banking")
+            if not _can("view_management_reports"):
+                _access_denied()
+            else:
+                d_from, d_to = _reports_date_bar("bk", month_start, today)
+                sel = _mgmt_report_select("rpt_bank_sel", [
+                    ("daily_cash", "reports.mgmt.daily_cash"),
+                    ("recon_trend", "reports.mgmt.recon_trend"),
+                    ("bank_balances", "reports.mgmt.bank_balances"),
+                    ("bank_txn_history", "reports.mgmt.bank_txn_history"),
+                    ("owner_equity", "reports.mgmt.owner_equity"),
+                ])
+                st.markdown("---")
+            
+                if sel == "daily_cash":
+                    cash_acct = get_account_by_name(session, "Cash")
+                    if not cash_acct:
+                        st.warning(_t("rpt.cash_gl_missing"))
+                    else:
+                        rows = (
+                            cq(session, JournalEntryLine).with_entities(
+                                JournalEntry.entry_date.label("Date"),
+                                func.sum(JournalEntryLine.debit).label("Inflow"),
+                                func.sum(JournalEntryLine.credit).label("Outflow"),
+                            )
+                            .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
+                            .filter(
+                                JournalEntryLine.account_id == cash_acct.id,
+                                JournalEntry.entry_date.between(d_from, d_to),
+                            )
+                            .group_by(JournalEntry.entry_date)
+                            .order_by(JournalEntry.entry_date.desc())
+                            .all()
+                        )
+                        df = pd.DataFrame(rows, columns=["Date", "Inflow", "Outflow"])
+                        if not df.empty:
+                            df["Net"] = df["Inflow"] - df["Outflow"]
+                            render_kpi_grid([
+                                {"label": _t("rpt.kpi.total_inflow"),  "value": f"{currency} {df['Inflow'].sum():,.2f}",  "variant": "success"},
+                                {"label": _t("rpt.kpi.total_outflow"), "value": f"{currency} {df['Outflow'].sum():,.2f}", "variant": "danger"},
+                                {"label": _t("rpt.kpi.net_movement"),  "value": f"{currency} {df['Net'].sum():,.2f}",
+                                 "variant": "success" if df["Net"].sum() >= 0 else "danger"},
+                            ])
+                            st.dataframe(df, use_container_width=True, hide_index=True)
+                            render_export_buttons(df, "Daily_Cash_Movement", pdf=False)
+                        else:
+                            st.info(_t("rpt.no_cash_activity"))
+            
+                elif sel == "recon_trend":
+                    rows = (
+                        cq(session, DailyCashReconciliation)
+                        .filter(
+                            DailyCashReconciliation.date.between(d_from, d_to),
+                            DailyCashReconciliation.is_void == False,
+                        )
+                        .order_by(DailyCashReconciliation.date.desc())
+                        .all()
+                    )
+                    data = [{
+                        "Date": r.date,
+                        "Expected": r.expected_cash,
+                        "Actual":   r.actual_cash,
+                        "Variance": r.difference,
+                        "Type":     r.variance_type,
+                        "Status":   r.status,
+                    } for r in rows]
+                    df = pd.DataFrame(data)
+                    if not df.empty:
+                        shortages = df[df["Type"] == "shortage"]["Variance"].sum()
+                        overages  = df[df["Type"] == "overage"]["Variance"].sum()
+                        render_kpi_grid([
+                            {"label": _t("rpt.kpi.total_shortages"), "value": f"{currency} {abs(shortages):,.2f}", "variant": "danger"},
+                            {"label": _t("rpt.kpi.total_overages"),  "value": f"{currency} {overages:,.2f}",        "variant": "warning"},
+                            {"label": _t("rpt.kpi.reconciliations"), "value": str(len(df)),                          "color": "var(--theme-muted)"},
+                        ])
+                        try:
+                            st.bar_chart(df.set_index("Date")["Variance"])
+                        except Exception:
+                            pass
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Cash_Recon_Trend", pdf=False)
+                    else:
+                        st.info(_t("rpt.no_reconciliations"))
+            
+                elif sel == "bank_balances":
+                    accounts = cq(session, BankAccount).filter_by(is_active=True).order_by(BankAccount.name).all()
+                    data = [{"Account": a.name, "Bank": a.bank_name or "—",
+                              "Account #": a.account_number or "—",
+                              "Currency": a.currency or "—", "Balance": a.balance or 0.0} for a in accounts]
+                    df = pd.DataFrame(data)
+                    if not df.empty:
+                        render_kpi_grid([
+                            {"label": a["Account"], "value": f"{a['Currency']} {a['Balance']:,.2f}",
+                             "variant": "success" if a["Balance"] >= 0 else "danger"}
+                            for a in data
+                        ])
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Bank_Account_Balances", pdf=False)
+                    else:
+                        st.info(_t("rpt.no_bank_accounts"))
+            
+                elif sel == "bank_txn_history":
+                    acct_options = ["All accounts"] + [
+                        a.name for a in cq(session, BankAccount).filter_by(is_active=True).order_by(BankAccount.name).all()
+                    ]
+                    acct_filter = st.selectbox(_t("col.account"), acct_options, key="bk_acct_filter")
+                    q = cq(session, BankTransaction).filter(
+                        BankTransaction.date.between(d_from, d_to),
+                        BankTransaction.is_void == False,
+                    )
+                    if acct_filter != "All accounts":
+                        acct = cq(session, BankAccount).filter_by(name=acct_filter).first()
+                        if acct:
+                            q = q.filter(BankTransaction.account_id == acct.id)
+                    txns = q.order_by(BankTransaction.date.desc()).all()
+                    data = [{"Date": t.date, "Account": session.get(BankAccount, t.account_id).name if session.get(BankAccount, t.account_id) else "—",
+                              "Type": t.type, "Amount": t.amount, "Description": (t.description or "")[:60]}
+                            for t in txns]
+                    df = pd.DataFrame(data)
+                    if not df.empty:
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Bank_Transactions", pdf=False)
+                    else:
+                        st.info(_t("rpt.no_bank_txns"))
+            
+                elif sel == "owner_equity":
+                    contrib_rows = (
+                        cq(session, JournalEntryLine).with_entities(
+                            JournalEntry.entry_date.label("Date"),
+                            JournalEntry.description.label("Description"),
+                            JournalEntryLine.debit.label("Contribution"))
+                        .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
+                        .filter(JournalEntry.entry_date.between(d_from, d_to),
+                                JournalEntry.reference_type == "CapitalContribution",
+                                JournalEntryLine.debit > 0)
+                        .order_by(JournalEntry.entry_date.desc()).all()
+                    )
+                    draw_rows = (
+                        cq(session, JournalEntryLine).with_entities(
+                            JournalEntry.entry_date.label("Date"),
+                            JournalEntry.description.label("Description"),
+                            JournalEntryLine.credit.label("Drawing"))
+                        .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
+                        .filter(JournalEntry.entry_date.between(d_from, d_to),
+                                JournalEntry.reference_type == "OwnerDrawing",
+                                JournalEntryLine.credit > 0)
+                        .order_by(JournalEntry.entry_date.desc()).all()
+                    )
+                    total_contrib = sum(r[2] for r in contrib_rows)
+                    total_draw    = sum(r[2] for r in draw_rows)
+                    render_kpi_grid([
+                        {"label": _t("rpt.kpi.total_contributions"), "value": f"{currency} {total_contrib:,.2f}", "variant": "success"},
+                        {"label": _t("rpt.kpi.total_drawings"),       "value": f"{currency} {total_draw:,.2f}",   "variant": "danger"},
+                        {"label": _t("rpt.kpi.net_equity"),  "value": f"{currency} {total_contrib - total_draw:,.2f}",
+                         "variant": "success" if total_contrib >= total_draw else "danger"},
+                    ])
+                    df_c = pd.DataFrame(contrib_rows, columns=["Date", "Description", "Contribution"])
+                    df_d = pd.DataFrame(draw_rows,    columns=["Date", "Description", "Drawing"])
+                    if not df_c.empty:
+                        st.markdown(f"**{_t('rpt.capital_contributions')}**")
+                        st.dataframe(df_c, use_container_width=True, hide_index=True)
+                    if not df_d.empty:
+                        st.markdown(f"**{_t('rpt.owner_drawings')}**")
+                        st.dataframe(df_d, use_container_width=True, hide_index=True)
+                    combined = pd.concat([
+                        df_c.rename(columns={"Contribution": "Amount"}).assign(Type="Contribution"),
+                        df_d.rename(columns={"Drawing": "Amount"}).assign(Type="Drawing"),
+                    ], ignore_index=True)
+                    if not combined.empty:
+                        render_export_buttons(combined, "Owner_Equity_Movement", pdf=False)
+            
     # ─────────────────────────────────────────────────────────────────────────
     # EOD TAB
     # ─────────────────────────────────────────────────────────────────────────
-    with _reports_tab_scope("eod", tab_eod, mobile_ui=_mob_rpt_ui):
-        _render_tab_intro("reports.tab.eod")
-        if not _can("view_management_reports"):
-            _access_denied()
-        else:
-            import json as _json
-            d_from, d_to = _reports_date_bar("ed", month_start, today)
-            sel = _mgmt_report_select("rpt_eod_sel", [
-                ("eod_history", "reports.mgmt.eod_history"),
-                ("eod_not_closed", "reports.mgmt.eod_not_closed"),
-                ("eod_warnings", "reports.mgmt.eod_warnings"),
-                ("eod_stale", "reports.mgmt.eod_stale"),
-                ("eod_trend", "reports.mgmt.eod_trend"),
-            ])
-            st.markdown("---")
-
-            all_closes = (
-                cq(session, EndOfDayClose)
-                .filter(EndOfDayClose.date.between(d_from, d_to))
-                .order_by(EndOfDayClose.date.desc())
-                .all()
-            )
-
-            if sel == "eod_history":
-                data = []
-                for c in all_closes:
-                    closer = c.closed_by.display_name or c.closed_by.username if c.closed_by else f"User {c.closed_by_id}"
-                    stale = (not c.is_void) and _eod_is_stale(session, c)
-                    status = "⚫ Voided" if c.is_void else ("🟠 Stale" if stale else "🟢 Closed")
-                    data.append({
-                        "Date":        str(c.date),
-                        "Status":      status,
-                        "Closed By":   closer,
-                        "Closed At":   c.closed_at.strftime("%H:%M") if c.closed_at else "—",
-                        "Warnings":    "Yes" if c.had_warnings else "No",
-                        "Total Sales": c.total_sales,
-                        "Expenses":    c.total_expenses,
-                        "Net Cash":    c.net_cash_movement,
-                        "Recon":       c.recon_status or "—",
-                    })
-                df = pd.DataFrame(data)
-                if not df.empty:
-                    closed  = sum(1 for c in all_closes if not c.is_void)
-                    voided  = sum(1 for c in all_closes if c.is_void)
-                    w_warns = sum(1 for c in all_closes if c.had_warnings and not c.is_void)
-                    render_kpi_grid([
-                        {"label": _t("rpt.kpi.days_closed"), "value": str(closed),  "variant": "success"},
-                        {"label": _t("rpt.kpi.voided"),       "value": str(voided),  "color": "var(--theme-muted)"},
-                        {"label": _t("rpt.kpi.with_warnings"),"value": str(w_warns), "variant": "warning"},
-                    ])
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "EOD_Close_History", pdf=False)
-                else:
-                    st.info(_t("rpt.no_close_records"))
-
-            elif sel == "eod_not_closed":
-                active_dates = {
-                    c.date for c in all_closes if not c.is_void
-                }
-                all_dates = [
-                    d_from + datetime.timedelta(days=i)
-                    for i in range((d_to - d_from).days + 1)
-                    if d_from + datetime.timedelta(days=i) <= today
-                ]
-                missing = [d for d in all_dates if d not in active_dates]
-                df = pd.DataFrame({"Date": missing, "Weekday": [d.strftime("%A") for d in missing]})
-                if not df.empty:
-                    render_kpi_grid([
-                        {"label": _t("rpt.kpi.days_not_closed"), "value": str(len(missing)), "variant": "danger"},
-                    ])
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Days_Not_Closed", pdf=False)
-                else:
-                    st.success(_t("rpt.all_days_closed"))
-
-            elif sel == "eod_warnings":
-                warn_closes = [c for c in all_closes if c.had_warnings and not c.is_void]
-                data = []
-                for c in warn_closes:
-                    closer = c.closed_by.display_name or c.closed_by.username if c.closed_by else "—"
-                    warns  = _json.loads(c.warnings_json or "[]")
-                    data.append({
+    if not _mob_rpt_ui or st.session_state.get("mob_reports_tab", "exec") == "eod":
+        with tab_eod if not _mob_rpt_ui else nullcontext():
+            _render_tab_intro("reports.tab.eod")
+            if not _can("view_management_reports"):
+                _access_denied()
+            else:
+                import json as _json
+                d_from, d_to = _reports_date_bar("ed", month_start, today)
+                sel = _mgmt_report_select("rpt_eod_sel", [
+                    ("eod_history", "reports.mgmt.eod_history"),
+                    ("eod_not_closed", "reports.mgmt.eod_not_closed"),
+                    ("eod_warnings", "reports.mgmt.eod_warnings"),
+                    ("eod_stale", "reports.mgmt.eod_stale"),
+                    ("eod_trend", "reports.mgmt.eod_trend"),
+                ])
+                st.markdown("---")
+            
+                all_closes = (
+                    cq(session, EndOfDayClose)
+                    .filter(EndOfDayClose.date.between(d_from, d_to))
+                    .order_by(EndOfDayClose.date.desc())
+                    .all()
+                )
+            
+                if sel == "eod_history":
+                    data = []
+                    for c in all_closes:
+                        closer = c.closed_by.display_name or c.closed_by.username if c.closed_by else f"User {c.closed_by_id}"
+                        stale = (not c.is_void) and _eod_is_stale(session, c)
+                        status = "⚫ Voided" if c.is_void else ("🟠 Stale" if stale else "🟢 Closed")
+                        data.append({
+                            "Date":        str(c.date),
+                            "Status":      status,
+                            "Closed By":   closer,
+                            "Closed At":   c.closed_at.strftime("%H:%M") if c.closed_at else "—",
+                            "Warnings":    "Yes" if c.had_warnings else "No",
+                            "Total Sales": c.total_sales,
+                            "Expenses":    c.total_expenses,
+                            "Net Cash":    c.net_cash_movement,
+                            "Recon":       c.recon_status or "—",
+                        })
+                    df = pd.DataFrame(data)
+                    if not df.empty:
+                        closed  = sum(1 for c in all_closes if not c.is_void)
+                        voided  = sum(1 for c in all_closes if c.is_void)
+                        w_warns = sum(1 for c in all_closes if c.had_warnings and not c.is_void)
+                        render_kpi_grid([
+                            {"label": _t("rpt.kpi.days_closed"), "value": str(closed),  "variant": "success"},
+                            {"label": _t("rpt.kpi.voided"),       "value": str(voided),  "color": "var(--theme-muted)"},
+                            {"label": _t("rpt.kpi.with_warnings"),"value": str(w_warns), "variant": "warning"},
+                        ])
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "EOD_Close_History", pdf=False)
+                    else:
+                        st.info(_t("rpt.no_close_records"))
+            
+                elif sel == "eod_not_closed":
+                    active_dates = {
+                        c.date for c in all_closes if not c.is_void
+                    }
+                    all_dates = [
+                        d_from + datetime.timedelta(days=i)
+                        for i in range((d_to - d_from).days + 1)
+                        if d_from + datetime.timedelta(days=i) <= today
+                    ]
+                    missing = [d for d in all_dates if d not in active_dates]
+                    df = pd.DataFrame({"Date": missing, "Weekday": [d.strftime("%A") for d in missing]})
+                    if not df.empty:
+                        render_kpi_grid([
+                            {"label": _t("rpt.kpi.days_not_closed"), "value": str(len(missing)), "variant": "danger"},
+                        ])
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Days_Not_Closed", pdf=False)
+                    else:
+                        st.success(_t("rpt.all_days_closed"))
+            
+                elif sel == "eod_warnings":
+                    warn_closes = [c for c in all_closes if c.had_warnings and not c.is_void]
+                    data = []
+                    for c in warn_closes:
+                        closer = c.closed_by.display_name or c.closed_by.username if c.closed_by else "—"
+                        warns  = _json.loads(c.warnings_json or "[]")
+                        data.append({
+                            "Date":     str(c.date),
+                            "Closed By": closer,
+                            "Warnings":  "; ".join(warns),
+                            "Recon":     c.recon_status or "—",
+                        })
+                    df = pd.DataFrame(data)
+                    if not df.empty:
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Closes_With_Warnings", pdf=False)
+                    else:
+                        st.success(_t("rpt.no_warning_closes"))
+            
+                elif sel == "eod_stale":
+                    active_closes = [c for c in all_closes if not c.is_void]
+                    stale_closes  = [c for c in active_closes if _eod_is_stale(session, c)]
+                    data = []
+                    for c in stale_closes:
+                        closer = c.closed_by.display_name or c.closed_by.username if c.closed_by else "—"
+                        cur_count = cq(session, JournalEntry).with_entities(func.count(JournalEntry.id)).filter(
+                            JournalEntry.entry_date == c.date).scalar() or 0
+                        data.append({
+                            "Date":          str(c.date),
+                            "Closed By":     closer,
+                            "Closed At":     c.closed_at.strftime("%H:%M") if c.closed_at else "—",
+                            "JEs at Close":  c.je_count_snapshot,
+                            "JEs Now":       cur_count,
+                            "Diff":          cur_count - c.je_count_snapshot,
+                        })
+                    df = pd.DataFrame(data)
+                    if not df.empty:
+                        render_kpi_grid([{"label": _t("rpt.kpi.stale_closes"), "value": str(len(df)), "variant": "warning"}])
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Stale_Closes", pdf=False)
+                    else:
+                        st.success(_t("rpt.no_stale_closes"))
+            
+                elif sel == "eod_trend":
+                    active_closes = [c for c in all_closes if not c.is_void]
+                    data = [{
                         "Date":     str(c.date),
-                        "Closed By": closer,
-                        "Warnings":  "; ".join(warns),
-                        "Recon":     c.recon_status or "—",
-                    })
-                df = pd.DataFrame(data)
-                if not df.empty:
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Closes_With_Warnings", pdf=False)
-                else:
-                    st.success(_t("rpt.no_warning_closes"))
-
-            elif sel == "eod_stale":
-                active_closes = [c for c in all_closes if not c.is_void]
-                stale_closes  = [c for c in active_closes if _eod_is_stale(session, c)]
-                data = []
-                for c in stale_closes:
-                    closer = c.closed_by.display_name or c.closed_by.username if c.closed_by else "—"
-                    cur_count = cq(session, JournalEntry).with_entities(func.count(JournalEntry.id)).filter(
-                        JournalEntry.entry_date == c.date).scalar() or 0
-                    data.append({
-                        "Date":          str(c.date),
-                        "Closed By":     closer,
-                        "Closed At":     c.closed_at.strftime("%H:%M") if c.closed_at else "—",
-                        "JEs at Close":  c.je_count_snapshot,
-                        "JEs Now":       cur_count,
-                        "Diff":          cur_count - c.je_count_snapshot,
-                    })
-                df = pd.DataFrame(data)
-                if not df.empty:
-                    render_kpi_grid([{"label": _t("rpt.kpi.stale_closes"), "value": str(len(df)), "variant": "warning"}])
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Stale_Closes", pdf=False)
-                else:
-                    st.success(_t("rpt.no_stale_closes"))
-
-            elif sel == "eod_trend":
-                active_closes = [c for c in all_closes if not c.is_void]
-                data = [{
-                    "Date":     str(c.date),
-                    "Sales":    c.total_sales,
-                    "Expenses": c.total_expenses,
-                    "Net Cash": c.net_cash_movement,
-                    "Profit Est.": c.daily_profit_estimate,
-                    "Recon":    c.recon_status or "—",
-                } for c in sorted(active_closes, key=lambda x: x.date)]
-                df = pd.DataFrame(data)
-                if not df.empty:
-                    try:
-                        st.line_chart(df.set_index("Date")[["Sales", "Expenses", "Net Cash"]])
-                    except Exception:
-                        pass
-                    st.dataframe(df, use_container_width=True, hide_index=True)
-                    render_export_buttons(df, "Daily_Performance_Trend", pdf=False)
-                else:
-                    st.info(_t("rpt.no_closed_days"))
+                        "Sales":    c.total_sales,
+                        "Expenses": c.total_expenses,
+                        "Net Cash": c.net_cash_movement,
+                        "Profit Est.": c.daily_profit_estimate,
+                        "Recon":    c.recon_status or "—",
+                    } for c in sorted(active_closes, key=lambda x: x.date)]
+                    df = pd.DataFrame(data)
+                    if not df.empty:
+                        try:
+                            st.line_chart(df.set_index("Date")[["Sales", "Expenses", "Net Cash"]])
+                        except Exception:
+                            pass
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        render_export_buttons(df, "Daily_Performance_Trend", pdf=False)
+                    else:
+                        st.info(_t("rpt.no_closed_days"))
 
 
 # ─── Inline category management: dialogs + row helpers ───────────────────────

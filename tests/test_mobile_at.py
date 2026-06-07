@@ -90,6 +90,20 @@ def test_mob_at_is_salary_mode(monkeypatch):
     assert erp._mob_at_is_salary_mode() is True
 
 
+def test_at_effective_txn_type_salary_idx(monkeypatch):
+    type_names = ["Sale", "Expense", "Purchase", "Supplier Payment", "Customer Payment", "Bank Transaction"]
+    state = _FakeSessionState({"at_type_idx": erp._MOB_AT_SALARY_IDX, "mob_at_tab": 3, "mob_at_more_idx": erp._MOB_AT_SALARY_IDX})
+    monkeypatch.setattr(erp.st, "session_state", state)
+    assert erp._at_effective_txn_type(type_names) == "Expense"
+
+
+def test_at_effective_txn_type_out_of_range(monkeypatch):
+    type_names = ["Sale", "Expense"]
+    state = _FakeSessionState({"at_type_idx": 99})
+    monkeypatch.setattr(erp.st, "session_state", state)
+    assert erp._at_effective_txn_type(type_names) == "Sale"
+
+
 def test_mob_at_submit_txn_type_salary(monkeypatch):
     type_names = ["Sale", "Expense", "Purchase", "Supplier Payment", "Customer Payment", "Bank Transaction"]
     state = _FakeSessionState(
