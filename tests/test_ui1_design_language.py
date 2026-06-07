@@ -94,3 +94,55 @@ def test_mono_sweep3_no_banned_colorful_patterns_in_app():
 def test_mono_sweep3_documented_in_style_guide():
     guide = _read("docs", "UI_STYLE_GUIDE.md")
     assert "Mono Design Enforcement" in guide
+
+
+def test_dropdown_visibility_css_contract():
+    """Selectbox virtual dropdown + BaseWeb listbox option text must use theme tokens."""
+    widgets = _read("ui", "widgets.css")
+    assert "stSelectboxVirtualDropdown" in widgets
+    assert '[role="option"]' in widgets
+    assert "var(--theme-text)" in widgets
+    assert "color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%)" in widgets
+
+
+def test_dropdown_visibility_documented_in_style_guide():
+    guide = _read("docs", "UI_STYLE_GUIDE.md")
+    assert "Dropdown and Selectbox Visibility Rules" in guide
+
+
+def test_form_widget_visibility_css_contract():
+    """Form submit, file uploader, number input, and progress use theme tokens."""
+    widgets = _read("ui", "widgets.css")
+    assert "stFormSubmitButton" in widgets
+    assert "secondaryFormSubmit" in widgets
+    assert "stFileUploaderDropzone" in widgets
+    assert "stNumberInputStepDown" in widgets
+    assert "stProgressBarTrack" in widgets
+    assert "var(--theme-text)" in widgets
+
+
+def test_form_widget_visibility_documented_in_style_guide():
+    guide = _read("docs", "UI_STYLE_GUIDE.md")
+    assert "Form Controls and Widget Visibility Rules" in guide
+
+
+def test_selectbox_popover_click_through_css_contract():
+    """Closed popover shells must not trap clicks after a selectbox pick."""
+    widgets = _read("ui", "widgets.css")
+    assert "pointer-events: none !important" in widgets
+    assert "stSelectboxVirtualDropdown" in widgets
+    assert "pointer-events: auto !important" in widgets
+
+
+def test_desktop_skips_mobile_at_host():
+    src = _read("app.py")
+    assert "if _is_mobile_at:" in src
+    assert '_at_clear_stale_mobile_overlay_state()' in src
+    assert 'with st.container(key="erp_at_mobile_screen")' in src
+
+
+def test_desktop_mobile_host_non_interactive_css():
+    css = _read("ui", "mobile_txn.css")
+    block = css.split("@media (min-width: 969px)")[1]
+    assert "erp_at_mobile_screen" in block
+    assert "pointer-events: none !important" in block

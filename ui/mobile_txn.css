@@ -662,6 +662,8 @@
 @media (min-width: 969px) {
   [data-testid="stMain"] [class*="st-key-erp_at_mobile_screen"] {
     display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
 }
 

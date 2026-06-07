@@ -242,13 +242,17 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 pytest tests/test_phase16a_theme.py tests/test_ui1_design_language.py -q
 ```
 
-**36 tests** (as of 2026-06-09) — includes financial table classes, `readable_dataframe_table_html`, `infer_column_kind`, `_render_readable_df`, no-`st.dataframe` policy grep, dark-mode widget rules.
+**50 tests** (as of 2026-06-09) — includes financial table classes, `readable_dataframe_table_html`, `infer_column_kind`, `_render_readable_df`, no-`st.dataframe` policy grep, dark-mode widget rules, mono sweep 3 guards, dropdown + form widget visibility CSS contracts, New Transaction desktop/mobile host + popover click-through guards.
 
 | Area | Protected |
 |------|-----------|
 | `.erp-fin-table` / code-name-amount | Financial + operational readable tables |
 | `readable_dataframe_table_html` status rows | Budget over/on-track tint |
 | No `st.dataframe` in app display path | Sweep 2 policy (grep audit in tests) |
+| `stSelectboxVirtualDropdown` + `[role="option"]` CSS | Selectbox/multiselect option list readability |
+| `stFormSubmitButton` + `stFileUploader` + `stNumberInput` CSS | Form submit, upload, number stepper readability |
+| Popover `pointer-events` + desktop skips `erp_at_mobile_screen` | New Transaction selectbox post-pick click trap |
+| `TestNewTransactionTypeState` bank/customer/sync | AT form state preserved across selector changes |
 
 ---
 

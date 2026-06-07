@@ -152,6 +152,58 @@ class TestNewTransactionTypeState:
         assert erp_app.st.session_state["at_flash_message"] == "Expense recorded"
         assert erp_app.st.session_state["at_flash_level"] == "success"
 
+    def test_bank_pm_change_preserves_type_and_amount(self, db):
+        erp_app.st.session_state["at_type_idx"] = 1
+        erp_app.st.session_state["at_pm"] = "Cash"
+        erp_app.st.session_state["at_amount_display"] = "42.50"
+        erp_app.st.session_state["_erp_mobile_ui"] = False
+        erp_app.st.session_state["at_pm"] = "Bank"
+        erp_app._coerce_at_payment_method(db, "Expense")
+        erp_app._mob_at_sync_type_from_tab()
+        assert erp_app.st.session_state["at_type_idx"] == 1
+        assert erp_app.st.session_state["at_pm"] == "Bank"
+        assert erp_app.st.session_state["at_amount_display"] == "42.50"
+
+    def test_customer_select_preserves_form_state(self):
+        erp_app.st.session_state.update(
+            {
+                "at_type_idx": 0,
+                "at_pm": "Credit",
+                "at_cust_sel": "Acme Corp",
+                "at_amount_display": "100.00",
+                "at_notes_field": "test note",
+                "_erp_mobile_ui": False,
+            }
+        )
+        erp_app.st.session_state["at_cust"] = erp_app.st.session_state["at_cust_sel"]
+        erp_app._mob_at_sync_type_from_tab()
+        assert erp_app.st.session_state["at_type_idx"] == 0
+        assert erp_app.st.session_state["at_pm"] == "Credit"
+        assert erp_app.st.session_state["at_amount_display"] == "100.00"
+        assert erp_app.st.session_state["at_notes_field"] == "test note"
+
+    def test_desktop_sync_does_not_overwrite_at_pm(self):
+        erp_app.st.session_state.update(
+            {
+                "at_type_idx": 1,
+                "at_pm": "Bank",
+                "mob_at_tab": 0,
+                "_erp_mobile_ui": False,
+            }
+        )
+        erp_app._at_sync_desktop_type_to_mobile_tabs()
+        erp_app._mob_at_sync_type_from_tab()
+        assert erp_app.st.session_state["at_pm"] == "Bank"
+        assert erp_app.st.session_state["at_type_idx"] == 1
+        assert erp_app.st.session_state["mob_at_tab"] == 1
+
+    def test_clear_stale_mobile_overlay_state(self):
+        erp_app.st.session_state["mob_at_picker"] = "bank_pay"
+        erp_app.st.session_state["mob_at_picker_search"] = "main"
+        erp_app._at_clear_stale_mobile_overlay_state()
+        assert "mob_at_picker" not in erp_app.st.session_state
+        assert "mob_at_picker_search" not in erp_app.st.session_state
+
 
 class TestExpenseSavePath:
     def test_save_and_post_updates_gl_and_subledger(self, db):

@@ -1495,6 +1495,11 @@ section[data-testid="stSidebarContent"] {
   background-color: var(--theme-card) !important;
 }
 
+[data-testid="stSidebar"] div[data-baseweb="select"] span,
+[data-testid="stSidebar"] div[data-baseweb="select"] div[value] {
+  color: var(--theme-text) !important;
+}
+
 /* Header — brand block (left) */
 .erp-hdr-appname {
   margin: 0;

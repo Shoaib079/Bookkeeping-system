@@ -8,6 +8,61 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-09 — New Transaction selectbox focus-trap fix
+
+**Task:** New Transaction — selecting Bank or Customer left UI stuck; refresh required.
+
+**Root cause (combined):**
+
+1. **CSS overlay** — Dropdown visibility fix set `z-index: 10050` on all `div[data-baseweb="popover"]` shells without `pointer-events: none`. Stale popover portals after a virtual-dropdown pick intercepted clicks (regression from 2026-06-09 dropdown visibility work).
+2. **Dual host** — Mobile AT host always rendered (hidden via CSS on desktop), still running picker/bank-pay helpers that wrote `at_bank_pay_acct` before desktop `st.selectbox` instantiated.
+
+**Actions taken (UI/session only):**
+
+- `ui/widgets.css` — popover shell click-through; tooltip `pointer-events: none`.
+- `ui/mobile_txn.css` — desktop hidden mobile host `pointer-events: none`.
+- `app.py` — render mobile host only when `_erp_mobile_ui`; `_at_clear_stale_mobile_overlay_state()` on desktop; guard mobile bank-pay session write; shared `_mob_at_ensure_defaults()` before host branch.
+- Tests: `test_selectbox_popover_click_through_css_contract`, `test_desktop_skips_mobile_at_host`, `TestNewTransactionTypeState` bank/customer/sync cases.
+
+**Likely regression source:** Dropdown visibility CSS (popover z-index) + always-on mobile host (pre-existing, exposed by Streamlit 1.58 virtual dropdown).
+
+**No accounting, workflow, navigation, or schema changes.**
+
+---
+
+## 2026-06-09 — Form controls light-mode visibility fix
+
+**Task:** Banking Add Account/Transaction, Expenses attach/upload/Record Expense, Recon Closing Cash Count — black or poorly styled text in light mode.
+
+**Root cause:** `st.form_submit_button()` uses `button[kind="secondaryFormSubmit"]` (not `secondary`). File uploader and number input use separate Streamlit 1.58 components not covered by existing `stButton` / `stTextInput` CSS.
+
+**Actions taken (UI/CSS only):**
+
+- Extended `ui/widgets.css` — `stFormSubmitButton`, `primaryFormSubmit`, file uploader dropzone/chips, number input container/steppers, progress bar track.
+- `docs/UI_STYLE_GUIDE.md` — Form Controls and Widget Visibility Rules.
+- Tests: `test_form_widget_visibility_css_contract`.
+
+**No accounting, workflow, or form option changes.**
+
+---
+
+## 2026-06-09 — Selectbox / dropdown option visibility fix
+
+**Task:** Banking → Add Account → Account Type (and app-wide `st.selectbox`) — selected value visible but dropdown option list hard to read.
+
+**Root cause:** Streamlit 1.58+ `st.selectbox` uses `ul[data-testid="stSelectboxVirtualDropdown"]` (virtual list), not BaseWeb `div[data-baseweb="menu"] li`. Existing CSS only styled the latter; option text kept Streamlit inline theme colors (poor contrast in dark mode).
+
+**Actions taken (UI/CSS only):**
+
+- Expanded global dropdown rules in `ui/widgets.css` — virtual dropdown, BaseWeb `[role="option"]`, popover shell, disabled options, hover highlight.
+- Sidebar closed select value text in `ui/theme.css`.
+- `docs/UI_STYLE_GUIDE.md` — Dropdown and Selectbox Visibility Rules.
+- Tests: `test_dropdown_visibility_css_contract` in `test_ui1_design_language.py`.
+
+**No accounting, workflow, navigation, or form option changes.**
+
+---
+
 ## 2026-06-09 — UI Mono Sweep 3 (colorful UI removal)
 
 **Task:** Remove remaining pre-existing rainbow / per-module colors after Sweeps 1–2 — aging buckets, report KPI hex, P&L/Budget gradient banners, recon charts, opening-balance section accents, member role pills.

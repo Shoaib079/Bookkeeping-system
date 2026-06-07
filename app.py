@@ -11094,6 +11094,12 @@ def _mob_at_render_salary_fields(session, currency_default: str) -> None:
             )
 
 
+def _at_clear_stale_mobile_overlay_state() -> None:
+    """Desktop New Transaction — drop mobile picker keys so sheets cannot linger."""
+    st.session_state.pop("mob_at_picker", None)
+    st.session_state.pop("mob_at_picker_search", None)
+
+
 def _mob_at_render_bank_pay_trigger(bank_accounts: list) -> bool:
     """Which named bank account receives/pays this Bank payment."""
     if not bank_accounts:
@@ -11103,7 +11109,10 @@ def _mob_at_render_bank_pay_trigger(bank_accounts: list) -> bool:
         or st.session_state.get("at_bank_pay_acct")
         or bank_accounts[0].name
     )
-    if not st.session_state.get("at_bank_pay_acct"):
+    if (
+        not st.session_state.get("at_bank_pay_acct")
+        and st.session_state.get("_erp_mobile_ui")
+    ):
         st.session_state["at_bank_pay_acct"] = selected
     with st.container(border=False, key="mob_at_bank_pay_trigger"):
         if st.button(
@@ -11936,6 +11945,7 @@ def render_add_transaction(session):
     type_icon, type_color, type_bg, type_border = _TYPE_MAP[txn_type]
     _type_css             = _TYPE_CSS_CLASS.get(txn_type, "sale")
     _coerce_at_payment_method(session, txn_type)
+    _mob_at_ensure_defaults(session, txn_type, currency_default, vendors)
 
     # ── Category / Subcategory lookup (must stay outside layout for live rerender)
     at_cat       = None
@@ -11952,17 +11962,20 @@ def render_add_transaction(session):
     _at_render_flash()
 
     mob_submitted = False
-    with st.container(key="erp_at_mobile_screen"):
-        st.markdown('<div class="erp-at-mobile-host"></div>', unsafe_allow_html=True)
-        mob_submitted = _render_add_transaction_mobile(
-            session,
-            currency_default=currency_default,
-            vendors=vendors,
-            bank_accounts=bank_accounts,
-            open_sales=open_sales,
-            type_names=_TYPE_NAMES,
-            type_display_map=_TYPE_DISPLAY_MAP,
-        )
+    if _is_mobile_at:
+        with st.container(key="erp_at_mobile_screen"):
+            st.markdown('<div class="erp-at-mobile-host"></div>', unsafe_allow_html=True)
+            mob_submitted = _render_add_transaction_mobile(
+                session,
+                currency_default=currency_default,
+                vendors=vendors,
+                bank_accounts=bank_accounts,
+                open_sales=open_sales,
+                type_names=_TYPE_NAMES,
+                type_display_map=_TYPE_DISPLAY_MAP,
+            )
+    else:
+        _at_clear_stale_mobile_overlay_state()
 
     submitted = False
     if not _is_mobile_at:

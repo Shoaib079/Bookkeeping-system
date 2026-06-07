@@ -402,3 +402,104 @@ Backed by `readable_dataframe_table_html()` in `ui/section.py`:
 ### Regression tests
 
 `tests/test_ui1_design_language.py` — `test_mono_sweep3_*` scans `app.py` for banned patterns.
+
+---
+
+## Dropdown and Selectbox Visibility Rules
+
+**Policy:** All `st.selectbox`, `st.multiselect`, and combobox dropdown option lists must be readable in **light and dark mode**. The closed control value and every option in the open list use `--theme-text` on `--theme-card`.
+
+### Root cause (Streamlit 1.58+)
+
+`st.selectbox` renders a **virtual dropdown** (`ul[data-testid="stSelectboxVirtualDropdown"]`), not BaseWeb `div[data-baseweb="menu"] li`. Option text inherits Streamlit's inline theme colors, which can mismatch the ERP token injection.
+
+### Required CSS targets (`ui/widgets.css`)
+
+| Target | Rule |
+|---|---|
+| `ul[data-testid="stSelectboxVirtualDropdown"]` | Card background, border, shadow |
+| Virtual dropdown descendants | `color: var(--theme-text) !important` |
+| Virtual row hover / focus | `color-mix` info tint on `--theme-card` |
+| `div[data-baseweb="menu"] [role="option"]` | Multiselect / legacy listbox text + hover |
+| `div[data-baseweb="popover"]` | Portaled panel shell (not scoped to `stMain`) |
+| Disabled options | `--theme-muted`, reduced opacity |
+
+### Closed control (selected value)
+
+`div[data-baseweb="select"] > div` — `--theme-card` fill, `--theme-text` value (main + sidebar).
+
+### Do not
+
+- Scope dropdown rules only under `[data-testid="stMain"]` (popovers portal to `body`)
+- Rely on BaseWeb `menu li` selectors alone for `st.selectbox`
+- Use per-page inline color overrides for dropdown options
+
+### Popover click-through (post-select trap fix)
+
+BaseWeb popover portals use a full-size shell. After picking an option, a stale shell with `z-index: 10050` can intercept clicks. Rules:
+
+| Target | Rule |
+|---|---|
+| `div[data-baseweb="popover"]` | `pointer-events: none` on shell |
+| Popover panel children (`> div`, virtual dropdown, menu) | `pointer-events: auto` |
+| Tooltip inside popover | `pointer-events: none` |
+
+### Regression tests
+
+`tests/test_ui1_design_language.py` — `test_dropdown_visibility_css_contract`, `test_selectbox_popover_click_through_css_contract`, `test_dropdown_visibility_documented_in_style_guide`.
+
+---
+
+## New Transaction Desktop / Mobile Host Rules
+
+**Policy:** Desktop and mobile hosts must not both render interactive widgets on the same page.
+
+| Rule | Implementation |
+|---|---|
+| Mobile host | Render only when `_erp_mobile_ui` is true |
+| Desktop host | Render only when `_erp_mobile_ui` is false |
+| Stale mobile picker | Clear `mob_at_picker` / `mob_at_picker_search` on desktop via `_at_clear_stale_mobile_overlay_state()` |
+| Mobile → canonical keys | `_mob_at_render_bank_pay_trigger` writes `at_bank_pay_acct` only on mobile UI |
+| Shared defaults | `_mob_at_ensure_defaults()` runs before host branch |
+
+### Regression tests
+
+`tests/test_cc_expense_form.py` — `TestNewTransactionTypeState` (bank/customer/desktop sync).  
+`tests/test_ui1_design_language.py` — `test_desktop_skips_mobile_at_host`, `test_desktop_mobile_host_non_interactive_css`.
+
+---
+
+## Form Controls and Widget Visibility Rules
+
+**Policy:** Buttons inside `st.form`, file uploaders, number inputs, and progress bars must use ERP theme tokens in light and dark mode.
+
+### Root cause (Streamlit 1.58)
+
+`st.form_submit_button()` renders `data-testid="stFormSubmitButton"` with `button[kind="secondaryFormSubmit"]` — **not** `kind="secondary"`. Existing button CSS did not apply, leaving Streamlit default chrome (often poor contrast).
+
+Similarly, `st.file_uploader` and `st.number_input` use custom Streamlit components (`stFileUploaderDropzone`, `stNumberInputContainer`) outside the generic `stButton` / `stTextInput` paths.
+
+### Required CSS targets (`ui/widgets.css`)
+
+| Widget | Selectors |
+|---|---|
+| Form submit (default) | `[data-testid="stFormSubmitButton"] button[kind="secondaryFormSubmit"]` |
+| Form submit (primary) | `button[kind="primaryFormSubmit"]` |
+| File uploader dropzone | `[data-testid="stFileUploaderDropzone"]` |
+| Upload button | `[data-testid="stFileUploader"] button[kind="secondary"]` |
+| File chips | `[data-testid="stFileChipName"]`, `[data-testid="stFileChips"]` |
+| Number input shell | `[data-testid="stNumberInputContainer"]`, `[data-testid="stNumberInputField"]` |
+| Number steppers | `[data-testid="stNumberInputStepDown"]`, `[data-testid="stNumberInputStepUp"]` |
+| Progress track/fill | `[data-testid="stProgressBarTrack"]` |
+
+### Button kinds reference
+
+| Streamlit kind | ERP style |
+|---|---|
+| `primary` / `primaryFormSubmit` | Solid `--theme-info`, `--erp-on-primary` text |
+| `secondary` / `secondaryFormSubmit` | `--theme-card` fill, `--theme-text`, `--theme-border` |
+| `tertiaryFormSubmit` | Same as secondary |
+
+### Regression tests
+
+`tests/test_ui1_design_language.py` — `test_form_widget_visibility_css_contract`, `test_form_widget_visibility_documented_in_style_guide`.

@@ -142,26 +142,101 @@
   fill: var(--theme-muted) !important;
 }
 
-/* Dropdown popovers (portaled — not under section.main) */
+/* ── Dropdown / selectbox option visibility (portaled — global, not under stMain) ── */
+/* Streamlit 1.58+ st.selectbox uses VirtualDropdown (stSelectboxVirtualDropdown), not BaseWeb menu li. */
 div[data-baseweb="popover"],
 [data-testid="stPopover"] {
   z-index: 10050 !important;
-}
-div[data-baseweb="popover"] div[data-baseweb="menu"],
-ul[data-testid="stSelectboxVirtualDropdown"] {
-  background-color: var(--theme-card) !important;
-  border: 1px solid var(--theme-border) !important;
+  /* Shell passes clicks through; only the open panel receives events (prevents post-select trap). */
+  pointer-events: none !important;
 }
 
+div[data-baseweb="popover"] > div,
+div[data-baseweb="popover"] ul[data-testid="stSelectboxVirtualDropdown"],
+div[data-baseweb="popover"] ul[data-testid="stSelectboxVirtualDropdownEmpty"],
+div[data-baseweb="popover"] div[data-baseweb="menu"],
+div[data-baseweb="popover"] ul[role="listbox"] {
+  pointer-events: auto !important;
+}
+
+/* Option overflow tooltips must not block the list or page after pick */
+div[data-baseweb="popover"] [data-baseweb="tooltip"] {
+  pointer-events: none !important;
+}
+
+/* Popover panel shell */
+div[data-baseweb="popover"] > div,
+div[data-baseweb="popover"] [data-baseweb="popover"] {
+  background-color: var(--theme-card) !important;
+  border-color: var(--theme-border) !important;
+}
+
+/* Shared dropdown surfaces — virtual selectbox + BaseWeb menu/multiselect */
+div[data-baseweb="popover"] div[data-baseweb="menu"],
+div[data-baseweb="popover"] ul[role="listbox"],
+ul[data-testid="stSelectboxVirtualDropdown"],
+ul[data-testid="stSelectboxVirtualDropdownEmpty"] {
+  background-color: var(--theme-card) !important;
+  border: 1px solid var(--theme-border) !important;
+  color: var(--theme-text) !important;
+  box-shadow: 0 4px 16px var(--theme-shadow) !important;
+}
+
+/* Virtual selectbox — force readable option text (beats Streamlit inline theme colors) */
+ul[data-testid="stSelectboxVirtualDropdown"] *:not(svg):not(path),
+ul[data-testid="stSelectboxVirtualDropdownEmpty"] *:not(svg):not(path) {
+  color: var(--theme-text) !important;
+}
+
+ul[data-testid="stSelectboxVirtualDropdownEmpty"] {
+  color: var(--theme-caption) !important;
+}
+
+/* Virtual row highlight strip (inner QX div) */
+ul[data-testid="stSelectboxVirtualDropdown"] > div > div > div > div > div {
+  border-radius: var(--erp-field-radius, 8px) !important;
+}
+
+ul[data-testid="stSelectboxVirtualDropdown"] > div > div > div:hover > div > div,
+ul[data-testid="stSelectboxVirtualDropdown"] > div > div > div > div > div:hover,
+ul[data-testid="stSelectboxVirtualDropdown"] > div > div > div > div > div:focus-visible {
+  background-color: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%) !important;
+}
+
+/* BaseWeb menu / listbox (multiselect, combobox, legacy paths) */
+div[data-baseweb="menu"],
+div[data-baseweb="menu"] ul,
+div[data-baseweb="menu"] [role="listbox"] {
+  background-color: var(--theme-card) !important;
+  border-color: var(--theme-border) !important;
+}
+
+div[data-baseweb="menu"] [role="option"],
 div[data-baseweb="menu"] li,
 div[data-baseweb="menu"] ul li {
   color: var(--theme-text) !important;
-  background-color: var(--theme-card) !important;
+  background-color: transparent !important;
 }
 
+div[data-baseweb="menu"] [role="option"] *,
+div[data-baseweb="menu"] li * {
+  color: inherit !important;
+}
+
+div[data-baseweb="menu"] [role="option"]:hover,
+div[data-baseweb="menu"] [role="option"][aria-selected="true"],
 div[data-baseweb="menu"] li:hover,
 div[data-baseweb="menu"] li[aria-selected="true"] {
   background-color: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%) !important;
+  color: var(--theme-text) !important;
+}
+
+div[data-baseweb="menu"] [role="option"][aria-disabled="true"],
+div[data-baseweb="menu"] li[aria-disabled="true"] {
+  color: var(--theme-muted) !important;
+  opacity: 0.72;
+  cursor: not-allowed !important;
+  background-color: transparent !important;
 }
 
 /* Multiselect / filter tags */
@@ -284,17 +359,30 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
   font-weight: 600 !important;
 }
 
-/* Solid primary buttons — white label on blue fill */
+/* Primary buttons — page CTAs + primary form submits (Streamlit 1.58 kinds) */
 [data-testid="stMain"] [data-testid="stButton"] button[kind="primary"],
+[data-testid="stMain"] button[kind="primary"],
+[data-testid="stMain"] button[kind="primaryFormSubmit"],
+[data-testid="stMain"] [data-testid="stFormSubmitButton"] button[kind="primary"],
+[data-testid="stMain"] [data-testid="stFormSubmitButton"] button[kind="primaryFormSubmit"],
 [data-testid="stMain"] [data-testid="baseButton-primary"] button,
 [data-testid="stMain"] button[data-testid="stBaseButton-primary"] {
   background-color: var(--theme-info) !important;
   color: var(--erp-on-primary, #fff) !important;
   border: 1px solid var(--theme-info) !important;
+  font-weight: 700 !important;
 }
 
 [data-testid="stMain"] [data-testid="stButton"] button[kind="primary"] p,
 [data-testid="stMain"] [data-testid="stButton"] button[kind="primary"] span,
+[data-testid="stMain"] button[kind="primary"] p,
+[data-testid="stMain"] button[kind="primary"] span,
+[data-testid="stMain"] button[kind="primaryFormSubmit"] p,
+[data-testid="stMain"] button[kind="primaryFormSubmit"] span,
+[data-testid="stMain"] [data-testid="stFormSubmitButton"] button[kind="primary"] p,
+[data-testid="stMain"] [data-testid="stFormSubmitButton"] button[kind="primary"] span,
+[data-testid="stMain"] [data-testid="stFormSubmitButton"] button[kind="primaryFormSubmit"] p,
+[data-testid="stMain"] [data-testid="stFormSubmitButton"] button[kind="primaryFormSubmit"] span,
 [data-testid="stMain"] [data-testid="baseButton-primary"] button p,
 [data-testid="stMain"] [data-testid="baseButton-primary"] button span,
 [data-testid="stMain"] button[data-testid="stBaseButton-primary"] p,
@@ -328,8 +416,14 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
   font-weight: 700 !important;
 }
 
-/* UI-1 — Global secondary (excludes mobile chrome + popover triggers) */
+/* UI-1 — Global secondary + form submit (secondaryFormSubmit is default for st.form_submit_button) */
 [data-testid="stMain"] [data-testid="stButton"] button[kind="secondary"],
+[data-testid="stMain"] button[kind="secondary"],
+[data-testid="stMain"] button[kind="secondaryFormSubmit"],
+[data-testid="stMain"] button[kind="tertiaryFormSubmit"],
+[data-testid="stMain"] [data-testid="stFormSubmitButton"] button[kind="secondary"],
+[data-testid="stMain"] [data-testid="stFormSubmitButton"] button[kind="secondaryFormSubmit"],
+[data-testid="stMain"] [data-testid="stFormSubmitButton"] button[kind="tertiaryFormSubmit"],
 [data-testid="stMain"] button[data-testid="stBaseButton-secondary"] {
   background-color: var(--theme-card) !important;
   color: var(--theme-text) !important;
@@ -339,10 +433,105 @@ div[data-baseweb="menu"] li[aria-selected="true"] {
 
 [data-testid="stMain"] [data-testid="stButton"] button[kind="secondary"] p,
 [data-testid="stMain"] [data-testid="stButton"] button[kind="secondary"] span,
+[data-testid="stMain"] button[kind="secondary"] p,
+[data-testid="stMain"] button[kind="secondary"] span,
+[data-testid="stMain"] button[kind="secondaryFormSubmit"] p,
+[data-testid="stMain"] button[kind="secondaryFormSubmit"] span,
+[data-testid="stMain"] button[kind="tertiaryFormSubmit"] p,
+[data-testid="stMain"] button[kind="tertiaryFormSubmit"] span,
+[data-testid="stMain"] [data-testid="stFormSubmitButton"] button[kind="secondaryFormSubmit"] p,
+[data-testid="stMain"] [data-testid="stFormSubmitButton"] button[kind="secondaryFormSubmit"] span,
 [data-testid="stMain"] button[data-testid="stBaseButton-secondary"] p,
 [data-testid="stMain"] button[data-testid="stBaseButton-secondary"] span {
   color: var(--theme-text) !important;
   font-weight: 600 !important;
+}
+
+/* ── File uploader (dropzone, upload btn, file chips) ──────────────────── */
+[data-testid="stMain"] [data-testid="stFileUploaderDropzone"] {
+  background-color: var(--theme-card) !important;
+  border: 1px dashed var(--theme-border) !important;
+  border-radius: var(--erp-field-radius, 8px) !important;
+}
+
+[data-testid="stMain"] [data-testid="stFileUploaderDropzoneInstructions"] span,
+[data-testid="stMain"] [data-testid="stFileUploaderDropzone"] span {
+  color: var(--theme-caption) !important;
+}
+
+[data-testid="stMain"] [data-testid="stFileUploader"] button[kind="secondary"],
+[data-testid="stMain"] [data-testid="stFileUploaderDropzone"] button[kind="secondary"] {
+  background-color: var(--theme-card) !important;
+  color: var(--theme-text) !important;
+  border: 1px solid var(--theme-border) !important;
+}
+
+[data-testid="stMain"] [data-testid="stFileUploader"] button[kind="secondary"] p,
+[data-testid="stMain"] [data-testid="stFileUploader"] button[kind="secondary"] span,
+[data-testid="stMain"] [data-testid="stFileUploaderDropzone"] button[kind="secondary"] p,
+[data-testid="stMain"] [data-testid="stFileUploaderDropzone"] button[kind="secondary"] span {
+  color: var(--theme-text) !important;
+}
+
+[data-testid="stMain"] [data-testid="stFileChipName"],
+[data-testid="stMain"] [data-testid="stFileChips"],
+[data-testid="stMain"] [data-testid="stFileChip"] {
+  color: var(--theme-text) !important;
+}
+
+[data-testid="stMain"] [data-testid="stFileChipDeleteBtn"] button {
+  color: var(--theme-muted) !important;
+}
+
+/* ── Number input — container, field, stepper buttons ─────────────────── */
+[data-testid="stMain"] [data-testid="stNumberInputContainer"] {
+  background-color: var(--theme-card) !important;
+  border-color: var(--theme-input-border) !important;
+}
+
+[data-testid="stMain"] [data-testid="stNumberInputContainer"].focused {
+  border-color: var(--theme-focus) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-focus) 22%, transparent 78%) !important;
+}
+
+[data-testid="stMain"] [data-testid="stNumberInputField"],
+[data-testid="stMain"] [data-testid="stNumberInputContainer"] input {
+  background-color: var(--theme-card) !important;
+  color: var(--theme-text) !important;
+}
+
+[data-testid="stMain"] [data-testid="stNumberInputStepDown"],
+[data-testid="stMain"] [data-testid="stNumberInputStepUp"] {
+  background-color: color-mix(in srgb, var(--theme-border) 22%, var(--theme-card) 78%) !important;
+  color: var(--theme-text) !important;
+  border: none !important;
+}
+
+[data-testid="stMain"] [data-testid="stNumberInputStepDown"]:hover:enabled,
+[data-testid="stMain"] [data-testid="stNumberInputStepUp"]:hover:enabled,
+[data-testid="stMain"] [data-testid="stNumberInputStepDown"]:focus-visible:enabled,
+[data-testid="stMain"] [data-testid="stNumberInputStepUp"]:focus-visible:enabled {
+  background-color: var(--theme-info) !important;
+  color: var(--erp-on-primary, #fff) !important;
+}
+
+[data-testid="stMain"] [data-testid="stNumberInputStepDown"]:disabled,
+[data-testid="stMain"] [data-testid="stNumberInputStepUp"]:disabled {
+  color: var(--theme-muted) !important;
+  opacity: 0.55;
+}
+
+/* ── Progress bar (upload / async) ─────────────────────────────────────── */
+[data-testid="stMain"] [data-testid="stProgress"] {
+  color: var(--theme-text) !important;
+}
+
+[data-testid="stMain"] [data-testid="stProgressBarTrack"] {
+  background-color: color-mix(in srgb, var(--theme-border) 45%, var(--theme-card) 55%) !important;
+}
+
+[data-testid="stMain"] [data-testid="stProgressBarTrack"] > div {
+  background-color: var(--theme-info) !important;
 }
 
 /* UI-1 — Danger actions (key convention for UI-2 page sweep) */
