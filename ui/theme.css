@@ -1038,7 +1038,8 @@
     pointer-events: auto !important;
     flex: 1 1 auto !important;
   }
-  [class*="st-key-hdr_mobile_title"] [data-testid="stPopover"] > button {
+  [class*="st-key-hdr_mobile_title"] [data-testid="stPopover"] > button,
+  [class*="st-key-hdr_mobile_title"] [data-testid="stButton"] > button {
     width: 100% !important;
     max-width: 100% !important;
     min-height: 36px !important;
@@ -1060,7 +1061,8 @@
     align-items: center !important;
     justify-content: center !important;
   }
-  [class*="st-key-hdr_mobile_title"] [data-testid="stPopover"] > button:active:not(:disabled) {
+  [class*="st-key-hdr_mobile_title"] [data-testid="stPopover"] > button:active:not(:disabled),
+  [class*="st-key-hdr_mobile_title"] [data-testid="stButton"] > button:active:not(:disabled) {
     background: color-mix(in srgb, var(--theme-info) 8%, transparent) !important;
   }
   [class*="st-key-hdr_mobile_title"] [data-testid="stPopover"] [data-testid="stButton"] button {

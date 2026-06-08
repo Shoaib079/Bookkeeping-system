@@ -719,6 +719,7 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
 /* ── Header toolbar triggers only (not popover menu actions) ───────────── */
 [data-testid="stMain"] [class*="st-key-hdr_notif_pop"] [data-testid="stPopover"] > button,
 [data-testid="stMain"] [class*="st-key-hdr_profile_pop"] [data-testid="stPopover"] > button,
+[data-testid="stMain"] [class*="st-key-hdr_mobile_profile_btn"] button,
 [data-testid="stMain"] [class*="st-key-hdr_search"] button {
   width: 34px !important;
   min-width: 34px !important;
@@ -1244,10 +1245,205 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
     background: transparent !important;
     padding: 0 !important;
   }
+
+  /* Company switch confirm — fixed above header, popovers, and bottom nav */
+  [data-testid="stAppViewContainer"]:has(.erp-co-switch-confirm-host)::before {
+    content: "" !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 10090 !important;
+    background: color-mix(in srgb, var(--theme-text) 42%, transparent) !important;
+    pointer-events: auto !important;
+  }
+  [data-testid="stMain"] [class*="st-key-"][class*="confirm_shell"] {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    top: calc(var(--hdr-h) + 12px) !important;
+    z-index: 10095 !important;
+    width: auto !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100vh - var(--hdr-h) - var(--bottom-nav-h) - 24px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    background: var(--theme-card) !important;
+    border: 1px solid var(--theme-border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 12px 40px color-mix(in srgb, var(--theme-shadow) 80%, transparent) !important;
+    padding: 12px 14px !important;
+    margin: 0 !important;
+  }
+  [data-testid="stMain"] [class*="st-key-"][class*="confirm_shell"]
+    [data-testid="stVerticalBlockBorderWrapper"] {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  /* Mobile profile sheet — session-driven overlay below confirm */
+  html.erp-mobile [data-testid="stAppViewContainer"]:has(.erp-mobile-profile-host)::before {
+    content: "" !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 10078 !important;
+    background: color-mix(in srgb, var(--theme-text) 42%, transparent) !important;
+    pointer-events: auto !important;
+  }
+  html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_profile_sheet"] {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: calc(var(--hdr-h) + 8px) !important;
+    z-index: 10082 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    max-height: calc(100vh - var(--hdr-h) - var(--bottom-nav-h) - 16px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    background: var(--theme-card) !important;
+    border: 1px solid var(--theme-border) !important;
+    border-radius: 16px 16px 0 0 !important;
+    box-shadow: 0 -12px 40px color-mix(in srgb, var(--theme-shadow) 80%, transparent) !important;
+    padding: 4px 14px 14px !important;
+    margin: 0 !important;
+  }
+  html.erp-mobile
+    [data-testid="stMain"] [class*="st-key-erp_mob_profile_sheet"]
+    [data-testid="stVerticalBlockBorderWrapper"] {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  html.erp-mobile .erp-mobile-profile-title {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: var(--theme-text) !important;
+    line-height: 1.3 !important;
+    padding: 6px 0 4px !important;
+  }
+  html.erp-mobile
+    [data-testid="stMain"] [class*="st-key-erp_mob_profile_sheet"]
+    [class*="st-key-mob_prof_"] button {
+    width: 100% !important;
+    min-height: 44px !important;
+    margin: 0 0 8px 0 !important;
+    border-radius: 10px !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+  }
+
+  /* Mobile company switch sheet — session-driven overlay below confirm */
+  html.erp-mobile [data-testid="stAppViewContainer"]:has(.erp-mobile-co-switch-host)::before {
+    content: "" !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 10080 !important;
+    background: color-mix(in srgb, var(--theme-text) 42%, transparent) !important;
+    pointer-events: auto !important;
+  }
+  html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_co_switch_sheet"] {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: calc(var(--hdr-h) + 8px) !important;
+    z-index: 10085 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    max-height: calc(100vh - var(--hdr-h) - var(--bottom-nav-h) - 16px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    background: var(--theme-card) !important;
+    border: 1px solid var(--theme-border) !important;
+    border-radius: 16px 16px 0 0 !important;
+    box-shadow: 0 -12px 40px color-mix(in srgb, var(--theme-shadow) 80%, transparent) !important;
+    padding: 4px 14px 14px !important;
+    margin: 0 !important;
+  }
+  html.erp-mobile
+    [data-testid="stMain"] [class*="st-key-erp_mob_co_switch_sheet"]
+    [data-testid="stVerticalBlockBorderWrapper"] {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  html.erp-mobile .erp-mobile-co-switch-title {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: var(--theme-text) !important;
+    line-height: 1.3 !important;
+    padding: 6px 0 4px !important;
+  }
+  html.erp-mobile
+    [data-testid="stMain"] [class*="st-key-erp_mob_co_switch_sheet"]
+    [class*="st-key-mob_mco_co_"] button {
+    width: 100% !important;
+    min-height: 44px !important;
+    margin: 0 0 8px 0 !important;
+    border-radius: 10px !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+  }
+
+  /* Confirm active — suppress hub/header sheets, scrim, dim bottom nav */
+  html.erp-mobile
+    [data-testid="stAppViewContainer"]:has(.erp-co-switch-confirm-host)
+    [class*="st-key-erp_mob_hub_sheet"],
+  html.erp-mobile
+    [data-testid="stAppViewContainer"]:has(.erp-co-switch-confirm-host)
+    [class*="st-key-erp_mob_co_switch_sheet"],
+  html.erp-mobile
+    [data-testid="stAppViewContainer"]:has(.erp-co-switch-confirm-host)
+    [class*="st-key-erp_mob_profile_sheet"] {
+    display: none !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+  }
+  html.erp-mobile
+    [data-testid="stAppViewContainer"]:has(.erp-co-switch-confirm-host):has(.erp-mobile-hub-host)::before,
+  html.erp-mobile
+    [data-testid="stAppViewContainer"]:has(.erp-co-switch-confirm-host):has(.erp-mobile-co-switch-host)::before,
+  html.erp-mobile
+    [data-testid="stAppViewContainer"]:has(.erp-co-switch-confirm-host):has(.erp-mobile-profile-host)::before {
+    display: none !important;
+    pointer-events: none !important;
+  }
+  html.erp-mobile
+    [data-testid="stAppViewContainer"]:has(.erp-co-switch-confirm-host)
+    [data-testid="stLayoutWrapper"]:has(.erp-mobile-hub-host) {
+    display: none !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+  }
+  html.erp-mobile
+    [data-testid="stAppViewContainer"]:has(.erp-co-switch-confirm-host)
+    [class*="st-key-erp_mob_bottom_bar"] {
+    pointer-events: none !important;
+    opacity: 0.45 !important;
+  }
+
+  /* Header popover open — hide hub behind notifications */
+  html.erp-mobile
+    [data-testid="stAppViewContainer"]:has(
+      [class*="st-key-hdr_notif_pop"] [aria-expanded="true"]
+    )
+    [class*="st-key-erp_mob_hub_sheet"] {
+    display: none !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+  }
+  html.erp-mobile
+    [data-testid="stAppViewContainer"]:has(
+      [class*="st-key-hdr_notif_pop"] [aria-expanded="true"]
+    ):has(.erp-mobile-hub-host)::before {
+    display: none !important;
+    pointer-events: none !important;
+  }
 }
 @media (min-width: 969px) {
   [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"],
-  [data-testid="stMain"] [class*="st-key-erp_mob_hub_sheet"] {
+  [data-testid="stMain"] [class*="st-key-erp_mob_hub_sheet"],
+  [data-testid="stMain"] [class*="st-key-erp_mob_co_switch_sheet"],
+  [data-testid="stMain"] [class*="st-key-erp_mob_profile_sheet"] {
     display: none !important;
   }
 }

@@ -177,12 +177,15 @@ def test_company_switch_confirm_rendered_outside_popover():
     assert '_render_company_switch_confirm(key_prefix="main_co_sw")' in src
     assert "hdr_switch_confirm" not in src
     assert 'st.session_state["_confirm_company_switch"] = True' in src
+    assert "erp-co-switch-confirm-host" in src
+    assert "confirm_shell" in src
 
 
-def test_mobile_multi_company_title_is_switch_popover():
+def test_mobile_multi_company_title_uses_session_switch_sheet():
     src = (ROOT / "app.py").read_text(encoding="utf-8")
-    assert 'key="hdr_mobile_co_switch"' in src
-    assert "st.popover" in src[src.index('key="hdr_mobile_co_switch"') - 200 : src.index('key="hdr_mobile_co_switch"') + 200]
+    assert 'key="hdr_mobile_co_switch_btn"' in src
+    assert "def _render_mobile_co_switch_sheet(" in src
+    assert 'key="hdr_mobile_co_switch"' not in src
     assert "_render_company_switch_menu" in src
     assert "hdr_sw_co_" not in src
     assert "hdr_all_companies_btn" not in src

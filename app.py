@@ -862,7 +862,7 @@ def _refresh_user_company_memberships(session, user_id: int) -> list[tuple[int, 
 
 
 def _render_company_switch_menu(*, key_prefix: str) -> None:
-    """Company picker rows — mobile header popover and desktop profile popover."""
+    """Company picker rows — mobile co-switch sheet and desktop profile popover."""
     _memberships = st.session_state.get("_user_company_memberships") or []
     _active_cid = st.session_state.get("active_company_id")
     if len(_memberships) <= 1:
@@ -880,16 +880,149 @@ def _render_company_switch_menu(*, key_prefix: str) -> None:
             use_container_width=True,
             disabled=_cid == _active_cid,
         ):
+            _mobile_close_app_surfaces()
             st.session_state["_switch_target_company_id"] = _cid
             st.session_state["_confirm_company_switch"] = True
             st.session_state.pop("_hdr_open_create_after_picker", None)
             st.rerun()
 
 
+def _render_hdr_profile_panel_content(
+    user: dict,
+    *,
+    acct_key: str,
+    newco_key: str,
+    out_key: str,
+    show_inline_company_switch: bool = False,
+    company_switch_key_prefix: str = "hdr_prof_co",
+    show_co_switch_link: bool = False,
+) -> None:
+    """Profile card + actions — desktop popover and mobile profile sheet."""
+    _display = user.get("display_name") or user.get("username", "User")
+    _words = _display.split()
+    _initials = "".join(w[0].upper() for w in _words[:2]) or "U"
+    _nav_role = _current_company_role() or user.get("role", "viewer")
+    _role_col = role_accent_css_var(_nav_role)
+    _role_lbl = html.escape(_company_role_label(_nav_role))
+    st.markdown(
+        f'<div class="erp-hdr-profile-card">'
+        f'<span class="erp-hdr-profile-avatar" style="background:{_role_col};">'
+        f'{html.escape(_initials)}</span>'
+        f'<div class="erp-hdr-profile-text">'
+        f'<div class="erp-hdr-profile-name">{html.escape(str(_display))}</div>'
+        f'<div class="erp-hdr-profile-role">{_role_lbl}</div>'
+        f'</div></div>',
+        unsafe_allow_html=True,
+    )
+    _co_name = st.session_state.get("active_company_name", "")
+    if _co_name:
+        st.markdown(
+            f'<div style="font-size:10px;color:var(--theme-muted);'
+            f'padding:2px 0 6px;">🏢 {_display_company_name(str(_co_name))}</div>',
+            unsafe_allow_html=True,
+        )
+    _prof_memberships = st.session_state.get("_user_company_memberships") or []
+    if show_inline_company_switch and len(_prof_memberships) > 1:
+        st.caption(_t("header.switch_company"))
+        _render_company_switch_menu(key_prefix=company_switch_key_prefix)
+    elif show_co_switch_link and len(_prof_memberships) > 1:
+        if st.button(
+            "🏢  " + _t("header.switch_company"),
+            key="mob_prof_co_link",
+            use_container_width=True,
+        ):
+            st.session_state.pop("mob_profile_open", None)
+            _mobile_open_surface("co_switch")
+            st.rerun()
+    st.divider()
+    if st.button("⚙  " + _t("header.my_account"), key=acct_key, use_container_width=True):
+        _mobile_close_app_surfaces()
+        st.session_state.pop("mob_profile_open", None)
+        st.session_state["nav_selection"] = "👤 My Account"
+        st.session_state.pop("my_account_tab", None)
+        st.rerun()
+    if st.button("➕  " + _t("header.create_company"), key=newco_key, use_container_width=True):
+        _mobile_close_app_surfaces()
+        st.session_state.pop("mob_profile_open", None)
+        st.session_state["_confirm_company_switch"] = True
+        st.session_state["_hdr_open_create_after_picker"] = True
+        st.rerun()
+    if st.button("⏻  " + _t("header.sign_out"), key=out_key, use_container_width=True):
+        _mobile_close_app_surfaces()
+        st.session_state.pop("mob_profile_open", None)
+        _logout()
+        st.rerun()
+
+
+def _render_mobile_profile_sheet(user: dict) -> None:
+    """Session-driven profile sheet (mobile header — no Streamlit popover)."""
+    if not _is_mobile_ui():
+        return
+    if not st.session_state.get("mob_profile_open"):
+        return
+    if st.session_state.get("_confirm_company_switch"):
+        return
+    with st.container(border=False, key="erp_mob_profile_sheet"):
+        st.markdown(
+            '<div class="erp-mobile-profile-host">'
+            '<div class="erp-mobile-profile-grab"></div></div>',
+            unsafe_allow_html=True,
+        )
+        with st.container(border=False, key="mob_profile_hdr"):
+            _hc, _xc = st.columns([6, 1])
+            with _hc:
+                st.markdown(
+                    f'<div class="erp-mobile-profile-title">'
+                    f'{html.escape(_t("header.my_account"))}</div>',
+                    unsafe_allow_html=True,
+                )
+            with _xc:
+                if st.button("×", key="mob_profile_close", help=_t("common.cancel")):
+                    st.session_state.pop("mob_profile_open", None)
+                    st.rerun()
+        _render_hdr_profile_panel_content(
+            user,
+            acct_key="mob_prof_acct",
+            newco_key="mob_prof_newco",
+            out_key="mob_prof_out",
+            show_co_switch_link=True,
+        )
+
+
+def _render_mobile_co_switch_sheet() -> None:
+    """Session-driven company picker sheet (mobile header — no Streamlit popover)."""
+    if not _is_mobile_ui():
+        return
+    if not st.session_state.get("mob_co_switch_open"):
+        return
+    if st.session_state.get("_confirm_company_switch"):
+        return
+    with st.container(border=False, key="erp_mob_co_switch_sheet"):
+        st.markdown(
+            '<div class="erp-mobile-co-switch-host">'
+            '<div class="erp-mobile-co-switch-grab"></div></div>',
+            unsafe_allow_html=True,
+        )
+        with st.container(border=False, key="mob_co_switch_hdr"):
+            _hc, _xc = st.columns([6, 1])
+            with _hc:
+                st.markdown(
+                    f'<div class="erp-mobile-co-switch-title">'
+                    f'{html.escape(_t("header.switch_company"))}</div>',
+                    unsafe_allow_html=True,
+                )
+            with _xc:
+                if st.button("×", key="mob_co_switch_close", help=_t("common.cancel")):
+                    st.session_state.pop("mob_co_switch_open", None)
+                    st.rerun()
+        _render_company_switch_menu(key_prefix="mob_mco")
+
+
 def _render_company_switch_confirm(*, key_prefix: str = "co_sw") -> None:
     """Page-level confirm — popover closes on rerun so this must live outside it."""
     if not st.session_state.get("_confirm_company_switch"):
         return
+    _mobile_open_surface("company_switch_confirm")
     _target = st.session_state.get("_switch_target_company_id")
     _warn = (
         _t("header.switch_warning_named", name=_company_name_plain(
@@ -900,36 +1033,38 @@ def _render_company_switch_confirm(*, key_prefix: str = "co_sw") -> None:
         ))
         if _target else _t("header.switch_warning")
     )
-    st.warning(_warn, icon="⚠️")
-    _sc1, _sc2 = st.columns(2)
-    if _sc1.button(
-        _t("header.continue"),
-        key=f"{key_prefix}_ok",
-        use_container_width=True,
-        type="primary",
-    ):
-        _expand = st.session_state.pop("_hdr_open_create_after_picker", False)
-        st.session_state.pop("_confirm_company_switch", None)
-        _target = st.session_state.pop("_switch_target_company_id", None)
-        if _target:
-            _u = _current_user()
-            if _u:
-                with get_session() as _sw_session:
-                    _cnt = st.session_state.get("active_company_membership_count")
-                    if _activate_company_in_session(
-                        _sw_session, _u["id"], _target, membership_count=_cnt
-                    ):
-                        st.rerun()
-        _go_to_company_picker(expand_create=_expand)
-    if _sc2.button(
-        _t("common.cancel"),
-        key=f"{key_prefix}_no",
-        use_container_width=True,
-    ):
-        st.session_state.pop("_confirm_company_switch", None)
-        st.session_state.pop("_hdr_open_create_after_picker", None)
-        st.session_state.pop("_switch_target_company_id", None)
-        st.rerun()
+    with st.container(key=f"{key_prefix}_confirm_shell"):
+        st.markdown('<div class="erp-co-switch-confirm-host"></div>', unsafe_allow_html=True)
+        st.warning(_warn, icon="⚠️")
+        _sc1, _sc2 = st.columns(2)
+        if _sc1.button(
+            _t("header.continue"),
+            key=f"{key_prefix}_ok",
+            use_container_width=True,
+            type="primary",
+        ):
+            _expand = st.session_state.pop("_hdr_open_create_after_picker", False)
+            _target = st.session_state.pop("_switch_target_company_id", None)
+            st.session_state.pop("_confirm_company_switch", None)
+            st.session_state.pop("mob_profile_open", None)
+            st.session_state.pop("mob_co_switch_open", None)
+            if _target:
+                _u = _current_user()
+                if _u:
+                    with get_session() as _sw_session:
+                        _cnt = st.session_state.get("active_company_membership_count")
+                        if _activate_company_in_session(
+                            _sw_session, _u["id"], _target, membership_count=_cnt
+                        ):
+                            st.rerun()
+            _go_to_company_picker(expand_create=_expand)
+        if _sc2.button(
+            _t("common.cancel"),
+            key=f"{key_prefix}_no",
+            use_container_width=True,
+        ):
+            _mobile_clear_company_switch_confirm()
+            st.rerun()
 
 
 def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
@@ -986,6 +1121,7 @@ def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
                     )
                     _ar_key = "notif_ar_btn" if _legacy_desktop else _k("notif_ar")
                     if _c2.button("View →", key=_ar_key):
+                        _mobile_close_app_surfaces()
                         st.session_state["nav_selection"] = "📄 Receivables"
                         st.rerun()
                 if notif["overdue_ap"] > 0:
@@ -996,6 +1132,7 @@ def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
                     )
                     _ap_key = "notif_ap_btn" if _legacy_desktop else _k("notif_ap")
                     if _c2.button("View →", key=_ap_key):
+                        _mobile_close_app_surfaces()
                         st.session_state["nav_selection"] = "📌 Payables"
                         st.rerun()
                 if notif["low_stock"] > 0:
@@ -1006,6 +1143,7 @@ def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
                     )
                     _ls_key = "notif_ls_btn" if _legacy_desktop else _k("notif_ls")
                     if _c2.button("View →", key=_ls_key):
+                        _mobile_close_app_surfaces()
                         st.session_state["nav_selection"] = "📦 Inventory"
                         st.rerun()
                 if notif["backup"] > 0:
@@ -1013,6 +1151,7 @@ def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
             st.divider()
             _notif_all_key = "notif_view_all" if _legacy_desktop else _k("notif_all")
             if st.button(_t("notif.view_all"), key=_notif_all_key, use_container_width=True):
+                _mobile_close_app_surfaces()
                 st.session_state["nav_selection"] = "👤 My Account"
                 st.session_state["my_account_tab"] = 3
                 st.rerun()
@@ -1023,44 +1162,25 @@ def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
             if st.button(_tog, key="hdr_dark_toggle", help=_t("header.toggle_theme")):
                 _flip_header_theme(user)
 
-        _profile_key = "hdr_profile_pop" if _legacy_desktop else _k("hdr_profile")
-        with st.popover(_initials, help=_t("header.my_account"), key=_profile_key):
-            st.markdown(
-                f'<div class="erp-hdr-profile-card">'
-                f'<span class="erp-hdr-profile-avatar" style="background:{_role_col};">'
-                f'{html.escape(_initials)}</span>'
-                f'<div class="erp-hdr-profile-text">'
-                f'<div class="erp-hdr-profile-name">{html.escape(str(_display))}</div>'
-                f'<div class="erp-hdr-profile-role">{_role_lbl}</div>'
-                f'</div></div>',
-                unsafe_allow_html=True,
-            )
-            _co_name = st.session_state.get("active_company_name", "")
-            if _co_name:
-                st.markdown(
-                    f'<div style="font-size:10px;color:var(--theme-muted);'
-                    f'padding:2px 0 6px;">🏢 {_display_company_name(str(_co_name))}</div>',
-                    unsafe_allow_html=True,
+        if _is_mobile_ui():
+            if st.button(
+                _initials,
+                key="hdr_mobile_profile_btn",
+                help=_t("header.my_account"),
+            ):
+                _mobile_open_surface("profile")
+                st.rerun()
+        else:
+            with st.popover(_initials, help=_t("header.my_account"), key="hdr_profile_pop"):
+                _prof_memberships = st.session_state.get("_user_company_memberships") or []
+                _render_hdr_profile_panel_content(
+                    user,
+                    acct_key="hdr_my_account_btn",
+                    newco_key="hdr_create_co_btn",
+                    out_key="hdr_sign_out_btn",
+                    show_inline_company_switch=len(_prof_memberships) > 1,
+                    company_switch_key_prefix="hdr_prof_co",
                 )
-            _prof_memberships = st.session_state.get("_user_company_memberships") or []
-            if _legacy_desktop and len(_prof_memberships) > 1:
-                st.caption(_t("header.switch_company"))
-                _render_company_switch_menu(key_prefix="hdr_prof_co")
-            st.divider()
-            _acct_key = "hdr_my_account_btn" if _legacy_desktop else _k("hdr_acct")
-            if st.button("⚙  " + _t("header.my_account"), key=_acct_key, use_container_width=True):
-                st.session_state["nav_selection"] = "👤 My Account"
-                st.session_state.pop("my_account_tab", None)
-                st.rerun()
-            _newco_key = "hdr_create_co_btn" if _legacy_desktop else _k("hdr_newco")
-            if st.button("➕  " + _t("header.create_company"), key=_newco_key, use_container_width=True):
-                st.session_state["_confirm_company_switch"] = True
-                st.session_state["_hdr_open_create_after_picker"] = True
-                st.rerun()
-            _out_key = "hdr_sign_out_btn" if _legacy_desktop else _k("hdr_out")
-            if st.button("⏻  " + _t("header.sign_out"), key=_out_key, use_container_width=True):
-                _logout()
-                st.rerun()
 
 
 def _title_case_company_word(word: str) -> str:
@@ -1143,12 +1263,13 @@ def render_top_header(
                         )
                         if _co_members > 1:
                             _co_plain = _company_name_plain(str(company))
-                            with st.popover(
+                            if st.button(
                                 f"{_co_plain} ▾",
-                                key="hdr_mobile_co_switch",
+                                key="hdr_mobile_co_switch_btn",
                                 help=_t("header.switch_company"),
                             ):
-                                _render_company_switch_menu(key_prefix="hdr_mco")
+                                _mobile_open_surface("co_switch")
+                                st.rerun()
                         else:
                             st.markdown(
                                 f'<div class="erp-hdr-mobile-title">'
@@ -3246,13 +3367,76 @@ def _navigate_new_transaction(type_idx: int = 0) -> None:
         st.session_state["mob_at_tab"] = 3
         st.session_state["mob_at_more_idx"] = type_idx
     st.session_state["nav_selection"] = "➕ New Transaction"
-    st.session_state["mobile_hub_open"] = None
+    _mobile_close_app_surfaces()
     st.session_state["sidebar_group"] = None
     st.rerun()
 
 
 def _mobile_close_hub() -> None:
     st.session_state["mobile_hub_open"] = None
+
+
+def _is_mobile_ui() -> bool:
+    return bool(st.session_state.get("_erp_mobile_ui"))
+
+
+def _mobile_close_app_surfaces() -> None:
+    """Clear app-controlled mobile overlay layers (hub, AT picker, QC scan)."""
+    if not _is_mobile_ui():
+        return
+    st.session_state.pop("mobile_hub_open", None)
+    st.session_state.pop("mob_at_picker", None)
+    st.session_state.pop("mob_at_picker_search", None)
+    st.session_state.pop("mob_qc_scan_open", None)
+    st.session_state.pop("mob_co_switch_open", None)
+    st.session_state.pop("mob_profile_open", None)
+
+
+def _mobile_clear_company_switch_confirm() -> None:
+    st.session_state.pop("_confirm_company_switch", None)
+    st.session_state.pop("_switch_target_company_id", None)
+    st.session_state.pop("_hdr_open_create_after_picker", None)
+    st.session_state.pop("mob_co_switch_open", None)
+    st.session_state.pop("mob_profile_open", None)
+
+
+def _mobile_open_surface(surface: str) -> None:
+    """Open one mobile surface; close conflicting app-controlled layers first."""
+    if not _is_mobile_ui():
+        return
+    if surface == "company_switch_confirm":
+        _mobile_close_app_surfaces()
+        return
+    if surface == "co_switch":
+        _mobile_close_app_surfaces()
+        _mobile_clear_company_switch_confirm()
+        st.session_state["mob_co_switch_open"] = True
+        return
+    if surface == "profile":
+        _mobile_close_app_surfaces()
+        _mobile_clear_company_switch_confirm()
+        st.session_state["mob_profile_open"] = True
+        return
+    if surface.startswith("hub:"):
+        _mobile_close_app_surfaces()
+        _mobile_clear_company_switch_confirm()
+        st.session_state["mobile_hub_open"] = surface.split(":", 1)[1]
+        return
+    if surface == "at_picker":
+        st.session_state.pop("mobile_hub_open", None)
+        st.session_state.pop("mob_qc_scan_open", None)
+        st.session_state.pop("mob_at_picker_search", None)
+        st.session_state.pop("mob_profile_open", None)
+        st.session_state.pop("mob_co_switch_open", None)
+        _mobile_clear_company_switch_confirm()
+        return
+    if surface == "qc_scan":
+        st.session_state.pop("mobile_hub_open", None)
+        st.session_state.pop("mob_at_picker", None)
+        st.session_state.pop("mob_at_picker_search", None)
+        st.session_state.pop("mob_profile_open", None)
+        st.session_state.pop("mob_co_switch_open", None)
+        _mobile_clear_company_switch_confirm()
 
 
 def _mobile_hub_nav(
@@ -3270,7 +3454,7 @@ def _mobile_hub_nav(
     if presets:
         for k, v in presets.items():
             st.session_state[k] = v
-    _mobile_close_hub()
+    _mobile_close_app_surfaces()
     st.rerun()
 
 
@@ -3384,7 +3568,7 @@ def _render_mobile_hub_sheet(
                     use_container_width=True,
                     type="secondary",
                 ):
-                    st.session_state["mobile_hub_open"] = _hub_target
+                    _mobile_open_surface(f"hub:{_hub_target}")
                     st.rerun()
                 _item_idx += 1
                 continue
@@ -3494,6 +3678,7 @@ def _render_mobile_quick_create() -> None:
                 key="mob_qc_scan",
                 use_container_width=True,
             ):
+                _mobile_open_surface("qc_scan")
                 st.session_state["mob_qc_scan_open"] = True
                 st.rerun()
         if st.session_state.get("mob_qc_scan_open"):
@@ -3594,7 +3779,7 @@ def _render_mobile_bottom_nav(
                         help=_btn_help,
                     ):
                         st.session_state["nav_selection"] = payload
-                        _mobile_close_hub()
+                        _mobile_close_app_surfaces()
                         st.session_state["sidebar_group"] = None
                         st.rerun()
                     st.markdown(
@@ -3616,7 +3801,7 @@ def _render_mobile_bottom_nav(
                         type="primary" if _active else "secondary",
                     ):
                         st.session_state["nav_selection"] = payload
-                        _mobile_close_hub()
+                        _mobile_close_app_surfaces()
                         st.session_state["sidebar_group"] = None
                         st.rerun()
                 elif st.button(
@@ -3625,9 +3810,10 @@ def _render_mobile_bottom_nav(
                     use_container_width=True,
                     type="primary" if _active or _hub_open == payload else "secondary",
                 ):
-                    st.session_state["mobile_hub_open"] = (
-                        None if _hub_open == payload else payload
-                    )
+                    if _hub_open == payload:
+                        _mobile_close_hub()
+                    else:
+                        _mobile_open_surface(f"hub:{payload}")
                     st.rerun()
 
 
@@ -10565,6 +10751,12 @@ def _mob_at_close_picker() -> None:
     st.session_state.pop("mob_at_picker_search", None)
 
 
+def _mob_at_open_picker(picker_kind: str) -> None:
+    """Open an AT picker sheet; closes conflicting mobile surfaces (hub, QC scan)."""
+    _mobile_open_surface("at_picker")
+    st.session_state["mob_at_picker"] = picker_kind
+
+
 def _mob_at_filter_options(options: list, query: str) -> list:
     q = (query or "").strip().lower()
     if not q:
@@ -10752,7 +10944,7 @@ def _mob_at_render_category_trigger(
             use_container_width=True,
             type="secondary",
         ):
-            st.session_state["mob_at_picker"] = picker_kind
+            _mob_at_open_picker(picker_kind)
             return True
     return False
 
@@ -10773,7 +10965,7 @@ def _mob_at_render_subcategory_trigger(
             use_container_width=True,
             type="secondary",
         ):
-            st.session_state["mob_at_picker"] = picker_kind
+            _mob_at_open_picker(picker_kind)
             return True
     return False
 
@@ -10817,7 +11009,7 @@ def _mob_at_render_vendor_trigger(session, vendors: list) -> bool:
             use_container_width=True,
             type="secondary",
         ):
-            st.session_state["mob_at_picker"] = "vendor"
+            _mob_at_open_picker("vendor")
             return True
     return False
 
@@ -11044,7 +11236,7 @@ def _mob_at_render_invoice_trigger(open_sales: list) -> bool:
             use_container_width=True,
             type="secondary",
         ):
-            st.session_state["mob_at_picker"] = "invoice"
+            _mob_at_open_picker("invoice")
             return True
     return False
 
@@ -11072,7 +11264,7 @@ def _mob_at_render_payable_trigger(
             use_container_width=True,
             type="secondary",
         ):
-            st.session_state["mob_at_picker"] = "payable"
+            _mob_at_open_picker("payable")
             return True
     return False
 
@@ -11092,7 +11284,7 @@ def _mob_at_render_bank_trigger(bank_accounts: list) -> bool:
             use_container_width=True,
             type="secondary",
         ):
-            st.session_state["mob_at_picker"] = "bank_acct"
+            _mob_at_open_picker("bank_acct")
             return True
     return False
 
@@ -11455,7 +11647,7 @@ def _mob_at_render_bank_pay_trigger(bank_accounts: list) -> bool:
             use_container_width=True,
             type="secondary",
         ):
-            st.session_state["mob_at_picker"] = "bank_pay"
+            _mob_at_open_picker("bank_pay")
             return True
     return False
 
@@ -11508,7 +11700,7 @@ def _mob_at_render_card_bank_trigger(bank_accounts: list) -> bool:
             use_container_width=True,
             type="secondary",
         ):
-            st.session_state["mob_at_picker"] = "card_bank"
+            _mob_at_open_picker("card_bank")
             return True
     return False
 
@@ -23172,6 +23364,8 @@ def main():
         st.session_state["nav_selection"] = "🏠 Home"
     selection = st.session_state.get("nav_selection", "🏠 Home")
 
+    _sync_mobile_ui_flag_from_cookie()
+
     # ── Top header bar (contextual page title on mobile) ─────────────────────
     render_top_header(user, settings, page_key=selection)
     _render_company_switch_confirm(key_prefix="main_co_sw")
@@ -23232,6 +23426,13 @@ def main():
         st.session_state["txh_active_view"] = None
         st.session_state["txh_active_edit"] = None
         st.session_state["_current_page"] = selection
+        st.session_state.pop("mobile_hub_open", None)
+        st.session_state.pop("mob_at_picker", None)
+        st.session_state.pop("mob_at_picker_search", None)
+        st.session_state.pop("mob_qc_scan_open", None)
+        st.session_state.pop("mob_co_switch_open", None)
+        st.session_state.pop("mob_profile_open", None)
+        _mobile_clear_company_switch_confirm()
         if selection != "📊 Reports":
             st.session_state.pop("mob_reports_tab", None)
         # Auto-open the group when navigating programmatically
@@ -23311,8 +23512,10 @@ def _render_mobile_chrome(
     allowed: set[str],
     accordion_by_key: dict,
 ) -> None:
-    """Fixed mobile shell: bottom tabs + optional hub sheet."""
+    """Fixed mobile shell: bottom tabs + optional hub / header sheets."""
     st.markdown('<div class="erp-mobile-chrome-active"></div>', unsafe_allow_html=True)
+    _render_mobile_profile_sheet(_current_user() or {})
+    _render_mobile_co_switch_sheet()
     _render_mobile_hub_sheet(selection, allowed, accordion_by_key)
     _render_mobile_bottom_nav(selection, allowed, accordion_by_key)
 

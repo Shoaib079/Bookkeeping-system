@@ -667,6 +667,8 @@ html.erp-mobile [class*="st-key-hdr_toolbar_row"] [data-testid="stHorizontalBloc
 @media (min-width: 969px) {
   [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"],
   [data-testid="stMain"] [class*="st-key-erp_mob_hub_sheet"],
+  [data-testid="stMain"] [class*="st-key-erp_mob_co_switch_sheet"],
+  [data-testid="stMain"] [class*="st-key-erp_mob_profile_sheet"],
   [data-testid="stMain"] [class*="st-key-erp_mob_quick_create"],
   .erp-dash-mobile-greeting,
   .erp-dash-mobile-kpi-scroll {
