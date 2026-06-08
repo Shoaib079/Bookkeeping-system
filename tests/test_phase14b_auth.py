@@ -326,7 +326,6 @@ class TestCompanySwitchReturnsToPickerFlow:
         ss["active_company_name"] = "Corp A"
         # Transient form / nav state that must be cleared on switch
         ss["confirm_void_99"]   = True
-        ss["advanced_subpage"]  = "Fiscal Periods"
         ss["paying_sale_5"]     = True
 
         # st.rerun is already a MagicMock — calling it does nothing
@@ -337,7 +336,6 @@ class TestCompanySwitchReturnsToPickerFlow:
         assert "active_company_role" not in ss
         assert "active_company_name" not in ss
         assert "confirm_void_99"     not in ss
-        assert "advanced_subpage"    not in ss
         assert "paying_sale_5"       not in ss
         # Auth identity must survive the switch
         assert "auth_user" in ss

@@ -87,10 +87,11 @@ def test_desktop_header_matches_pre_mobile_contract():
 
 
 def test_mobile_header_search_always_visible():
-    """Search is a single header field — no nested toggle."""
+    """Search is a single header field — no nested toggle; shown only on table pages."""
     src = (ROOT / "app.py").read_text(encoding="utf-8")
     assert 'key="hdr_search_toggle"' not in src
     assert "hdr_search_open" not in src
+    assert "_header_search_active(page_key)" in src
     theme = (ROOT / "ui" / "theme.css").read_text(encoding="utf-8")
     shell = (ROOT / "ui" / "mobile_shell.css").read_text(encoding="utf-8")
     assert "[class*=\"st-key-hdr_search_panel\"]" in theme
@@ -106,7 +107,8 @@ def test_form_controls_single_border_contract():
     assert "--erp-on-primary" in (ROOT / "ui" / "theme.css").read_text(encoding="utf-8")
     reports = (ROOT / "ui" / "mobile_reports.css").read_text(encoding="utf-8")
     assert "mob_rpt_main_tabs" in reports
-    assert "var(--erp-on-primary" in reports
+    # Mobile report chips/tabs use global chip tokens (UI-1), not solid on-primary CTA.
+    assert "var(--erp-chip-active-fg" in reports
 
 
 def test_people_hub_wired_not_duplicated_in_more():

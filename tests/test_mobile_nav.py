@@ -18,6 +18,11 @@ _ACCORDION_BY_KEY = {
         ("👥  Customers", "👥 Customers"),
         ("🏢  Vendors", "🏢 Vendors"),
     ]),
+    "statements": ("Financial Statements", [
+        ("💰  Profit & Loss", "💰 Profit & Loss"),
+        ("🏛️  Balance Sheet", "🏛️ Balance Sheet"),
+        ("💸  Cash Flow", "💸 Cash Flow"),
+    ]),
     "accounting": ("Books", [
         ("🗂  General Ledger", "🗂 General Ledger"),
         ("💰  Budget", "💰 Budget"),
@@ -26,10 +31,21 @@ _ACCORDION_BY_KEY = {
 
 
 def test_viewer_only_reports_hub_has_entries():
-    allowed = {"🏠 Home", "📊 Reports", "👤 My Account"}
+    allowed = {
+        "🏠 Home",
+        "📊 Reports",
+        "💰 Profit & Loss",
+        "🏛️ Balance Sheet",
+        "💸 Cash Flow",
+        "👤 My Account",
+    }
     assert erp._mobile_hub_has_entries("reports", allowed, _ACCORDION_BY_KEY)
     assert not erp._mobile_hub_has_entries("banking", allowed, _ACCORDION_BY_KEY)
-    assert not erp._mobile_hub_has_entries("more", allowed, _ACCORDION_BY_KEY)
+    # D1: viewer sees Financial Statements in More hub; not Books / admin entries.
+    assert erp._mobile_hub_has_entries("more", allowed, _ACCORDION_BY_KEY)
+    assert erp._mobile_hub_entry_visible(
+        "more", "accordion", "accounting", allowed, _ACCORDION_BY_KEY
+    ) is False
 
 
 def test_owner_all_hubs_have_entries():

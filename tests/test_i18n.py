@@ -61,7 +61,7 @@ def test_transactional_phase15d_tr():
 
 
 def test_transactional_phase15e_tr():
-    assert t("reports.exec.pnl", "tr") == "Gelir Tablosu"
+    assert t("reports.exec.budget", "tr") == "Bütçe / Gerçekleşen"
     assert t("trial.balanced", "tr") == "DENGELİ"
     assert t("aging.days_1_30", "tr") == "1–30 Gün"
 

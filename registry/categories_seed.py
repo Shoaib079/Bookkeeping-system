@@ -20,7 +20,7 @@ DEFAULT_CATEGORIES: dict[str, dict[str, list[str]]] = {
         "Supplies": ["General Supplies"],
     },
     "Sale": {
-        "General Sales": ["Cash Sale", "Card Sale", "Credit Sale"],
+        "General Sales": ["Retail", "Wholesale", "Online"],
     },
 }
 

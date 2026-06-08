@@ -1,6 +1,8 @@
 """Mobile add-transaction helpers — no Streamlit runtime."""
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 import app as erp
@@ -67,9 +69,12 @@ def test_mob_at_amount_display_text(monkeypatch):
 
 
 def test_mob_at_keypad_fragment_registered():
-    import inspect
-
-    src = inspect.getsource(erp._mob_at_render_amount_keypad_fragment)
+    # Read app.py source — other tests mock streamlit before importing app, so
+    # inspect.getsource() on the runtime function is unreliable in full-suite runs.
+    app_src = Path(erp.__file__).read_text(encoding="utf-8")
+    marker = "@st.fragment\ndef _mob_at_render_amount_keypad_fragment"
+    start = app_src.index(marker)
+    src = app_src[start : start + 4000]
     assert "@st.fragment" in src or "st.fragment" in src
     assert callable(erp._mob_at_render_amount_keypad_fragment)
     assert "erp-mob-at-amt" in src

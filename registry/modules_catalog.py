@@ -34,6 +34,9 @@ MODULES: tuple[ModuleDef, ...] = (
     ModuleDef("inventory", "nav.inventory", "operations", nav_page="📦 Inventory", company_toggleable=True),
     ModuleDef("banking", "nav.banking", "operations", nav_page="🏦 Banking"),
     ModuleDef("reports", "nav.reports", "reporting", nav_page="📊 Reports"),
+    ModuleDef("profit_loss", "nav.profit_loss", "reporting", nav_page="💰 Profit & Loss"),
+    ModuleDef("balance_sheet", "nav.balance_sheet", "reporting", nav_page="🏛️ Balance Sheet"),
+    ModuleDef("cash_flow", "nav.cash_flow", "reporting", nav_page="💸 Cash Flow"),
     ModuleDef("general_ledger", "nav.general_ledger", "accounting", nav_page="🗂 General Ledger"),
     ModuleDef("trial_balance", "nav.trial_balance", "accounting", nav_page="⚖️ Trial Balance"),
     ModuleDef("journal_entries", "nav.journal_entries", "accounting", nav_page="📓 Journal Entries"),
@@ -88,7 +91,7 @@ MODULES: tuple[ModuleDef, ...] = (
     ),
 )
 
-# Nav pages registered in app.py _PAGE_DISPATCH (excluding legacy render_settings).
+# Nav pages registered in app.py _PAGE_DISPATCH.
 NAV_PAGES_IN_APP = frozenset(
     {
         "🏠 Home",
@@ -107,6 +110,9 @@ NAV_PAGES_IN_APP = frozenset(
         "📦 Inventory",
         "🏦 Banking",
         "📊 Reports",
+        "💰 Profit & Loss",
+        "🏛️ Balance Sheet",
+        "💸 Cash Flow",
         "🗂 General Ledger",
         "⚖️ Trial Balance",
         "📓 Journal Entries",

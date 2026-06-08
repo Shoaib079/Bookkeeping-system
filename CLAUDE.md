@@ -35,7 +35,7 @@ This is a single-file Streamlit accounting ERP. The entire UI and business logic
 
 ### Navigation flow
 
-`main()` renders a sidebar radio from `MENU_OPTIONS` and dispatches to a top-level `render_*` function for each page. The **Advanced** page is further broken into sub-pages tracked via `st.session_state["advanced_subpage"]`. Page-transition logic clears transient `confirm_`, `void_`, `paying_` session-state keys to prevent stale dialogs from persisting across pages.
+`main()` renders the sidebar via `_render_navigation_tree()` and dispatches to a top-level `render_*` function per `nav_selection` (`_PAGE_DISPATCH`). Page-transition logic clears transient `confirm_`, `void_`, `paying_` session-state keys to prevent stale dialogs from persisting across pages.
 
 Sidebar filters (global search + date range) are stored in `st.session_state` and only rendered on Transaction History and Reports pages.
 

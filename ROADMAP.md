@@ -1,7 +1,7 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** June 9, 2026 (AD-UI-001 navigation redesign approved — audit gate)  
+**Last updated:** June 5, 2026 (AD-UI-001 Option D Phase D1 — Financial Statements navigation)  
 **Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
@@ -27,7 +27,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | Localization EN/TR (15) | ✅ Complete |
 | DEVELOPMENT_MODE | ⚠️ **On** in `app.py` (`DEVELOPMENT_MODE = True`) — set `False` before production |
 | Shell / mobile chrome (Phase A) | ✅ Stabilized — fixed header, 968px breakpoint, People hub wired |
-| Sidebar / navigation redesign (AD-UI-001) | 📋 **Approved — not started** — requires [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) first |
+| Sidebar / navigation redesign (AD-UI-001) | 🟡 **D1 done** — Financial Statements routes; D2+ gated — see [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §16 |
 
 ---
 
@@ -242,25 +242,23 @@ Complete dark mode, readability, header/sidebar polish, mobile pass.
 
 ---
 
-## AD-UI-001 — Sidebar & navigation redesign *(approved — gated)*
+## AD-UI-001 — Sidebar & navigation redesign *(Option D — phased)*
 
-**Status:** Approved for future work. **Priority: High.** **No implementation yet.**
+**Status:** **Phase D1 complete** (2026-06-05). **Priority: High.** D2+ not started.
 
-**Reason:** Feature discoverability and workflow efficiency have become larger issues than accounting correctness (e.g. Balance Sheet exists but is buried under Reports → Executive).
+**D1 delivered:**
 
-**Prerequisite (mandatory):** Complete [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) — full page inventory, role/mobile parity, workflow paths, IA option recommendation — before changing `_NAV_ACCORDION`, mobile hubs, or Reports tab structure.
+- Top-level **Financial Statements** nav (desktop accordion + mobile Reports/More hubs).
+- Thin routes: `render_profit_loss_page`, `render_balance_sheet_page`, `render_cash_flow_page` → unchanged calculators.
+- Reports Executive no longer lists P&L / BS / CF.
+- Legacy Executive deep-links redirect; date filters on statement pages match Reports.
+- Tests: `tests/test_nav_statements_d1.py`.
 
-**Likely scope (TBD by audit):**
+**D2+ (gated):** Executive rename, TB/GL/Budget dedup, Transaction History sidebar move, Reports tab rework.
 
-- Financial statements discoverability (Balance Sheet, P&L, Cash Flow vs Books vs Reports)
-- Sidebar accordion IA (Books, Closings, operational vs accounting)
-- Mobile hub alignment with desktop mental model
-- `modules_catalog.py` alignment with visible nav
-- i18n label clarity (“Executive” → “Financial Statements”?)
+**Explicitly out of scope (all phases):** GL posting rules, AD-001–AD-015 accounting behavior, new report renderers.
 
-**Explicitly out of scope:** GL posting rules, AD-001–AD-015 accounting behavior, new report renderers (routing/labels only unless audit finds gaps).
-
-**Reference:** Pre-audit symptoms and checklist in [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §2–6.
+**Reference:** [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §16 (D1), §2–6 (pre-audit).
 
 ---
 

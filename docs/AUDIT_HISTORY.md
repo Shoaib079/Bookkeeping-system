@@ -8,6 +8,71 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-05 — AD-UI-001 Pre-D2 navigation cleanup (SAFE TO REMOVE)
+
+**Task:** Remove orphan nav renderers and dead mobile/i18n artifacts identified in Post-D1 Navigation Debt Verification.
+
+**Removed from `app.py`:**
+
+- `render_advanced()`, `render_customer_ledger()`, `render_settings()` (unreachable)
+- `advanced_subpage` session usage
+- `report_exec` mobile hub handler + visibility helpers
+- Unused `close_more_on_nav` parameter on `_render_navigation_tree`
+- Stale `_NAV_SECTIONS` comment
+
+**Removed i18n:**
+
+- `nav.group.daily`, `nav.group.crm` (messages.py)
+- `reports.exec.pnl`, `reports.exec.balance_sheet`, `reports.exec.cash_flow` (transactional.py)
+
+**Not touched:** `_PAGE_DISPATCH`, Financial Statements routes, D1 structure, legacy redirects (`_LEGACY_RPT_EXEC_TO_STATEMENT`, `_LEGACY_BSI`), accounting, banking, permissions.
+
+**Docs:** `UI_SHELL.md`, `NAVIGATION_AUDIT.md`, `CLAUDE.md`.
+
+---
+
+## 2026-06-05 — AD-UI-001 Option D Phase D1 (Financial Statements navigation)
+
+**Task:** Improve discoverability of P&L, Balance Sheet, and Cash Flow without changing report calculations, posting, or permissions.
+
+**Changes:**
+
+- Desktop: new **Financial Statements** accordion before Reports; thin page wrappers dispatch to existing renderers.
+- Reports Executive picker: removed P&L / BS / CF; retains Budget, TB, GL, Transaction Ledger, Today's Summary.
+- Mobile: Reports hub + More hub statement sections; shortcuts open dedicated routes.
+- Legacy `rpt_exec_sel` (`pnl`, `balance_sheet`, `cash_flow`) redirects to new pages.
+- Registry: `profit_loss`, `balance_sheet`, `cash_flow` modules; i18n keys EN/TR.
+- Tests: `tests/test_nav_statements_d1.py`; `tests/test_mobile_nav.py` updated.
+
+**Not touched:** accounting logic, report math, Banking, reconciliation, Executive rename, TB/GL dedup, Transaction History move.
+
+**Docs:** [NAVIGATION_AUDIT.md](./NAVIGATION_AUDIT.md) §16, [UI_SHELL.md](../UI_SHELL.md), [ROADMAP.md](../ROADMAP.md).
+
+---
+
+## 2026-06-09 — AD-UI-001 Navigation Audit Phase 1 (read-only)
+
+**Task:** Complete navigation and workflow audit after Banking Stabilization, UI Sweeps 1–3, and Legacy UI Cleanup. No code or navigation changes.
+
+**Deliverables:** Full page inventory (31 sidebar/mobile routes + embedded reports), daily/weekly/monthly classifications, discoverability and duplicate-path analysis, nine workflow traces (sale → monthly reporting), financial reporting audit, mobile vs desktop parity, top 10 problems, IA options A–D evaluation, restaurant-owner preliminary recommendation.
+
+**Key findings:**
+
+- Balance Sheet / P&L / Cash Flow reachable only via `📊 Reports` → Executive tab → 8-way picker (not in Books sidebar).
+- TB / GL / Budget duplicated in Books accordion and Reports Executive.
+- Transaction History only via Reports → Transaction Ledger; `📅 Today's Summary` in dispatch but not sidebar.
+- Orphan renderers: `render_advanced`, `render_customer_ledger`, `render_settings` (unreachable).
+- Cashier/viewer lack Books sidebar but can open financial reports via Reports Executive.
+- Mobile: Members has no hub path; operational pages often 3 taps via More.
+
+**Docs updated:** [NAVIGATION_AUDIT.md](./NAVIGATION_AUDIT.md) (Phase 1 complete).
+
+**Not touched:** accounting, banking, reconciliation, navigation code, workflows.
+
+**Next:** Stakeholder selects IA option (A–D) before AD-UI-001 implementation.
+
+---
+
 ## 2026-06-09 — Legacy UI cleanup Phase 3 (SAFE TO REMOVE)
 
 **Task:** Remove orphan CSS classes and dead Streamlit key selectors from Legacy UI Audit Final Pass (36 items; zero runtime usage).

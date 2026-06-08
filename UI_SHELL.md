@@ -127,7 +127,7 @@ Main `.block-container` keeps `padding-top: var(--hdr-h)` (plus 8px on mobile).
 
 Native Streamlit sidebar (`[data-testid="stSidebar"]`), navigation built in `main()`.
 
-**Planned change (AD-UI-001):** Sidebar and navigation redesign is approved (high priority) but **not started**. Complete [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) before altering `_NAV_ACCORDION`, mobile hubs, or Reports IA.
+**AD-UI-001 D1 (2026-06-05):** Financial Statements group added under Reports & overview; P&L / Balance Sheet / Cash Flow are top-level routes with thin wrappers. Reports → Executive no longer hosts those three. See [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §16.
 
 ### Layout
 
@@ -174,7 +174,7 @@ Transient keys (`confirm_*`, `void_*`, `paying_*`, etc.) clear on page change.
 
 ### Contextual sidebar
 
-Only **Reports** adds extra filters (`render_sidebar_filters()`).
+**Reports** and the three **Financial Statements** pages (`_DATE_FILTER_PAGE_KEYS`) add date filters via `render_sidebar_filters()` on desktop and `render_mobile_report_filters()` in-page on mobile.
 
 ### Mobile chrome (≤968px only)
 
@@ -194,7 +194,9 @@ Desktop sidebar (≥969px) is unchanged. Mobile uses fixed chrome in `app.py` af
 
 **Mobile header:** company name + current page title (center); bell + profile + search toggle (right). Replaces duplicate `st.title` on ≤768px.
 
-**More hub:** Books (accounting pages), Transaction history (Sales / Expenses / Purchases / Recurring — review only), Inventory, Company Settings, Backup, Audit Log.
+**Reports hub:** Financial Statements section (P&L, Balance Sheet, Cash Flow) + Sales / Expenses operational tabs.
+
+**More hub:** Financial Statements accordion, Books (accounting pages), Transaction history (Sales / Expenses / Purchases / Recurring — review only), Inventory, Company Settings, Backup, Audit Log.
 
 **Session state:** `mobile_hub_open` — hub key (`banking` \| `reports` \| `people` \| `more`) or `None`. Optional `mob_reports_tab` for Reports deep-link hints.
 
@@ -237,6 +239,7 @@ Routing uses stable strings (emoji + English name). Display text is localized vi
   ▸ Customers & suppliers        [people]
 📦 Inventory                     [direct, module-gated]
 ── nav.sidebar.section_reports ──
+  ▸ Financial Statements         [statements]
 📊 Reports                       [direct]
   ▸ Close your day               [close_day]
 ── nav.sidebar.section_advanced ──
@@ -252,6 +255,7 @@ Routing uses stable strings (emoji + English name). Display text is localized vi
 | `transactions` | `nav.group.transactions` | Sales, Expenses, Purchases, Recurring Expenses |
 | `people` | `nav.group.people` | Customers, Vendors, Receivables, Payables |
 | `close_day` | `nav.group.close_day` | Cash Reconciliation, End-of-Day Close |
+| `statements` | `nav.group.statements` | Profit & Loss, Balance Sheet, Cash Flow |
 | `accounting` | `nav.group.accounting` | GL, COA, Journal, Trial Balance, Fiscal Periods, Year-End Close, Budget, Recon Health, Opening Balances |
 | `team` | `nav.group.team` | Partner Accounts, Workers |
 | `settings` | `nav.group.settings` | Company Settings, Members, Audit Log, Backup & Restore |
@@ -270,7 +274,7 @@ Hide nav when disabled: Inventory, Partner Accounts, Budget (`get_module_state`)
 
 ### In-page sub-nav
 
-Use session keys (`banking_section`, `advanced_subpage`, `my_account_tab`). Do not replace sidebar keys.
+Use session keys (`banking_section`, `my_account_tab`). Do not replace sidebar keys.
 
 ---
 

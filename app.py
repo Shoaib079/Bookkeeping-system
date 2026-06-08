@@ -236,8 +236,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Nav sections are defined inside main() as _NAV_SECTIONS.
-
 # ── Development mode ──────────────────────────────────────────────────────────
 # Set to True to skip the login screen during local development / testing.
 # The full auth system stays intact; flip to False before any real deployment.
@@ -672,8 +670,44 @@ def reclassify_card_sales_to_clearing(session, company_id: int) -> dict:
 
 
 def _global_search_keyword() -> str:
-    """Header search bar value (single search surface app-wide)."""
+    """Header search bar value (table search on Expenses, Sales, Receivables)."""
     return (st.session_state.get("global_search") or "").strip()
+
+
+# Pages whose list table is filtered by the header search bar (WO-C B1).
+_HEADER_SEARCH_PAGE_KEYS = frozenset({"💳 Expenses", "💼 Sales", "📄 Receivables"})
+
+_TXH_DATE_PRESETS = ("today", "month", "custom")
+
+
+def _header_search_active(page_key: str | None) -> bool:
+    """True when the current page consumes the header search input."""
+    return page_key in _HEADER_SEARCH_PAGE_KEYS
+
+
+def _header_search_placeholder_key(page_key: str | None) -> str:
+    if page_key == "💳 Expenses":
+        return "search.ph.expenses"
+    if page_key == "💼 Sales":
+        return "search.ph.sales"
+    if page_key == "📄 Receivables":
+        return "search.ph.receivables"
+    return "search.table_ph"
+
+
+def _header_search_scope_key(page_key: str | None) -> str:
+    if page_key == "💳 Expenses":
+        return "search.scope.expenses_table"
+    if page_key == "💼 Sales":
+        return "search.scope.sales_table"
+    if page_key == "📄 Receivables":
+        return "search.scope.receivables_table"
+    return "search.scope.table"
+
+
+def _txh_search_keyword() -> str:
+    """Transaction History table search (inline filter card)."""
+    return (st.session_state.get("txh_search") or "").strip()
 
 
 def _global_date_range(
@@ -1121,17 +1155,19 @@ def render_top_header(
                                 f'</div>',
                                 unsafe_allow_html=True,
                             )
-                    with st.container(key="hdr_search_panel"):
-                        st.markdown(
-                            '<div class="erp-hdr-search-area erp-hdr-mobile-search-panel"></div>',
-                            unsafe_allow_html=True,
-                        )
-                        st.text_input(
-                            _t("header.search_label"),
-                            placeholder=_t("header.search_ph"),
-                            label_visibility="collapsed",
-                            key="global_search",
-                        )
+                    if _header_search_active(page_key):
+                        with st.container(key="hdr_search_panel"):
+                            st.markdown(
+                                '<div class="erp-hdr-search-area erp-hdr-mobile-search-panel"></div>',
+                                unsafe_allow_html=True,
+                            )
+                            st.text_input(
+                                _t("header.search_label"),
+                                placeholder=_t(_header_search_placeholder_key(page_key)),
+                                label_visibility="collapsed",
+                                key="global_search",
+                            )
+                            st.caption(_t(_header_search_scope_key(page_key)))
 
             with rc:
                 with st.container(key="hdr_col_right"):
@@ -2835,10 +2871,24 @@ def _flip_header_theme(user: dict) -> None:
     st.rerun()
 
 
+# AD-UI-001 D1 — financial statement top-level routes (routing only; render_* unchanged).
+_STATEMENT_PAGE_KEYS = frozenset({
+    "💰 Profit & Loss",
+    "🏛️ Balance Sheet",
+    "💸 Cash Flow",
+})
+_DATE_FILTER_PAGE_KEYS = frozenset({"📊 Reports"}) | _STATEMENT_PAGE_KEYS
+_LEGACY_RPT_EXEC_TO_STATEMENT = {
+    "pnl": "💰 Profit & Loss",
+    "balance_sheet": "🏛️ Balance Sheet",
+    "cash_flow": "💸 Cash Flow",
+}
+
 _NAV_GROUP_KEYS = {
     "transactions": "nav.group.transactions",
     "people": "nav.group.people",
     "close_day": "nav.group.close_day",
+    "statements": "nav.group.statements",
     "accounting": "nav.group.accounting",
     "team": "nav.group.team",
     "settings": "nav.group.settings",
@@ -2934,7 +2984,7 @@ _MOBILE_HUB_KEYS = frozenset(
 ) | frozenset({"people"})
 
 # (hub_key, entry_kind, payload, label_i18n_or_none)
-# entry_kind: page | banking_import | report_exec | report_sales | report_expenses | section
+# entry_kind: page | banking_import | report_sales | report_expenses | section
 _MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
     "banking": [
         ("page", "🏦 Banking", None, None),
@@ -2943,9 +2993,10 @@ _MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
         ("banking_import", "import", None, "nav.mobile.banking_import"),
     ],
     "reports": [
-        ("report_exec", "pnl", None, "reports.exec.pnl"),
-        ("report_exec", "balance_sheet", None, "reports.exec.balance_sheet"),
-        ("report_exec", "cash_flow", None, "reports.exec.cash_flow"),
+        ("section", "statements", None, "nav.mobile.section.statements"),
+        ("page", "💰 Profit & Loss", None, None),
+        ("page", "🏛️ Balance Sheet", None, None),
+        ("page", "💸 Cash Flow", None, None),
         ("report_sales", "sales", None, "nav.mobile.reports_sales"),
         ("report_expenses", "expenses", None, "nav.mobile.reports_expenses"),
     ],
@@ -2960,6 +3011,8 @@ _MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
     ],
     "more": [
         ("open_hub", "people", None, "nav.mobile.hub.people"),
+        ("section", "statements", None, "nav.mobile.section.statements"),
+        ("accordion", "statements", None, None),
         ("section", "books", None, "nav.mobile.section.books"),
         ("accordion", "accounting", None, None),
         ("section", "history", None, "nav.mobile.section.history"),
@@ -2989,6 +3042,11 @@ _NAV_ACCORDION = [
     ("close_day", "Closings", [
         ("💸  Cash Reconciliation", "💸 Cash Reconciliation"),
         ("🌙  End-of-Day Close",   "🌙 End-of-Day Close"),
+    ]),
+    ("statements", "Financial Statements", [
+        ("💰  Profit & Loss",     "💰 Profit & Loss"),
+        ("🏛️  Balance Sheet",     "🏛️ Balance Sheet"),
+        ("💸  Cash Flow",         "💸 Cash Flow"),
     ]),
     ("accounting", "Books", [
         ("🗂  General Ledger",     "🗂 General Ledger"),
@@ -3031,6 +3089,7 @@ _NAV_ROLE_PAGES = {
         "👥 Customers", "🏢 Vendors", "📄 Receivables", "📌 Payables",
         "📦 Inventory", "🏦 Banking",
         "📊 Reports",
+        "💰 Profit & Loss", "🏛️ Balance Sheet", "💸 Cash Flow",
         "🗂 General Ledger", "⚖️ Trial Balance", "📓 Journal Entries",
         "🗓 Fiscal Periods", "📆 Year-End Close", "💰 Budget", "🔍 Chart of Accounts",
         "🩺 Recon Health",
@@ -3047,18 +3106,21 @@ _NAV_ROLE_PAGES = {
         "📄 Receivables", "📌 Payables",
         "🏦 Banking",
         "📊 Reports",
+        "💰 Profit & Loss", "🏛️ Balance Sheet", "💸 Cash Flow",
         _NAV_MY_ACCOUNT,
     ],
     "partner": [
         "🏠 Home",
         "💼 Sales", "📄 Receivables",
         "📊 Reports",
+        "💰 Profit & Loss", "🏛️ Balance Sheet", "💸 Cash Flow",
         "🏦 Partner Accounts",
         _NAV_MY_ACCOUNT,
     ],
     "viewer": [
         "🏠 Home",
         "📊 Reports",
+        "💰 Profit & Loss", "🏛️ Balance Sheet", "💸 Cash Flow",
         _NAV_MY_ACCOUNT,
     ],
 }
@@ -3071,7 +3133,6 @@ def _render_navigation_tree(
     selection: str,
     allowed: set[str],
     accordion_by_key: dict,
-    close_more_on_nav: bool = False,
 ) -> None:
     """Render sidebar / mobile-sheet navigation (direct pages + accordion groups)."""
     _active_grp = st.session_state.get("sidebar_group")
@@ -3083,8 +3144,6 @@ def _render_navigation_tree(
             st.session_state["sidebar_group"] = group_key
         else:
             st.session_state["sidebar_group"] = None
-        if close_more_on_nav:
-            st.session_state["mobile_hub_open"] = None
         st.rerun()
 
     def _nav_direct(page_key: str) -> None:
@@ -3153,6 +3212,7 @@ def _render_navigation_tree(
     _nav_group("people", accordion_by_key["people"][1])
     _nav_direct("📦 Inventory")
     _nav_section_caption("nav.sidebar.section_reports")
+    _nav_group("statements", accordion_by_key["statements"][1])
     _nav_direct("📊 Reports")
     _nav_group("close_day", accordion_by_key["close_day"][1])
     _nav_section_caption("nav.sidebar.section_advanced")
@@ -3216,7 +3276,7 @@ def _mobile_hub_entry_visible(
         return payload in allowed
     if kind == "banking_import":
         return "🏦 Banking" in allowed and _can("import_bank_statement")
-    if kind in ("report_exec", "report_sales", "report_expenses"):
+    if kind in ("report_sales", "report_expenses"):
         return "📊 Reports" in allowed
     return False
 
@@ -3242,7 +3302,7 @@ def _mobile_hub_page_keys(hub_key: str, accordion_by_key: dict) -> set[str]:
         elif kind == "accordion" and payload:
             _, gpages = accordion_by_key.get(payload, (None, []))
             keys.update(key for _, key in gpages)
-        elif kind in ("report_exec", "report_sales", "report_expenses"):
+        elif kind in ("report_sales", "report_expenses"):
             keys.add("📊 Reports")
         elif kind == "banking_import":
             keys.add("🏦 Banking")
@@ -3358,21 +3418,6 @@ def _render_mobile_hub_sheet(
                     _mobile_hub_nav(
                         "🏦 Banking",
                         presets={"banking_section": "import"},
-                    )
-                _item_idx += 1
-                continue
-
-            if kind == "report_exec":
-                label = _t(label_key or "")
-                if st.button(
-                    label,
-                    key=f"mob_hub_{hub_key}_{_item_idx}",
-                    use_container_width=True,
-                    type="secondary",
-                ):
-                    _mobile_hub_nav(
-                        "📊 Reports",
-                        presets={"rpt_exec_sel": payload, "mob_reports_tab": "exec"},
                     )
                 _item_idx += 1
                 continue
@@ -3777,6 +3822,102 @@ def _localize_txn_status(value: str) -> str:
     return _t(key) if key else value
 
 
+def _txh_matches_keyword(
+    kw: str,
+    *,
+    party: str = "",
+    description: str = "",
+    txn_type: str = "",
+    method: str = "",
+    reference: str = "",
+    amount: float | None = None,
+    category: str = "",
+    subcategory: str = "",
+) -> bool:
+    """Case-insensitive match across common Transaction History row fields."""
+    if not kw:
+        return True
+    kw_l = kw.lower()
+    parts: list[str] = [
+        party,
+        description,
+        txn_type,
+        method,
+        reference,
+        category,
+        subcategory,
+        _localize_txn_type(txn_type),
+        _i18n_db(PAYMENT_METHOD_I18N, method) if method else "",
+    ]
+    if amount is not None:
+        parts.extend(
+            (
+                f"{amount:.2f}",
+                f"{amount:,.2f}",
+                str(int(amount)) if amount == int(amount) else "",
+            )
+        )
+    haystack = " ".join(p for p in parts if p).lower()
+    return kw_l in haystack
+
+
+def _txh_date_range() -> tuple[datetime.date, datetime.date]:
+    today = datetime.date.today()
+    preset = st.session_state.get("txh_date_preset", "month")
+    if preset == "today":
+        return today, today
+    if preset == "month":
+        return today.replace(day=1), today
+    d_from = st.session_state.get("txh_date_from", today.replace(day=1))
+    d_to = st.session_state.get("txh_date_to", today)
+    if d_from > d_to:
+        d_from, d_to = d_to, d_from
+    return d_from, d_to
+
+
+def _render_txh_date_filters(container) -> tuple[datetime.date, datetime.date]:
+    """Today / This Month / Custom Range presets for Transaction History."""
+    container.markdown(
+        f'<div class="erp-txh-filters-label">{html.escape(_t("filter.date_range"))}</div>',
+        unsafe_allow_html=True,
+    )
+    preset_labels = {
+        "today": _t("search.date.today"),
+        "month": _t("search.date.this_month"),
+        "custom": _t("search.date.custom"),
+    }
+    current = st.session_state.get("txh_date_preset", "month")
+    if current not in _TXH_DATE_PRESETS:
+        st.session_state["txh_date_preset"] = "month"
+        current = "month"
+    cols = container.columns(len(_TXH_DATE_PRESETS))
+    for col, preset in zip(cols, _TXH_DATE_PRESETS):
+        if col.button(
+            preset_labels[preset],
+            key=f"txh_date_preset_{preset}",
+            use_container_width=True,
+            type="primary" if current == preset else "secondary",
+        ):
+            st.session_state["txh_date_preset"] = preset
+            st.rerun()
+    if current == "custom":
+        today = datetime.date.today()
+        c1, c2 = container.columns(2)
+        d_from = c1.date_input(
+            _t("form.from"),
+            st.session_state.get("txh_date_from", today.replace(day=1)),
+            key="txh_date_from",
+        )
+        d_to = c2.date_input(
+            _t("form.to"),
+            st.session_state.get("txh_date_to", today),
+            key="txh_date_to",
+        )
+        st.session_state["txh_date_from"] = d_from
+        st.session_state["txh_date_to"] = d_to
+    return _txh_date_range()
+
+
 def _reports_date_bar(
     key_prefix: str,
     default_from: datetime.date,
@@ -3790,7 +3931,7 @@ def _mgmt_report_select(widget_key: str, options: list[tuple[str, str]]) -> str:
     """Desktop selectbox + mobile chip grid (dual host)."""
     by_id = {opt_id: msg_key for opt_id, msg_key in options}
     ids = [opt_id for opt_id, _ in options]
-    if widget_key not in st.session_state:
+    if widget_key not in st.session_state or st.session_state[widget_key] not in ids:
         st.session_state[widget_key] = ids[0]
     cur = st.session_state[widget_key]
 
@@ -4463,6 +4604,176 @@ def _at_supplier_pay_methods(session) -> list[str]:
     return methods
 
 
+def _at_payment_method_label(txn_type: str, payment_method: str) -> str:
+    """Localized payment-method label for Add Transaction (stored values unchanged)."""
+    if payment_method == _COMPANY_CC_METHOD:
+        return _i18n_db(PAYMENT_METHOD_I18N, payment_method)
+    if txn_type == "Sale" and payment_method == "Credit":
+        return _t("txn.pm.sale_on_account")
+    if txn_type == "Purchase" and payment_method == "Credit":
+        return _t("txn.pm.purchase_pay_later")
+    return _i18n_db(PAYMENT_METHOD_I18N, payment_method)
+
+
+def _at_pm_chip_labels(txn_type: str, methods: list[str]) -> list[tuple[str, str]]:
+    return [(pm, _at_payment_method_label(txn_type, pm)) for pm in methods]
+
+
+_AT_PM_TXN_TYPES = frozenset({
+    "Sale", "Expense", "Purchase", "Supplier Payment", "Customer Payment",
+})
+
+_AT_DEFAULT_PM: dict[str, str] = {
+    "Sale": "Cash",
+    "Expense": "Cash",
+    "Purchase": "Credit",
+    "Supplier Payment": "Cash",
+    "Customer Payment": "Cash",
+}
+
+_AT_TYPE_I18N: dict[str, str] = {
+    "Sale": "txn.type.sale",
+    "Expense": "txn.type.expense",
+    "Purchase": "txn.type.purchase",
+    "Supplier Payment": "txn.type.supplier_payment",
+    "Customer Payment": "txn.type.customer_payment",
+}
+
+
+def _at_allowed_pay_methods(session, txn_type: str) -> list[str]:
+    """Payment methods valid for an Add Transaction type."""
+    if txn_type == "Sale":
+        return ["Cash", "Card", "Credit"]
+    if txn_type == "Expense":
+        if _mob_at_is_salary_mode():
+            return ["Cash", "Bank"]
+        return _at_expense_pay_methods(session)
+    if txn_type == "Purchase":
+        return _at_purchase_pay_methods(session)
+    if txn_type == "Supplier Payment":
+        return _at_supplier_pay_methods(session)
+    if txn_type == "Customer Payment":
+        return ["Cash", "Bank"]
+    return []
+
+
+def _at_default_pay_method(session, txn_type: str) -> str:
+    """First-choice default payment method for a transaction type."""
+    if txn_type == "Expense" and _mob_at_is_salary_mode():
+        return "Cash"
+    allowed = _at_allowed_pay_methods(session, txn_type)
+    preferred = _AT_DEFAULT_PM.get(txn_type, "Cash")
+    if preferred in allowed:
+        return preferred
+    return allowed[0] if allowed else "Cash"
+
+
+def _at_clear_stale_payment_account_keys(payment_method: str) -> None:
+    """Drop bank/card/CC picker state when the active PM no longer uses them."""
+    if payment_method != "Bank":
+        for _k in ("at_bank_pay_acct", "mob_at_bank_pay_sel"):
+            st.session_state.pop(_k, None)
+    if payment_method != "Card":
+        st.session_state.pop("at_card_bank_acct", None)
+    if payment_method != _COMPANY_CC_METHOD:
+        for _k in ("at_cc_card_id", "mob_at_cc_card_id"):
+            st.session_state.pop(_k, None)
+
+
+def _coerce_at_payment_method(session, txn_type: str) -> None:
+    """Reset shared at_pm when it is not valid for the current transaction type."""
+    if txn_type not in _AT_PM_TXN_TYPES:
+        return
+    allowed = _at_allowed_pay_methods(session, txn_type)
+    if not allowed:
+        return
+    pm = st.session_state.get("at_pm")
+    if pm in allowed:
+        return
+    new_pm = _at_default_pay_method(session, txn_type)
+    st.session_state["at_pm"] = new_pm
+    _at_clear_stale_payment_account_keys(new_pm)
+
+
+def _at_invoice_choice_label(sale) -> str:
+    return f"{sale.invoice_number} — {sale.customer_name} (bal: {sale.balance:,.2f})"
+
+
+def _at_sale_from_invoice_choice(open_sales: list, choice_val: str | None):
+    if not choice_val:
+        return None
+    for sale in open_sales:
+        if _at_invoice_choice_label(sale) == choice_val:
+            return sale
+    return None
+
+
+def _at_supplier_placeholder() -> str:
+    return _t("txn.select_supplier_ph")
+
+
+def _at_normalize_vendor_selection(
+    vendor_name: str | None, vendor_names: list[str]
+) -> str | None:
+    """Return a valid vendor name, or None when unset / placeholder / stale key."""
+    if not vendor_name:
+        return None
+    if vendor_name == "txn.select_supplier_ph":
+        return None
+    if vendor_name == _at_supplier_placeholder():
+        return None
+    if vendor_name not in vendor_names:
+        return None
+    return vendor_name
+
+
+def _at_clear_invalid_at_vendor(vendor_names: list[str]) -> None:
+    """Drop stale at_vendor values (raw i18n keys, placeholders, unknown names)."""
+    cur = st.session_state.get("at_vendor")
+    if cur is None:
+        return
+    if _at_normalize_vendor_selection(cur, vendor_names) is None:
+        st.session_state.pop("at_vendor", None)
+        st.session_state.pop("mob_at_vendor_sel", None)
+
+
+def _at_supplier_payment_submit_error(
+    session, vendors: list, vendor_name: str | None, payable_id: int | None
+) -> str | None:
+    """Return user-facing error when Supplier Payment cannot be saved."""
+    if not vendors or not vendor_name:
+        return _t("txn.vendor_required")
+    if payable_id is not None:
+        return None
+    vendor = next((v for v in vendors if v.name == vendor_name), None)
+    if vendor:
+        has_open = (
+            cq(session, Payable)
+            .filter_by(vendor_id=vendor.id, paid=False, is_void=False)
+            .count()
+            > 0
+        )
+        if not has_open:
+            return _t("txn.no_open_payable")
+    return _t("txn.payable_none_selected")
+
+
+def _at_validate_payment_method_for_submit(session, txn_type: str) -> str | None:
+    """Coerce stale at_pm; return an error if payment method is still invalid."""
+    if txn_type not in _AT_PM_TXN_TYPES:
+        return None
+    _coerce_at_payment_method(session, txn_type)
+    allowed = _at_allowed_pay_methods(session, txn_type)
+    pm = st.session_state.get("at_pm")
+    if pm in allowed:
+        return None
+    return _t(
+        "txn.pay_method_not_allowed",
+        method=pm or "",
+        type=_t(_AT_TYPE_I18N.get(txn_type, "txn.type.expense")),
+    )
+
+
 def _mark_at_save_succeeded(message: str | None = None) -> None:
     st.session_state["_at_save_succeeded"] = True
     if message:
@@ -4658,23 +4969,6 @@ def _mob_at_render_company_cc_select(session) -> None:
         key="mob_at_cc_card_id",
     )
     st.session_state["at_cc_card_id"] = st.session_state.get("mob_at_cc_card_id")
-
-
-def _coerce_at_payment_method(session, txn_type: str) -> None:
-    """Reset stale Company CC on shared at_pm when toggle is off (mobile + desktop)."""
-    pm = st.session_state.get("at_pm")
-    if pm != _COMPANY_CC_METHOD:
-        return
-    if txn_type == "Expense":
-        allowed = _at_expense_pay_methods(session)
-    elif txn_type == "Purchase":
-        allowed = _at_purchase_pay_methods(session)
-    elif txn_type == "Supplier Payment":
-        allowed = _at_supplier_pay_methods(session)
-    else:
-        return
-    if pm not in allowed:
-        st.session_state["at_pm"] = allowed[0]
 
 
 def _has_active_partners(session) -> bool:
@@ -10190,6 +10484,41 @@ _AT_EXPENSE_CATS = [
     "Transport", "Maintenance", "Advertising", "Office Supplies", "Other",
 ]
 
+# Payment-method labels that must not appear as category/subcategory pickers (WO-A1).
+_AT_PAYMENT_LIKE_CAT_NAMES = frozenset({
+    "cash",
+    "bank",
+    "credit card",
+    "card",
+    "credit",
+    "mobile money",
+    "cash sale",
+    "card sale",
+    "credit sale",
+})
+
+
+def _at_is_payment_like_category_name(name: str | None) -> bool:
+    return (name or "").strip().lower() in _AT_PAYMENT_LIKE_CAT_NAMES
+
+
+def _at_filter_transaction_categories(cats: list) -> list:
+    """Drop payment-method-like names from category/subcategory picker options."""
+    return [c for c in cats if not _at_is_payment_like_category_name(c.name)]
+
+
+def _at_clear_category_session_state() -> None:
+    """Remove stale category keys when a txn type has no category fields."""
+    for _k in (
+        "at_cat",
+        "at_subcat",
+        "at_last_cat_id",
+        "mob_at_cat_id",
+        "mob_at_subcat_id",
+        "mob_at_cat_name",
+    ):
+        st.session_state.pop(_k, None)
+
 _MOB_AT_TABS = (
     (0, "txn.mob.tab.sale", "SALE"),
     (1, "txn.mob.tab.expense", "EXP"),
@@ -10266,7 +10595,7 @@ def _mob_at_is_subcat_picker(picker_kind: str) -> bool:
 
 
 def _mob_at_category_options(session, txn_type: str) -> list[_MobAtGridPick]:
-    cats = (
+    cats = _at_filter_transaction_categories(
         cq(session, TransactionCategory)
         .filter_by(transaction_type=txn_type, is_active=True)
         .order_by(TransactionCategory.name)
@@ -10286,7 +10615,7 @@ def _mob_at_category_options(session, txn_type: str) -> list[_MobAtGridPick]:
 
 
 def _mob_at_subcategory_options(session, cat_id: int) -> list[_MobAtGridPick]:
-    subcats = (
+    subcats = _at_filter_transaction_categories(
         cq(session, TransactionSubcategory)
         .filter_by(category_id=cat_id, is_active=True)
         .order_by(TransactionSubcategory.name)
@@ -10473,14 +10802,24 @@ def _mob_at_render_cat_subcat_triggers(
     )
 
 
-def _mob_at_render_vendor_trigger(vendors: list) -> bool:
+def _mob_at_render_vendor_trigger(session, vendors: list) -> bool:
     if not vendors:
+        if st.button(
+            "＋ " + _t("vendor.add_btn"),
+            key="mob_at_vendor_add_empty",
+            use_container_width=True,
+            type="secondary",
+            disabled=not _can("create_customer_vendor"),
+        ):
+            _vendor_add_dialog(session)
+            return True
         return False
-    selected = st.session_state.get("at_vendor") or vendors[0].name
-    if not st.session_state.get("at_vendor"):
-        st.session_state["at_vendor"] = selected
-        st.session_state["mob_at_vendor_sel"] = selected
-    label = selected or _tf("txn.mob.pick_vendor", "Supplier ▼")
+    _vendor_names = [v.name for v in vendors]
+    _at_clear_invalid_at_vendor(_vendor_names)
+    selected = _at_normalize_vendor_selection(
+        st.session_state.get("at_vendor"), _vendor_names
+    )
+    label = selected or _at_supplier_placeholder()
     with st.container(border=False, key="mob_at_vendor_trigger"):
         if st.button(
             label,
@@ -10595,7 +10934,7 @@ def _mob_at_render_subcategory_picker_sheet(
     )
 
 
-def _mob_at_render_vendor_picker_sheet(vendors: list) -> bool:
+def _mob_at_render_vendor_picker_sheet(session, vendors: list) -> bool:
     options = _mob_at_vendor_pool(vendors)
     selected_key = next(
         (o.key for o in options if o.value_name == st.session_state.get("at_vendor")),
@@ -10606,6 +10945,17 @@ def _mob_at_render_vendor_picker_sheet(vendors: list) -> bool:
         st.session_state["at_vendor"] = opt.value_name or opt.label
         st.session_state["mob_at_vendor_sel"] = opt.value_name or opt.label
         st.session_state.pop("at_payable_id", None)
+
+    with st.container(border=False, key="erp_mob_at_vendor_picker_hdr"):
+        if _can("create_customer_vendor"):
+            if st.button(
+                "＋ " + _t("vendor.add_btn"),
+                key="mob_at_vendor_picker_add",
+                use_container_width=True,
+                type="secondary",
+            ):
+                _vendor_add_dialog(session)
+                return True
 
     return _mob_at_render_grid_picker_sheet(
         title=_tf("txn.mob.pick_vendor", "Choose supplier"),
@@ -10644,9 +10994,7 @@ def _mob_at_render_invoice_picker_sheet(open_sales: list) -> bool:
 def _mob_at_render_payable_picker_sheet(
     session, vendors: list, currency_default: str
 ) -> bool:
-    vendor_name = st.session_state.get("at_vendor") or (
-        vendors[0].name if vendors else None
-    )
+    vendor_name = st.session_state.get("at_vendor")
     vendor = next((v for v in vendors if v.name == vendor_name), None)
     if not vendor:
         _mob_at_close_picker()
@@ -10697,14 +11045,11 @@ def _mob_at_render_invoice_trigger(open_sales: list) -> bool:
     if not open_sales:
         return False
     options = _mob_at_invoice_options(open_sales)
-    selected = (
-        st.session_state.get("mob_at_inv_sel")
-        or st.session_state.get("at_inv")
-        or options[0].label
-    )
+    selected = st.session_state.get("mob_at_inv_sel") or st.session_state.get("at_inv")
+    label = selected or _t("txn.select_invoice_ph")
     with st.container(border=False, key="mob_at_inv_trigger"):
         if st.button(
-            selected,
+            label,
             key="mob_at_inv_open",
             use_container_width=True,
             type="secondary",
@@ -10717,9 +11062,7 @@ def _mob_at_render_invoice_trigger(open_sales: list) -> bool:
 def _mob_at_render_payable_trigger(
     session, vendors: list, currency_default: str
 ) -> bool:
-    vendor_name = st.session_state.get("at_vendor") or (
-        vendors[0].name if vendors else None
-    )
+    vendor_name = st.session_state.get("at_vendor")
     vendor = next((v for v in vendors if v.name == vendor_name), None)
     if not vendor:
         return False
@@ -10729,11 +11072,12 @@ def _mob_at_render_payable_trigger(
     payable_id = st.session_state.get("at_payable_id")
     selected = next(
         (o.label for o in options if o.value_id == payable_id),
-        options[0].label,
+        None,
     )
+    label = selected or _t("txn.select_payable_ph")
     with st.container(border=False, key="mob_at_payable_trigger"):
         if st.button(
-            selected,
+            label,
             key="mob_at_payable_open",
             use_container_width=True,
             type="secondary",
@@ -10774,7 +11118,7 @@ def _mob_at_render_picker_sheet(
 ) -> bool:
     """Scrollable picker above the blue entry panel. Returns True if rerun needed."""
     if picker_kind == "vendor":
-        return _mob_at_render_vendor_picker_sheet(vendors)
+        return _mob_at_render_vendor_picker_sheet(session, vendors)
     if picker_kind == "invoice":
         return _mob_at_render_invoice_picker_sheet(open_sales)
     if picker_kind == "payable":
@@ -11259,12 +11603,9 @@ def _mob_at_ensure_defaults(session, txn_type: str, currency_default: str, vendo
         st.session_state.setdefault("at_pm", "Cash")
     elif txn_type == "Purchase":
         st.session_state.setdefault("at_pm", "Credit")
-        if vendors:
-            st.session_state.setdefault("at_vendor", vendors[0].name)
     elif txn_type == "Supplier Payment":
         st.session_state.setdefault("at_pm", "Cash")
-        if vendors:
-            st.session_state.setdefault("at_vendor", vendors[0].name)
+        _at_clear_category_session_state()
     elif txn_type == "Customer Payment":
         st.session_state.setdefault("at_pm", "Cash")
     elif txn_type == "Bank Transaction":
@@ -11281,6 +11622,7 @@ def _at_gather_submit_fields(
     open_sales: list,
 ) -> dict:
     """Collect submit context from session state (desktop + mobile)."""
+    _coerce_at_payment_method(session, txn_type)
     _mob_at_sync_select_widgets()
     date = st.session_state.get("at_date", datetime.date.today())
     at_notes = st.session_state.get("at_notes_field", "") or ""
@@ -11298,7 +11640,10 @@ def _at_gather_submit_fields(
         else:
             customer_name_val = st.session_state.get("at_cust", "Walk-in Customer")
 
-    vendor_name_val = st.session_state.get("at_vendor") or (vendors[0].name if vendors else None)
+    _vendor_names = [v.name for v in vendors]
+    vendor_name_val = _at_normalize_vendor_selection(
+        st.session_state.get("at_vendor"), _vendor_names
+    )
 
     at_cat = at_cat_id = at_subcat_name = None
     subcats_list: list = []
@@ -11344,13 +11689,10 @@ def _at_gather_submit_fields(
     invoice_choices: list = []
     invoice_choice_val = None
     if txn_type == "Customer Payment" and open_sales:
-        invoice_choices = [
-            f"{s.invoice_number} — {s.customer_name} (bal: {s.balance:,.2f})"
-            for s in open_sales
-        ]
-        invoice_choice_val = st.session_state.get("at_inv") or (
-            invoice_choices[0] if invoice_choices else None
-        )
+        invoice_choices = [_at_invoice_choice_label(s) for s in open_sales]
+        invoice_choice_val = st.session_state.get("at_inv")
+        if invoice_choice_val not in invoice_choices:
+            invoice_choice_val = None
 
     bank_sub = st.session_state.get("at_bank_sub", "Deposit")
     bank_acct_val = st.session_state.get("at_bank_acct") or (
@@ -11432,7 +11774,10 @@ def _at_process_submit(
         )
         txn_type = "Expense"
 
-    if not amount or amount <= 0:
+    if pm_err := _at_validate_payment_method_for_submit(session, txn_type):
+        st.error(pm_err)
+        _at_set_flash("error", pm_err)
+    elif not amount or amount <= 0:
         _msg = _t("txn.invalid_amount_zero")
         st.error(_msg)
         _at_set_flash("error", _msg)
@@ -11442,10 +11787,31 @@ def _at_process_submit(
         st.session_state.get("mob_at_worker_gross", "")
     ):
         st.error(_t("txn.invalid_amount_zero"))
-    elif txn_type == "Supplier Payment" and vendors and st.session_state.get("at_payable_id") is None:
-        st.error(_t("txn.no_open_payable"))
+    elif txn_type == "Supplier Payment" and (
+        sp_err := _at_supplier_payment_submit_error(
+            session,
+            vendors,
+            ctx.get("vendor_name_val"),
+            st.session_state.get("at_payable_id"),
+        )
+    ):
+        st.error(sp_err)
+        _at_set_flash("error", sp_err)
+    elif txn_type == "Supplier Payment" and st.session_state.get("at_payable_id"):
+        payable = session.get(Payable, st.session_state["at_payable_id"])
+        if payable and (
+            pay_err := _validate_payable_payment_amount(
+                payable, amount, currency=currency_default
+            )
+        ):
+            st.error(pay_err)
+            _at_set_flash("error", pay_err)
     elif txn_type == "Customer Payment" and not open_sales:
         st.error(_t("txn.no_credit_invoices"))
+    elif txn_type == "Customer Payment" and open_sales and not ctx.get("invoice_choice_val"):
+        _inv_err = _t("txn.invoice_not_selected")
+        st.error(_inv_err)
+        _at_set_flash("error", _inv_err)
     elif (
         ctx["at_payment_method"] == "Bank"
         and bank_accounts
@@ -11649,6 +12015,9 @@ def _render_add_transaction_mobile(
                         if more_idx == _MOB_AT_SALARY_IDX:
                             st.session_state["at_expense_mode"] = "worker"
                             st.session_state["at_worker_mv_type"] = "Salary"
+                    _coerce_at_payment_method(
+                        session, _at_effective_txn_type(type_names)
+                    )
                     _mob_at_close_picker()
                     for _ck in (
                         "mob_at_cat_id",
@@ -11682,9 +12051,14 @@ def _render_add_transaction_mobile(
             if pick != more_idx:
                 st.session_state["mob_at_more_idx"] = pick
                 st.session_state["at_type_idx"] = pick
+                if type_names[pick] == "Supplier Payment":
+                    _at_clear_category_session_state()
                 if pick == _MOB_AT_SALARY_IDX:
                     st.session_state["at_expense_mode"] = "worker"
                     st.session_state["at_worker_mv_type"] = "Salary"
+                _coerce_at_payment_method(
+                    session, _at_effective_txn_type(type_names)
+                )
                 st.rerun()
             at_idx = st.session_state["at_type_idx"]
             txn_type = (
@@ -11712,7 +12086,7 @@ def _render_add_transaction_mobile(
             else:
                 st.caption(_t("worker.no_workers"))
             if _mob_at_button_row(
-                [(pm, _i18n_db(PAYMENT_METHOD_I18N, pm)) for pm in ("Cash", "Bank")],
+                _at_pm_chip_labels("Expense", ["Cash", "Bank"]),
                 st.session_state.get("at_pm", "Cash"),
                 "mob_at_pm",
                 "at_pm",
@@ -11728,7 +12102,7 @@ def _render_add_transaction_mobile(
                 _mob_at_render_fx_hook(currency_default)
         elif at_idx == 0:
             if _mob_at_button_row(
-                [(pm, _i18n_db(PAYMENT_METHOD_I18N, pm)) for pm in ("Cash", "Card", "Credit")],
+                _at_pm_chip_labels("Sale", ["Cash", "Card", "Credit"]),
                 st.session_state.get("at_pm", "Cash"),
                 "mob_at_pm",
                 "at_pm",
@@ -11754,7 +12128,7 @@ def _render_add_transaction_mobile(
                 _mob_at_render_fx_hook(currency_default)
         elif at_idx == 1 and st.session_state.get("mob_at_tab") == 1:
             if _mob_at_button_row(
-                [(pm, _i18n_db(PAYMENT_METHOD_I18N, pm)) for pm in _at_expense_pay_methods(session)],
+                _at_pm_chip_labels("Expense", _at_expense_pay_methods(session)),
                 st.session_state.get("at_pm", "Cash"),
                 "mob_at_pm",
                 "at_pm",
@@ -11777,14 +12151,14 @@ def _render_add_transaction_mobile(
                 _mob_at_render_fx_hook(currency_default)
         elif at_idx == 2:
             if _mob_at_button_row(
-                [(pm, _i18n_db(PAYMENT_METHOD_I18N, pm)) for pm in _at_purchase_pay_methods(session)],
+                _at_pm_chip_labels("Purchase", _at_purchase_pay_methods(session)),
                 st.session_state.get("at_pm", "Credit"),
                 "mob_at_pm",
                 "at_pm",
                 row_key="mob_at_pm3",
             ):
                 st.rerun()
-            if _mob_at_render_vendor_trigger(vendors):
+            if _mob_at_render_vendor_trigger(session, vendors):
                 st.rerun()
             if _mob_at_render_cat_subcat_triggers(
                 session,
@@ -11804,8 +12178,19 @@ def _render_add_transaction_mobile(
             if txn_type == "Customer Payment" and open_sales:
                 if _mob_at_render_invoice_trigger(open_sales):
                     st.rerun()
+                _mob_inv = _at_sale_from_invoice_choice(
+                    open_sales, st.session_state.get("at_inv")
+                )
+                if _mob_inv:
+                    st.caption(
+                        _t(
+                            "txn.payable_outstanding",
+                            currency=currency_default,
+                            balance=_mob_inv.balance,
+                        )
+                    )
                 if _mob_at_button_row(
-                    [(pm, _i18n_db(PAYMENT_METHOD_I18N, pm)) for pm in ("Cash", "Bank")],
+                    _at_pm_chip_labels("Customer Payment", ["Cash", "Bank"]),
                     st.session_state.get("at_pm", "Cash"),
                     "mob_at_pm",
                     "at_pm",
@@ -11818,27 +12203,41 @@ def _render_add_transaction_mobile(
                     if _mob_at_render_currency_chips(currency_default):
                         st.rerun()
                     _mob_at_render_fx_hook(currency_default)
-            elif txn_type == "Supplier Payment" and vendors:
-                if _mob_at_render_vendor_trigger(vendors):
+            elif txn_type == "Supplier Payment":
+                _at_clear_category_session_state()
+                if _mob_at_render_vendor_trigger(session, vendors):
                     st.rerun()
-                _mob_at_sync_select_widgets()
-                _sp_vendor = next(
-                    (v for v in vendors if v.name == st.session_state.get("at_vendor")),
-                    vendors[0],
-                )
-                _pay_opts = _mob_at_payable_options(
-                    session, _sp_vendor.id, currency_default
-                )
-                if _pay_opts:
-                    if _mob_at_render_payable_trigger(session, vendors, currency_default):
-                        st.rerun()
-                    if not st.session_state.get("at_payable_id"):
-                        st.session_state["at_payable_id"] = _pay_opts[0].value_id
-                        st.session_state["mob_at_payable_sel"] = _pay_opts[0].label
-                else:
-                    st.caption(_t("txn.no_open_payable"))
+                if vendors and st.session_state.get("at_vendor"):
+                    _mob_at_sync_select_widgets()
+                    _sp_vendor = next(
+                        (v for v in vendors if v.name == st.session_state.get("at_vendor")),
+                        None,
+                    )
+                    if _sp_vendor:
+                        _pay_opts = _mob_at_payable_options(
+                            session, _sp_vendor.id, currency_default
+                        )
+                    else:
+                        _pay_opts = []
+                    if _pay_opts:
+                        if _mob_at_render_payable_trigger(session, vendors, currency_default):
+                            st.rerun()
+                        if st.session_state.get("at_payable_id"):
+                            _mob_pay = session.get(
+                                Payable, st.session_state["at_payable_id"]
+                            )
+                            if _mob_pay:
+                                st.caption(
+                                    _t(
+                                        "txn.payable_outstanding",
+                                        currency=currency_default,
+                                        balance=_payable_balance(_mob_pay),
+                                    )
+                                )
+                    else:
+                        st.caption(_t("txn.no_open_payable"))
                 if _mob_at_button_row(
-                    [(pm, _i18n_db(PAYMENT_METHOD_I18N, pm)) for pm in _at_supplier_pay_methods(session)],
+                    _at_pm_chip_labels("Supplier Payment", _at_supplier_pay_methods(session)),
                     st.session_state.get("at_pm", "Cash"),
                     "mob_at_pm",
                     "at_pm",
@@ -11953,11 +12352,14 @@ def render_add_transaction(session):
     subcats_list = []
     cats         = []
     if txn_type in ("Sale", "Expense", "Purchase"):
-        cats = (
+        cats = _at_filter_transaction_categories(
             cq(session, TransactionCategory)
             .filter_by(transaction_type=txn_type, is_active=True)
-            .order_by(TransactionCategory.name).all()
+            .order_by(TransactionCategory.name)
+            .all()
         )
+    elif txn_type == "Supplier Payment":
+        _at_clear_category_session_state()
 
     _at_render_flash()
 
@@ -12020,6 +12422,17 @@ def render_add_transaction(session):
                         key="at_amount_display",
                         label_visibility="collapsed",
                     )
+                    if txn_type == "Supplier Payment" and st.session_state.get("at_payable_id"):
+                        _sp_pay = session.get(Payable, st.session_state["at_payable_id"])
+                        if _sp_pay:
+                            _sp_bal = _payable_balance(_sp_pay)
+                            st.caption(
+                                _t(
+                                    "txn.payable_outstanding",
+                                    currency=currency_default,
+                                    balance=_sp_bal,
+                                )
+                            )
     
                 # ── TRANSACTION TYPE CARDS ─────────────────────────────────────────────
                 st.markdown(
@@ -12039,6 +12452,9 @@ def render_add_transaction(session):
                         type="primary" if _is_active else "secondary",
                     ):
                         st.session_state["at_type_idx"] = _i
+                        if _tname == "Supplier Payment":
+                            _at_clear_category_session_state()
+                        _coerce_at_payment_method(session, _tname)
                         _at_sync_desktop_type_to_mobile_tabs()
                         st.rerun()
     
@@ -12075,7 +12491,7 @@ def render_add_transaction(session):
     
                     # ── Pre-init all branch variables ─────────────────────────────────
                     customer_name_val = ""
-                    vendor_name_val   = vendors[0].name if vendors else None
+                    vendor_name_val   = None
                     at_payment_method = "Cash"
                     invoice_choice_val = None
                     invoice_choices: list = []
@@ -12089,7 +12505,8 @@ def render_add_transaction(session):
                         fc1, fc2 = st.columns(2)
                         at_payment_method = fc1.selectbox(
                             "💳 " + _t("form.payment_method"), ["Cash", "Card", "Credit"],
-                            format_func=lambda v: _i18n_db(PAYMENT_METHOD_I18N, v), key="at_pm"
+                            format_func=lambda v: _at_payment_method_label("Sale", v),
+                            key="at_pm",
                         )
                         fc2.selectbox(
                             "💱 " + _t("txn.currency_label"), CURRENCIES,
@@ -12127,7 +12544,7 @@ def render_add_transaction(session):
                         at_payment_method = fc1.selectbox(
                             "💳 " + _t("form.payment_method"),
                             _at_expense_pay_methods(session),
-                            format_func=lambda v: _i18n_db(PAYMENT_METHOD_I18N, v),
+                            format_func=lambda v: _at_payment_method_label("Expense", v),
                             key="at_pm",
                         )
                         fc2.selectbox("💱 " + _t("txn.currency_label"), CURRENCIES,
@@ -12209,18 +12626,15 @@ def render_add_transaction(session):
                         _at_render_company_cc_select(session)
     
                     elif txn_type == "Purchase":
-                        fc1, fc2, fc3 = st.columns(3)
-                        if vendors:
-                            vendor_name_val = fc1.selectbox("🏢 " + _t("txn.supplier_label"), [v.name for v in vendors], key="at_vendor")
-                        else:
-                            fc1.warning("No active vendors — add one under Customers &amp; Vendors → Vendors.")
-                        at_payment_method = fc2.selectbox(
+                        vendor_name_val = _inline_vendor_row(session, vendors)
+                        fc1, fc2 = st.columns(2)
+                        at_payment_method = fc1.selectbox(
                             "💳 " + _t("form.payment_method"),
                             _at_purchase_pay_methods(session),
-                            format_func=lambda v: _i18n_db(PAYMENT_METHOD_I18N, v),
+                            format_func=lambda v: _at_payment_method_label("Purchase", v),
                             key="at_pm",
                         )
-                        fc3.selectbox("💱 " + _t("txn.currency_label"), CURRENCIES,
+                        fc2.selectbox("💱 " + _t("txn.currency_label"), CURRENCIES,
                                       index=CURRENCIES.index(currency_default) if currency_default in CURRENCIES else 0,
                                       key="at_currency")
     
@@ -12230,23 +12644,9 @@ def render_add_transaction(session):
                         _at_render_company_cc_select(session)
     
                     elif txn_type == "Supplier Payment":
-                        fc1, fc2, fc3 = st.columns(3)
-                        if vendors:
-                            vendor_name_val = fc1.selectbox(
-                                "🏢 " + _t("txn.supplier_label"), [v.name for v in vendors], key="at_vendor"
-                            )
-                        else:
-                            fc1.warning("No active vendors — add one under Customers &amp; Vendors → Vendors.")
-                        at_payment_method = fc2.selectbox(
-                            "💳 " + _t("form.payment_method"),
-                            _at_supplier_pay_methods(session),
-                            format_func=lambda v: _i18n_db(PAYMENT_METHOD_I18N, v),
-                            key="at_pm",
-                        )
-                        fc3.selectbox("💱 " + _t("txn.currency_label"), CURRENCIES,
-                                      index=CURRENCIES.index(currency_default) if currency_default in CURRENCIES else 0,
-                                      key="at_currency")
-    
+                        _at_clear_category_session_state()
+                        vendor_name_val = _inline_vendor_row(session, vendors)
+
                         # ── Open payable selector ─────────────────────────────────
                         if vendors and vendor_name_val:
                             _sp_vendor = next((v for v in vendors if v.name == vendor_name_val), None)
@@ -12263,6 +12663,7 @@ def render_add_transaction(session):
                                     .all()
                                 )
                                 if _open_pays:
+                                    _pay_ph = _t("txn.select_payable_ph")
                                     _pay_labels = []
                                     for _p in _open_pays:
                                         _pbal = _payable_balance(_p)
@@ -12271,47 +12672,99 @@ def render_add_transaction(session):
                                             f"{_p.date.strftime('%d %b %Y')} · {_pref} · "
                                             f"Balance: {currency_default} {_pbal:,.2f}"
                                         )
-                                    # Restore last selection or default to first
+                                    _pay_options = [_pay_ph] + _pay_labels
                                     _cur_pid = st.session_state.get("at_payable_id")
-                                    _cur_idx = next(
-                                        (i for i, p in enumerate(_open_pays) if p.id == _cur_pid), 0
-                                    )
+                                    _cur_idx = 0
+                                    if _cur_pid:
+                                        _cur_idx = next(
+                                            (
+                                                i + 1
+                                                for i, p in enumerate(_open_pays)
+                                                if p.id == _cur_pid
+                                            ),
+                                            0,
+                                        )
                                     _sel_label = st.selectbox(
                                         "📌 Invoice / Payable to Settle",
-                                        _pay_labels, index=_cur_idx,
+                                        _pay_options,
+                                        index=_cur_idx,
                                         key="at_payable_sel",
                                     )
-                                    _sel_p = _open_pays[_pay_labels.index(_sel_label)]
-                                    st.session_state["at_payable_id"] = _sel_p.id
-                                    # Detail summary card
-                                    _pbal = _payable_balance(_sel_p)
-                                    _pdesc = (_sel_p.description or "")[:50]
-                                    st.markdown(
-                                        f'<div class="card" style="padding:9px 14px;margin-top:4px;font-size:11px;">'
-                                        f'Original: <b>{currency_default} {_sel_p.amount:,.2f}</b>'
-                                        f'&nbsp;·&nbsp;Paid: <b>{currency_default} {_sel_p.paid_amount or 0:,.2f}</b>'
-                                        f'&nbsp;·&nbsp;Balance: <span style="font-weight:700;color:var(--theme-warning);">'
-                                        f'{currency_default} {_pbal:,.2f}</span>'
-                                        f'{"<br><span style=\'color:var(--theme-muted);\'>" + _pdesc + "</span>" if _pdesc else ""}'
-                                        f'</div>',
-                                        unsafe_allow_html=True,
-                                    )
+                                    if _sel_label == _pay_ph:
+                                        st.session_state.pop("at_payable_id", None)
+                                    else:
+                                        _sel_p = _open_pays[_pay_labels.index(_sel_label)]
+                                        st.session_state["at_payable_id"] = _sel_p.id
+                                        _pbal = _payable_balance(_sel_p)
+                                        _pdesc = (_sel_p.description or "")[:50]
+                                        st.markdown(
+                                            f'<div class="card" style="padding:9px 14px;margin-top:4px;font-size:11px;">'
+                                            f'Original: <b>{currency_default} {_sel_p.amount:,.2f}</b>'
+                                            f'&nbsp;·&nbsp;Paid: <b>{currency_default} {_sel_p.paid_amount or 0:,.2f}</b>'
+                                            f'&nbsp;·&nbsp;Balance: <span style="font-weight:700;color:var(--theme-warning);">'
+                                            f'{currency_default} {_pbal:,.2f}</span>'
+                                            f'{"<br><span style=\'color:var(--theme-muted);\'>" + _pdesc + "</span>" if _pdesc else ""}'
+                                            f'</div>',
+                                            unsafe_allow_html=True,
+                                        )
                                 else:
                                     st.warning(_t("txn.no_open_payables", name=vendor_name_val))
                                     st.session_state["at_payable_id"] = None
+
+                        fc1, fc2 = st.columns(2)
+                        at_payment_method = fc1.selectbox(
+                            "💳 " + _t("form.payment_method"),
+                            _at_supplier_pay_methods(session),
+                            format_func=lambda v: _at_payment_method_label("Supplier Payment", v),
+                            key="at_pm",
+                        )
+                        fc2.selectbox(
+                            "💱 " + _t("txn.currency_label"),
+                            CURRENCIES,
+                            index=CURRENCIES.index(currency_default) if currency_default in CURRENCIES else 0,
+                            key="at_currency",
+                        )
                         _at_render_bank_pay_select(bank_accounts)
                         _at_render_company_cc_select(session)
     
                     elif txn_type == "Customer Payment":
                         if open_sales:
-                            invoice_choices = [
-                                f"{s.invoice_number} — {s.customer_name} (bal: {s.balance:,.2f})"
-                                for s in open_sales
-                            ]
+                            invoice_choices = [_at_invoice_choice_label(s) for s in open_sales]
+                            _inv_ph = _t("txn.select_invoice_ph")
+                            _inv_options = [_inv_ph] + invoice_choices
+                            _cur_inv = st.session_state.get("at_inv")
+                            _inv_idx = 0
+                            if _cur_inv in invoice_choices:
+                                _inv_idx = invoice_choices.index(_cur_inv) + 1
                             fc1, fc2, fc3 = st.columns(3)
-                            invoice_choice_val = fc1.selectbox("📄 " + _t("txn.open_invoice_label"), invoice_choices, key="at_inv")
-                            at_payment_method  = fc2.selectbox("💳 " + _t("form.payment_method"), ["Cash", "Bank"],
-                                          format_func=lambda v: _i18n_db(PAYMENT_METHOD_I18N, v), key="at_pm")
+                            _inv_sel = fc1.selectbox(
+                                "📄 " + _t("txn.open_invoice_label"),
+                                _inv_options,
+                                index=_inv_idx,
+                                key="at_inv",
+                            )
+                            if _inv_sel == _inv_ph:
+                                invoice_choice_val = None
+                                st.session_state.pop("at_inv", None)
+                            else:
+                                invoice_choice_val = _inv_sel
+                                _sel_sale = _at_sale_from_invoice_choice(
+                                    open_sales, invoice_choice_val
+                                )
+                                if _sel_sale:
+                                    st.caption(
+                                        _t(
+                                            "txn.payable_outstanding",
+                                            currency=currency_default,
+                                            balance=_sel_sale.balance,
+                                        )
+                                    )
+                            at_payment_method  = fc2.selectbox(
+                                "💳 " + _t("form.payment_method"),
+                                ["Cash", "Bank"],
+                                format_func=lambda v: _at_payment_method_label("Customer Payment", v),
+                                key="at_pm",
+                            )
                             fc3.selectbox("💱 " + _t("txn.currency_label"), CURRENCIES,
                                           index=CURRENCIES.index(currency_default) if currency_default in CURRENCIES else 0,
                                           key="at_currency")
@@ -12699,16 +13152,17 @@ def _at_save(
         if payable.is_void:
             st.error(_t("txn.payable_voided"))
             return
-        if payable.paid:
-            st.error(_t("txn.payable_already_paid"))
-            return
         if payable.vendor_id != vendor.id:
             st.error(_t("txn.payable_wrong_vendor"))
             return
-        payable.paid = True
+        pay_err = _validate_payable_payment_amount(payable, amount, currency=currency)
+        if pay_err:
+            st.error(pay_err)
+            return
         payable.payment_method = payment_method
         if payment_method == _COMPANY_CC_METHOD:
             payable.credit_card_account_id = credit_card_account_id
+        _apply_payable_payment_state(payable, amount)
         session.commit()
         try:
             post_payable_payment(
@@ -13109,10 +13563,20 @@ def render_transaction_history(session):
             f'<div class="erp-txh-filters-label">{html.escape(_t("txn.filters_label"))}</div>',
             unsafe_allow_html=True,
         )
+        with st.container(border=False, key="txh_filter_search"):
+            st.text_input(
+                _t("search.table_label"),
+                placeholder=_t("txn.search_ph"),
+                key="txh_search",
+            )
+            if _txh_search_keyword():
+                st.caption(_t("search.scope.txn_history"))
+        with st.container(border=False, key="txh_filter_dates"):
+            start_date, end_date = _render_txh_date_filters(st)
         with st.container(border=False, key="txh_filter_row1"):
             fc1, fc2 = st.columns(2)
             _txh_all = _t("form.all")
-            keyword = _global_search_keyword()
+            keyword = _txh_search_keyword()
             type_filter = fc1.selectbox(
                 _t("col.type"),
                 [_txh_all, "Sale", "Expense", "Purchase", "Banking", "Payable"],
@@ -13123,10 +13587,6 @@ def render_transaction_history(session):
                 [_txh_all, "Cash", "Bank", "Credit", "Mobile Money"],
                 format_func=lambda v: _i18n_db(PAYMENT_METHOD_I18N, v),
                 key="txh_method",
-            )
-            today = datetime.date.today()
-            start_date, end_date = _global_date_range(
-                today.replace(day=1), today
             )
 
         # Category / Subcategory inside the filter card
@@ -13175,8 +13635,15 @@ def render_transaction_history(session):
         if not show_voided:
             _q = _q.filter(Sale.is_void == False)
         for s in _q.order_by(Sale.date.desc()).all():
-            kw = keyword.lower()
-            if kw and kw not in (s.customer_name + " " + s.invoice_number + " " + (s.description or "")).lower():
+            if not _txh_matches_keyword(
+                keyword,
+                party=s.customer_name,
+                description=s.description or "",
+                txn_type=s.sale_type + " Sale",
+                method=s.sale_type,
+                reference=s.invoice_number,
+                amount=float(s.amount or 0),
+            ):
                 continue
             cat_label = cat_names_lkp.get(s.tx_category_id, "")
             sub_label = subcat_names_lkp.get(s.tx_subcategory_id, "")
@@ -13201,8 +13668,15 @@ def render_transaction_history(session):
         for e in _q.order_by(ExpenseRecord.date.desc()).all():
             if method_filter != _txh_all and (e.payment_method or "").lower() != method_filter.lower():
                 continue
-            kw = keyword.lower()
-            if kw and kw not in ((e.expense_type or "") + " " + (e.category or "") + " " + (e.description or "") + " " + (e.employee_name or "")).lower():
+            if not _txh_matches_keyword(
+                keyword,
+                party=e.employee_name or "",
+                description=e.description or "",
+                txn_type=e.expense_type or "Expense",
+                method=e.payment_method or "",
+                reference=e.category or "",
+                amount=float(e.amount or 0),
+            ):
                 continue
             cat_label = cat_names_lkp.get(e.tx_category_id, "")
             sub_label = subcat_names_lkp.get(e.tx_subcategory_id, "")
@@ -13227,8 +13701,15 @@ def render_transaction_history(session):
         for p in _q.order_by(Purchase.date.desc()).all():
             _vnd = session.get(Vendor, p.vendor_id)
             vname = _vnd.name if _vnd else ""
-            kw = keyword.lower()
-            if kw and kw not in (vname + " " + (p.description or "")).lower():
+            if not _txh_matches_keyword(
+                keyword,
+                party=vname,
+                description=p.description or "",
+                txn_type="Purchase",
+                method=p.purchase_type or "Credit",
+                reference=f"PUR#{p.id}",
+                amount=float(p.amount or 0),
+            ):
                 continue
             cat_label = cat_names_lkp.get(p.tx_category_id, "")
             sub_label = subcat_names_lkp.get(p.tx_subcategory_id, "")
@@ -13252,8 +13733,15 @@ def render_transaction_history(session):
             _q = _q.filter(BankTransaction.is_void == False)
         for t in _q.order_by(BankTransaction.date.desc()).all():
             _acct = session.get(BankAccount, t.account_id)
-            kw = keyword.lower()
-            if kw and kw not in ((t.description or "") + " " + (_acct.name if _acct else "")).lower():
+            if not _txh_matches_keyword(
+                keyword,
+                party=_acct.name if _acct else "",
+                description=t.description or "",
+                txn_type="Bank " + t.type.title(),
+                method="Bank",
+                reference=f"TXN#{t.id}",
+                amount=float(t.amount or 0),
+            ):
                 continue
             if cat_filter != _txh_all:
                 continue
@@ -13273,8 +13761,15 @@ def render_transaction_history(session):
         for p in _q.order_by(Payable.date.desc()).all():
             _vnd = session.get(Vendor, p.vendor_id)
             vname = _vnd.name if _vnd else ""
-            kw = keyword.lower()
-            if kw and kw not in (vname + " " + (p.description or "")).lower():
+            if not _txh_matches_keyword(
+                keyword,
+                party=vname,
+                description=p.description or "",
+                txn_type="Payable",
+                method=p.payment_method or "Credit",
+                reference=f"PAY#{p.id}",
+                amount=float(p.amount or 0),
+            ):
                 continue
             if cat_filter != _txh_all:
                 continue
@@ -13317,7 +13812,7 @@ def render_transaction_history(session):
             render_export_buttons(_localize_df(_df_export), "Transaction_History")
 
     if not rows:
-        st.info(_t("txn.no_match"))
+        st.info(_t("search.no_results_table"))
         return
 
     # ── Pre-load corrected set (entity_type, entity_id pairs with Edit logs) ───
@@ -15275,73 +15770,6 @@ def render_bank_statement_import(session, *, embedded: bool = False):
                 _bsi_render_delete_import(session, imp_dl, cid)
 
 
-def render_advanced(session):
-    subpage = st.session_state.get("advanced_subpage")
-
-    _dispatch = {
-        "Sales": render_sales, "Expenses": render_expenses,
-        "Purchases": render_purchases, "Vendors": render_vendors,
-        "Receivables": render_receivables, "Payables": render_payables,
-        "Inventory": render_inventory, "Banking": render_banking,
-        "General Ledger": render_general_ledger, "Trial Balance": render_trial_balance,
-        "Chart of Accounts": render_chart_of_accounts, "Journal Entries": render_journal_entries,
-        "Fiscal Periods": render_fiscal_periods, "Audit Log": render_audit_log,
-    }
-
-    if subpage:
-        # SUGGESTION 3: styled back button
-        if st.button(_t("adv.back"), key="adv_back"):
-            del st.session_state["advanced_subpage"]
-            st.rerun()
-        fn = _dispatch.get(subpage)
-        if fn:
-            fn(session)
-        return
-
-    st.markdown(
-        section_header_html(_t("adv.title"), accent="warning"),
-        unsafe_allow_html=True,
-    )
-
-    _GROUPS = [
-        ("adv.group.transactions", [
-            ("💼", "Sales", "adv.mod.sales", "adv.mod.sales_desc"),
-            ("💳", "Expenses", "adv.mod.expenses", "adv.mod.expenses_desc"),
-            ("🛒", "Purchases", "adv.mod.purchases", "adv.mod.purchases_desc"),
-            ("🏢", "Vendors", "adv.mod.vendors", "adv.mod.vendors_desc"),
-        ]),
-        ("adv.group.customers_payables", [
-            ("📄", "Receivables", "adv.mod.receivables", "adv.mod.receivables_desc"),
-            ("📌", "Payables", "adv.mod.payables", "adv.mod.payables_desc"),
-        ]),
-        ("adv.group.operations", [
-            ("📦", "Inventory", "adv.mod.inventory", "adv.mod.inventory_desc"),
-            ("🏦", "Banking", "adv.mod.banking", "adv.mod.banking_desc"),
-        ]),
-        ("adv.group.accounting", [
-            ("📊", "General Ledger", "adv.mod.gl", "adv.mod.gl_desc"),
-            ("🧾", "Trial Balance", "adv.mod.trial_balance", "adv.mod.trial_balance_desc"),
-            ("📅", "Fiscal Periods", "adv.mod.fiscal", "adv.mod.fiscal_desc"),
-            ("🔍", "Audit Log", "adv.mod.audit", "adv.mod.audit_desc"),
-        ]),
-    ]
-
-    for group_key, modules in _GROUPS:
-        st.markdown(section_header_html(_t(group_key)), unsafe_allow_html=True)
-        cols = st.columns(4)
-        for idx, (icon, name, label_key, desc_key) in enumerate(modules):
-            with cols[idx % 4]:
-                with st.container(border=True):
-                    if st.button(
-                        f"{icon}  {_t(label_key)}",
-                        key=f"adv_open_{name}",
-                        use_container_width=True,
-                    ):
-                        st.session_state["advanced_subpage"] = name
-                        st.rerun()
-                    st.caption(_t(desc_key))
-
-
 # render_cash_sales and render_credit_sales removed — legacy forms replaced
 # by the unified Add Transaction flow. Data migrated to the Sale table.
 
@@ -15361,19 +15789,19 @@ def render_vendors(session):
             notes   = st.text_area(_t("form.notes"), height=60)
             submit  = st.form_submit_button(_t("vendor.add_btn"), disabled=not _can("create_customer_vendor"))
             if submit:
-                if not name.strip():
-                    st.error(_t("vendor.name_required"))
-                else:
-                    session.add(Vendor(
-                        name=name.strip(),
-                        contact=contact.strip(),
-                        phone=phone.strip(),
-                        email=email.strip(),
-                        address=address.strip(),
-                        notes=notes.strip(),
-                    ))
-                    session.commit()
-                    st.success(_t("vendor.added", name=name.strip()))
+                vendor, err = _vendor_create_or_reactivate(
+                    session,
+                    name=name,
+                    contact=contact,
+                    phone=phone,
+                    email=email,
+                    address=address,
+                    notes=notes,
+                )
+                if err:
+                    st.error(err)
+                elif vendor:
+                    st.success(_t("vendor.added", name=vendor.name))
                     st.rerun()
 
     st.markdown("---")
@@ -15381,7 +15809,7 @@ def render_vendors(session):
     # ── Filters ───────────────────────────────────────────────────────────────
     fc1, fc2 = st.columns([3, 1])
     search        = fc1.text_input(
-        _t("vendor.search"), placeholder=_t("vendor.search_ph"), key="vendor_search"
+        _t("search.table_label"), placeholder=_t("search.table_ph"), key="vendor_search"
     )
     show_inactive = fc2.checkbox(_t("vendor.show_inactive"), value=False, key="vendors_show_inactive")
 
@@ -15407,7 +15835,7 @@ def render_vendors(session):
 
     # ── Vendor rows with Edit ─────────────────────────────────────────────────
     if not records:
-        st.info(_t("vendor.no_found"))
+        st.info(_t("search.no_results_table") if search else _t("vendor.no_found"))
         return
 
     st.markdown("### " + _t("vendor.list"))
@@ -15734,6 +16162,27 @@ def _payable_balance(record) -> float:
     return max(round(record.amount - paid_amt, 2), 0.0)
 
 
+def _validate_payable_payment_amount(
+    payable, payment_amount: float, *, currency: str = "TRY"
+) -> str | None:
+    """Return an error message if payment_amount is invalid for payable, else None."""
+    balance = _payable_balance(payable)
+    if balance <= 0.005:
+        return _t("txn.payable_already_paid")
+    if payment_amount <= 0:
+        return _t("txn.invalid_amount_zero")
+    if payment_amount > balance + 0.01:
+        return _t("txn.payable_overpay_no_advance")
+    return None
+
+
+def _apply_payable_payment_state(payable, payment_amount: float) -> None:
+    """Update payable paid_amount, balance, and paid flag after a payment (before GL post)."""
+    payable.paid_amount = round((payable.paid_amount or 0.0) + payment_amount, 2)
+    payable.balance = max(round(payable.amount - payable.paid_amount, 2), 0.0)
+    payable.paid = payable.balance <= 0.005
+
+
 def render_payables(session):
     _st_page_title("📌 Payables")
     settings = load_settings()
@@ -15813,7 +16262,7 @@ def render_payables(session):
     all_payables = cq(session, Payable).order_by(Payable.date.desc()).all()
     fc1, fc2, fc3, fc4 = st.columns([3, 2, 1, 1])
     search_text = fc1.text_input(
-        _t("form.search"), placeholder=_t("payable.search_ph"), key="payables_search"
+        _t("search.table_label"), placeholder=_t("search.table_ph"), key="payables_search"
     )
     vendor_names_in_list = ["all"] + sorted({
         v.name for r in all_payables if (v := session.get(Vendor, r.vendor_id))
@@ -15895,6 +16344,8 @@ def render_payables(session):
             "Source": f"PUR#{record.purchase_id}" if record.purchase_id else "Manual",
         })
     df = pd.DataFrame(data)
+    if not filtered:
+        st.info(_t("search.no_results_table"))
     _render_readable_df(df)
     render_export_buttons(df, "Payables")
 
@@ -16125,6 +16576,8 @@ def render_expenses(session):
 
     all_records = cq(session, ExpenseRecord).order_by(ExpenseRecord.date.desc()).all()
     _exp_all = _t("form.all")
+    if _global_search_keyword():
+        st.caption(_t("search.scope.expenses_table"))
     search_text = _global_search_keyword()
     type_filter = st.selectbox(_t("expense.type_filter"), [_exp_all] + sorted({r.expense_type for r in all_records}), key="expense_type_filter")
     method_filter = st.selectbox(_t("form.payment_method"), [_exp_all] + sorted({r.payment_method for r in all_records if r.payment_method}),
@@ -16136,7 +16589,21 @@ def render_expenses(session):
     for record in records:
         if record.is_void and not show_voided_exp:
             continue
-        matches_search = not search_text or search_text.lower() in (record.description or "").lower() or search_text.lower() in (record.expense_type or "").lower()
+        _exp_haystack = " ".join(
+            filter(
+                None,
+                (
+                    record.description,
+                    record.expense_type,
+                    record.category,
+                    record.employee_name,
+                    record.payment_method,
+                    f"{record.amount:.2f}" if record.amount is not None else "",
+                    f"{record.amount:,.2f}" if record.amount is not None else "",
+                ),
+            )
+        ).lower()
+        matches_search = not search_text or search_text.lower() in _exp_haystack
         matches_type = type_filter == _exp_all or record.expense_type == type_filter
         matches_method = method_filter == _exp_all or record.payment_method == method_filter
         if matches_search and matches_type and matches_method:
@@ -16147,6 +16614,8 @@ def render_expenses(session):
         "payment_method", "employee_name", "pay_period",
         "gross_salary", "deductions", "net_salary", "is_void", "void_reason",
     ])
+    if not filtered:
+        st.info(_t("search.no_results_table"))
     render_paginated_table(df, "expenses_table")
     render_export_buttons(df, "Expenses")
 
@@ -17509,41 +17978,6 @@ def render_customers(session):
                         st.error(_t("vendor.stmt_err", error=_exc))
 
 
-def render_customer_ledger(session):
-    _st_page_title(i18n_key="page.customer_ledger")
-    customers = cq(session, Customer).order_by(Customer.name).all()
-    choices = [f"{c.name} (ID: {c.id})" for c in customers]
-    with st.form(key="ledger_form"):
-        customer_choice = st.selectbox(_t("ob.customer_label"), choices or [_t("ob.no_customers")])
-        date = st.date_input(_t("col.date"), datetime.date.today())
-        entry_type = st.selectbox(_t("col.type"), ["invoice", "payment", "credit"])
-        amount = amount_input(_t("col.amount"), key="ledger_amount")
-        description = st.text_area(_t("form.description"))
-        submit = st.form_submit_button(_t("ledger.add_entry_btn"))
-        if submit:
-            if not customers:
-                st.error(_t("ledger.no_customers"))
-            elif not amount or amount <= 0:
-                st.error(_t("ledger.invalid_amount"))
-            else:
-                idx = choices.index(customer_choice)
-                record = CustomerLedgerEntry(
-                    customer_id=customers[idx].id,
-                    date=date,
-                    type=entry_type,
-                    amount=amount,
-                    description=description.strip(),
-                )
-                session.add(record)
-                session.commit()
-                st.success(_t("ledger.entry_added"))
-
-    records = cq(session, CustomerLedgerEntry).order_by(CustomerLedgerEntry.date.desc()).all()
-    df = build_dataframe(records, ["id", "customer_id", "date", "type", "amount", "description"])
-    _render_readable_df(df)
-    render_export_buttons(df, "Customer Ledger")
-
-
 def render_inventory(session):
     _st_page_title(i18n_key="page.inventory_products")
 
@@ -17586,7 +18020,7 @@ def render_inventory(session):
 
     # ── Filters ────────────────────────────────────────────────────────────────
     fc1, fc2, fc3 = st.columns([3, 2, 1])
-    search      = fc1.text_input(_t("inv.search_products"), placeholder=_t("inv.search_ph"), key="inv_search")
+    search      = fc1.text_input(_t("search.table_label"), placeholder=_t("search.table_ph"), key="inv_search")
     all_cats    = sorted({p.category for p in cq(session, Product).all() if p.category})
     _all_opt    = _t("form.all")
     cat_filter  = fc2.selectbox(_t("inv.category"), [_all_opt] + all_cats, key="inv_cat_filter")
@@ -17616,7 +18050,7 @@ def render_inventory(session):
 
     # ── Catalog Table ─────────────────────────────────────────────────────────
     if not records:
-        st.info(_t("inv.no_match"))
+        st.info(_t("search.no_results_table") if search else _t("inv.no_match"))
     else:
         catalog_rows = []
         for p in records:
@@ -18660,6 +19094,8 @@ def render_sales(session):
 
     st.markdown("---")
     st.markdown(section_header_html(_t("sales.list")), unsafe_allow_html=True)
+    if _global_search_keyword():
+        st.caption(_t("search.scope.sales_table"))
 
     search_text = _global_search_keyword()
     _sale_type_opts = ["all", "Cash", "Credit"]
@@ -18683,13 +19119,27 @@ def render_sales(session):
     for record in records:
         if record.is_void and not show_voided_sales:
             continue
-        matches_search = not search_text or search_text.lower() in record.customer_name.lower() or search_text.lower() in record.invoice_number.lower()
+        _sale_haystack = " ".join(
+            filter(
+                None,
+                (
+                    record.customer_name,
+                    record.invoice_number,
+                    record.description,
+                    record.sale_type,
+                    f"{record.amount:.2f}" if record.amount is not None else "",
+                ),
+            )
+        ).lower()
+        matches_search = not search_text or search_text.lower() in _sale_haystack
         matches_type = sale_type_filter == "all" or record.sale_type == sale_type_filter
         matches_status = status_filter == "all" or record.status == status_filter
         if matches_search and matches_type and matches_status:
             filtered.append(record)
 
     df = build_dataframe(filtered, ["id", "date", "invoice_number", "customer_name", "description", "amount", "sale_type", "paid_amount", "balance", "due_date", "status", "is_void", "void_reason"])
+    if not filtered:
+        st.info(_t("search.no_results_table"))
     render_paginated_table(df, "sales_table")
     render_export_buttons(df, "Sales")
 
@@ -18738,6 +19188,8 @@ def render_receivables(session):
 
     # ── Filters ───────────────────────────────────────────────────────────────
     fc1, fc2 = st.columns(2)
+    if _global_search_keyword():
+        st.caption(_t("search.scope.receivables_table"))
     search_text = _global_search_keyword()
     _cust_opts = ["all"] + sorted({s.customer_name for s in credit_sales})
     customer_filter = fc1.selectbox(
@@ -18756,10 +19208,13 @@ def render_receivables(session):
 
     filtered = [
         s for s in credit_sales
-        if (not search_text or search_text.lower() in s.customer_name.lower() or search_text.lower() in s.invoice_number.lower())
+        if (not search_text or search_text.lower() in s.customer_name.lower() or search_text.lower() in s.invoice_number.lower() or search_text.lower() in (s.description or "").lower())
         and (customer_filter == "all" or s.customer_name == customer_filter)
         and (status_filter == "all" or s.status == status_filter)
     ]
+
+    if not filtered:
+        st.info(_t("search.no_results_table"))
 
     # ── Summary KPIs ──────────────────────────────────────────────────────────
     _open_filtered = [s for s in filtered if s.status != "Paid"]
@@ -19155,11 +19610,8 @@ def render_reports(session):
     elif _mob_rpt_tab == "expenses":
         st.caption(_t("nav.mobile.reports_hint_expenses"))
     elif _mob_rpt_tab == "exec":
-        _exec_id = st.session_state.get("rpt_exec_sel", "pnl")
+        _exec_id = st.session_state.get("rpt_exec_sel", "budget")
         _exec_labels = {
-            "pnl": "reports.exec.pnl",
-            "balance_sheet": "reports.exec.balance_sheet",
-            "cash_flow": "reports.exec.cash_flow",
             "budget": "reports.exec.budget",
             "trial_balance": "reports.exec.trial_balance",
             "general_ledger": "reports.exec.general_ledger",
@@ -19169,7 +19621,7 @@ def render_reports(session):
         st.caption(
             _tf(
                 "nav.mobile.reports_hint_exec",
-                f"Executive tab — {_t(_exec_labels.get(_exec_id, 'reports.exec.pnl'))}",
+                f"Executive tab — {_t(_exec_labels.get(_exec_id, 'reports.exec.budget'))}",
             )
         )
     render_mobile_report_filters()
@@ -19200,9 +19652,6 @@ def render_reports(session):
         with tab_exec if not _mob_rpt_ui else nullcontext():
             _render_tab_intro("reports.tab.exec")
             exec_sel = _mgmt_report_select("rpt_exec_sel", [
-                ("pnl", "reports.exec.pnl"),
-                ("balance_sheet", "reports.exec.balance_sheet"),
-                ("cash_flow", "reports.exec.cash_flow"),
                 ("budget", "reports.exec.budget"),
                 ("trial_balance", "reports.exec.trial_balance"),
                 ("general_ledger", "reports.exec.general_ledger"),
@@ -19210,13 +19659,7 @@ def render_reports(session):
                 ("today_summary", "reports.exec.today_summary"),
             ])
             st.markdown("---")
-            if exec_sel == "pnl":
-                render_profit_loss(session, start_date=start_date, end_date=end_date)
-            elif exec_sel == "balance_sheet":
-                render_balance_sheet(session, end_date=end_date)
-            elif exec_sel == "cash_flow":
-                render_cash_flow(session, start_date=start_date, end_date=end_date)
-            elif exec_sel == "budget":
+            if exec_sel == "budget":
                 render_budget(session)
             elif exec_sel == "trial_balance":
                 render_trial_balance(session)
@@ -20129,6 +20572,227 @@ def render_reports(session):
                         st.info(_t("rpt.no_closed_days"))
 
 
+# ─── Inline vendor management: helpers + dialogs + row (WO-A1) ───────────────
+
+def _vendor_find_by_name_ci(session, name: str):
+    stripped = (name or "").strip()
+    if not stripped:
+        return None
+    return (
+        cq(session, Vendor)
+        .filter(func.lower(Vendor.name) == stripped.lower())
+        .first()
+    )
+
+
+def _vendor_validate_name(session, name: str, *, exclude_id: int | None = None) -> str | None:
+    stripped = (name or "").strip()
+    if not stripped:
+        return _t("vendor.name_required")
+    existing = _vendor_find_by_name_ci(session, stripped)
+    if existing and existing.id != exclude_id and existing.is_active:
+        return _t("vendor.exists", name=stripped)
+    return None
+
+
+def _vendor_select_in_at(vendor: Vendor) -> None:
+    st.session_state["at_vendor"] = vendor.name
+    st.session_state["mob_at_vendor_sel"] = vendor.name
+    st.session_state.pop("at_payable_id", None)
+
+
+def _vendor_create_or_reactivate(
+    session,
+    *,
+    name: str,
+    contact: str = "",
+    phone: str = "",
+    notes: str = "",
+    email: str = "",
+    address: str = "",
+) -> tuple[Vendor | None, str | None]:
+    """Create vendor or reactivate inactive duplicate. Returns (vendor, error_message)."""
+    err = _vendor_validate_name(session, name)
+    if err:
+        return None, err
+    stripped = name.strip()
+    existing = _vendor_find_by_name_ci(session, stripped)
+    if existing:
+        existing.is_active = True
+        if contact.strip():
+            existing.contact = contact.strip()
+        if phone.strip():
+            existing.phone = phone.strip()
+        if notes.strip():
+            existing.notes = notes.strip()
+        if email.strip():
+            existing.email = email.strip()
+        if address.strip():
+            existing.address = address.strip()
+        session.commit()
+        return existing, None
+    vendor = Vendor(
+        name=stripped,
+        contact=contact.strip() or None,
+        phone=phone.strip() or None,
+        notes=notes.strip() or None,
+        email=email.strip() or None,
+        address=address.strip() or None,
+        company_id=_current_company_id(),
+    )
+    session.add(vendor)
+    session.commit()
+    return vendor, None
+
+
+def _vendor_linked_counts(session, vendor_id: int) -> tuple[int, int]:
+    purchases = cq(session, Purchase).filter_by(vendor_id=vendor_id).count()
+    payables = cq(session, Payable).filter_by(vendor_id=vendor_id).count()
+    return purchases, payables
+
+
+@st.dialog("Add Supplier")
+def _vendor_add_dialog(session):
+    st.caption(_t("vendor.add_dialog_caption"))
+    name = st.text_input(_t("vendor.name"), key="dlg_vendor_name")
+    c1, c2 = st.columns(2)
+    phone = c1.text_input(_t("form.phone"), key="dlg_vendor_phone")
+    contact = c2.text_input(_t("form.contact"), key="dlg_vendor_contact")
+    notes = st.text_area(_t("form.notes"), height=60, key="dlg_vendor_notes")
+    b1, b2 = st.columns(2)
+    if b1.button(
+        _t("form.save"),
+        use_container_width=True,
+        type="primary",
+        disabled=not _can("create_customer_vendor"),
+    ):
+        vendor, err = _vendor_create_or_reactivate(
+            session,
+            name=name or "",
+            contact=contact,
+            phone=phone,
+            notes=notes,
+        )
+        if err:
+            st.error(err)
+        elif vendor:
+            _vendor_select_in_at(vendor)
+            st.rerun()
+    if b2.button(_t("form.cancel"), use_container_width=True):
+        st.rerun()
+
+
+@st.dialog("Manage Supplier")
+def _vendor_manage_dialog(vendor: Vendor, session):
+    if not vendor:
+        st.caption(_t("vendor.no_vendors_ph"))
+        if st.button(_t("form.cancel"), use_container_width=True):
+            st.rerun()
+        return
+    status = _t("form.active") if vendor.is_active else _t("vendor.status_inactive")
+    st.markdown(f"**{vendor.name}** · {status}")
+    pur_n, pay_n = _vendor_linked_counts(session, vendor.id)
+    st.caption(
+        _t("vendor.manage_linked", purchases=pur_n, payables=pay_n)
+    )
+    if vendor.contact or vendor.phone or vendor.notes:
+        if vendor.contact:
+            st.markdown(f"{_t('form.contact')}: {vendor.contact}")
+        if vendor.phone:
+            st.markdown(f"{_t('form.phone')}: {vendor.phone}")
+        if vendor.notes:
+            st.markdown(f"{_t('form.notes')}: {vendor.notes}")
+    st.divider()
+    new_name = st.text_input(_t("cat.rename_label"), value=vendor.name, key="dlg_vendor_rename")
+    _name_changed = new_name.strip() and new_name.strip() != vendor.name
+    if st.button(
+        _t("cat.save_rename_btn"),
+        use_container_width=True,
+        type="primary",
+        disabled=not (_name_changed and _can("edit_customer_vendor")),
+    ):
+        stripped = new_name.strip()
+        if not stripped:
+            st.error(_t("vendor.name_required"))
+        else:
+            dup_err = _vendor_validate_name(session, stripped, exclude_id=vendor.id)
+            if dup_err:
+                st.error(dup_err)
+            else:
+                old_name = vendor.name
+                vendor.name = stripped
+                session.commit()
+                if st.session_state.get("at_vendor") == old_name:
+                    _vendor_select_in_at(vendor)
+                st.rerun()
+    st.divider()
+    toggle_label = _t("vendor.deactivate_btn") if vendor.is_active else _t("vendor.reactivate_btn")
+    if st.button(toggle_label, use_container_width=True, disabled=not _can("edit_customer_vendor")):
+        vendor.is_active = not vendor.is_active
+        session.commit()
+        if not vendor.is_active and st.session_state.get("at_vendor") == vendor.name:
+            st.session_state.pop("at_vendor", None)
+            st.session_state.pop("mob_at_vendor_sel", None)
+            st.session_state.pop("at_payable_id", None)
+        st.rerun()
+
+
+def _inline_vendor_row(session, vendors: list):
+    """Render [ Supplier ▼ ] [＋] [⚙] row. Returns selected vendor name or None."""
+    _vendor_names = [v.name for v in vendors]
+    _at_clear_invalid_at_vendor(_vendor_names)
+    _vendor_ph = _at_supplier_placeholder()
+    _vendor_options = [_vendor_ph] + _vendor_names
+    _cur_name = _at_normalize_vendor_selection(
+        st.session_state.get("at_vendor"), _vendor_names
+    )
+    _cur_vendor = (
+        next((v for v in vendors if v.name == _cur_name), None) if _cur_name else None
+    )
+    _vendor_idx = 0
+    if _cur_name:
+        _vendor_idx = _vendor_names.index(_cur_name) + 1
+
+    col_sel, col_act = st.columns([6, 1], vertical_alignment="bottom", gap="small")
+    with col_sel:
+        if vendors:
+            _vendor_pick = st.selectbox(
+                "🏢 " + _t("txn.supplier_label"),
+                _vendor_options,
+                index=_vendor_idx,
+                key="at_vendor",
+            )
+            vendor_name_val = (
+                None if _vendor_pick == _vendor_ph else _vendor_pick
+            )
+        else:
+            st.selectbox(
+                "🏢 " + _t("txn.supplier_label"),
+                [],
+                key="at_vendor",
+                disabled=True,
+                placeholder=_t("vendor.no_vendors_ph"),
+            )
+            vendor_name_val = None
+    with col_act:
+        with st.container(horizontal=True, gap="small", vertical_alignment="center", width="content"):
+            if st.button(
+                "＋",
+                key="vendor_add_btn",
+                help=_t("vendor.add_help"),
+                disabled=not _can("create_customer_vendor"),
+            ):
+                _vendor_add_dialog(session)
+            if st.button(
+                "⚙",
+                key="vendor_cog_btn",
+                help=_t("vendor.manage_help"),
+                disabled=_cur_vendor is None or not _can("edit_customer_vendor"),
+            ):
+                _vendor_manage_dialog(_cur_vendor, session)
+    return vendor_name_val
+
+
 # ─── Inline category management: dialogs + row helpers ───────────────────────
 
 @st.dialog("Add Category")
@@ -20239,6 +20903,7 @@ def _subcat_manage_dialog(sub, session):
 
 def _inline_cat_row(session, txn_type: str, cats: list):
     """Render [ Category ▼ ] [＋] [⚙] row. Returns (at_cat, at_cat_id)."""
+    cats = _at_filter_transaction_categories(cats)
     _cat_names = [c.name for c in cats]
     _cur_name  = st.session_state.get("at_cat")
     _cur_cat   = next((c for c in cats if c.name == _cur_name), cats[0] if cats else None)
@@ -20274,7 +20939,7 @@ def _inline_subcat_row(session, at_cat):
         st.session_state.pop("at_subcat", None)
         st.session_state["at_last_cat_id"] = at_cat.id
 
-    subcats_list = (
+    subcats_list = _at_filter_transaction_categories(
         cq(session, TransactionSubcategory)
         .filter_by(category_id=at_cat.id, is_active=True)
         .order_by(TransactionSubcategory.name)
@@ -20515,9 +21180,9 @@ def render_user_management(session, *, embedded: bool = False):
         f1, f2, f3 = st.columns([2, 1, 1])
         with f1:
             search_q = st.text_input(
-                _t("members.search"),
+                _t("search.table_label"),
                 key="um_search",
-                placeholder="…",
+                placeholder=_t("members.search"),
             )
         with f2:
             role_filter = st.selectbox(
@@ -21162,130 +21827,6 @@ def render_company_settings(session):
             st.error(exc.message)
 
 
-def render_settings(session):
-    settings = load_settings()
-
-    st.markdown(
-        section_header_html(_t("settings.page_title")),
-        unsafe_allow_html=True,
-    )
-
-    # ── SUGGESTION 1: Company section card ───────────────────────────────────
-    with st.container(border=True):
-        st.markdown(
-            section_header_html(_t("settings.section.company"), accent="info"),
-            unsafe_allow_html=True,
-        )
-        col1, col2 = st.columns(2)
-        company_name    = col1.text_input(_t("settings.company_name"), settings.get("company_name", ""))
-        company_logo_url = col2.text_input(_t("settings.logo_url"), settings.get("company_logo_url", ""),
-                                            placeholder="https://…")
-        if company_logo_url:
-            st.image(company_logo_url, width=100)
-
-    # ── Financial section card ────────────────────────────────────────────────
-    with st.container(border=True):
-        st.markdown(
-            section_header_html(_t("settings.section.financial"), accent="success"),
-            unsafe_allow_html=True,
-        )
-        fc1, fc2, fc3 = st.columns(3)
-        _cur_default = settings.get("currency", "TRY")
-        _cur_idx = CURRENCIES.index(_cur_default) if _cur_default in CURRENCIES else 0
-        currency       = fc1.selectbox(_t("settings.currency"), CURRENCIES, index=_cur_idx)
-        tax_rate       = fc2.number_input(_t("settings.tax_rate"), min_value=0.0,
-                                           value=float(settings.get("tax_rate", 0.0)), format="%.2f")
-        financial_year = fc3.text_input(_t("settings.financial_year"), settings.get("financial_year", "2026"))
-
-    # SUGGESTION 4: full-width save button with icon
-    if st.button(_t("settings.save_btn"), type="primary", use_container_width=True):
-        save_settings({
-            "company_name": company_name,
-            "company_logo_url": company_logo_url,
-            "currency": currency,
-            "tax_rate": tax_rate,
-            "financial_year": financial_year,
-        })
-        st.success(_t("admin.settings_saved"))
-
-    st.markdown("---")
-
-    # ── Categories section card ───────────────────────────────────────────────
-    with st.container(border=True):
-        st.markdown(
-            section_header_html(_t("settings.section.categories")),
-            unsafe_allow_html=True,
-        )
-        render_manage_categories(session)
-
-    # ── Member roster summary (owner only) ───────────────────────────────────
-    if _require_role("owner"):
-        st.markdown("---")
-        render_user_management(session, embedded=True)
-
-    # ── Migration tools in expander (owner only) ──────────────────────────────
-    with st.expander(_t("adv.expander.migration")):
-        def flag_status(name):
-            return _t("adv.flag_applied") if session.query(MigrationFlag).filter_by(name=name).first() else _t("adv.flag_pending")
-
-        m1, m2, m3 = st.columns(3)
-        m1.metric(_t("admin.stat_sales"),    cq(session, Sale).count())
-        m2.metric(_t("admin.stat_expenses"), cq(session, ExpenseRecord).count())
-        m3.metric(_t("admin.stat_legacy"),   cq(session, CashSale).count())
-        st.caption(_t(
-            "adv.legacy_caption",
-            cs=cq(session, CreditSale).count(),
-            sal=cq(session, Salary).count(),
-            exp=cq(session, Expense).count(),
-        ))
-        flags_data = [
-            {
-                "Flag": _t("mig.flag.initialize_coa"),
-                "Description": _t("mig.desc.initialize_coa"),
-                "Status": flag_status("initialize_coa_v1"),
-            },
-            {
-                "Flag": _t("mig.flag.migrate_sales"),
-                "Description": _t("mig.desc.migrate_sales"),
-                "Status": flag_status("migrate_sales_v1"),
-            },
-            {
-                "Flag": _t("mig.flag.migrate_expenses"),
-                "Description": _t("mig.desc.migrate_expenses"),
-                "Status": flag_status("migrate_expenses_v1"),
-            },
-        ]
-        _render_readable_df(_localize_df(pd.DataFrame(flags_data)))
-        if st.button(_t("admin.run_migration")):
-            migrate_sales(session)
-            migrate_expenses(session)
-            st.success(_t("admin.migration_complete"))
-
-    # ── Master data ───────────────────────────────────────────────────────────
-    st.markdown("---")
-    with st.expander(_t("adv.expander.vendors"), expanded=False):
-        render_vendors(session)
-    with st.expander(_t("adv.expander.inventory"), expanded=False):
-        render_inventory(session)
-    with st.expander(_t("adv.expander.banking"), expanded=False):
-        render_banking(session)
-
-    # ── Accounting admin tools (owner only) ──────────────────────────────────
-    if _require_role("owner"):
-        st.markdown("---")
-        with st.expander(_t("adv.expander.fiscal"), expanded=False):
-            render_fiscal_periods(session)
-        with st.expander(_t("adv.expander.audit"), expanded=False):
-            render_audit_log(session)
-        with st.expander(_t("adv.expander.coa"), expanded=False):
-            render_chart_of_accounts(session)
-        with st.expander(_t("adv.expander.journal"), expanded=False):
-            render_journal_entries(session)
-
-    # ── Backup & Restore ──────────────────────────────────────────────────────
-    render_backup_restore()
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # BACKUP & RESTORE ENGINE
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -21568,6 +22109,34 @@ def render_backup_restore():
             if rc2.button(_t("common.cancel"), key="restore_cancel_btn"):
                 st.session_state.pop("restore_candidate", None)
                 st.rerun()
+
+
+def render_profit_loss_page(session):
+    """AD-UI-001 D1 — thin route wrapper; calculation in render_profit_loss()."""
+    today = datetime.date.today()
+    month_start = today.replace(day=1)
+    render_mobile_report_filters()
+    start_date = st.session_state.get("date_from", month_start)
+    end_date = st.session_state.get("date_to", today)
+    render_profit_loss(session, start_date=start_date, end_date=end_date)
+
+
+def render_balance_sheet_page(session):
+    """AD-UI-001 D1 — thin route wrapper; calculation in render_balance_sheet()."""
+    today = datetime.date.today()
+    render_mobile_report_filters()
+    end_date = st.session_state.get("date_to", today)
+    render_balance_sheet(session, end_date=end_date)
+
+
+def render_cash_flow_page(session):
+    """AD-UI-001 D1 — thin route wrapper; calculation in render_cash_flow()."""
+    today = datetime.date.today()
+    month_start = today.replace(day=1)
+    render_mobile_report_filters()
+    start_date = st.session_state.get("date_from", month_start)
+    end_date = st.session_state.get("date_to", today)
+    render_cash_flow(session, start_date=start_date, end_date=end_date)
 
 
 def render_profit_loss(session, start_date=None, end_date=None):
@@ -22359,6 +22928,14 @@ def main():
         st.session_state["nav_selection"] = "🏦 Banking"
         st.session_state["banking_section"] = "import"
 
+    # Legacy Executive statement shortcuts → dedicated statement routes (AD-UI-001 D1).
+    _legacy_exec = st.session_state.get("rpt_exec_sel")
+    if _legacy_exec in _LEGACY_RPT_EXEC_TO_STATEMENT:
+        st.session_state["nav_selection"] = _LEGACY_RPT_EXEC_TO_STATEMENT[_legacy_exec]
+        st.session_state.pop("rpt_exec_sel", None)
+        st.session_state.pop("mob_reports_tab", None)
+        selection = st.session_state["nav_selection"]
+
     # Helper: find which accordion group a page belongs to
     def _page_group(pk):
         for gk, _, pgs in _NAV_ACCORDION:
@@ -22379,8 +22956,8 @@ def main():
         accordion_by_key=_NAV_ACCORDION_BY_KEY,
     )
 
-    # Sidebar date filters shown on Reports page only
-    if selection == "📊 Reports":
+    # Sidebar date filters on Reports and financial statement pages (AD-UI-001 D1).
+    if selection in _DATE_FILTER_PAGE_KEYS:
         render_sidebar_filters()
 
     # Clear transient confirm / void / payment dialogs on page change
@@ -22421,6 +22998,9 @@ def main():
         "📦 Inventory":         render_inventory,
         "🏦 Banking":           render_banking,
         "📊 Reports":           render_reports,
+        "💰 Profit & Loss":     render_profit_loss_page,
+        "🏛️ Balance Sheet":     render_balance_sheet_page,
+        "💸 Cash Flow":         render_cash_flow_page,
         "🗂 General Ledger":    render_general_ledger,
         "⚖️ Trial Balance":     render_trial_balance,
         "📓 Journal Entries":   render_journal_entries,
