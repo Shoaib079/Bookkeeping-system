@@ -1,7 +1,7 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** June 5, 2026 (AD-UI-001 Option D Phase D1 — Financial Statements navigation)  
+**Last updated:** June 2026 (SETUP-01 design approved — Setup & Onboarding phase)  
 **Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
@@ -20,14 +20,100 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | Company creation (14D-D) | ✅ Complete |
 | Sidebar uses company role (nav fix) | ✅ Complete |
 | Simplified Company Setup UI | ✅ Complete (Expert policies stub) |
-| Automated tests | ✅ **360 passing** (run `pytest tests/`) |
+| Automated tests | ✅ **663+ passing** (run `pytest tests/`) |
 | Member management (14D-E) | ✅ Complete |
 | Member roster polish (14D-F) | ✅ Complete |
-| Setup wizard v1 (14D-G) | ✅ Complete |
+| Setup wizard v1 (14D-G) | ✅ Complete — **superseded by SETUP-01** (design approved, not built) |
+| SETUP-01 Company Creation Wizard | 🟡 **HIGH** — design approved |
+| SETUP-02 Setup Summary | 📋 Medium — planned |
+| SETUP-03 Configuration Health Check | 📋 Medium — planned |
+| BANK-03 POS Settlement wording | 📋 Low — rename user-facing “Card Settlement” → “POS Settlement” |
 | Localization EN/TR (15) | ✅ Complete |
 | DEVELOPMENT_MODE | ⚠️ **On** in `app.py` (`DEVELOPMENT_MODE = True`) — set `False` before production |
 | Shell / mobile chrome (Phase A) | ✅ Stabilized — fixed header, 968px breakpoint, People hub wired |
 | Sidebar / navigation redesign (AD-UI-001) | 🟡 **D1 done** — Financial Statements routes; D2+ gated — see [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §16 |
+
+---
+
+## Current priority
+
+**Use the system daily** — build only what causes friction during real bookkeeping.
+
+**Next build (HIGH):** **SETUP-01** — ensure every new company starts with the correct workflow from day one (prevents e.g. Spice Corner POS settlement ON vs India Gate OFF discovered months later).
+
+**Observe during use (do not build yet):** Dashboard quick actions, worker advance mobile parity, BANK-01 reality audit (after weeks of real card/bank activity).
+
+**Deferred:** Inventory expansion, procurement, CRM, BI, PostgreSQL — until real usage demands them.
+
+**Success metric:** Daily sales, expenses, and purchases are easy to enter; banking is understandable; month-end is fast; company switching is reliable — not feature count.
+
+---
+
+## SETUP & Onboarding phase
+
+### SETUP-01 — Company Creation Wizard 🟡 **HIGH** (design approved)
+
+**Goal:** Every new company starts with the correct accounting workflow from day one.
+
+**Runs when:** First company created · additional company created · future branch/location/company created.
+
+**Replaces:** 14D-G 3-step wizard (business type → accounting mode → modules on Company Settings only). SETUP-01 runs at **company creation** and sets banking defaults so owners never need Banking → Settings on day one.
+
+**Tone:** “Help me set up my company correctly” — plain language, no unexplained jargon. Each question includes: simple question, options + explanations, what changes in the ERP, change later (yes/no + where).
+
+| Step | Question (summary) | Maps to |
+|------|-------------------|---------|
+| **1** | Business type (Restaurant / Retail / Service / Other) | `setup.vertical_template` — defaults & reporting only; no posting change |
+| **2** | Customer card sales: know bank immediately vs later from POS/statement | `banking.card_settlement_enabled` OFF vs ON (POS Settlement). **Not** Company Credit Card |
+| **3** | Import/reconcile bank statements? | `banking.reconciliation_enabled` |
+| **4** | Pay suppliers/expenses with company credit card (KK)? | `banking.company_card_enabled` — not customer POS |
+| **5** | Track stock (food, beverages, supplies)? | `module.inventory.enabled` |
+| **6** | Multi-currency? | `module.foreign_currency.enabled` / future FX prefs |
+| **7** | Daily operations style (Relaxed / Balanced / Strict) | `policy.accounting_mode` + policy bundle |
+| **8** | **Summary** — company name + all choices → user confirms → create company |
+
+**Step 2 detail (locked):**
+
+- **Option A — I know immediately** → Card settlement **OFF** → card sales go **directly to Bank**
+- **Option B — I know later** → Card settlement **ON** → card sales go to **POS Settlement** first; Bank updated at settlement/match
+
+**Step 8 summary fields:** Company name · Business type · POS Settlement · Statement import · Company credit card · Inventory · Multi-currency · Control level.
+
+**Status:** Design approved · implementation not started.
+
+---
+
+### SETUP-02 — Company Settings Review 📋 **Medium**
+
+**Add:** Settings → Company Profile → **Setup Summary**
+
+Shows wizard choices; read-only review (and link to change paths). Complements SETUP-01.
+
+**Status:** Planned.
+
+---
+
+### SETUP-03 — Configuration Health Check 📋 **Medium**
+
+Advisory warnings only (no forced changes). Examples:
+
+- POS settlement OFF but statement import enabled
+- Multi-currency OFF but foreign-currency transactions detected
+- Company credit card enabled but no card accounts configured
+
+**Status:** Planned.
+
+---
+
+### BANK-03 — Wording update 📋 **Low**
+
+Rename user-facing **“Card Settlement”** → **“POS Settlement”**.
+
+Keep **“Card Sales Clearing”** for COA / account names only.
+
+**Purpose:** Reduce confusion with Company Credit Card (KK).
+
+**Status:** Copy spec ready (Banking → Settings + wizard); not shipped.
 
 ---
 
@@ -166,9 +252,11 @@ Login → company picker; `active_company_id`, `active_company_role`, `active_co
 
 **Delivered:** Members page **Roster** tab (search, role/status filters, paginated table, Excel/PDF export); role badge counts in company overview; last login, invited by, member since columns; **Company Setup** and legacy Settings team overview; **Add & manage** tab for 14D-E actions.
 
-### 14D-G — Setup wizard v1 ✅ **DONE**
+### 14D-G — Setup wizard v1 ✅ **DONE** *(legacy — see SETUP-01)*
 
 **Delivered:** 3-step wizard on **Company Setup** — business type → accounting mode → optional modules. Writes registry defaults to `CompanySetting` (vertical, mode, policy bundle, module toggles, `setup.wizard_completed`). Module prefs affect `get_module_state` (e.g. inventory off). Policy enforcement still deferred.
+
+**Gap:** No banking/POS questions at company creation; owners must discover **Banking → Settings** separately — caused inconsistent per-company config (e.g. settlement ON vs OFF). **SETUP-01** (design approved) addresses this.
 
 ---
 
@@ -282,7 +370,7 @@ Full design: [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) (APPROVED
   - `banking.reconciliation_enabled` — the whole reconciliation/matching workspace.
   - `banking.company_card_enabled` — company-owned credit card as a payment source (purchases credit a Credit Card Payable liability; paying the bill = bank→card transfer).
   - `banking.bank_charges_enabled` — the fee/charge step (country-dependent; some countries have no such charges).
-  - `banking.card_settlement_enabled` — card-settlement reconciliation + the merchant settlement statement import + the Card Sales Clearing flow (not every business takes card payments or receives a settlement statement; when off, card sales behave as they do today).
+  - `banking.card_settlement_enabled` — **POS settlement** (user-facing label per BANK-03; GL account remains **Card Sales Clearing** 1150) + merchant settlement statement import; when off, card sales post directly to Bank as today. **SETUP-01** Step 2 sets this at company creation.
 
 **Known drift to resolve during 18A/18E:** current code posts a Card sale **directly to Bank** (the doc's *rejected* alternative) via `post_card_sale` + an immediate `BankTransaction`. The approved architecture routes card sales through a **Card Sales Clearing** account and only moves to Bank at settlement — that change is what makes batched, net-of-fee settlement matching possible.
 
@@ -455,6 +543,8 @@ Restaurant (POS, recipes), retail (barcode), services (projects), tourism (booki
 | 2026-06 | 14D-B2a shipped read-only; enforcement in B2b / 14D-C |
 | 2026-06-06 | Phase 18-MUX approved in principle (mobile calculator New Transaction); backlog only — after mobile nav stabilization |
 | 2026-06-09 | **AD-UI-001** sidebar/navigation redesign approved (high priority); implementation gated on NAVIGATION_AUDIT.md |
+| 2026-06 | **SETUP-01** Company Creation Wizard design approved (8 steps + summary at create); SETUP-02/03 planned; BANK-03 POS Settlement wording |
+| 2026-06 | P0 complete: multi-company switch + persistence, mobile surfaces, AT safety, Transaction Ledger; daily-use priority over new features |
 
 ---
 
@@ -465,7 +555,7 @@ cd streamlit_accounting_erp
 ./venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: **210 passed**.
+Expected: **663+ passed**.
 
 ---
 

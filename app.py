@@ -49,6 +49,16 @@ from registry.member_roster import (
     roster_to_dataframe,
 )
 from registry.service import get_module_state
+from registry.setup01_wizard import (
+    SETUP01_SESSION_CREATING,
+    apply_setup01_wizard_settings,
+    begin_setup01_wizard,
+    company_create_kwargs_from_answers,
+    discard_setup01_wizard,
+    get_setup01_answers,
+    is_setup01_active,
+    validate_setup01_step,
+)
 from registry.setup_wizard import (
     ACCOUNTING_MODES,
     BUSINESS_TYPES,
@@ -174,6 +184,7 @@ from ui.section import (
     tab_panel_intro,
     theme_table_html,
 )
+from ui.setup01_wizard import render_setup01_wizard
 from ui.theme import bootstrap_theme, chart_reference_color, chart_series_color, role_accent_css_var
 
 _validate_settings_registry()
@@ -944,9 +955,11 @@ def _render_hdr_profile_panel_content(
     if st.button("➕  " + _t("header.create_company"), key=newco_key, use_container_width=True):
         _mobile_close_app_surfaces()
         st.session_state.pop("mob_profile_open", None)
-        st.session_state["_confirm_company_switch"] = True
-        st.session_state["_hdr_open_create_after_picker"] = True
-        st.rerun()
+        if _current_company_id():
+            st.session_state["_confirm_company_switch"] = True
+            st.session_state["_hdr_open_create_after_picker"] = True
+            st.rerun()
+        _start_create_company_wizard()
     if st.button("⏻  " + _t("header.sign_out"), key=out_key, use_container_width=True):
         _mobile_close_app_surfaces()
         st.session_state.pop("mob_profile_open", None)
@@ -1057,7 +1070,10 @@ def _render_company_switch_confirm(*, key_prefix: str = "co_sw") -> None:
                             _sw_session, _u["id"], _target, membership_count=_cnt
                         ):
                             st.rerun()
-            _go_to_company_picker(expand_create=_expand)
+            if _expand:
+                _start_create_company_wizard()
+            else:
+                _go_to_company_picker()
         if _sc2.button(
             _t("common.cancel"),
             key=f"{key_prefix}_no",
@@ -2952,6 +2968,9 @@ def _can(action: str) -> bool:
 
 # ─── User preference helpers (AppSetting, namespaced per user) ────────────────
 
+_USER_PREF_LAST_COMPANY = "last_active_company_id"
+
+
 def _get_user_pref(user_id: int, key: str, default: str = "") -> str:
     """Read one user preference from AppSetting. Opens its own session."""
     try:
@@ -2973,6 +2992,12 @@ def _set_user_pref(session, user_id: int, key: str, value: str) -> None:
         existing.value = str(value)
     else:
         session.add(AppSetting(key=full_key, value=str(value)))
+
+
+def _get_user_pref_in_session(session, user_id: int, key: str, default: str = "") -> str:
+    """Read one user preference using the caller's session."""
+    row = session.get(AppSetting, f"user_pref_{user_id}_{key}")
+    return row.value if row and row.value is not None else default
 
 
 def _next_header_theme_mode(current: str) -> str:
@@ -4163,6 +4188,40 @@ def _clear_company_scoped_session_state() -> None:
         st.session_state.pop(_k, None)
 
 
+def _active_membership_count(session, user_id: int) -> int:
+    return (
+        session.query(CompanyUser)
+        .join(Company, CompanyUser.company_id == Company.id)
+        .filter(
+            CompanyUser.user_id == user_id,
+            CompanyUser.is_active == True,
+            Company.is_active == True,
+        )
+        .count()
+    )
+
+
+def _try_restore_last_active_company(session, user_id: int) -> bool:
+    """Restore last active company from user pref when membership and company are live."""
+    raw = _get_user_pref_in_session(session, user_id, _USER_PREF_LAST_COMPANY, "").strip()
+    if not raw:
+        return False
+    try:
+        company_id = int(raw)
+    except ValueError:
+        _set_user_pref(session, user_id, _USER_PREF_LAST_COMPANY, "")
+        session.commit()
+        return False
+    cnt = _active_membership_count(session, user_id)
+    if cnt == 0:
+        return False
+    if _activate_company_in_session(session, user_id, company_id, membership_count=cnt):
+        return True
+    _set_user_pref(session, user_id, _USER_PREF_LAST_COMPANY, "")
+    session.commit()
+    return False
+
+
 def _activate_company_in_session(
     session,
     user_id: int,
@@ -4185,6 +4244,12 @@ def _activate_company_in_session(
     if membership_count is not None:
         st.session_state["active_company_membership_count"] = membership_count
     _clear_company_scoped_session_state()
+    _set_user_pref(session, user_id, _USER_PREF_LAST_COMPANY, str(company_id))
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        return False
     return True
 
 
@@ -4304,13 +4369,12 @@ def _login(session, username: str, password: str) -> str | None:
     if len(_memberships) == 0:
         pass  # Company picker — create first company
     elif len(_memberships) == 1:
-        # Single company: auto-select, no picker needed
-        _m = _memberships[0]
-        _co = session.get(Company, _m.company_id)
-        st.session_state["active_company_id"]   = _m.company_id
-        st.session_state["active_company_role"] = _m.role
-        st.session_state["active_company_name"] = _co.name if _co else "Company"
-    # Multi-company: active_company_id is left absent; company gate shows picker
+        _activate_company_in_session(
+            session, user.id, _memberships[0].company_id, membership_count=1
+        )
+    else:
+        _try_restore_last_active_company(session, user.id)
+    # Multi-company without saved pref: active_company_id stays absent → company picker
 
     # Load persisted theme preference (light | dark | system)
     _theme_row = session.get(AppSetting, f"user_pref_{user.id}_theme")
@@ -4369,7 +4433,7 @@ def _validate_company_membership(session) -> bool:
     return company is not None and bool(company.is_active)
 
 
-def _go_to_company_picker(*, expand_create: bool = False) -> None:
+def _go_to_company_picker() -> None:
     """Clear active company context and show the company picker (auth preserved)."""
     _preserve = {
         k: st.session_state[k]
@@ -4379,71 +4443,85 @@ def _go_to_company_picker(*, expand_create: bool = False) -> None:
         )
         if k in st.session_state
     }
-    if expand_create:
-        _preserve["picker_expand_create"] = True
     st.session_state.clear()
     st.session_state.update(_preserve)
     st.rerun()
 
 
+def _start_create_company_wizard(*, return_to: str = "picker") -> None:
+    """Single entry: clear overlays/company context and open SETUP-01 wizard."""
+    _mobile_clear_company_switch_confirm()
+    st.session_state.pop("mob_profile_open", None)
+    st.session_state.pop("mob_co_switch_open", None)
+    st.session_state.pop("mobile_hub_open", None)
+    st.session_state.pop("mob_at_picker", None)
+    st.session_state.pop("mob_qc_scan_open", None)
+    st.session_state.pop("picker_expand_create", None)
+    for _co_key in (
+        "active_company_id",
+        "active_company_role",
+        "active_company_name",
+    ):
+        st.session_state.pop(_co_key, None)
+    begin_setup01_wizard(return_to=return_to)
+    st.rerun()
+
+
 def _execute_company_switch() -> None:
     """Clear company context so the company picker is shown on next render."""
-    _go_to_company_picker(expand_create=False)
+    _go_to_company_picker()
 
 
-def _render_create_company_form(
-    session,
-    user_id: int,
-    *,
-    key_prefix: str = "picker",
-    membership_count: int = 0,
-) -> None:
-    """Shared create-company form — used on company picker and after header shortcut."""
-    st.caption(_t("picker.create_owner_note"))
-    _nc1, _nc2 = st.columns(2)
-    _new_name = _nc1.text_input(
-        _t("picker.company_name"),
-        key=f"{key_prefix}_new_co_name",
-        placeholder="e.g. Spice Corner Ltd",
-    )
-    _new_legal = _nc2.text_input(
-        _t("picker.legal_name"),
-        key=f"{key_prefix}_new_co_legal",
-    )
-    _nc3, _nc4 = st.columns(2)
-    _new_email = _nc3.text_input(_t("picker.email"), key=f"{key_prefix}_new_co_email")
-    _new_phone = _nc4.text_input(_t("picker.phone"), key=f"{key_prefix}_new_co_phone")
-    if st.button(
-        _t("picker.create_btn"),
-        key=f"{key_prefix}_create_company_btn",
-        type="primary",
-        use_container_width=True,
-    ):
-        if not (_new_name or "").strip():
-            st.error(_t("picker.name_required"))
-        else:
-            try:
-                _created = create_company(
-                    session,
-                    name=_new_name.strip(),
-                    full_name=_new_legal.strip(),
-                    email=_new_email.strip(),
-                    phone=_new_phone.strip(),
-                    created_by_user_id=user_id,
-                )
-                if _activate_company_in_session(
-                    session,
-                    user_id,
-                    _created.id,
-                    membership_count=membership_count + 1,
-                ):
-                    st.success(_t("picker.created_open", name=_created.name))
-                    st.rerun()
-                st.error(_t("picker.create_failed"))
-            except ValueError as _exc:
-                st.error(str(_exc))
-            except Exception:
-                st.error(_t("picker.create_failed"))
+def _submit_setup01_create_company(session, user_id: int) -> tuple[bool, str | None]:
+    """Create company from SETUP-01 Summary (Step 8 only). Returns (ok, name_or_error_key)."""
+    if st.session_state.get(SETUP01_SESSION_CREATING):
+        return False, "setup01.create.in_progress"
+
+    answers = get_setup01_answers()
+    if validate_setup01_step("summary", answers):
+        return False, "picker.name_required"
+
+    st.session_state[SETUP01_SESSION_CREATING] = True
+    kwargs = company_create_kwargs_from_answers(answers)
+    try:
+        created = create_company(session, **kwargs, created_by_user_id=user_id)
+        try:
+            apply_setup01_wizard_settings(session, created.id, answers)
+        except Exception:
+            session.rollback()
+            st.session_state.pop(SETUP01_SESSION_CREATING, None)
+            return False, "setup01.settings_failed"
+        membership_n = (
+            session.query(CompanyUser)
+            .join(Company, CompanyUser.company_id == Company.id)
+            .filter(
+                CompanyUser.user_id == user_id,
+                CompanyUser.is_active == True,
+                Company.is_active == True,
+            )
+            .count()
+        )
+        if not _activate_company_in_session(
+            session,
+            user_id,
+            created.id,
+            membership_count=membership_n,
+        ):
+            st.session_state.pop(SETUP01_SESSION_CREATING, None)
+            return False, "picker.create_failed"
+        _refresh_user_company_memberships(session, user_id)
+        discard_setup01_wizard()
+        st.session_state["nav_selection"] = "🏠 Home"
+        return True, created.name
+    except ValueError as exc:
+        st.session_state.pop(SETUP01_SESSION_CREATING, None)
+        msg = str(exc)
+        if "name" in msg.lower():
+            return False, "picker.name_required"
+        return False, msg
+    except Exception:
+        st.session_state.pop(SETUP01_SESSION_CREATING, None)
+        return False, "picker.create_failed"
 
 
 def render_company_picker(session) -> None:
@@ -4527,13 +4605,15 @@ def render_company_picker(session) -> None:
                             st.error(_t("picker.unavailable"))
 
         st.markdown("---")
-        _expand_create = (
-            st.session_state.pop("picker_expand_create", False) or not memberships
-        )
-        with st.expander("➕ " + _t("picker.create_expander"), expanded=_expand_create):
-            _render_create_company_form(
-                session, u["id"], key_prefix="picker", membership_count=len(memberships)
-            )
+        with st.expander("➕ " + _t("picker.create_expander"), expanded=not memberships):
+            st.caption(_t("picker.create_owner_note"))
+            if st.button(
+                _t("setup01.start_btn"),
+                key="picker_start_setup01",
+                type="primary",
+                use_container_width=True,
+            ):
+                _start_create_company_wizard(return_to="picker")
 
         st.markdown("---")
         if st.button("⏻ " + _t("picker.sign_out"), use_container_width=True, key="picker_signout"):
@@ -23367,7 +23447,7 @@ def main():
     # ── Dev-mode auto-login ───────────────────────────────────────────────────
     # Skipped after explicit sign-out (session_logged_out). Otherwise auto-selects
     # company_1 when no company context is set.
-    if DEVELOPMENT_MODE:
+    if DEVELOPMENT_MODE and not is_setup01_active():
         st.markdown(
             '<div class="dev-mode-stripe">⚠️ DEVELOPMENT_MODE active — auto login enabled</div>',
             unsafe_allow_html=True,
@@ -23378,22 +23458,26 @@ def main():
             and not st.session_state.get("active_company_id")
         ):
             with get_session() as _dev_s:
-                _dev_co = _dev_s.query(Company).filter_by(
-                    slug="company_1", is_active=True
-                ).first()
-                _dev_role = "owner"
-                if _dev_co:
-                    _dev_m = _dev_s.query(CompanyUser).filter_by(
-                        company_id=_dev_co.id,
-                        user_id=_current_user()["id"],
-                        is_active=True,
+                _dev_uid = _current_user()["id"]
+                if not _try_restore_last_active_company(_dev_s, _dev_uid):
+                    _dev_co = _dev_s.query(Company).filter_by(
+                        slug="company_1", is_active=True
                     ).first()
-                    if _dev_m:
-                        _dev_role = _dev_m.role
-                    st.session_state["active_company_id"]   = _dev_co.id
-                    st.session_state["active_company_role"] = _dev_role
-                    st.session_state["active_company_name"] = _dev_co.name
-                    _refresh_user_company_memberships(_dev_s, _current_user()["id"])
+                    if _dev_co:
+                        _dev_m = _dev_s.query(CompanyUser).filter_by(
+                            company_id=_dev_co.id,
+                            user_id=_dev_uid,
+                            is_active=True,
+                        ).first()
+                        if _dev_m:
+                            _activate_company_in_session(
+                                _dev_s, _dev_uid, _dev_co.id, membership_count=None
+                            )
+                        else:
+                            st.session_state["active_company_id"] = _dev_co.id
+                            st.session_state["active_company_role"] = "owner"
+                            st.session_state["active_company_name"] = _dev_co.name
+                    _refresh_user_company_memberships(_dev_s, _dev_uid)
 
     # ── Auth gate — show login page if no valid session ───────────────────────
     if _current_user() is None:
@@ -23401,9 +23485,44 @@ def main():
             render_login(_auth_session)
         return
 
+    # ── SETUP-01: company creation wizard (Summary → create_company in B2) ─────
+    if is_setup01_active():
+        with get_session() as _s01_session:
+            _s01_user = _current_user()
+            if _s01_user:
+                _sync_ui_locale_from_user(_s01_user["id"])
+            render_setup01_wizard(
+                _s01_session,
+                t=_t,
+                on_sign_out=_logout,
+                on_create_company=_submit_setup01_create_company,
+                current_user_id=_s01_user["id"] if _s01_user else None,
+            )
+        return
+
     # ── Phase 14B: company context gate (Gate 2) ──────────────────────────────
     if not _current_company_id():
         with get_session() as _pick_session:
+            _gate_user = _current_user()
+            if _gate_user:
+                if st.session_state.pop("picker_expand_create", False):
+                    _start_create_company_wizard()
+                _membership_n = (
+                    _pick_session.query(CompanyUser)
+                    .join(Company, CompanyUser.company_id == Company.id)
+                    .filter(
+                        CompanyUser.user_id == _gate_user["id"],
+                        CompanyUser.is_active == True,
+                        Company.is_active == True,
+                    )
+                    .count()
+                )
+                if _membership_n == 0:
+                    _start_create_company_wizard()
+            if _gate_user and _try_restore_last_active_company(
+                _pick_session, _gate_user["id"]
+            ):
+                st.rerun()
             _render_company_picker_shell(_pick_session)
         return
 
