@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -127,11 +128,49 @@ def test_form_widget_visibility_documented_in_style_guide():
 
 
 def test_selectbox_popover_click_through_css_contract():
-    """Closed popover shells must not trap clicks after a selectbox pick."""
+    """Closed BaseWeb portal shells must not trap clicks after a selectbox pick."""
     widgets = _read("ui", "widgets.css")
-    assert "pointer-events: none !important" in widgets
+    assert re.search(
+        r'div\[data-baseweb="popover"\]\s*\{[^}]*pointer-events:\s*none\s*!important',
+        widgets,
+        re.S,
+    )
     assert "stSelectboxVirtualDropdown" in widgets
     assert "pointer-events: auto !important" in widgets
+
+
+def test_st_popover_not_globally_pointer_events_none():
+    """Streamlit st.popover triggers (header bell/profile) must remain clickable."""
+    widgets = _read("ui", "widgets.css")
+    assert not re.search(
+        r'\[data-testid="stPopover"\]\s*\{[^}]*pointer-events:\s*none',
+        widgets,
+        re.S,
+    )
+    assert not re.search(
+        r'\[data-testid="stPopover"\][^{]*\{[^}]*pointer-events:\s*none',
+        widgets,
+        re.S,
+    )
+
+
+def test_header_popover_trigger_css_contract():
+    """Header popover keys retain trigger + open-panel button styling."""
+    widgets = _read("ui", "widgets.css")
+    app_src = _read("app.py")
+    assert 'key="hdr_notif_pop"' in app_src or 'key=_notif_key' in app_src
+    assert "hdr_notif_pop" in app_src
+    assert "hdr_profile_pop" in app_src
+    assert '[class*="st-key-hdr_notif_pop"] [data-testid="stPopover"] > button' in widgets
+    assert '[class*="st-key-hdr_profile_pop"] [data-testid="stPopover"] > button' in widgets
+    assert (
+        '[class*="st-key-hdr_notif_pop"] [data-testid="stPopover"] [data-testid="stButton"] button'
+        in widgets
+    )
+    assert (
+        '[class*="st-key-hdr_profile_pop"] [data-testid="stPopover"] [data-testid="stButton"] button'
+        in widgets
+    )
 
 
 def test_desktop_skips_mobile_at_host():

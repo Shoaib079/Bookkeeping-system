@@ -147,6 +147,10 @@
 div[data-baseweb="popover"],
 [data-testid="stPopover"] {
   z-index: 10050 !important;
+}
+
+/* BaseWeb portal shell only — not Streamlit st.popover triggers (hdr_notif_pop, hdr_profile_pop). */
+div[data-baseweb="popover"] {
   /* Shell passes clicks through; only the open panel receives events (prevents post-select trap). */
   pointer-events: none !important;
 }
