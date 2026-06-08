@@ -6,6 +6,12 @@ MODULES: tuple[ModuleDef, ...] = (
     # ── Core (shipped) ───────────────────────────────────────────────────────
     ModuleDef("dashboard", "nav.dashboard", "operations", nav_page="🏠 Home"),
     ModuleDef("new_transaction", "nav.new_transaction", "operations", nav_page="➕ New Transaction"),
+    ModuleDef(
+        "transaction_ledger",
+        "nav.transaction_ledger",
+        "operations",
+        nav_page="📒 Transaction Ledger",
+    ),
     ModuleDef("sales", "nav.sales", "operations", nav_page="💼 Sales"),
     ModuleDef("expenses", "nav.expenses", "operations", nav_page="💳 Expenses"),
     ModuleDef(
@@ -97,6 +103,7 @@ NAV_PAGES_IN_APP = frozenset(
         "🏠 Home",
         "📅 Today's Summary",
         "➕ New Transaction",
+        "📒 Transaction Ledger",
         "💼 Sales",
         "💳 Expenses",
         "🔁 Recurring Expenses",

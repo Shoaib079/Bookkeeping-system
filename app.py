@@ -677,9 +677,6 @@ def _global_search_keyword() -> str:
 # Pages whose list table is filtered by the header search bar (WO-C B1).
 _HEADER_SEARCH_PAGE_KEYS = frozenset({"💳 Expenses", "💼 Sales", "📄 Receivables"})
 
-_TXH_DATE_PRESETS = ("today", "month", "custom")
-
-
 def _header_search_active(page_key: str | None) -> bool:
     """True when the current page consumes the header search input."""
     return page_key in _HEADER_SEARCH_PAGE_KEYS
@@ -2871,6 +2868,9 @@ def _flip_header_theme(user: dict) -> None:
     st.rerun()
 
 
+# AD-UI-001 D2-P0 — promoted daily lookup route (render_transaction_history via thin wrapper).
+_TXN_LEDGER_PAGE_KEY = "📒 Transaction Ledger"
+
 # AD-UI-001 D1 — financial statement top-level routes (routing only; render_* unchanged).
 _STATEMENT_PAGE_KEYS = frozenset({
     "💰 Profit & Loss",
@@ -2882,6 +2882,12 @@ _LEGACY_RPT_EXEC_TO_STATEMENT = {
     "pnl": "💰 Profit & Loss",
     "balance_sheet": "🏛️ Balance Sheet",
     "cash_flow": "💸 Cash Flow",
+}
+# D2-P1 — old Accounting Tools picker ids → Books sidebar routes (TB/GL/Budget deduped).
+_LEGACY_RPT_EXEC_TO_BOOKS = {
+    "budget": "💰 Budget",
+    "trial_balance": "⚖️ Trial Balance",
+    "general_ledger": "🗂 General Ledger",
 }
 
 _NAV_GROUP_KEYS = {
@@ -2993,6 +2999,7 @@ _MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
         ("banking_import", "import", None, "nav.mobile.banking_import"),
     ],
     "reports": [
+        ("page", _TXN_LEDGER_PAGE_KEY, None, None),
         ("section", "statements", None, "nav.mobile.section.statements"),
         ("page", "💰 Profit & Loss", None, None),
         ("page", "🏛️ Balance Sheet", None, None),
@@ -3016,6 +3023,7 @@ _MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
         ("section", "books", None, "nav.mobile.section.books"),
         ("accordion", "accounting", None, None),
         ("section", "history", None, "nav.mobile.section.history"),
+        ("page", _TXN_LEDGER_PAGE_KEY, None, None),
         ("accordion", "transactions", None, None),
         ("page", "📦 Inventory", None, None),
         ("section", "admin", None, "nav.mobile.section.admin"),
@@ -3074,6 +3082,7 @@ _NAV_ACCORDION_BY_KEY = {gk: (glabel, gpages) for gk, glabel, gpages in _NAV_ACC
 _NAV_DIRECT_PAGES = [
     "🏠 Home",
     "➕ New Transaction",
+    _TXN_LEDGER_PAGE_KEY,
     "📦 Inventory",
     "🏦 Banking",
     "📊 Reports",
@@ -3084,7 +3093,7 @@ _NAV_ROLE_PAGES = {
     "owner": _NAV_ALL_PAGES + [_NAV_MY_ACCOUNT],
     "manager": [
         "🏠 Home",
-        "➕ New Transaction", "💼 Sales", "💳 Expenses", "🔁 Recurring Expenses", "🛒 Purchases",
+        "➕ New Transaction", _TXN_LEDGER_PAGE_KEY, "💼 Sales", "💳 Expenses", "🔁 Recurring Expenses", "🛒 Purchases",
         "💸 Cash Reconciliation", "🌙 End-of-Day Close",
         "👥 Customers", "🏢 Vendors", "📄 Receivables", "📌 Payables",
         "📦 Inventory", "🏦 Banking",
@@ -3101,7 +3110,7 @@ _NAV_ROLE_PAGES = {
     ],
     "cashier": [
         "🏠 Home",
-        "➕ New Transaction", "💼 Sales", "💳 Expenses", "🔁 Recurring Expenses", "🛒 Purchases",
+        "➕ New Transaction", _TXN_LEDGER_PAGE_KEY, "💼 Sales", "💳 Expenses", "🔁 Recurring Expenses", "🛒 Purchases",
         "💸 Cash Reconciliation", "🌙 End-of-Day Close",
         "📄 Receivables", "📌 Payables",
         "🏦 Banking",
@@ -3112,6 +3121,7 @@ _NAV_ROLE_PAGES = {
     "partner": [
         "🏠 Home",
         "💼 Sales", "📄 Receivables",
+        _TXN_LEDGER_PAGE_KEY,
         "📊 Reports",
         "💰 Profit & Loss", "🏛️ Balance Sheet", "💸 Cash Flow",
         "🏦 Partner Accounts",
@@ -3119,6 +3129,7 @@ _NAV_ROLE_PAGES = {
     ],
     "viewer": [
         "🏠 Home",
+        _TXN_LEDGER_PAGE_KEY,
         "📊 Reports",
         "💰 Profit & Loss", "🏛️ Balance Sheet", "💸 Cash Flow",
         _NAV_MY_ACCOUNT,
@@ -3206,6 +3217,7 @@ def _render_navigation_tree(
 
     _nav_direct("🏠 Home")
     _nav_direct("➕ New Transaction")
+    _nav_direct(_TXN_LEDGER_PAGE_KEY)
     _nav_section_caption("nav.sidebar.section_work")
     _nav_group("transactions", accordion_by_key["transactions"][1])
     _nav_direct("🏦 Banking")
@@ -3861,61 +3873,33 @@ def _txh_matches_keyword(
     return kw_l in haystack
 
 
-def _txh_date_range() -> tuple[datetime.date, datetime.date]:
-    today = datetime.date.today()
-    preset = st.session_state.get("txh_date_preset", "month")
-    if preset == "today":
-        return today, today
-    if preset == "month":
-        return today.replace(day=1), today
-    d_from = st.session_state.get("txh_date_from", today.replace(day=1))
-    d_to = st.session_state.get("txh_date_to", today)
-    if d_from > d_to:
-        d_from, d_to = d_to, d_from
-    return d_from, d_to
-
-
 def _render_txh_date_filters(container) -> tuple[datetime.date, datetime.date]:
-    """Today / This Month / Custom Range presets for Transaction History."""
+    """From / To date pickers for Transaction Ledger."""
+    today = datetime.date.today()
+    if "txh_date_from" not in st.session_state:
+        st.session_state["txh_date_from"] = today.replace(day=1)
+    if "txh_date_to" not in st.session_state:
+        st.session_state["txh_date_to"] = today
     container.markdown(
         f'<div class="erp-txh-filters-label">{html.escape(_t("filter.date_range"))}</div>',
         unsafe_allow_html=True,
     )
-    preset_labels = {
-        "today": _t("search.date.today"),
-        "month": _t("search.date.this_month"),
-        "custom": _t("search.date.custom"),
-    }
-    current = st.session_state.get("txh_date_preset", "month")
-    if current not in _TXH_DATE_PRESETS:
-        st.session_state["txh_date_preset"] = "month"
-        current = "month"
-    cols = container.columns(len(_TXH_DATE_PRESETS))
-    for col, preset in zip(cols, _TXH_DATE_PRESETS):
-        if col.button(
-            preset_labels[preset],
-            key=f"txh_date_preset_{preset}",
-            use_container_width=True,
-            type="primary" if current == preset else "secondary",
-        ):
-            st.session_state["txh_date_preset"] = preset
-            st.rerun()
-    if current == "custom":
-        today = datetime.date.today()
-        c1, c2 = container.columns(2)
-        d_from = c1.date_input(
-            _t("form.from"),
-            st.session_state.get("txh_date_from", today.replace(day=1)),
-            key="txh_date_from",
-        )
-        d_to = c2.date_input(
-            _t("form.to"),
-            st.session_state.get("txh_date_to", today),
-            key="txh_date_to",
-        )
-        st.session_state["txh_date_from"] = d_from
-        st.session_state["txh_date_to"] = d_to
-    return _txh_date_range()
+    c1, c2 = container.columns(2)
+    d_from = c1.date_input(
+        _t("form.from"),
+        st.session_state["txh_date_from"],
+        key="txh_date_from",
+    )
+    d_to = c2.date_input(
+        _t("form.to"),
+        st.session_state["txh_date_to"],
+        key="txh_date_to",
+    )
+    st.session_state["txh_date_from"] = d_from
+    st.session_state["txh_date_to"] = d_to
+    if d_from > d_to:
+        d_from, d_to = d_to, d_from
+    return d_from, d_to
 
 
 def _reports_date_bar(
@@ -10412,6 +10396,13 @@ def render_dashboard(session):
                 st.markdown(_rows_html, unsafe_allow_html=True)
             else:
                 st.info(_t("txn.no_recent"))
+            if st.button(
+                _t("dash.view_all_transactions"),
+                key="dash_view_all_txn",
+                use_container_width=True,
+            ):
+                st.session_state["nav_selection"] = _TXN_LEDGER_PAGE_KEY
+                st.rerun()
 
     with _bright:
         st.markdown('<div class="erp-dash-hide-mobile"></div>', unsafe_allow_html=True)
@@ -19610,18 +19601,15 @@ def render_reports(session):
     elif _mob_rpt_tab == "expenses":
         st.caption(_t("nav.mobile.reports_hint_expenses"))
     elif _mob_rpt_tab == "exec":
-        _exec_id = st.session_state.get("rpt_exec_sel", "budget")
+        _exec_id = st.session_state.get("rpt_exec_sel", "txn_ledger")
         _exec_labels = {
-            "budget": "reports.exec.budget",
-            "trial_balance": "reports.exec.trial_balance",
-            "general_ledger": "reports.exec.general_ledger",
             "txn_ledger": "reports.exec.txn_ledger",
             "today_summary": "reports.exec.today_summary",
         }
         st.caption(
             _tf(
                 "nav.mobile.reports_hint_exec",
-                f"Executive tab — {_t(_exec_labels.get(_exec_id, 'reports.exec.budget'))}",
+                f"Accounting Tools — {_t(_exec_labels.get(_exec_id, 'reports.exec.txn_ledger'))}",
             )
         )
     render_mobile_report_filters()
@@ -19646,26 +19634,18 @@ def render_reports(session):
     end_date   = st.session_state.get("date_to",   today)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # EXECUTIVE TAB — existing accounting reports (unchanged render functions)
+    # ACCOUNTING TOOLS TAB (formerly Executive) — ledger + today only; TB/GL/Budget → Books
     # ─────────────────────────────────────────────────────────────────────────
     if not _mob_rpt_ui or st.session_state.get("mob_reports_tab", "exec") == "exec":
         with tab_exec if not _mob_rpt_ui else nullcontext():
             _render_tab_intro("reports.tab.exec")
             exec_sel = _mgmt_report_select("rpt_exec_sel", [
-                ("budget", "reports.exec.budget"),
-                ("trial_balance", "reports.exec.trial_balance"),
-                ("general_ledger", "reports.exec.general_ledger"),
                 ("txn_ledger", "reports.exec.txn_ledger"),
                 ("today_summary", "reports.exec.today_summary"),
             ])
             st.markdown("---")
-            if exec_sel == "budget":
-                render_budget(session)
-            elif exec_sel == "trial_balance":
-                render_trial_balance(session)
-            elif exec_sel == "general_ledger":
-                render_general_ledger(session)
-            elif exec_sel == "txn_ledger":
+            if exec_sel == "txn_ledger":
+                # D2-P0 legacy path — sidebar/mobile "📒 Transaction Ledger" is preferred; remove in D2-P2+.
                 render_transaction_history(session)
             elif exec_sel == "today_summary":
                 render_today_summary(session)
@@ -22111,6 +22091,11 @@ def render_backup_restore():
                 st.rerun()
 
 
+def render_transaction_ledger_page(session):
+    """AD-UI-001 D2-P0 — thin route wrapper; screen in render_transaction_history()."""
+    render_transaction_history(session)
+
+
 def render_profit_loss_page(session):
     """AD-UI-001 D1 — thin route wrapper; calculation in render_profit_loss()."""
     today = datetime.date.today()
@@ -22928,10 +22913,15 @@ def main():
         st.session_state["nav_selection"] = "🏦 Banking"
         st.session_state["banking_section"] = "import"
 
-    # Legacy Executive statement shortcuts → dedicated statement routes (AD-UI-001 D1).
+    # Legacy Accounting Tools picker → statement or Books routes (AD-UI-001 D1 / D2-P1).
     _legacy_exec = st.session_state.get("rpt_exec_sel")
     if _legacy_exec in _LEGACY_RPT_EXEC_TO_STATEMENT:
         st.session_state["nav_selection"] = _LEGACY_RPT_EXEC_TO_STATEMENT[_legacy_exec]
+        st.session_state.pop("rpt_exec_sel", None)
+        st.session_state.pop("mob_reports_tab", None)
+        selection = st.session_state["nav_selection"]
+    elif _legacy_exec in _LEGACY_RPT_EXEC_TO_BOOKS:
+        st.session_state["nav_selection"] = _LEGACY_RPT_EXEC_TO_BOOKS[_legacy_exec]
         st.session_state.pop("rpt_exec_sel", None)
         st.session_state.pop("mob_reports_tab", None)
         selection = st.session_state["nav_selection"]
@@ -22985,6 +22975,7 @@ def main():
         "🏠 Home":              render_dashboard,
         "📅 Today's Summary":   render_today_summary,
         "➕ New Transaction":    render_add_transaction,
+        _TXN_LEDGER_PAGE_KEY:  render_transaction_ledger_page,
         "💼 Sales":             render_sales,
         "💳 Expenses":              render_expenses,
         "🔁 Recurring Expenses":    render_recurring_expenses,

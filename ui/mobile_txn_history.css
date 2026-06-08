@@ -194,8 +194,8 @@
 
   [data-testid="stMain"] [class*="st-key-txh_filter_dates"] [data-testid="stHorizontalBlock"] {
     display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 6px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
     width: 100% !important;
     margin: 0 0 8px !important;
   }
@@ -204,12 +204,6 @@
     width: auto !important;
     min-width: 0 !important;
     padding: 0 !important;
-  }
-
-  [data-testid="stMain"] [class*="st-key-txh_filter_dates"] button {
-    min-height: 34px !important;
-    font-size: 11px !important;
-    padding: 6px 8px !important;
   }
 
   [data-testid="stMain"] [class*="st-key-txh_filter_row1"] [data-testid="stHorizontalBlock"] {

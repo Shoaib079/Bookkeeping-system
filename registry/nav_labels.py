@@ -7,6 +7,7 @@ NAV_PAGE_I18N: dict[str, str] = {
     "🏠 Home": "nav.home",
     "📅 Today's Summary": "nav.today_summary",
     "➕ New Transaction": "nav.new_transaction",
+    "📒 Transaction Ledger": "nav.transaction_ledger",
     "💼 Sales": "nav.sales",
     "💳 Expenses": "nav.expenses",
     "🔁 Recurring Expenses": "nav.recurring_expenses",

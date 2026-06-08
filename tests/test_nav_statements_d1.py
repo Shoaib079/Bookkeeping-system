@@ -8,6 +8,8 @@ from unittest.mock import MagicMock
 import pytest
 
 import app as erp
+from registry.i18n import t
+from registry.locales.transactional import TRANSACTIONAL_EN, TRANSACTIONAL_TR
 
 
 _STATEMENT_KEYS = (
@@ -18,12 +20,10 @@ _STATEMENT_KEYS = (
 
 _EXEC_REMOVED = frozenset({"pnl", "balance_sheet", "cash_flow"})
 _EXEC_REMAINING = frozenset({
-    "budget",
-    "trial_balance",
-    "general_ledger",
     "txn_ledger",
     "today_summary",
 })
+_EXEC_REMOVED_BOOKS = frozenset({"budget", "trial_balance", "general_ledger"})
 
 
 def _exec_picker_ids_from_source() -> set[str]:
@@ -89,10 +89,11 @@ def test_statement_pages_dispatch_to_wrappers():
     assert dispatch["💸 Cash Flow"] == "render_cash_flow_page"
 
 
-def test_executive_picker_excludes_statements():
+def test_accounting_tools_picker_excludes_statements_and_books_dupes():
     ids = _exec_picker_ids_from_source()
     assert ids == _EXEC_REMAINING
     assert not ids & _EXEC_REMOVED
+    assert not ids & _EXEC_REMOVED_BOOKS
 
 
 def test_mobile_reports_hub_statement_entries():
@@ -108,6 +109,19 @@ def test_mobile_more_hub_has_statements_section():
     more = erp._MOBILE_HUB_CONFIG["more"]
     assert ("section", "statements", None, "nav.mobile.section.statements") in more
     assert ("accordion", "statements", None, None) in more
+
+
+def test_nav_group_statements_i18n_not_raw_key():
+    """Sidebar/mobile statements labels resolve from transactional catalog."""
+    assert TRANSACTIONAL_EN["nav.group.statements"] == "Financial Statements"
+    assert TRANSACTIONAL_TR["nav.group.statements"] == "Finansal Tablolar"
+    assert t("nav.group.statements", "en") == "Financial Statements"
+    assert t("nav.group.statements", "tr") == "Finansal Tablolar"
+    assert t("nav.mobile.section.statements", "en") == "Financial Statements"
+    assert t("nav.mobile.section.statements", "tr") == "Finansal Tablolar"
+    for _gkey, msg_key in erp._NAV_GROUP_KEYS.items():
+        assert t(msg_key, "en") != msg_key
+        assert t(msg_key, "tr") != msg_key
 
 
 def test_mobile_statement_entries_visible_with_reports_access():
