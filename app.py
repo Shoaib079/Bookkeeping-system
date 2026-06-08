@@ -3880,23 +3880,18 @@ def _render_txh_date_filters(container) -> tuple[datetime.date, datetime.date]:
         st.session_state["txh_date_from"] = today.replace(day=1)
     if "txh_date_to" not in st.session_state:
         st.session_state["txh_date_to"] = today
+    if st.session_state["txh_date_from"] > st.session_state["txh_date_to"]:
+        st.session_state["txh_date_from"], st.session_state["txh_date_to"] = (
+            st.session_state["txh_date_to"],
+            st.session_state["txh_date_from"],
+        )
     container.markdown(
         f'<div class="erp-txh-filters-label">{html.escape(_t("filter.date_range"))}</div>',
         unsafe_allow_html=True,
     )
     c1, c2 = container.columns(2)
-    d_from = c1.date_input(
-        _t("form.from"),
-        st.session_state["txh_date_from"],
-        key="txh_date_from",
-    )
-    d_to = c2.date_input(
-        _t("form.to"),
-        st.session_state["txh_date_to"],
-        key="txh_date_to",
-    )
-    st.session_state["txh_date_from"] = d_from
-    st.session_state["txh_date_to"] = d_to
+    d_from = c1.date_input(_t("form.from"), key="txh_date_from")
+    d_to = c2.date_input(_t("form.to"), key="txh_date_to")
     if d_from > d_to:
         d_from, d_to = d_to, d_from
     return d_from, d_to
@@ -13527,6 +13522,9 @@ _TXH_INFLOW_TYPES = frozenset({
     "Cash Sale", "Card Sale", "Credit Sale", "Bank Deposit",
 })
 
+# Desktop table column weights — keep in sync with grid in ui/desktop_txn_history.css
+_TXH_DESKTOP_COL_WEIGHTS = [0.68, 0.88, 1.05, 3.4, 1.2, 0.92, 0.72]
+
 
 def _txh_row_icon_class(txn_type_key: str) -> str:
     if txn_type_key in _TXH_INFLOW_TYPES:
@@ -13536,13 +13534,851 @@ def _txh_row_icon_class(txn_type_key: str) -> str:
     return "erp-txh-row-icon erp-txh-row-icon--neutral"
 
 
+_TXH_EDITABLE_TYPES = frozenset({"Sale", "ExpenseRecord", "Purchase"})
+
+
+def _txh_fetch_filtered_rows(
+    session,
+    *,
+    start_date: datetime.date,
+    end_date: datetime.date,
+    keyword: str,
+    type_filter: str,
+    method_filter: str,
+    cat_filter: str,
+    subcat_filter: str,
+    show_voided: bool,
+    currency: str,
+    cat_names_lkp: dict,
+    subcat_names_lkp: dict,
+    user_lkp: dict,
+    txh_all: str,
+) -> list[tuple[dict, str, object]]:
+    """Shared query + filter logic — identical rows for mobile and desktop."""
+    rows: list[tuple[dict, str, object]] = []
+
+    if type_filter in (txh_all, "Sale"):
+        _q = cq(session, Sale).filter(Sale.date.between(start_date, end_date))
+        if not show_voided:
+            _q = _q.filter(Sale.is_void == False)
+        for s in _q.order_by(Sale.date.desc()).all():
+            if not _txh_matches_keyword(
+                keyword,
+                party=s.customer_name,
+                description=s.description or "",
+                txn_type=s.sale_type + " Sale",
+                method=s.sale_type,
+                reference=s.invoice_number,
+                amount=float(s.amount or 0),
+            ):
+                continue
+            cat_label = cat_names_lkp.get(s.tx_category_id, "")
+            sub_label = subcat_names_lkp.get(s.tx_subcategory_id, "")
+            if cat_filter != txh_all and cat_label != cat_filter:
+                continue
+            if subcat_filter != txh_all and sub_label != subcat_filter:
+                continue
+            rows.append(({
+                "Date": s.date, "Type": s.sale_type + " Sale",
+                "Reference": s.invoice_number, "Party": s.customer_name,
+                "Category": cat_label, "Subcategory": sub_label,
+                "Amount": s.amount, "Currency": currency,
+                "Method": s.sale_type, "Description": s.description or "",
+                "Status": "VOID" if s.is_void else s.status,
+                "Created By": user_lkp.get(s.created_by_id, "—"),
+            }, "Sale", s))
+
+    if type_filter in (txh_all, "Expense"):
+        _q = cq(session, ExpenseRecord).filter(ExpenseRecord.date.between(start_date, end_date))
+        if not show_voided:
+            _q = _q.filter(ExpenseRecord.is_void == False)
+        for e in _q.order_by(ExpenseRecord.date.desc()).all():
+            if method_filter != txh_all and (e.payment_method or "").lower() != method_filter.lower():
+                continue
+            if not _txh_matches_keyword(
+                keyword,
+                party=e.employee_name or "",
+                description=e.description or "",
+                txn_type=e.expense_type or "Expense",
+                method=e.payment_method or "",
+                reference=e.category or "",
+                amount=float(e.amount or 0),
+            ):
+                continue
+            cat_label = cat_names_lkp.get(e.tx_category_id, "")
+            sub_label = subcat_names_lkp.get(e.tx_subcategory_id, "")
+            if cat_filter != txh_all and cat_label != cat_filter:
+                continue
+            if subcat_filter != txh_all and sub_label != subcat_filter:
+                continue
+            rows.append(({
+                "Date": e.date, "Type": e.expense_type or "Expense",
+                "Reference": e.category or "", "Party": e.employee_name or "",
+                "Category": cat_label, "Subcategory": sub_label,
+                "Amount": e.amount, "Currency": currency,
+                "Method": e.payment_method or "", "Description": e.description or "",
+                "Status": "VOID" if e.is_void else "Recorded",
+                "Created By": user_lkp.get(s.created_by_id, "—"),
+            }, "ExpenseRecord", e))
+
+    if type_filter in (txh_all, "Purchase"):
+        _q = cq(session, Purchase).filter(Purchase.date.between(start_date, end_date))
+        if not show_voided:
+            _q = _q.filter(Purchase.is_void == False)
+        for p in _q.order_by(Purchase.date.desc()).all():
+            _vnd = session.get(Vendor, p.vendor_id)
+            vname = _vnd.name if _vnd else ""
+            if not _txh_matches_keyword(
+                keyword,
+                party=vname,
+                description=p.description or "",
+                txn_type="Purchase",
+                method=p.purchase_type or "Credit",
+                reference=f"PUR#{p.id}",
+                amount=float(p.amount or 0),
+            ):
+                continue
+            cat_label = cat_names_lkp.get(p.tx_category_id, "")
+            sub_label = subcat_names_lkp.get(p.tx_subcategory_id, "")
+            if cat_filter != txh_all and cat_label != cat_filter:
+                continue
+            if subcat_filter != txh_all and sub_label != subcat_filter:
+                continue
+            rows.append(({
+                "Date": p.date, "Type": "Purchase",
+                "Reference": f"PUR#{p.id}", "Party": vname,
+                "Category": cat_label, "Subcategory": sub_label,
+                "Amount": p.amount, "Currency": currency,
+                "Method": p.purchase_type or "Credit", "Description": p.description or "",
+                "Status": "VOID" if p.is_void else "Active",
+                "Created By": user_lkp.get(p.created_by_id, "—"),
+            }, "Purchase", p))
+
+    if type_filter in (txh_all, "Banking"):
+        _q = cq(session, BankTransaction).filter(BankTransaction.date.between(start_date, end_date))
+        if not show_voided:
+            _q = _q.filter(BankTransaction.is_void == False)
+        for t in _q.order_by(BankTransaction.date.desc()).all():
+            _acct = session.get(BankAccount, t.account_id)
+            if not _txh_matches_keyword(
+                keyword,
+                party=_acct.name if _acct else "",
+                description=t.description or "",
+                txn_type="Bank " + t.type.title(),
+                method="Bank",
+                reference=f"TXN#{t.id}",
+                amount=float(t.amount or 0),
+            ):
+                continue
+            if cat_filter != txh_all:
+                continue
+            rows.append(({
+                "Date": t.date, "Type": "Bank " + t.type.title(),
+                "Reference": f"TXN#{t.id}", "Party": _acct.name if _acct else "",
+                "Category": "", "Subcategory": "",
+                "Amount": t.amount, "Currency": currency,
+                "Method": "Bank", "Description": t.description or "",
+                "Status": "VOID" if t.is_void else "Active",
+            }, "BankTransaction", t))
+
+    if type_filter in (txh_all, "Payable"):
+        _q = cq(session, Payable).filter(Payable.date.between(start_date, end_date))
+        if not show_voided:
+            _q = _q.filter(Payable.is_void == False)
+        for p in _q.order_by(Payable.date.desc()).all():
+            _vnd = session.get(Vendor, p.vendor_id)
+            vname = _vnd.name if _vnd else ""
+            if not _txh_matches_keyword(
+                keyword,
+                party=vname,
+                description=p.description or "",
+                txn_type="Payable",
+                method=p.payment_method or "Credit",
+                reference=f"PAY#{p.id}",
+                amount=float(p.amount or 0),
+            ):
+                continue
+            if cat_filter != txh_all:
+                continue
+            rows.append(({
+                "Date": p.date, "Type": "Payable",
+                "Reference": f"PAY#{p.id}", "Party": vname,
+                "Category": "", "Subcategory": "",
+                "Amount": p.amount, "Currency": currency,
+                "Method": p.payment_method or "Credit", "Description": p.description or "",
+                "Status": "VOID" if p.is_void else ("Paid" if p.paid else "Open"),
+            }, "Payable", p))
+
+    return sorted(rows, key=lambda x: x[0]["Date"], reverse=True)
+
+
+def _txh_rows_to_dataframe(rows: list[tuple[dict, str, object]]) -> pd.DataFrame:
+    if not rows:
+        return pd.DataFrame(columns=["Date", "Type", "Reference", "Party", "Category",
+                                     "Subcategory", "Amount", "Currency", "Method",
+                                     "Description", "Status"])
+    return pd.DataFrame([r[0] for r in rows])
+
+
+def _txh_truncate_text(text: str, limit: int = 56) -> str:
+    raw = (text or "").strip()
+    if len(raw) <= limit:
+        return raw
+    return raw[: limit - 1] + "…"
+
+
+def _txh_status_pills_html(status: str, status_disp: str, *, is_corrected: bool, is_void_row: bool) -> str:
+    pill_cls = _TXH_STATUS_PILL.get(status, "erp-txh-pill erp-txh-pill--neutral")
+    corrected_pill = (
+        f'<span class="erp-txh-pill erp-txh-pill--corrected">'
+        f'✱ {html.escape(_t("txnrow.corrected"))}</span>'
+    ) if (is_corrected and not is_void_row) else ""
+    return (
+        f'<span class="erp-txh-row-pills">'
+        f'<span class="{pill_cls}">{html.escape(status_disp)}</span>'
+        f'{corrected_pill}</span>'
+    )
+
+
+def _txh_action_defs(etype: str) -> dict[str, bool]:
+    """Shared action permissions — no presentation."""
+    can_write = _can("edit_transaction")
+    editable = etype in _TXH_EDITABLE_TYPES
+    return {
+        "can_write": can_write,
+        "can_edit": editable and can_write,
+        "can_duplicate": editable and can_write,
+        "can_void": can_write,
+    }
+
+
+def _txh_bind_action_buttons(
+    action_cols,
+    *,
+    row_key: str,
+    etype: str,
+    eobj,
+    defs: dict[str, bool],
+) -> None:
+    """Wire View / Edit / Duplicate / Void callbacks into pre-built columns."""
+    c_v, c_e, c_d, c_vd = action_cols
+    if c_v.button("👁", key=f"txh_v_{row_key}", help=_t("txh.view_help")):
+        st.session_state["txh_active_view"] = None if st.session_state.get("txh_active_view") == row_key else row_key
+        st.session_state["txh_active_edit"] = None
+        st.rerun()
+    if c_e.button("✏️", key=f"txh_e_{row_key}", help=_t("txh.edit_help"), disabled=not defs["can_edit"]):
+        if st.session_state.get("txh_active_edit") == row_key:
+            st.session_state["txh_active_edit"] = None
+        else:
+            for _sfx in ["date", "amt", "pm", "cust", "notes", "cat", "sub", "vendor"]:
+                st.session_state.pop(f"edit_{_sfx}_{row_key}", None)
+            st.session_state["txh_active_edit"] = row_key
+            st.session_state["txh_active_view"] = None
+        st.rerun()
+    if c_d.button("📋", key=f"txh_d_{row_key}", help=_t("txh.duplicate_help"), disabled=not defs["can_duplicate"]):
+        _TYPE_IDX = {"Sale": 0, "ExpenseRecord": 1, "Purchase": 2}
+        st.session_state["at_type_idx"] = _TYPE_IDX.get(etype, 0)
+        st.session_state["at_amount_display"] = str(eobj.amount)
+        st.session_state["at_notes_field"] = eobj.description or ""
+        if etype == "Sale":
+            st.session_state["at_pm"] = eobj.sale_type
+            st.session_state["at_cust"] = eobj.customer_name if eobj.sale_type == "Credit" else ""
+        elif etype == "ExpenseRecord":
+            st.session_state["at_pm"] = eobj.payment_method or "Cash"
+        elif etype == "Purchase":
+            st.session_state["at_pm"] = eobj.purchase_type or "Credit"
+        st.session_state["nav_selection"] = "➕ New Transaction"
+        st.rerun()
+    if c_vd.button("🚫", key=f"txh_vd_{row_key}", help=_t("txh.void_help"), disabled=not defs["can_void"]):
+        st.session_state[f"txh_void_confirm_{row_key}"] = True
+        st.rerun()
+
+
+def _txh_render_mobile_actions(row_key: str, etype: str, eobj, *, is_void_row: bool) -> None:
+    """Mobile-only full-width action bar (txh_actions_* keys + mobile CSS)."""
+    if is_void_row:
+        return
+    defs = _txh_action_defs(etype)
+    with st.container(border=False, key=f"txh_actions_{row_key}"):
+        _txh_bind_action_buttons(st.columns(4), row_key=row_key, etype=etype, eobj=eobj, defs=defs)
+
+
+def _txh_render_desktop_actions(
+    action_parent,
+    row_key: str,
+    etype: str,
+    eobj,
+    *,
+    is_void_row: bool,
+) -> None:
+    """Desktop-only compact action group in Actions column (txh_dt_actions_* keys)."""
+    if is_void_row:
+        return
+    defs = _txh_action_defs(etype)
+    with action_parent:
+        with st.container(border=False, key=f"txh_dt_actions_{row_key}"):
+            _txh_bind_action_buttons(st.columns(4), row_key=row_key, etype=etype, eobj=eobj, defs=defs)
+
+
+def _txh_render_row_panels(
+    session,
+    *,
+    row_key: str,
+    etype: str,
+    eobj,
+    currency: str,
+    cat_names_lkp: dict,
+    subcat_names_lkp: dict,
+    vendors: list,
+) -> None:
+    """Shared View / Edit / Void expand panels (accounting behavior unchanged)."""
+    eid = eobj.id
+
+    # ── View panel ────────────────────────────────────────────────────────
+    if st.session_state.get("txh_active_view") == row_key:
+        with st.container(border=True):
+            _vh, _vc = st.columns([7, 1])
+            _vh.markdown(f"**{_t('field.transaction_detail')}**")
+            if _vc.button(_t("field.close"), key=f"txh_vclose_{row_key}"):
+                st.session_state["txh_active_view"] = None
+                st.rerun()
+            _f1, _f2 = st.columns(2)
+            if etype == "Sale":
+                _f1.write(f"**Date:** {eobj.date}")
+                _f2.write(f"**Amount:** {currency} {eobj.amount:,.2f}")
+                _f1.write(f"**{_t('field.type')}:** {_t('field.sale_suffix', type=_i18n_db(SALE_TYPE_I18N, eobj.sale_type))}")
+                _f2.write(f"**{_t('field.status')}:** {_i18n_db(SALE_STATUS_I18N, eobj.status)}")
+                _f1.write(f"**{_t('field.reference')}:** {eobj.invoice_number}")
+                _f2.write(f"**{_t('field.payment')}:** {_i18n_db(SALE_TYPE_I18N, eobj.sale_type)}")
+                _f1.write(f"**{_t('field.customer')}:** {eobj.customer_name}")
+                if eobj.sale_type == "Credit":
+                    _f2.write(f"**{_t('field.due_date')}:** {eobj.due_date}")
+                st.write(f"**{_t('field.notes')}:** {eobj.description or '—'}")
+                if eobj.sale_type in ("Credit", "Card", "Cash"):
+                    try:
+                        _settings = load_settings()
+                        _pdf_bytes = generate_invoice_pdf(
+                            invoice_number=eobj.invoice_number,
+                            invoice_date=eobj.date,
+                            due_date=eobj.due_date or eobj.date,
+                            customer_name=eobj.customer_name,
+                            description=eobj.description or "",
+                            amount=eobj.amount,
+                            paid_amount=eobj.paid_amount or 0.0,
+                            status=eobj.status,
+                            currency=_settings.get("currency", "TRY"),
+                            company_name=_settings.get("company_name", "My Company"),
+                        )
+                        st.download_button(
+                            label=_t("field.download_invoice"),
+                            data=_pdf_bytes,
+                            file_name=f"{eobj.invoice_number}.pdf",
+                            mime="application/pdf",
+                            key=f"dl_inv_{eobj.id}",
+                        )
+                    except Exception:
+                        pass
+                _ref_types = ["CashSale", "CardSale", "CreditSale", "ReceivablePayment"]
+            elif etype == "ExpenseRecord":
+                _f1.write(f"**{_t('field.date')}:** {eobj.date}")
+                _f2.write(f"**{_t('field.amount')}:** {currency} {eobj.amount:,.2f}")
+                _f1.write(f"**{_t('field.type')}:** {eobj.expense_type}")
+                _f2.write(f"**{_t('field.payment')}:** {_i18n_db(PAYMENT_METHOD_I18N, eobj.payment_method) if eobj.payment_method else '—'}")
+                _f1.write(f"**{_t('field.category')}:** {cat_names_lkp.get(eobj.tx_category_id, eobj.category or '—')}")
+                _f2.write(f"**{_t('field.subcategory')}:** {subcat_names_lkp.get(eobj.tx_subcategory_id, '—')}")
+                st.write(f"**{_t('field.notes')}:** {eobj.description or '—'}")
+                _ref_types = ["Expense"]
+            elif etype == "Purchase":
+                _pv = session.get(Vendor, eobj.vendor_id)
+                _f1.write(f"**{_t('field.date')}:** {eobj.date}")
+                _f2.write(f"**{_t('field.amount')}:** {currency} {eobj.amount:,.2f}")
+                _f1.write(f"**{_t('field.vendor')}:** {_pv.name if _pv else '—'}")
+                _f2.write(f"**{_t('field.type')}:** {eobj.purchase_type}")
+                _f1.write(f"**{_t('field.category')}:** {cat_names_lkp.get(eobj.tx_category_id, eobj.gl_debit or '—')}")
+                _f2.write(f"**{_t('field.subcategory')}:** {subcat_names_lkp.get(eobj.tx_subcategory_id, '—')}")
+                st.write(f"**{_t('field.notes')}:** {eobj.description or '—'}")
+                _ref_types = ["Purchase", "CashPurchase", "BankPurchase"]
+            elif etype == "BankTransaction":
+                _ba = session.get(BankAccount, eobj.account_id)
+                _f1.write(f"**{_t('field.date')}:** {eobj.date}")
+                _f2.write(f"**{_t('field.amount')}:** {currency} {eobj.amount:,.2f}")
+                _f1.write(f"**{_t('field.account')}:** {_ba.name if _ba else '—'}")
+                _f2.write(f"**{_t('field.type')}:** {_i18n_db(BANK_TXN_TYPE_I18N, eobj.type)}")
+                st.write(f"**{_t('field.description')}:** {eobj.description or '—'}")
+                _ref_types = ["BankDeposit", "BankWithdrawal", "BankTransfer"]
+            elif etype == "Payable":
+                _pav = session.get(Vendor, eobj.vendor_id)
+                _f1.write(f"**{_t('field.date')}:** {eobj.date}")
+                _f2.write(f"**{_t('field.amount')}:** {currency} {eobj.amount:,.2f}")
+                _f1.write(f"**{_t('field.vendor')}:** {_pav.name if _pav else '—'}")
+                _f2.write(f"**{_t('field.due_date')}:** {eobj.due_date}")
+                _f1.write(f"**{_t('field.status')}:** {_t('field.paid') if eobj.paid else _t('field.open')}")
+                _f2.write(f"**{_t('field.method')}:** {_i18n_db(PAYMENT_METHOD_I18N, eobj.payment_method) if eobj.payment_method else '—'}")
+                st.write(f"**{_t('field.description')}:** {eobj.description or '—'}")
+                _ref_types = ["PayableCreation", "PayablePayment"]
+            else:
+                _ref_types = []
+
+            st.divider()
+            st.markdown(f"**{_t('je.journal_entries')}**")
+            _direct_je = cq(session, JournalEntry).filter(
+                JournalEntry.reference_type.in_(_ref_types),
+                JournalEntry.reference_id == eid,
+            ).order_by(JournalEntry.entry_date).all() if _ref_types else []
+            _reversal_je = cq(session, JournalEntry).filter(
+                JournalEntry.reference_type == "Reversal",
+                JournalEntry.reference_id.in_([_je.id for _je in _direct_je]),
+            ).order_by(JournalEntry.entry_date).all() if _direct_je else []
+            _all_je = sorted(_direct_je + _reversal_je, key=lambda _e: _e.entry_date)
+            if not _all_je:
+                st.caption(_t("je.no_entries"))
+            else:
+                for _je in _all_je:
+                    st.markdown(
+                        f'<div style="font-size:11px;font-weight:600;color:var(--theme-muted);margin-top:6px;">'
+                        f'{_je.entry_date} — {_je.description}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    for _ln in _je.lines:
+                        _ac = session.get(ChartOfAccounts, _ln.account_id)
+                        _aname = _ac.account_name if _ac else f"Acct#{_ln.account_id}"
+                        st.markdown(
+                            f'<div style="font-size:11px;color:var(--theme-muted);padding-left:14px;">'
+                            f'{_aname}: Dr {_ln.debit:,.2f} / Cr {_ln.credit:,.2f}</div>',
+                            unsafe_allow_html=True,
+                        )
+
+            _edit_logs = (
+                cq(session, AuditLog)
+                .filter_by(action="Edit", entity_type=etype, entity_id=eid)
+                .order_by(AuditLog.timestamp.desc())
+                .all()
+            )
+            if _edit_logs:
+                st.divider()
+                st.markdown(f"**{_t('je.edit_history')}**")
+                for _log in _edit_logs:
+                    _ts = _log.timestamp.strftime("%d %b %Y %H:%M") if _log.timestamp else "—"
+                    try:
+                        _d = json.loads(_log.description or "{}")
+                        _usr = _d.get("user", "—")
+                        _bef = _d.get("before", {})
+                        _aft = _d.get("after", {})
+                    except Exception:
+                        _usr, _bef, _aft = "—", {}, {}
+                    st.markdown(
+                        f'<div style="font-size:11px;font-weight:600;color:var(--theme-muted);margin-top:6px;">'
+                        f'{_ts} — {_usr}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    for _fld, _old in _bef.items():
+                        st.markdown(
+                            f'<div style="font-size:11px;color:var(--theme-muted);padding-left:14px;">'
+                            f'{_fld}: <span style="color:var(--theme-danger);">{_old}</span>'
+                            f' → <span style="color:var(--theme-success);">{_aft.get(_fld, "—")}</span></div>',
+                            unsafe_allow_html=True,
+                        )
+
+    elif st.session_state.get("txh_active_edit") == row_key:
+        with st.container(border=True):
+            _eh, _ec = st.columns([7, 1])
+            _edit_title = eobj.invoice_number if etype == "Sale" else f"{etype.replace('Record','')} #{eid}"
+            _eh.markdown(f"**{_t('field.edit_title', title=_edit_title)}**")
+            if _ec.button("✕", key=f"txh_eclose_{row_key}", help=_t("field.cancel_edit_help")):
+                st.session_state["txh_active_edit"] = None
+                st.rerun()
+            st.warning(_t("field.edit_warning"))
+
+            if etype == "Sale":
+                _ef1, _ef2 = st.columns(2)
+                _new_date = _ef1.date_input(_t("col.date"), value=eobj.date, key=f"edit_date_{row_key}")
+                _new_amt = amount_input(_t("col.amount"), key=f"edit_amt_{row_key}", default=eobj.amount, container=_ef2)
+                _ef3, _ef4 = st.columns(2)
+                _pm_opts = ["Cash", "Card", "Credit"]
+                _new_pm = _ef3.selectbox(_t("form.payment_method"), _pm_opts,
+                                          index=_pm_opts.index(eobj.sale_type) if eobj.sale_type in _pm_opts else 0,
+                                          format_func=lambda v: _i18n_db(PAYMENT_METHOD_I18N, v),
+                                          key=f"edit_pm_{row_key}")
+                _new_cust = _ef4.text_input(_t("form.customer"), value=eobj.customer_name,
+                                             key=f"edit_cust_{row_key}", disabled=(_new_pm != "Credit"))
+                _new_notes = st.text_area(_t("form.notes"), value=eobj.description or "", key=f"edit_notes_{row_key}")
+                if st.button(_t("form.save_changes"), key=f"edit_save_{row_key}", type="primary"):
+                    if not _new_amt or _new_amt <= 0:
+                        st.error(_t("form.invalid_amount"))
+                    else:
+                        _f = {}
+                        if _new_date != eobj.date: _f["date"] = _new_date
+                        if abs(_new_amt - eobj.amount) > 0.001: _f["amount"] = _new_amt
+                        if _new_pm != eobj.sale_type: _f["sale_type"] = _new_pm
+                        if _new_pm == "Credit" and _new_cust.strip() != eobj.customer_name:
+                            _f["customer_name"] = _new_cust.strip()
+                        if _new_notes.strip() != (eobj.description or ""): _f["description"] = _new_notes.strip()
+                        if not _f:
+                            st.info(_t("je.no_changes"))
+                        else:
+                            _ok, _err = edit_sale(session, eid, _f)
+                            if _ok:
+                                st.session_state["txh_active_edit"] = None
+                                st.rerun()
+                            else:
+                                st.error(_err)
+
+            elif etype == "ExpenseRecord":
+                _ef1, _ef2 = st.columns(2)
+                _new_date = _ef1.date_input(_t("col.date"), value=eobj.date, key=f"edit_date_{row_key}")
+                _new_amt = amount_input(_t("col.amount"), key=f"edit_amt_{row_key}", default=eobj.amount, container=_ef2)
+                _epm_opts = _business_pay_methods(session)
+                _new_pm = st.selectbox(_t("form.payment_method"), _epm_opts,
+                                        index=_epm_opts.index(eobj.payment_method) if eobj.payment_method in _epm_opts else 0,
+                                        format_func=lambda v: _i18n_db(PAYMENT_METHOD_I18N, v),
+                                        key=f"edit_pm_{row_key}")
+                _ecats = cq(session, TransactionCategory).filter_by(transaction_type="Expense", is_active=True).order_by(TransactionCategory.name).all()
+                _ecat_names = [c.name for c in _ecats]
+                _curr_cat = cat_names_lkp.get(eobj.tx_category_id, eobj.category or "")
+                _new_cat_name = st.selectbox(_t("form.category"), _ecat_names,
+                                              index=_ecat_names.index(_curr_cat) if _curr_cat in _ecat_names else 0,
+                                              key=f"edit_cat_{row_key}") if _ecat_names else None
+                _new_cat_obj = next((c for c in _ecats if c.name == _new_cat_name), None) if _new_cat_name else None
+                _new_subcat_id = eobj.tx_subcategory_id
+                if _new_cat_obj:
+                    _esubs = cq(session, TransactionSubcategory).filter_by(category_id=_new_cat_obj.id, is_active=True).order_by(TransactionSubcategory.name).all()
+                    _esub_names = [s.name for s in _esubs]
+                    _curr_sub = subcat_names_lkp.get(eobj.tx_subcategory_id, "")
+                    if _esub_names:
+                        _new_sub_name = st.selectbox(_t("form.subcategory"), _esub_names,
+                                                      index=_esub_names.index(_curr_sub) if _curr_sub in _esub_names else 0,
+                                                      key=f"edit_sub_{row_key}")
+                        _sub_obj = next((s for s in _esubs if s.name == _new_sub_name), None)
+                        _new_subcat_id = _sub_obj.id if _sub_obj else None
+                _new_notes = st.text_area(_t("form.notes"), value=eobj.description or "", key=f"edit_notes_{row_key}")
+                if st.button(_t("form.save_changes"), key=f"edit_save_{row_key}", type="primary"):
+                    if not _new_amt or _new_amt <= 0:
+                        st.error(_t("form.invalid_amount"))
+                    else:
+                        _f = {}
+                        if _new_date != eobj.date: _f["date"] = _new_date
+                        if abs(_new_amt - eobj.amount) > 0.001: _f["amount"] = _new_amt
+                        if _new_pm != (eobj.payment_method or "Cash"): _f["payment_method"] = _new_pm
+                        if _new_cat_obj and _new_cat_obj.id != eobj.tx_category_id:
+                            _f["tx_category_id"] = _new_cat_obj.id
+                            _f["expense_type"] = _new_cat_name
+                            _f["category"] = _new_cat_name
+                        if _new_subcat_id != eobj.tx_subcategory_id: _f["tx_subcategory_id"] = _new_subcat_id
+                        if _new_notes.strip() != (eobj.description or ""): _f["description"] = _new_notes.strip()
+                        if not _f:
+                            st.info(_t("je.no_changes"))
+                        else:
+                            _ok, _err = edit_expense(session, eid, _f)
+                            if _ok:
+                                st.session_state["txh_active_edit"] = None
+                                st.rerun()
+                            else:
+                                st.error(_err)
+
+            elif etype == "Purchase":
+                _ef1, _ef2 = st.columns(2)
+                _new_date = _ef1.date_input(_t("col.date"), value=eobj.date, key=f"edit_date_{row_key}")
+                _new_amt = amount_input(_t("col.amount"), key=f"edit_amt_{row_key}", default=eobj.amount, container=_ef2)
+                _vnames = [v.name for v in _vendors]
+                _cv = session.get(Vendor, eobj.vendor_id)
+                _cvname = _cv.name if _cv else ""
+                _new_vname = st.selectbox(_t("form.vendor"), _vnames,
+                                           index=_vnames.index(_cvname) if _cvname in _vnames else 0,
+                                           key=f"edit_vendor_{row_key}") if _vnames else None
+                _new_vendor = next((v for v in _vendors if v.name == _new_vname), None) if _new_vname else None
+                _pt_opts = _at_purchase_pay_methods(session)
+                _new_pt = st.selectbox(_t("form.purchase_type"), _pt_opts,
+                                        index=_pt_opts.index(eobj.purchase_type) if eobj.purchase_type in _pt_opts else 0,
+                                        key=f"edit_pm_{row_key}")
+                _pcats = cq(session, TransactionCategory).filter_by(transaction_type="Purchase", is_active=True).order_by(TransactionCategory.name).all()
+                _pcat_names = [c.name for c in _pcats]
+                _curr_pcat = cat_names_lkp.get(eobj.tx_category_id, eobj.gl_debit or "")
+                _new_pcat_name = st.selectbox(_t("form.category"), _pcat_names,
+                                               index=_pcat_names.index(_curr_pcat) if _curr_pcat in _pcat_names else 0,
+                                               key=f"edit_cat_{row_key}") if _pcat_names else None
+                _new_pcat_obj = next((c for c in _pcats if c.name == _new_pcat_name), None) if _new_pcat_name else None
+                _new_psubcat_id = eobj.tx_subcategory_id
+                if _new_pcat_obj:
+                    _psubs = cq(session, TransactionSubcategory).filter_by(category_id=_new_pcat_obj.id, is_active=True).order_by(TransactionSubcategory.name).all()
+                    _psub_names = [s.name for s in _psubs]
+                    _curr_psub = subcat_names_lkp.get(eobj.tx_subcategory_id, "")
+                    if _psub_names:
+                        _new_psub_name = st.selectbox(_t("form.subcategory"), _psub_names,
+                                                       index=_psub_names.index(_curr_psub) if _curr_psub in _psub_names else 0,
+                                                       key=f"edit_sub_{row_key}")
+                        _psub_obj = next((s for s in _psubs if s.name == _new_psub_name), None)
+                        _new_psubcat_id = _psub_obj.id if _psub_obj else None
+                _new_notes = st.text_area(_t("form.notes"), value=eobj.description or "", key=f"edit_notes_{row_key}")
+                if st.button(_t("form.save_changes"), key=f"edit_save_{row_key}", type="primary"):
+                    if not _new_amt or _new_amt <= 0:
+                        st.error(_t("form.invalid_amount"))
+                    else:
+                        _f = {}
+                        if _new_date != eobj.date: _f["date"] = _new_date
+                        if abs(_new_amt - eobj.amount) > 0.001: _f["amount"] = _new_amt
+                        if _new_vendor and _new_vendor.id != eobj.vendor_id: _f["vendor_id"] = _new_vendor.id
+                        if _new_pt != (eobj.purchase_type or "Credit"): _f["purchase_type"] = _new_pt
+                        if _new_pcat_obj and _new_pcat_obj.id != eobj.tx_category_id:
+                            _f["tx_category_id"] = _new_pcat_obj.id
+                            _f["gl_debit"] = _new_pcat_name
+                        if _new_psubcat_id != eobj.tx_subcategory_id: _f["tx_subcategory_id"] = _new_psubcat_id
+                        if _new_notes.strip() != (eobj.description or ""): _f["description"] = _new_notes.strip()
+                        if not _f:
+                            st.info(_t("je.no_changes"))
+                        else:
+                            _ok, _err = edit_purchase(session, eid, _f)
+                            if _ok:
+                                st.session_state["txh_active_edit"] = None
+                                st.rerun()
+                            else:
+                                st.error(_err)
+            else:
+                st.info(_t("je.unsupported_type"))
+
+    if st.session_state.get(f"txh_void_confirm_{row_key}"):
+        with st.container(border=True):
+            st.warning(_t("je.void_confirm"))
+            _vr = st.text_input(_t("form.void_reason_label"), key=f"txh_void_reason_{row_key}", placeholder=_t("field.void_reason_placeholder"))
+            _vc1, _vc2 = st.columns(2)
+            if _vc1.button("Confirm Void", key=f"txh_void_ok_{row_key}", type="primary"):
+                _reason = _vr or "Manual void"
+                if etype == "Sale":
+                    void_sale(session, eid, _reason)
+                elif etype == "ExpenseRecord":
+                    void_expense(session, eid, _reason)
+                elif etype == "Purchase":
+                    void_purchase(session, eid, _reason)
+                elif etype == "BankTransaction":
+                    _btxn_chk = session.get(BankTransaction, eid)
+                    _desc_chk  = (_btxn_chk.description or "") if _btxn_chk else ""
+                    if _btxn_chk and _desc_chk.startswith("Card Sale "):
+                        st.error(
+                            "This banking entry originated from a Card Sale. "
+                            "Card Sale deposits cannot be voided from Banking. "
+                            "Void the originating Sale instead."
+                        )
+                    elif _btxn_chk and (
+                        _desc_chk.startswith("Capital Contribution #")
+                        or _desc_chk.startswith("Owner Drawing #")
+                    ):
+                        st.error(_t("bank.err.equity_void"))
+                    elif _btxn_chk and (_btxn_chk.statement_ref or "").startswith("bsr:"):
+                        st.error(_t("bank.err.stmt_linked_void"))
+                    else:
+                        void_bank_transaction(session, eid, _reason)
+                elif etype == "Payable":
+                    void_payable(session, eid, _reason)
+                st.session_state.pop(f"txh_void_confirm_{row_key}", None)
+                st.rerun()
+            if _vc2.button("Cancel", key=f"txh_void_cancel_{row_key}"):
+                st.session_state.pop(f"txh_void_confirm_{row_key}", None)
+                st.rerun()
+
+
+def _txh_render_mobile_card(
+    row_dict: dict,
+    *,
+    row_key: str,
+    is_void_row: bool,
+    is_corrected: bool,
+) -> None:
+    """Mobile-only card presentation."""
+    with st.container(border=False, key=f"txh_info_{row_key}"):
+        txn_type_key = str(row_dict.get("Type", ""))
+        icon = _TXH_TYPE_ICON.get(txn_type_key, "📄")
+        icon_cls = _txh_row_icon_class(txn_type_key)
+        txn_type_disp = _localize_txn_type(txn_type_key)
+        status = str(row_dict.get("Status", ""))
+        pill_cls = _TXH_STATUS_PILL.get(status, "erp-txh-pill erp-txh-pill--neutral")
+        status_disp = _localize_txn_status(status)
+        amt = float(row_dict.get("Amount", 0))
+        is_in = txn_type_key in _TXH_INFLOW_TYPES
+        amt_cls = (
+            "erp-txh-row-amt--muted"
+            if is_void_row
+            else ("erp-txh-row-amt--in" if is_in else "erp-txh-row-amt--out")
+        )
+        amt_sign = "+" if is_in else "−"
+        date_str = str(row_dict.get("Date", ""))[:10]
+        party = html.escape(str(row_dict.get("Party", "")))
+        ref = html.escape(str(row_dict.get("Reference", "")))
+        curr = html.escape(str(row_dict.get("Currency", "")))
+        corrected_pill = (
+            f'<span class="erp-txh-pill erp-txh-pill--corrected">'
+            f'✱ {html.escape(_t("txnrow.corrected"))}</span>'
+        ) if (is_corrected and not is_void_row) else ""
+        void_cls = " erp-txh-row--void" if is_void_row else ""
+        st.markdown(
+            f'<div class="erp-txh-row{void_cls}">'
+            f'<div class="{icon_cls}">{icon}</div>'
+            f'<div class="erp-txh-row-main">'
+            f'<div class="erp-txh-row-amt {amt_cls}">'
+            f'{amt_sign}{curr} {amt:,.2f}</div>'
+            f'<div class="erp-txh-row-type">{html.escape(txn_type_disp)}</div>'
+            f'<div class="erp-txh-row-party">{party or "—"}</div>'
+            f'<div class="erp-txh-row-meta">'
+            f'<span class="erp-txh-row-ref">{ref}</span>'
+            f'<span class="erp-txh-row-pills">'
+            f'<span class="{pill_cls}">{html.escape(status_disp)}</span>'
+            f'{corrected_pill}</span>'
+            f'<span class="erp-txh-row-date">{date_str}</span>'
+            f'</div></div></div>',
+            unsafe_allow_html=True,
+        )
+
+
+def _txh_render_desktop_table_header() -> None:
+    st.markdown(
+        '<div class="erp-txh-dt-shell">'
+        f'<div class="erp-txh-dt-head">'
+        f'<span>{html.escape(_t("col.date"))}</span>'
+        f'<span>{html.escape(_t("col.type"))}</span>'
+        f'<span>{html.escape(_t("col.party"))}</span>'
+        f'<span>{html.escape(_t("col.description"))}</span>'
+        f'<span class="erp-txh-dt-head-amt">{html.escape(_t("col.amount"))}</span>'
+        f'<span>{html.escape(_t("field.status"))}</span>'
+        f'<span>{html.escape(_t("col.actions"))}</span>'
+        f'</div><div class="erp-txh-dt-wrap">',
+        unsafe_allow_html=True,
+    )
+
+
+def _txh_render_desktop_row(
+    row_dict: dict,
+    etype: str,
+    eobj,
+    *,
+    row_key: str,
+    is_void_row: bool,
+    is_corrected: bool,
+) -> None:
+    """Desktop-only table row presentation."""
+    txn_type_key = str(row_dict.get("Type", ""))
+    txn_type_disp = _localize_txn_type(txn_type_key)
+    status = str(row_dict.get("Status", ""))
+    status_disp = _localize_txn_status(status)
+    amt = float(row_dict.get("Amount", 0))
+    is_in = txn_type_key in _TXH_INFLOW_TYPES
+    amt_cls = (
+        "erp-txh-dt-cell--amt-muted"
+        if is_void_row
+        else ("erp-txh-dt-cell--amt-in" if is_in else "erp-txh-dt-cell--amt-out")
+    )
+    amt_sign = "+" if is_in else "−"
+    date_str = str(row_dict.get("Date", ""))[:10]
+    party = html.escape(str(row_dict.get("Party", "") or "—"))
+    desc = html.escape(_txh_truncate_text(str(row_dict.get("Description", ""))))
+    curr = html.escape(str(row_dict.get("Currency", "")))
+    void_cls = " erp-txh-dt-cell--void" if is_void_row else ""
+    status_html = _txh_status_pills_html(status, status_disp, is_corrected=is_corrected, is_void_row=is_void_row)
+
+    with st.container(border=False, key=f"txh_dt_row_{row_key}"):
+        c_date, c_type, c_party, c_desc, c_amt, c_status, c_act = st.columns(
+            _TXH_DESKTOP_COL_WEIGHTS
+        )
+        c_date.markdown(
+            f'<div class="erp-txh-dt-cell{void_cls}">{html.escape(date_str)}</div>',
+            unsafe_allow_html=True,
+        )
+        c_type.markdown(
+            f'<div class="erp-txh-dt-cell{void_cls}">{html.escape(txn_type_disp)}</div>',
+            unsafe_allow_html=True,
+        )
+        c_party.markdown(
+            f'<div class="erp-txh-dt-cell{void_cls}" title="{party}">{party}</div>',
+            unsafe_allow_html=True,
+        )
+        c_desc.markdown(
+            f'<div class="erp-txh-dt-cell erp-txh-dt-cell--desc{void_cls}" title="{desc}">{desc or "—"}</div>',
+            unsafe_allow_html=True,
+        )
+        c_amt.markdown(
+            f'<div class="erp-txh-dt-cell erp-txh-dt-cell--amt {amt_cls}{void_cls}">'
+            f'{amt_sign}{curr}\u00a0{amt:,.2f}</div>',
+            unsafe_allow_html=True,
+        )
+        c_status.markdown(
+            f'<div class="erp-txh-dt-cell erp-txh-dt-cell--status{void_cls}">{status_html}</div>',
+            unsafe_allow_html=True,
+        )
+        if not is_void_row:
+            _txh_render_desktop_actions(
+                c_act, row_key, etype, eobj, is_void_row=is_void_row,
+            )
+
+
+def _txh_render_transaction_list(
+    session,
+    *,
+    rows: list[tuple[dict, str, object]],
+    edit_pairs: set[tuple[str, int]],
+    currency: str,
+    cat_names_lkp: dict,
+    subcat_names_lkp: dict,
+    vendors: list,
+    mobile: bool,
+) -> None:
+    if not mobile:
+        _txh_render_desktop_table_header()
+
+    for row_dict, etype, eobj in rows:
+        eid = eobj.id
+        row_key = f"{etype}_{eid}"
+        is_void_row = getattr(eobj, "is_void", False)
+        is_corrected = (etype, eid) in edit_pairs
+
+        if mobile:
+            with st.container(border=False, key=f"txh_row_{row_key}"):
+                _txh_render_mobile_card(
+                    row_dict,
+                    row_key=row_key,
+                    is_void_row=is_void_row,
+                    is_corrected=is_corrected,
+                )
+                _txh_render_mobile_actions(row_key, etype, eobj, is_void_row=is_void_row)
+                _txh_render_row_panels(
+                    session,
+                    row_key=row_key,
+                    etype=etype,
+                    eobj=eobj,
+                    currency=currency,
+                    cat_names_lkp=cat_names_lkp,
+                    subcat_names_lkp=subcat_names_lkp,
+                    vendors=vendors,
+                )
+        else:
+            _txh_render_desktop_row(
+                row_dict, etype, eobj,
+                row_key=row_key,
+                is_void_row=is_void_row,
+                is_corrected=is_corrected,
+            )
+            _txh_render_row_panels(
+                session,
+                row_key=row_key,
+                etype=etype,
+                eobj=eobj,
+                currency=currency,
+                cat_names_lkp=cat_names_lkp,
+                subcat_names_lkp=subcat_names_lkp,
+                vendors=vendors,
+            )
+
+    if not mobile:
+        st.markdown("</div></div>", unsafe_allow_html=True)
+
+
 def render_transaction_history(session):
     settings = load_settings()
     currency = settings.get("currency", "USD")
     cat_names_lkp, subcat_names_lkp = _load_cat_lookup(session)
     user_lkp = _load_user_lookup(session)  # Step 6.4: {user_id: display_name}
 
-    st.markdown('<div class="erp-txh-mobile-host"></div>', unsafe_allow_html=True)
+    _txh_mobile = _sync_mobile_ui_flag_from_cookie()
+    if _txh_mobile:
+        st.markdown('<div class="erp-txh-mobile-host"></div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="erp-txh-desktop-host"></div>', unsafe_allow_html=True)
     st.markdown(
         section_header_html(_t("txn.page_banner")),
         unsafe_allow_html=True,
@@ -13618,169 +14454,23 @@ def render_transaction_history(session):
 
     show_voided = st.checkbox(_t("txn.show_voided"), value=False, key="txh_show_void")
 
-    # ── Row building — each entry: (row_dict, entity_type_str, orm_obj) ────────
-    rows = []
-
-    if type_filter in (_txh_all, "Sale"):
-        _q = cq(session, Sale).filter(Sale.date.between(start_date, end_date))
-        if not show_voided:
-            _q = _q.filter(Sale.is_void == False)
-        for s in _q.order_by(Sale.date.desc()).all():
-            if not _txh_matches_keyword(
-                keyword,
-                party=s.customer_name,
-                description=s.description or "",
-                txn_type=s.sale_type + " Sale",
-                method=s.sale_type,
-                reference=s.invoice_number,
-                amount=float(s.amount or 0),
-            ):
-                continue
-            cat_label = cat_names_lkp.get(s.tx_category_id, "")
-            sub_label = subcat_names_lkp.get(s.tx_subcategory_id, "")
-            if cat_filter != _txh_all and cat_label != cat_filter:
-                continue
-            if subcat_filter != _txh_all and sub_label != subcat_filter:
-                continue
-            rows.append(({
-                "Date": s.date, "Type": s.sale_type + " Sale",
-                "Reference": s.invoice_number, "Party": s.customer_name,
-                "Category": cat_label, "Subcategory": sub_label,
-                "Amount": s.amount, "Currency": currency,
-                "Method": s.sale_type, "Description": s.description or "",
-                "Status": "VOID" if s.is_void else s.status,
-                "Created By": user_lkp.get(s.created_by_id, "—"),
-            }, "Sale", s))
-
-    if type_filter in (_txh_all, "Expense"):
-        _q = cq(session, ExpenseRecord).filter(ExpenseRecord.date.between(start_date, end_date))
-        if not show_voided:
-            _q = _q.filter(ExpenseRecord.is_void == False)
-        for e in _q.order_by(ExpenseRecord.date.desc()).all():
-            if method_filter != _txh_all and (e.payment_method or "").lower() != method_filter.lower():
-                continue
-            if not _txh_matches_keyword(
-                keyword,
-                party=e.employee_name or "",
-                description=e.description or "",
-                txn_type=e.expense_type or "Expense",
-                method=e.payment_method or "",
-                reference=e.category or "",
-                amount=float(e.amount or 0),
-            ):
-                continue
-            cat_label = cat_names_lkp.get(e.tx_category_id, "")
-            sub_label = subcat_names_lkp.get(e.tx_subcategory_id, "")
-            if cat_filter != _txh_all and cat_label != cat_filter:
-                continue
-            if subcat_filter != _txh_all and sub_label != subcat_filter:
-                continue
-            rows.append(({
-                "Date": e.date, "Type": e.expense_type or "Expense",
-                "Reference": e.category or "", "Party": e.employee_name or "",
-                "Category": cat_label, "Subcategory": sub_label,
-                "Amount": e.amount, "Currency": currency,
-                "Method": e.payment_method or "", "Description": e.description or "",
-                "Status": "VOID" if e.is_void else "Recorded",
-                "Created By": user_lkp.get(e.created_by_id, "—"),
-            }, "ExpenseRecord", e))
-
-    if type_filter in (_txh_all, "Purchase"):
-        _q = cq(session, Purchase).filter(Purchase.date.between(start_date, end_date))
-        if not show_voided:
-            _q = _q.filter(Purchase.is_void == False)
-        for p in _q.order_by(Purchase.date.desc()).all():
-            _vnd = session.get(Vendor, p.vendor_id)
-            vname = _vnd.name if _vnd else ""
-            if not _txh_matches_keyword(
-                keyword,
-                party=vname,
-                description=p.description or "",
-                txn_type="Purchase",
-                method=p.purchase_type or "Credit",
-                reference=f"PUR#{p.id}",
-                amount=float(p.amount or 0),
-            ):
-                continue
-            cat_label = cat_names_lkp.get(p.tx_category_id, "")
-            sub_label = subcat_names_lkp.get(p.tx_subcategory_id, "")
-            if cat_filter != _txh_all and cat_label != cat_filter:
-                continue
-            if subcat_filter != _txh_all and sub_label != subcat_filter:
-                continue
-            rows.append(({
-                "Date": p.date, "Type": "Purchase",
-                "Reference": f"PUR#{p.id}", "Party": vname,
-                "Category": cat_label, "Subcategory": sub_label,
-                "Amount": p.amount, "Currency": currency,
-                "Method": p.purchase_type or "Credit", "Description": p.description or "",
-                "Status": "VOID" if p.is_void else "Active",
-                "Created By": user_lkp.get(p.created_by_id, "—"),
-            }, "Purchase", p))
-
-    if type_filter in (_txh_all, "Banking"):
-        _q = cq(session, BankTransaction).filter(BankTransaction.date.between(start_date, end_date))
-        if not show_voided:
-            _q = _q.filter(BankTransaction.is_void == False)
-        for t in _q.order_by(BankTransaction.date.desc()).all():
-            _acct = session.get(BankAccount, t.account_id)
-            if not _txh_matches_keyword(
-                keyword,
-                party=_acct.name if _acct else "",
-                description=t.description or "",
-                txn_type="Bank " + t.type.title(),
-                method="Bank",
-                reference=f"TXN#{t.id}",
-                amount=float(t.amount or 0),
-            ):
-                continue
-            if cat_filter != _txh_all:
-                continue
-            rows.append(({
-                "Date": t.date, "Type": "Bank " + t.type.title(),
-                "Reference": f"TXN#{t.id}", "Party": _acct.name if _acct else "",
-                "Category": "", "Subcategory": "",
-                "Amount": t.amount, "Currency": currency,
-                "Method": "Bank", "Description": t.description or "",
-                "Status": "VOID" if t.is_void else "Active",
-            }, "BankTransaction", t))
-
-    if type_filter in (_txh_all, "Payable"):
-        _q = cq(session, Payable).filter(Payable.date.between(start_date, end_date))
-        if not show_voided:
-            _q = _q.filter(Payable.is_void == False)
-        for p in _q.order_by(Payable.date.desc()).all():
-            _vnd = session.get(Vendor, p.vendor_id)
-            vname = _vnd.name if _vnd else ""
-            if not _txh_matches_keyword(
-                keyword,
-                party=vname,
-                description=p.description or "",
-                txn_type="Payable",
-                method=p.payment_method or "Credit",
-                reference=f"PAY#{p.id}",
-                amount=float(p.amount or 0),
-            ):
-                continue
-            if cat_filter != _txh_all:
-                continue
-            rows.append(({
-                "Date": p.date, "Type": "Payable",
-                "Reference": f"PAY#{p.id}", "Party": vname,
-                "Category": "", "Subcategory": "",
-                "Amount": p.amount, "Currency": currency,
-                "Method": p.payment_method or "Credit", "Description": p.description or "",
-                "Status": "VOID" if p.is_void else ("Paid" if p.paid else "Open"),
-            }, "Payable", p))
-
-    rows = sorted(rows, key=lambda x: x[0]["Date"], reverse=True)
-    df = (
-        pd.DataFrame([r[0] for r in rows])
-        if rows
-        else pd.DataFrame(columns=["Date", "Type", "Reference", "Party", "Category",
-                                    "Subcategory", "Amount", "Currency", "Method",
-                                    "Description", "Status"])
+    rows = _txh_fetch_filtered_rows(
+        session,
+        start_date=start_date,
+        end_date=end_date,
+        keyword=keyword,
+        type_filter=type_filter,
+        method_filter=method_filter,
+        cat_filter=cat_filter,
+        subcat_filter=subcat_filter,
+        show_voided=show_voided,
+        currency=currency,
+        cat_names_lkp=cat_names_lkp,
+        subcat_names_lkp=subcat_names_lkp,
+        user_lkp=user_lkp,
+        txh_all=_txh_all,
     )
+    df = _txh_rows_to_dataframe(rows)
 
     # ── Result header + export ──────────────────────────────────────────────────
     with st.container(border=False, key="txh_result_hdr"):
@@ -13819,437 +14509,16 @@ def render_transaction_history(session):
 
     _vendors = cq(session, Vendor).filter_by(is_active=True).order_by(Vendor.name).all()
 
-    _EDITABLE = {"Sale", "ExpenseRecord", "Purchase"}
-
-    # ── Row rendering ────────────────────────────────────────────────────────────
-    for row_dict, etype, eobj in rows:
-        eid = eobj.id
-        row_key = f"{etype}_{eid}"
-        is_void_row = getattr(eobj, "is_void", False)
-        is_corrected = (etype, eid) in _edit_pairs
-
-        with st.container(border=False, key=f"txh_row_{row_key}"):
-            with st.container(border=False, key=f"txh_info_{row_key}"):
-                txn_type_key = str(row_dict.get("Type", ""))
-                icon = _TXH_TYPE_ICON.get(txn_type_key, "📄")
-                icon_cls = _txh_row_icon_class(txn_type_key)
-                txn_type_disp = _localize_txn_type(txn_type_key)
-                status = str(row_dict.get("Status", ""))
-                pill_cls = _TXH_STATUS_PILL.get(status, "erp-txh-pill erp-txh-pill--neutral")
-                status_disp = _localize_txn_status(status)
-                amt = float(row_dict.get("Amount", 0))
-                is_in = txn_type_key in _TXH_INFLOW_TYPES
-                amt_cls = (
-                    "erp-txh-row-amt--muted"
-                    if is_void_row
-                    else ("erp-txh-row-amt--in" if is_in else "erp-txh-row-amt--out")
-                )
-                amt_sign = "+" if is_in else "−"
-                date_str = str(row_dict.get("Date", ""))[:10]
-                party = html.escape(str(row_dict.get("Party", "")))
-                ref = html.escape(str(row_dict.get("Reference", "")))
-                curr = html.escape(str(row_dict.get("Currency", "")))
-                corrected_pill = (
-                    f'<span class="erp-txh-pill erp-txh-pill--corrected">'
-                    f'✱ {html.escape(_t("txnrow.corrected"))}</span>'
-                ) if (is_corrected and not is_void_row) else ""
-                void_cls = " erp-txh-row--void" if is_void_row else ""
-                st.markdown(
-                    f'<div class="erp-txh-row{void_cls}">'
-                    f'<div class="{icon_cls}">{icon}</div>'
-                    f'<div class="erp-txh-row-main">'
-                    f'<div class="erp-txh-row-amt {amt_cls}">'
-                    f'{amt_sign}{curr} {amt:,.2f}</div>'
-                    f'<div class="erp-txh-row-type">{html.escape(txn_type_disp)}</div>'
-                    f'<div class="erp-txh-row-party">{party or "—"}</div>'
-                    f'<div class="erp-txh-row-meta">'
-                    f'<span class="erp-txh-row-ref">{ref}</span>'
-                    f'<span class="erp-txh-row-pills">'
-                    f'<span class="{pill_cls}">{html.escape(status_disp)}</span>'
-                    f'{corrected_pill}</span>'
-                    f'<span class="erp-txh-row-date">{date_str}</span>'
-                    f'</div></div></div>',
-                    unsafe_allow_html=True,
-                )
-
-            if not is_void_row:
-                with st.container(border=False, key=f"txh_actions_{row_key}"):
-                    c_v, c_e, c_d, c_vd = st.columns(4)
-                    _can_write = _can("edit_transaction")
-                    if c_v.button("👁", key=f"txh_v_{row_key}", help=_t("txh.view_help")):
-                        st.session_state["txh_active_view"] = None if st.session_state.get("txh_active_view") == row_key else row_key
-                        st.session_state["txh_active_edit"] = None
-                        st.rerun()
-                    can_edit = etype in _EDITABLE and _can_write
-                    if c_e.button("✏️", key=f"txh_e_{row_key}", help=_t("txh.edit_help"), disabled=not can_edit):
-                        if st.session_state.get("txh_active_edit") == row_key:
-                            st.session_state["txh_active_edit"] = None
-                        else:
-                            for _sfx in ["date", "amt", "pm", "cust", "notes", "cat", "sub", "vendor"]:
-                                st.session_state.pop(f"edit_{_sfx}_{row_key}", None)
-                            st.session_state["txh_active_edit"] = row_key
-                            st.session_state["txh_active_view"] = None
-                        st.rerun()
-                    if c_d.button("📋", key=f"txh_d_{row_key}", help=_t("txh.duplicate_help"), disabled=not (etype in _EDITABLE and _can_write)):
-                        _TYPE_IDX = {"Sale": 0, "ExpenseRecord": 1, "Purchase": 2}
-                        st.session_state["at_type_idx"] = _TYPE_IDX.get(etype, 0)
-                        st.session_state["at_amount_display"] = str(eobj.amount)
-                        st.session_state["at_notes_field"] = eobj.description or ""
-                        if etype == "Sale":
-                            st.session_state["at_pm"] = eobj.sale_type
-                            st.session_state["at_cust"] = eobj.customer_name if eobj.sale_type == "Credit" else ""
-                        elif etype == "ExpenseRecord":
-                            st.session_state["at_pm"] = eobj.payment_method or "Cash"
-                        elif etype == "Purchase":
-                            st.session_state["at_pm"] = eobj.purchase_type or "Credit"
-                        st.session_state["nav_selection"] = "➕ New Transaction"
-                        st.rerun()
-                    if c_vd.button("🚫", key=f"txh_vd_{row_key}", help=_t("txh.void_help"), disabled=not _can_write):
-                        st.session_state[f"txh_void_confirm_{row_key}"] = True
-                        st.rerun()
-
-            # ── View panel ────────────────────────────────────────────────────────
-            if st.session_state.get("txh_active_view") == row_key:
-                with st.container(border=True):
-                    _vh, _vc = st.columns([7, 1])
-                    _vh.markdown(f"**{_t('field.transaction_detail')}**")
-                    if _vc.button(_t("field.close"), key=f"txh_vclose_{row_key}"):
-                        st.session_state["txh_active_view"] = None
-                        st.rerun()
-                    _f1, _f2 = st.columns(2)
-                    if etype == "Sale":
-                        _f1.write(f"**Date:** {eobj.date}")
-                        _f2.write(f"**Amount:** {currency} {eobj.amount:,.2f}")
-                        _f1.write(f"**{_t('field.type')}:** {_t('field.sale_suffix', type=_i18n_db(SALE_TYPE_I18N, eobj.sale_type))}")
-                        _f2.write(f"**{_t('field.status')}:** {_i18n_db(SALE_STATUS_I18N, eobj.status)}")
-                        _f1.write(f"**{_t('field.reference')}:** {eobj.invoice_number}")
-                        _f2.write(f"**{_t('field.payment')}:** {_i18n_db(SALE_TYPE_I18N, eobj.sale_type)}")
-                        _f1.write(f"**{_t('field.customer')}:** {eobj.customer_name}")
-                        if eobj.sale_type == "Credit":
-                            _f2.write(f"**{_t('field.due_date')}:** {eobj.due_date}")
-                        st.write(f"**{_t('field.notes')}:** {eobj.description or '—'}")
-                        # Invoice PDF download for credit sales
-                        if eobj.sale_type in ("Credit", "Card", "Cash"):
-                            try:
-                                _settings = load_settings()
-                                _pdf_bytes = generate_invoice_pdf(
-                                    invoice_number=eobj.invoice_number,
-                                    invoice_date=eobj.date,
-                                    due_date=eobj.due_date or eobj.date,
-                                    customer_name=eobj.customer_name,
-                                    description=eobj.description or "",
-                                    amount=eobj.amount,
-                                    paid_amount=eobj.paid_amount or 0.0,
-                                    status=eobj.status,
-                                    currency=_settings.get("currency", "TRY"),
-                                    company_name=_settings.get("company_name", "My Company"),
-                                )
-                                st.download_button(
-                                    label=_t("field.download_invoice"),
-                                    data=_pdf_bytes,
-                                    file_name=f"{eobj.invoice_number}.pdf",
-                                    mime="application/pdf",
-                                    key=f"dl_inv_{eobj.id}",
-                                )
-                            except Exception:
-                                pass
-                        _ref_types = ["CashSale", "CardSale", "CreditSale", "ReceivablePayment"]
-                    elif etype == "ExpenseRecord":
-                        _f1.write(f"**{_t('field.date')}:** {eobj.date}")
-                        _f2.write(f"**{_t('field.amount')}:** {currency} {eobj.amount:,.2f}")
-                        _f1.write(f"**{_t('field.type')}:** {eobj.expense_type}")
-                        _f2.write(f"**{_t('field.payment')}:** {_i18n_db(PAYMENT_METHOD_I18N, eobj.payment_method) if eobj.payment_method else '—'}")
-                        _f1.write(f"**{_t('field.category')}:** {cat_names_lkp.get(eobj.tx_category_id, eobj.category or '—')}")
-                        _f2.write(f"**{_t('field.subcategory')}:** {subcat_names_lkp.get(eobj.tx_subcategory_id, '—')}")
-                        st.write(f"**{_t('field.notes')}:** {eobj.description or '—'}")
-                        _ref_types = ["Expense"]
-                    elif etype == "Purchase":
-                        _pv = session.get(Vendor, eobj.vendor_id)
-                        _f1.write(f"**{_t('field.date')}:** {eobj.date}")
-                        _f2.write(f"**{_t('field.amount')}:** {currency} {eobj.amount:,.2f}")
-                        _f1.write(f"**{_t('field.vendor')}:** {_pv.name if _pv else '—'}")
-                        _f2.write(f"**{_t('field.type')}:** {eobj.purchase_type}")
-                        _f1.write(f"**{_t('field.category')}:** {cat_names_lkp.get(eobj.tx_category_id, eobj.gl_debit or '—')}")
-                        _f2.write(f"**{_t('field.subcategory')}:** {subcat_names_lkp.get(eobj.tx_subcategory_id, '—')}")
-                        st.write(f"**{_t('field.notes')}:** {eobj.description or '—'}")
-                        _ref_types = ["Purchase", "CashPurchase", "BankPurchase"]
-                    elif etype == "BankTransaction":
-                        _ba = session.get(BankAccount, eobj.account_id)
-                        _f1.write(f"**{_t('field.date')}:** {eobj.date}")
-                        _f2.write(f"**{_t('field.amount')}:** {currency} {eobj.amount:,.2f}")
-                        _f1.write(f"**{_t('field.account')}:** {_ba.name if _ba else '—'}")
-                        _f2.write(f"**{_t('field.type')}:** {_i18n_db(BANK_TXN_TYPE_I18N, eobj.type)}")
-                        st.write(f"**{_t('field.description')}:** {eobj.description or '—'}")
-                        _ref_types = ["BankDeposit", "BankWithdrawal", "BankTransfer"]
-                    elif etype == "Payable":
-                        _pav = session.get(Vendor, eobj.vendor_id)
-                        _f1.write(f"**{_t('field.date')}:** {eobj.date}")
-                        _f2.write(f"**{_t('field.amount')}:** {currency} {eobj.amount:,.2f}")
-                        _f1.write(f"**{_t('field.vendor')}:** {_pav.name if _pav else '—'}")
-                        _f2.write(f"**{_t('field.due_date')}:** {eobj.due_date}")
-                        _f1.write(f"**{_t('field.status')}:** {_t('field.paid') if eobj.paid else _t('field.open')}")
-                        _f2.write(f"**{_t('field.method')}:** {_i18n_db(PAYMENT_METHOD_I18N, eobj.payment_method) if eobj.payment_method else '—'}")
-                        st.write(f"**{_t('field.description')}:** {eobj.description or '—'}")
-                        _ref_types = ["PayableCreation", "PayablePayment"]
-                    else:
-                        _ref_types = []
-
-                    st.divider()
-                    st.markdown(f"**{_t('je.journal_entries')}**")
-                    _direct_je = cq(session, JournalEntry).filter(
-                        JournalEntry.reference_type.in_(_ref_types),
-                        JournalEntry.reference_id == eid,
-                    ).order_by(JournalEntry.entry_date).all() if _ref_types else []
-                    _reversal_je = cq(session, JournalEntry).filter(
-                        JournalEntry.reference_type == "Reversal",
-                        JournalEntry.reference_id.in_([_je.id for _je in _direct_je]),
-                    ).order_by(JournalEntry.entry_date).all() if _direct_je else []
-                    _all_je = sorted(_direct_je + _reversal_je, key=lambda _e: _e.entry_date)
-                    if not _all_je:
-                        st.caption(_t("je.no_entries"))
-                    else:
-                        for _je in _all_je:
-                            st.markdown(
-                                f'<div style="font-size:11px;font-weight:600;color:var(--theme-muted);margin-top:6px;">'
-                                f'{_je.entry_date} — {_je.description}</div>',
-                                unsafe_allow_html=True,
-                            )
-                            for _ln in _je.lines:
-                                _ac = session.get(ChartOfAccounts, _ln.account_id)
-                                _aname = _ac.account_name if _ac else f"Acct#{_ln.account_id}"
-                                st.markdown(
-                                    f'<div style="font-size:11px;color:var(--theme-muted);padding-left:14px;">'
-                                    f'{_aname}: Dr {_ln.debit:,.2f} / Cr {_ln.credit:,.2f}</div>',
-                                    unsafe_allow_html=True,
-                                )
-
-                    _edit_logs = (
-                        cq(session, AuditLog)
-                        .filter_by(action="Edit", entity_type=etype, entity_id=eid)
-                        .order_by(AuditLog.timestamp.desc())
-                        .all()
-                    )
-                    if _edit_logs:
-                        st.divider()
-                        st.markdown(f"**{_t('je.edit_history')}**")
-                        for _log in _edit_logs:
-                            _ts = _log.timestamp.strftime("%d %b %Y %H:%M") if _log.timestamp else "—"
-                            try:
-                                _d = json.loads(_log.description or "{}")
-                                _usr = _d.get("user", "—")
-                                _bef = _d.get("before", {})
-                                _aft = _d.get("after", {})
-                            except Exception:
-                                _usr, _bef, _aft = "—", {}, {}
-                            st.markdown(
-                                f'<div style="font-size:11px;font-weight:600;color:var(--theme-muted);margin-top:6px;">'
-                                f'{_ts} — {_usr}</div>',
-                                unsafe_allow_html=True,
-                            )
-                            for _fld, _old in _bef.items():
-                                st.markdown(
-                                    f'<div style="font-size:11px;color:var(--theme-muted);padding-left:14px;">'
-                                    f'{_fld}: <span style="color:var(--theme-danger);">{_old}</span>'
-                                    f' → <span style="color:var(--theme-success);">{_aft.get(_fld, "—")}</span></div>',
-                                    unsafe_allow_html=True,
-                                )
-
-            # ── Edit panel ────────────────────────────────────────────────────────
-            elif st.session_state.get("txh_active_edit") == row_key:
-                with st.container(border=True):
-                    _eh, _ec = st.columns([7, 1])
-                    _edit_title = eobj.invoice_number if etype == "Sale" else f"{etype.replace('Record','')} #{eid}"
-                    _eh.markdown(f"**{_t('field.edit_title', title=_edit_title)}**")
-                    if _ec.button("✕", key=f"txh_eclose_{row_key}", help=_t("field.cancel_edit_help")):
-                        st.session_state["txh_active_edit"] = None
-                        st.rerun()
-                    st.warning(_t("field.edit_warning"))
-
-                    if etype == "Sale":
-                        _ef1, _ef2 = st.columns(2)
-                        _new_date = _ef1.date_input(_t("col.date"), value=eobj.date, key=f"edit_date_{row_key}")
-                        _new_amt = amount_input(_t("col.amount"), key=f"edit_amt_{row_key}", default=eobj.amount, container=_ef2)
-                        _ef3, _ef4 = st.columns(2)
-                        _pm_opts = ["Cash", "Card", "Credit"]
-                        _new_pm = _ef3.selectbox(_t("form.payment_method"), _pm_opts,
-                                                  index=_pm_opts.index(eobj.sale_type) if eobj.sale_type in _pm_opts else 0,
-                                                  format_func=lambda v: _i18n_db(PAYMENT_METHOD_I18N, v),
-                                                  key=f"edit_pm_{row_key}")
-                        _new_cust = _ef4.text_input(_t("form.customer"), value=eobj.customer_name,
-                                                     key=f"edit_cust_{row_key}", disabled=(_new_pm != "Credit"))
-                        _new_notes = st.text_area(_t("form.notes"), value=eobj.description or "", key=f"edit_notes_{row_key}")
-                        if st.button(_t("form.save_changes"), key=f"edit_save_{row_key}", type="primary"):
-                            if not _new_amt or _new_amt <= 0:
-                                st.error(_t("form.invalid_amount"))
-                            else:
-                                _f = {}
-                                if _new_date != eobj.date: _f["date"] = _new_date
-                                if abs(_new_amt - eobj.amount) > 0.001: _f["amount"] = _new_amt
-                                if _new_pm != eobj.sale_type: _f["sale_type"] = _new_pm
-                                if _new_pm == "Credit" and _new_cust.strip() != eobj.customer_name:
-                                    _f["customer_name"] = _new_cust.strip()
-                                if _new_notes.strip() != (eobj.description or ""): _f["description"] = _new_notes.strip()
-                                if not _f:
-                                    st.info(_t("je.no_changes"))
-                                else:
-                                    _ok, _err = edit_sale(session, eid, _f)
-                                    if _ok:
-                                        st.session_state["txh_active_edit"] = None
-                                        st.rerun()
-                                    else:
-                                        st.error(_err)
-
-                    elif etype == "ExpenseRecord":
-                        _ef1, _ef2 = st.columns(2)
-                        _new_date = _ef1.date_input(_t("col.date"), value=eobj.date, key=f"edit_date_{row_key}")
-                        _new_amt = amount_input(_t("col.amount"), key=f"edit_amt_{row_key}", default=eobj.amount, container=_ef2)
-                        _epm_opts = _business_pay_methods(session)
-                        _new_pm = st.selectbox(_t("form.payment_method"), _epm_opts,
-                                                index=_epm_opts.index(eobj.payment_method) if eobj.payment_method in _epm_opts else 0,
-                                                format_func=lambda v: _i18n_db(PAYMENT_METHOD_I18N, v),
-                                                key=f"edit_pm_{row_key}")
-                        _ecats = cq(session, TransactionCategory).filter_by(transaction_type="Expense", is_active=True).order_by(TransactionCategory.name).all()
-                        _ecat_names = [c.name for c in _ecats]
-                        _curr_cat = cat_names_lkp.get(eobj.tx_category_id, eobj.category or "")
-                        _new_cat_name = st.selectbox(_t("form.category"), _ecat_names,
-                                                      index=_ecat_names.index(_curr_cat) if _curr_cat in _ecat_names else 0,
-                                                      key=f"edit_cat_{row_key}") if _ecat_names else None
-                        _new_cat_obj = next((c for c in _ecats if c.name == _new_cat_name), None) if _new_cat_name else None
-                        _new_subcat_id = eobj.tx_subcategory_id
-                        if _new_cat_obj:
-                            _esubs = cq(session, TransactionSubcategory).filter_by(category_id=_new_cat_obj.id, is_active=True).order_by(TransactionSubcategory.name).all()
-                            _esub_names = [s.name for s in _esubs]
-                            _curr_sub = subcat_names_lkp.get(eobj.tx_subcategory_id, "")
-                            if _esub_names:
-                                _new_sub_name = st.selectbox(_t("form.subcategory"), _esub_names,
-                                                              index=_esub_names.index(_curr_sub) if _curr_sub in _esub_names else 0,
-                                                              key=f"edit_sub_{row_key}")
-                                _sub_obj = next((s for s in _esubs if s.name == _new_sub_name), None)
-                                _new_subcat_id = _sub_obj.id if _sub_obj else None
-                        _new_notes = st.text_area(_t("form.notes"), value=eobj.description or "", key=f"edit_notes_{row_key}")
-                        if st.button(_t("form.save_changes"), key=f"edit_save_{row_key}", type="primary"):
-                            if not _new_amt or _new_amt <= 0:
-                                st.error(_t("form.invalid_amount"))
-                            else:
-                                _f = {}
-                                if _new_date != eobj.date: _f["date"] = _new_date
-                                if abs(_new_amt - eobj.amount) > 0.001: _f["amount"] = _new_amt
-                                if _new_pm != (eobj.payment_method or "Cash"): _f["payment_method"] = _new_pm
-                                if _new_cat_obj and _new_cat_obj.id != eobj.tx_category_id:
-                                    _f["tx_category_id"] = _new_cat_obj.id
-                                    _f["expense_type"] = _new_cat_name
-                                    _f["category"] = _new_cat_name
-                                if _new_subcat_id != eobj.tx_subcategory_id: _f["tx_subcategory_id"] = _new_subcat_id
-                                if _new_notes.strip() != (eobj.description or ""): _f["description"] = _new_notes.strip()
-                                if not _f:
-                                    st.info(_t("je.no_changes"))
-                                else:
-                                    _ok, _err = edit_expense(session, eid, _f)
-                                    if _ok:
-                                        st.session_state["txh_active_edit"] = None
-                                        st.rerun()
-                                    else:
-                                        st.error(_err)
-
-                    elif etype == "Purchase":
-                        _ef1, _ef2 = st.columns(2)
-                        _new_date = _ef1.date_input(_t("col.date"), value=eobj.date, key=f"edit_date_{row_key}")
-                        _new_amt = amount_input(_t("col.amount"), key=f"edit_amt_{row_key}", default=eobj.amount, container=_ef2)
-                        _vnames = [v.name for v in _vendors]
-                        _cv = session.get(Vendor, eobj.vendor_id)
-                        _cvname = _cv.name if _cv else ""
-                        _new_vname = st.selectbox(_t("form.vendor"), _vnames,
-                                                   index=_vnames.index(_cvname) if _cvname in _vnames else 0,
-                                                   key=f"edit_vendor_{row_key}") if _vnames else None
-                        _new_vendor = next((v for v in _vendors if v.name == _new_vname), None) if _new_vname else None
-                        _pt_opts = _at_purchase_pay_methods(session)
-                        _new_pt = st.selectbox(_t("form.purchase_type"), _pt_opts,
-                                                index=_pt_opts.index(eobj.purchase_type) if eobj.purchase_type in _pt_opts else 0,
-                                                key=f"edit_pm_{row_key}")
-                        _pcats = cq(session, TransactionCategory).filter_by(transaction_type="Purchase", is_active=True).order_by(TransactionCategory.name).all()
-                        _pcat_names = [c.name for c in _pcats]
-                        _curr_pcat = cat_names_lkp.get(eobj.tx_category_id, eobj.gl_debit or "")
-                        _new_pcat_name = st.selectbox(_t("form.category"), _pcat_names,
-                                                       index=_pcat_names.index(_curr_pcat) if _curr_pcat in _pcat_names else 0,
-                                                       key=f"edit_cat_{row_key}") if _pcat_names else None
-                        _new_pcat_obj = next((c for c in _pcats if c.name == _new_pcat_name), None) if _new_pcat_name else None
-                        _new_psubcat_id = eobj.tx_subcategory_id
-                        if _new_pcat_obj:
-                            _psubs = cq(session, TransactionSubcategory).filter_by(category_id=_new_pcat_obj.id, is_active=True).order_by(TransactionSubcategory.name).all()
-                            _psub_names = [s.name for s in _psubs]
-                            _curr_psub = subcat_names_lkp.get(eobj.tx_subcategory_id, "")
-                            if _psub_names:
-                                _new_psub_name = st.selectbox(_t("form.subcategory"), _psub_names,
-                                                               index=_psub_names.index(_curr_psub) if _curr_psub in _psub_names else 0,
-                                                               key=f"edit_sub_{row_key}")
-                                _psub_obj = next((s for s in _psubs if s.name == _new_psub_name), None)
-                                _new_psubcat_id = _psub_obj.id if _psub_obj else None
-                        _new_notes = st.text_area(_t("form.notes"), value=eobj.description or "", key=f"edit_notes_{row_key}")
-                        if st.button(_t("form.save_changes"), key=f"edit_save_{row_key}", type="primary"):
-                            if not _new_amt or _new_amt <= 0:
-                                st.error(_t("form.invalid_amount"))
-                            else:
-                                _f = {}
-                                if _new_date != eobj.date: _f["date"] = _new_date
-                                if abs(_new_amt - eobj.amount) > 0.001: _f["amount"] = _new_amt
-                                if _new_vendor and _new_vendor.id != eobj.vendor_id: _f["vendor_id"] = _new_vendor.id
-                                if _new_pt != (eobj.purchase_type or "Credit"): _f["purchase_type"] = _new_pt
-                                if _new_pcat_obj and _new_pcat_obj.id != eobj.tx_category_id:
-                                    _f["tx_category_id"] = _new_pcat_obj.id
-                                    _f["gl_debit"] = _new_pcat_name
-                                if _new_psubcat_id != eobj.tx_subcategory_id: _f["tx_subcategory_id"] = _new_psubcat_id
-                                if _new_notes.strip() != (eobj.description or ""): _f["description"] = _new_notes.strip()
-                                if not _f:
-                                    st.info(_t("je.no_changes"))
-                                else:
-                                    _ok, _err = edit_purchase(session, eid, _f)
-                                    if _ok:
-                                        st.session_state["txh_active_edit"] = None
-                                        st.rerun()
-                                    else:
-                                        st.error(_err)
-                    else:
-                        st.info(_t("je.unsupported_type"))
-
-            # ── Void confirm ──────────────────────────────────────────────────────
-            if st.session_state.get(f"txh_void_confirm_{row_key}"):
-                with st.container(border=True):
-                    st.warning(_t("je.void_confirm"))
-                    _vr = st.text_input(_t("form.void_reason_label"), key=f"txh_void_reason_{row_key}", placeholder=_t("field.void_reason_placeholder"))
-                    _vc1, _vc2 = st.columns(2)
-                    if _vc1.button("Confirm Void", key=f"txh_void_ok_{row_key}", type="primary"):
-                        _reason = _vr or "Manual void"
-                        if etype == "Sale":
-                            void_sale(session, eid, _reason)
-                        elif etype == "ExpenseRecord":
-                            void_expense(session, eid, _reason)
-                        elif etype == "Purchase":
-                            void_purchase(session, eid, _reason)
-                        elif etype == "BankTransaction":
-                            _btxn_chk = session.get(BankTransaction, eid)
-                            _desc_chk  = (_btxn_chk.description or "") if _btxn_chk else ""
-                            if _btxn_chk and _desc_chk.startswith("Card Sale "):
-                                st.error(
-                                    "This banking entry originated from a Card Sale. "
-                                    "Card Sale deposits cannot be voided from Banking. "
-                                    "Void the originating Sale instead."
-                                )
-                            elif _btxn_chk and (
-                                _desc_chk.startswith("Capital Contribution #")
-                                or _desc_chk.startswith("Owner Drawing #")
-                            ):
-                                st.error(_t("bank.err.equity_void"))
-                            elif _btxn_chk and (_btxn_chk.statement_ref or "").startswith("bsr:"):
-                                st.error(_t("bank.err.stmt_linked_void"))
-                            else:
-                                void_bank_transaction(session, eid, _reason)
-                        elif etype == "Payable":
-                            void_payable(session, eid, _reason)
-                        st.session_state.pop(f"txh_void_confirm_{row_key}", None)
-                        st.rerun()
-                    if _vc2.button("Cancel", key=f"txh_void_cancel_{row_key}"):
-                        st.session_state.pop(f"txh_void_confirm_{row_key}", None)
-                        st.rerun()
+    _txh_render_transaction_list(
+        session,
+        rows=rows,
+        edit_pairs=_edit_pairs,
+        currency=currency,
+        cat_names_lkp=cat_names_lkp,
+        subcat_names_lkp=subcat_names_lkp,
+        vendors=_vendors,
+        mobile=_txh_mobile,
+    )
 
 
 def _bsi_mapping_from_session() -> dict[str, str | None]:

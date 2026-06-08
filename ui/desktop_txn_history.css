@@ -1,0 +1,200 @@
+/* Transaction Ledger — desktop table layout only (erp-txh-desktop-host) */
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-shell {
+  margin: 8px 0 12px;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-head {
+  display: grid;
+  grid-template-columns:
+    0.68fr 0.88fr 1.05fr 3.4fr minmax(8.5rem, 1.2fr) 0.92fr 0.72fr;
+  gap: 0;
+  padding: 8px 10px;
+  margin: 0;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid var(--theme-border);
+  border-bottom: 2px solid color-mix(in srgb, var(--theme-border) 70%, var(--theme-muted) 30%);
+  background: color-mix(in srgb, var(--theme-bg) 55%, var(--theme-card) 45%);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--theme-muted);
+  position: sticky;
+  top: var(--hdr-h, 60px);
+  z-index: 12;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--theme-shadow) 35%, transparent);
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-head span:last-child,
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-head-amt {
+  text-align: right;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"] {
+  margin: 0 !important;
+  padding: 0 !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-border) 80%, transparent);
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"]:hover {
+  background: color-mix(in srgb, var(--theme-info) 4%, var(--theme-card) 96%);
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"] [data-testid="stHorizontalBlock"] {
+  align-items: center !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 7px 4px !important;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"] [data-testid="stColumn"] {
+  min-width: 0 !important;
+  padding: 0 6px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Description — widest flexible column */
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"] [data-testid="stColumn"]:nth-child(4) {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+}
+
+/* Amount — never shrink or wrap */
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"] [data-testid="stColumn"]:nth-child(5) {
+  flex: 0 0 auto !important;
+  min-width: 8.5rem !important;
+  width: auto !important;
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"] [data-testid="stColumn"]:nth-child(5) p,
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"] [data-testid="stColumn"]:nth-child(5) [data-testid="stMarkdownContainer"] {
+  width: max-content !important;
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+/* Status — vertically center pills */
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"] [data-testid="stColumn"]:nth-child(6) {
+  justify-content: flex-start !important;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"] [data-testid="stColumn"]:nth-child(6) p,
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"] [data-testid="stColumn"]:nth-child(6) [data-testid="stMarkdownContainer"] {
+  display: flex !important;
+  align-items: center !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+/* Actions — compact, right-aligned */
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"] [data-testid="stColumn"]:nth-child(7) {
+  flex: 0 0 auto !important;
+  justify-content: flex-end !important;
+  padding-right: 2px !important;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"] [data-testid="stColumn"] p {
+  margin: 0 !important;
+  font-size: 13px !important;
+  line-height: 1.35 !important;
+  color: var(--theme-text) !important;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_actions_"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  width: 100% !important;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_actions_"] [data-testid="stVerticalBlock"] {
+  width: auto !important;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_actions_"] [data-testid="stHorizontalBlock"] {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 1px !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  width: auto !important;
+  margin: 0 !important;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_actions_"] [data-testid="stColumn"] {
+  width: auto !important;
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_actions_"] button {
+  min-width: 22px !important;
+  width: 22px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-cell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-cell--amt {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  word-break: keep-all !important;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-cell--amt-in { color: var(--theme-success); }
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-cell--amt-out { color: var(--theme-danger); }
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-cell--amt-muted { color: var(--theme-muted); }
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-cell--desc {
+  color: color-mix(in srgb, var(--theme-muted) 25%, var(--theme-text) 75%);
+  font-size: 12px;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-cell--status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 22px;
+  line-height: 1.2;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-cell--status .erp-txh-row-pills {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-cell--void {
+  opacity: 0.55;
+}
+
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-wrap {
+  border: 1px solid var(--theme-border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+  margin-bottom: 0;
+}
