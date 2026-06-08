@@ -862,7 +862,7 @@ def _refresh_user_company_memberships(session, user_id: int) -> list[tuple[int, 
 
 
 def _render_company_switch_menu(*, key_prefix: str) -> None:
-    """Company picker rows — used by mobile header company popover."""
+    """Company picker rows — mobile header popover and desktop profile popover."""
     _memberships = st.session_state.get("_user_company_memberships") or []
     _active_cid = st.session_state.get("active_company_id")
     if len(_memberships) <= 1:
@@ -1042,6 +1042,10 @@ def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
                     f'padding:2px 0 6px;">🏢 {_display_company_name(str(_co_name))}</div>',
                     unsafe_allow_html=True,
                 )
+            _prof_memberships = st.session_state.get("_user_company_memberships") or []
+            if _legacy_desktop and len(_prof_memberships) > 1:
+                st.caption(_t("header.switch_company"))
+                _render_company_switch_menu(key_prefix="hdr_prof_co")
             st.divider()
             _acct_key = "hdr_my_account_btn" if _legacy_desktop else _k("hdr_acct")
             if st.button("⚙  " + _t("header.my_account"), key=_acct_key, use_container_width=True):
@@ -22853,11 +22857,7 @@ def render_my_account(session):
                 new_phone = fc2.text_input(_t("account.phone"),
                                            value=getattr(db_user, "phone", "") or "")
                 rf1, rf2 = st.columns(2)
-                _role_badge = (
-                    f'<span style="background:{_rc};color:#fff;font-size:10px;'
-                    f'font-weight:700;padding:2px 10px;border-radius:99px;">'
-                    f'{_company_role_label(_display_role)}</span>'
-                )
+                _role_badge = mono_role_pill_html(_company_role_label(_display_role))
                 rf1.markdown(f"**{_t('account.role')}**  \n{_role_badge}", unsafe_allow_html=True)
                 _since = db_user.created_at.strftime("%d %b %Y") if db_user.created_at else "—"
                 rf2.markdown(f"**{_t('account.member_since')}**  \n{_since}")
