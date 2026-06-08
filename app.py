@@ -4129,6 +4129,40 @@ def _mgmt_report_select(widget_key: str, options: list[tuple[str, str]]) -> str:
         )
 
 
+_COMPANY_SCOPED_AT_KEYS = (
+    "at_amount_display",
+    "at_vendor",
+    "at_cust",
+    "at_cust_sel",
+    "at_payable_id",
+    "at_inv",
+    "at_cat",
+    "at_subcat",
+    "at_last_cat_id",
+    "mob_at_cat_id",
+    "mob_at_subcat_id",
+    "mob_at_cat_name",
+    "at_bank_pay_acct",
+    "at_card_bank_acct",
+    "at_cc_card_id",
+    "mob_at_bank_pay_sel",
+    "mob_at_card_bank_sel",
+    "mob_at_cc_card_id",
+    "mob_at_vendor_sel",
+    "mob_at_inv_sel",
+    "mob_at_payable_sel",
+    "at_last_vendor",
+    "mob_at_picker",
+    "mob_at_picker_search",
+)
+
+
+def _clear_company_scoped_session_state() -> None:
+    """Drop Add Transaction draft fields that belong to the previous company."""
+    for _k in _COMPANY_SCOPED_AT_KEYS:
+        st.session_state.pop(_k, None)
+
+
 def _activate_company_in_session(
     session,
     user_id: int,
@@ -4150,6 +4184,7 @@ def _activate_company_in_session(
     st.session_state["active_company_name"] = company.name
     if membership_count is not None:
         st.session_state["active_company_membership_count"] = membership_count
+    _clear_company_scoped_session_state()
     return True
 
 
@@ -4481,11 +4516,13 @@ def render_company_picker(session) -> None:
                         ).first()
                         _valid_co = session.get(Company, _m.company_id)
                         if _valid_m and _valid_co and _valid_co.is_active:
-                            st.session_state["active_company_id"]   = _m.company_id
-                            st.session_state["active_company_role"] = _valid_m.role
-                            st.session_state["active_company_name"] = _valid_co.name
-                            st.session_state["active_company_membership_count"] = len(memberships)
-                            st.rerun()
+                            if _activate_company_in_session(
+                                session,
+                                u["id"],
+                                _m.company_id,
+                                membership_count=len(memberships),
+                            ):
+                                st.rerun()
                         else:
                             st.error(_t("picker.unavailable"))
 
@@ -4809,6 +4846,31 @@ _AT_TYPE_I18N: dict[str, str] = {
 }
 
 
+_AT_COMPANY_CC_TXN_TYPES = frozenset({"Expense", "Purchase", "Supplier Payment"})
+
+
+def _at_txn_allows_company_cc(txn_type: str) -> bool:
+    """Company Credit Card is for business outflows only — never Sale or Customer Payment."""
+    if txn_type not in _AT_COMPANY_CC_TXN_TYPES:
+        return False
+    if txn_type == "Expense" and _mob_at_is_salary_mode():
+        return False
+    return True
+
+
+def _at_sale_card_deposit_accounts(bank_accounts: list) -> list:
+    """Sale Card settlement — bank/deposit accounts only (not company credit card liability)."""
+    return [a for a in bank_accounts if not is_credit_card_account(a)]
+
+
+def _at_clear_invalid_card_bank_selection(bank_accounts: list) -> None:
+    """Drop stale Sale Card deposit picks that point at a company credit card account."""
+    allowed = {a.name for a in _at_sale_card_deposit_accounts(bank_accounts)}
+    for _k in ("at_card_bank_acct", "mob_at_card_bank_sel"):
+        if st.session_state.get(_k) not in allowed:
+            st.session_state.pop(_k, None)
+
+
 def _at_allowed_pay_methods(session, txn_type: str) -> list[str]:
     """Payment methods valid for an Add Transaction type."""
     if txn_type == "Sale":
@@ -4858,6 +4920,7 @@ def _coerce_at_payment_method(session, txn_type: str) -> None:
         return
     pm = st.session_state.get("at_pm")
     if pm in allowed:
+        _at_clear_stale_payment_account_keys(pm)
         return
     new_pm = _at_default_pay_method(session, txn_type)
     st.session_state["at_pm"] = new_pm
@@ -5092,8 +5155,10 @@ def _form_company_cc_card_id(session, payment_method: str, key: str) -> int | No
     )
 
 
-def _at_render_company_cc_select(session) -> None:
+def _at_render_company_cc_select(session, *, txn_type: str) -> None:
     """Desktop New Transaction: pick company credit card when payment method is CC."""
+    if not _at_txn_allows_company_cc(txn_type):
+        return
     if st.session_state.get("at_pm") != _COMPANY_CC_METHOD:
         return
     cid = _current_company_id()
@@ -5116,8 +5181,10 @@ def _at_render_company_cc_select(session) -> None:
     )
 
 
-def _mob_at_render_company_cc_select(session) -> None:
+def _mob_at_render_company_cc_select(session, *, txn_type: str) -> None:
     """Mobile New Transaction: company credit card picker when at_pm is CC."""
+    if not _at_txn_allows_company_cc(txn_type):
+        return
     if st.session_state.get("at_pm") != _COMPANY_CC_METHOD:
         return
     cid = _current_company_id()
@@ -11686,12 +11753,14 @@ def _mob_at_maybe_bank_pay_trigger(
 
 
 def _mob_at_render_card_bank_trigger(bank_accounts: list) -> bool:
-    if not bank_accounts:
+    deposit_accounts = _at_sale_card_deposit_accounts(bank_accounts)
+    if not deposit_accounts:
         return False
+    _at_clear_invalid_card_bank_selection(bank_accounts)
     selected = (
         st.session_state.get("mob_at_card_bank_sel")
         or st.session_state.get("at_card_bank_acct")
-        or bank_accounts[0].name
+        or deposit_accounts[0].name
     )
     with st.container(border=False, key="mob_at_card_bank_trigger"):
         if st.button(
@@ -11706,7 +11775,7 @@ def _mob_at_render_card_bank_trigger(bank_accounts: list) -> bool:
 
 
 def _mob_at_render_card_bank_picker_sheet(bank_accounts: list) -> bool:
-    options = _mob_at_bank_options(bank_accounts)
+    options = _mob_at_bank_options(_at_sale_card_deposit_accounts(bank_accounts))
     selected_key = next(
         (
             o.key
@@ -12072,6 +12141,7 @@ def _mob_at_button_row(
                 type="primary" if active == val else "secondary",
             ):
                 st.session_state[state_key] = val
+                _at_clear_stale_payment_account_keys(val)
                 return True
     return False
 
@@ -12292,7 +12362,9 @@ def _render_add_transaction_mobile(
             ):
                 st.rerun()
             if st.session_state.get("at_pm") == "Card":
-                if bank_accounts:
+                _at_clear_invalid_card_bank_selection(bank_accounts)
+                _deposit_accts = _at_sale_card_deposit_accounts(bank_accounts)
+                if _deposit_accts:
                     if _mob_at_render_card_bank_trigger(bank_accounts):
                         st.rerun()
                 else:
@@ -12326,7 +12398,7 @@ def _render_add_transaction_mobile(
                 st.rerun()
             if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
                 st.rerun()
-            _mob_at_render_company_cc_select(session)
+            _mob_at_render_company_cc_select(session, txn_type="Expense")
             if _mob_at_types_with_currency("Expense"):
                 if _mob_at_render_currency_chips(currency_default):
                     st.rerun()
@@ -12351,7 +12423,7 @@ def _render_add_transaction_mobile(
                 st.rerun()
             if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
                 st.rerun()
-            _mob_at_render_company_cc_select(session)
+            _mob_at_render_company_cc_select(session, txn_type="Purchase")
             if _mob_at_types_with_currency("Purchase"):
                 if _mob_at_render_currency_chips(currency_default):
                     st.rerun()
@@ -12428,7 +12500,7 @@ def _render_add_transaction_mobile(
                     st.rerun()
                 if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
                     st.rerun()
-                _mob_at_render_company_cc_select(session)
+                _mob_at_render_company_cc_select(session, txn_type="Supplier Payment")
                 if _mob_at_types_with_currency("Supplier Payment"):
                     if _mob_at_render_currency_chips(currency_default):
                         st.rerun()
@@ -12696,7 +12768,10 @@ def render_add_transaction(session):
                             key="at_currency",
                         )
                         if at_payment_method == "Card":
-                            _card_acct_names = [a.name for a in bank_accounts]
+                            _at_clear_invalid_card_bank_selection(bank_accounts)
+                            _card_acct_names = [
+                                a.name for a in _at_sale_card_deposit_accounts(bank_accounts)
+                            ]
                             if _card_acct_names:
                                 st.selectbox(
                                     "🏦 " + _t("txn.bank_account_label"),
@@ -12805,7 +12880,7 @@ def render_add_transaction(session):
                             at_cat, at_cat_id = _inline_cat_row(session, txn_type, cats)
                             at_subcat_name, subcats_list = _inline_subcat_row(session, at_cat)
                         _at_render_bank_pay_select(bank_accounts)
-                        _at_render_company_cc_select(session)
+                        _at_render_company_cc_select(session, txn_type="Expense")
     
                     elif txn_type == "Purchase":
                         vendor_name_val = _inline_vendor_row(session, vendors)
@@ -12823,7 +12898,7 @@ def render_add_transaction(session):
                         at_cat, at_cat_id = _inline_cat_row(session, txn_type, cats)
                         at_subcat_name, subcats_list = _inline_subcat_row(session, at_cat)
                         _at_render_bank_pay_select(bank_accounts)
-                        _at_render_company_cc_select(session)
+                        _at_render_company_cc_select(session, txn_type="Purchase")
     
                     elif txn_type == "Supplier Payment":
                         _at_clear_category_session_state()
@@ -12907,7 +12982,7 @@ def render_add_transaction(session):
                             key="at_currency",
                         )
                         _at_render_bank_pay_select(bank_accounts)
-                        _at_render_company_cc_select(session)
+                        _at_render_company_cc_select(session, txn_type="Supplier Payment")
     
                     elif txn_type == "Customer Payment":
                         if open_sales:
