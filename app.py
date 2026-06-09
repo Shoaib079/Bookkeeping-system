@@ -248,9 +248,9 @@ st.set_page_config(
 )
 
 # ── Development mode ──────────────────────────────────────────────────────────
-# Set to True to skip the login screen during local development / testing.
-# The full auth system stays intact; flip to False before any real deployment.
-DEVELOPMENT_MODE = True
+# Enabled only when ERP_DEVELOPMENT_MODE is set (e.g. export ERP_DEVELOPMENT_MODE=true).
+# The full auth system stays intact; leave unset for production deployments.
+DEVELOPMENT_MODE = os.environ.get("ERP_DEVELOPMENT_MODE", "").lower() in ("1", "true", "yes")
 
 SETTINGS_FILE = "settings.json"  # kept for one-time migration reference only
 
@@ -1121,7 +1121,11 @@ def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
             f'{" erp-hdr-notif-active" if notif_total > 0 else ""}"></span>',
             unsafe_allow_html=True,
         )
-        _bell_lbl = f"🔔{notif_total}" if notif_total > 0 else "🔔"
+        _bell_lbl = (
+            "🔔"
+            if _is_mobile_ui()
+            else (f"🔔{notif_total}" if notif_total > 0 else "🔔")
+        )
         _notif_key = "hdr_notif_pop" if _legacy_desktop else _k("hdr_notif")
         with st.popover(_bell_lbl, help=_t("header.notifications_help"), key=_notif_key):
             st.markdown(_t("header.notifications_title"))
@@ -1132,33 +1136,30 @@ def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
                 if notif["overdue_ar"] > 0:
                     _c1, _c2 = st.columns([5, 2])
                     _c1.markdown(
-                        f"📄 **{notif['overdue_ar']}** overdue "
-                        f"receivable{'s' if notif['overdue_ar'] != 1 else ''}"
+                        _t("notif.line.overdue_ar", count=notif["overdue_ar"])
                     )
                     _ar_key = "notif_ar_btn" if _legacy_desktop else _k("notif_ar")
-                    if _c2.button("View →", key=_ar_key):
+                    if _c2.button(_t("notif.view"), key=_ar_key):
                         _mobile_close_app_surfaces()
                         st.session_state["nav_selection"] = "📄 Receivables"
                         st.rerun()
                 if notif["overdue_ap"] > 0:
                     _c1, _c2 = st.columns([5, 2])
                     _c1.markdown(
-                        f"📌 **{notif['overdue_ap']}** overdue "
-                        f"payable{'s' if notif['overdue_ap'] != 1 else ''}"
+                        _t("notif.line.overdue_ap", count=notif["overdue_ap"])
                     )
                     _ap_key = "notif_ap_btn" if _legacy_desktop else _k("notif_ap")
-                    if _c2.button("View →", key=_ap_key):
+                    if _c2.button(_t("notif.view"), key=_ap_key):
                         _mobile_close_app_surfaces()
                         st.session_state["nav_selection"] = "📌 Payables"
                         st.rerun()
                 if notif["low_stock"] > 0:
                     _c1, _c2 = st.columns([5, 2])
                     _c1.markdown(
-                        f"📦 **{notif['low_stock']}** low-stock "
-                        f"item{'s' if notif['low_stock'] != 1 else ''}"
+                        _t("notif.line.low_stock", count=notif["low_stock"])
                     )
                     _ls_key = "notif_ls_btn" if _legacy_desktop else _k("notif_ls")
-                    if _c2.button("View →", key=_ls_key):
+                    if _c2.button(_t("notif.view"), key=_ls_key):
                         _mobile_close_app_surfaces()
                         st.session_state["nav_selection"] = "📦 Inventory"
                         st.rerun()
@@ -1180,7 +1181,7 @@ def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
 
         if _is_mobile_ui():
             if st.button(
-                _initials,
+                "👤",
                 key="hdr_mobile_profile_btn",
                 help=_t("header.my_account"),
             ):
@@ -1288,8 +1289,8 @@ def render_top_header(
                                 st.rerun()
                         else:
                             st.markdown(
-                                f'<div class="erp-hdr-mobile-title">'
-                                f'<div class="erp-hdr-mobile-co">{_co_esc}</div>'
+                                f'<div class="erp-hdr-mobile-title erp-hdr-co-pill">'
+                                f'<span class="erp-hdr-mobile-co">{_co_esc}</span>'
                                 f'</div>',
                                 unsafe_allow_html=True,
                             )
@@ -4010,6 +4011,15 @@ def _ob_display_df(df: pd.DataFrame) -> pd.DataFrame:
     return _localize_df(disp)
 
 
+# Transaction Ledger type filter (canonical English values in session state).
+_TXH_TYPE_FILTER_I18N: dict[str, str] = {
+    "Sale": "txn.type.sale",
+    "Expense": "txn.type.expense",
+    "Purchase": "txn.type.purchase",
+    "Banking": "txh.filter.banking",
+    "Payable": "txnrow.payable",
+}
+
 # Composite "Type" values shown in the Transaction History row/export.
 _TXN_ROW_TYPE_I18N: dict[str, str] = {
     "Cash Sale": "txnrow.cash_sale",
@@ -4179,6 +4189,13 @@ _COMPANY_SCOPED_AT_KEYS = (
     "at_last_vendor",
     "mob_at_picker",
     "mob_at_picker_search",
+    "at_date",
+    "at_type_idx",
+    "at_expense_mode",
+    "at_currency",
+    "at_pm",
+    "at_notes_field",
+    "at_picker_mode",
 )
 
 
@@ -4472,6 +4489,14 @@ def _execute_company_switch() -> None:
     _go_to_company_picker()
 
 
+def _map_setup01_create_error(exc: BaseException) -> str:
+    """Map provisioning failures to catalog keys (never raw English)."""
+    msg = str(exc).strip().lower()
+    if "name" in msg and "required" in msg:
+        return "picker.name_required"
+    return "picker.create_failed"
+
+
 def _submit_setup01_create_company(session, user_id: int) -> tuple[bool, str | None]:
     """Create company from SETUP-01 Summary (Step 8 only). Returns (ok, name_or_error_key)."""
     if st.session_state.get(SETUP01_SESSION_CREATING):
@@ -4515,10 +4540,7 @@ def _submit_setup01_create_company(session, user_id: int) -> tuple[bool, str | N
         return True, created.name
     except ValueError as exc:
         st.session_state.pop(SETUP01_SESSION_CREATING, None)
-        msg = str(exc)
-        if "name" in msg.lower():
-            return False, "picker.name_required"
-        return False, msg
+        return False, _map_setup01_create_error(exc)
     except Exception:
         st.session_state.pop(SETUP01_SESSION_CREATING, None)
         return False, "picker.create_failed"
@@ -4549,13 +4571,12 @@ def render_company_picker(session) -> None:
 
     _left, mid, _right = st.columns([1, 2, 1])
     with mid:
-        st.markdown("<div style='height:40px;'></div>", unsafe_allow_html=True)
+        st.markdown('<div class="erp-auth-top-spacer"></div>', unsafe_allow_html=True)
         st.markdown(
-            f'<div class="banner banner-primary" style="padding:24px 32px 18px;'
-            f'text-align:center;margin-bottom:20px;">'
-            f'<div style="font-size:26px;margin-bottom:4px;">🏢</div>'
-            f'<div style="font-size:19px;font-weight:700;">{_t('picker.select_company')}</div>'
-            f'<div style="font-size:12px;opacity:.7;margin-top:3px;">'
+            f'<div class="banner banner-primary erp-auth-banner">'
+            f'<div class="erp-auth-banner-icon">🏢</div>'
+            f'<div class="erp-auth-banner-title">{_t("picker.select_company")}</div>'
+            f'<div class="erp-auth-banner-sub">'
             f'{_t("picker.signed_in_as", name=u.get("display_name") or u.get("username"))}</div>'
             f'</div>',
             unsafe_allow_html=True,
@@ -4565,8 +4586,7 @@ def render_company_picker(session) -> None:
             st.info(_t("picker.no_membership"))
         else:
             st.markdown(
-                f'<div style="font-size:13px;font-weight:600;color:var(--theme-text);'
-                f'margin-bottom:12px;">{_t('picker.choose_company')}</div>',
+                f'<div class="erp-auth-section-label">{_t("picker.choose_company")}</div>',
                 unsafe_allow_html=True,
             )
 
@@ -4630,12 +4650,12 @@ def render_login(session):
 
     _left, mid, _right = st.columns([1, 2, 1])
     with mid:
-        st.markdown("<div style='height:40px;'></div>", unsafe_allow_html=True)
+        st.markdown('<div class="erp-auth-top-spacer"></div>', unsafe_allow_html=True)
         st.markdown(
-            f'<div class="banner banner-primary" style="padding:24px 32px 18px;text-align:center;margin-bottom:20px;">'
-            f'<div style="font-size:26px;margin-bottom:4px;">📊</div>'
-            f'<div style="font-size:19px;font-weight:700;">{company}</div>'
-            f'<div style="font-size:12px;opacity:.7;margin-top:3px;">{_t('login.erp_title')}</div>'
+            f'<div class="banner banner-primary erp-auth-banner">'
+            f'<div class="erp-auth-banner-icon">📊</div>'
+            f'<div class="erp-auth-banner-title">{html.escape(company)}</div>'
+            f'<div class="erp-auth-banner-sub">{_t("login.erp_title")}</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -4646,8 +4666,7 @@ def render_login(session):
         if users and not selected_user:
             # ── Step 1: user tile selection ───────────────────────────────────
             st.markdown(
-                f'<div style="font-size:13px;font-weight:600;color:var(--theme-text);'
-                f'text-align:center;margin-bottom:12px;">{_t('login.who_signs_in')}</div>',
+                f'<div class="erp-auth-section-label is-center">{_t("login.who_signs_in")}</div>',
                 unsafe_allow_html=True,
             )
             cols = st.columns(min(len(users), 3))
@@ -4680,7 +4699,7 @@ def render_login(session):
                     f'{_t("login.sign_in_heading")}</div>',
                     unsafe_allow_html=True,
                 )
-            with st.form("login_form", enter_to_submit=False):
+            with st.form("login_form"):
                 if not selected_user:
                     username = st.text_input(_t("login.username"), key="login_username", placeholder="")
                 else:
@@ -10923,6 +10942,14 @@ def _mob_at_is_subcat_picker(picker_kind: str) -> bool:
     return picker_kind.endswith("_subcat")
 
 
+def _mob_at_picker_row_dot_colour(picker_kind: str) -> str | None:
+    """Type accent dot for category/subcategory list rows; None for other pickers."""
+    if not (picker_kind.endswith("_cat") or picker_kind.endswith("_subcat")):
+        return None
+    prefix = picker_kind.split("_", 1)[0]
+    return _MOB_AT_C_TYPE_COLOUR.get(prefix)
+
+
 def _mob_at_category_options(session, txn_type: str) -> list[_MobAtGridPick]:
     cats = _at_filter_transaction_categories(
         cq(session, TransactionCategory)
@@ -11223,6 +11250,86 @@ def _mob_at_render_grid_picker_sheet(
     return False
 
 
+def _mob_at_render_list_picker_sheet(
+    *,
+    title: str,
+    options: list,
+    picker_kind: str,
+    selected_key: str | None,
+    on_pick,
+    searchable: bool = True,
+    row_dot_colour: str | None = None,
+) -> bool:
+    """Full-width list picker — same contract as grid picker; one option per row."""
+    if not options:
+        _mob_at_close_picker()
+        return False
+
+    with st.container(border=False, key="erp_mob_at_picker_sheet"):
+        st.markdown(
+            '<div class="erp-mob-at-picker-grab"></div>',
+            unsafe_allow_html=True,
+        )
+        with st.container(border=False, key="mob_at_picker_hdr"):
+            hc, xc = st.columns([6, 1], gap="small")
+            with hc:
+                st.markdown(
+                    f'<div class="erp-mob-at-picker-title">{html.escape(title)}</div>',
+                    unsafe_allow_html=True,
+                )
+            with xc:
+                if st.button("×", key="mob_at_picker_close", help=_t("common.cancel")):
+                    _mob_at_close_picker()
+                    return True
+
+        display_options = options
+        if searchable:
+            query = st.text_input(
+                _tf("txn.mob.search", "Search"),
+                key="mob_at_picker_search",
+                label_visibility="collapsed",
+                placeholder=_tf("txn.mob.search_ph", "Type to filter…"),
+            )
+            display_options = _mob_at_filter_options(options, query)
+
+        if not display_options:
+            st.caption(_tf("txn.mob.search_empty", "No matches"))
+            return False
+
+        with st.container(border=False, key="mob_at_picker_grid"):
+            for pick in display_options:
+                is_active = pick.key == selected_key
+                btn_type = "primary" if is_active else "secondary"
+                btn_key = f"mob_at_pick_{picker_kind}_{pick.key}"
+                if row_dot_colour:
+                    dc, bc = st.columns([0.06, 1], gap="small")
+                    with dc:
+                        st.markdown(
+                            f'<div class="erp-mob-at-cat-dot" style="background:{row_dot_colour}"></div>',
+                            unsafe_allow_html=True,
+                        )
+                    with bc:
+                        if st.button(
+                            pick.label,
+                            key=btn_key,
+                            use_container_width=True,
+                            type=btn_type,
+                        ):
+                            on_pick(pick)
+                            _mob_at_close_picker()
+                            return True
+                elif st.button(
+                    pick.label,
+                    key=btn_key,
+                    use_container_width=True,
+                    type=btn_type,
+                ):
+                    on_pick(pick)
+                    _mob_at_close_picker()
+                    return True
+    return False
+
+
 def _mob_at_render_category_picker_sheet(
     session,
     *,
@@ -11230,12 +11337,13 @@ def _mob_at_render_category_picker_sheet(
 ) -> bool:
     txn_type = _mob_at_picker_txn_type(picker_kind)
     options = _mob_at_category_options(session, txn_type)
-    return _mob_at_render_grid_picker_sheet(
+    return _mob_at_render_list_picker_sheet(
         title=_tf("txn.mob.pick_category", "Choose category"),
         options=options,
         picker_kind=picker_kind,
         selected_key=_mob_at_cat_selected_key(),
         on_pick=lambda pick: _mob_at_apply_category_pick(session, pick),
+        row_dot_colour=_mob_at_picker_row_dot_colour(picker_kind),
     )
 
 
@@ -11254,12 +11362,13 @@ def _mob_at_render_subcategory_picker_sheet(
     title = _tf("txn.mob.pick_subcategory", "Choose subcategory")
     if cat_name:
         title = f"{title} — {cat_name}"
-    return _mob_at_render_grid_picker_sheet(
+    return _mob_at_render_list_picker_sheet(
         title=title,
         options=options,
         picker_kind=picker_kind,
         selected_key=_mob_at_subcat_selected_key(),
         on_pick=lambda pick: _mob_at_apply_subcategory_pick(session, pick),
+        row_dot_colour=_mob_at_picker_row_dot_colour(picker_kind),
     )
 
 
@@ -11286,7 +11395,7 @@ def _mob_at_render_vendor_picker_sheet(session, vendors: list) -> bool:
                 _vendor_add_dialog(session)
                 return True
 
-    return _mob_at_render_grid_picker_sheet(
+    return _mob_at_render_list_picker_sheet(
         title=_tf("txn.mob.pick_vendor", "Choose supplier"),
         options=options,
         picker_kind="vendor",
@@ -11311,7 +11420,7 @@ def _mob_at_render_invoice_picker_sheet(open_sales: list) -> bool:
         st.session_state["mob_at_inv_sel"] = opt.value_name or opt.label
         st.session_state["at_inv"] = opt.value_name or opt.label
 
-    return _mob_at_render_grid_picker_sheet(
+    return _mob_at_render_list_picker_sheet(
         title=_tf("txn.mob.pick_invoice", "Choose invoice"),
         options=options,
         picker_kind="invoice",
@@ -11336,7 +11445,7 @@ def _mob_at_render_payable_picker_sheet(
             st.session_state["at_payable_id"] = opt.value_id
         st.session_state["mob_at_payable_sel"] = opt.value_name or opt.label
 
-    return _mob_at_render_grid_picker_sheet(
+    return _mob_at_render_list_picker_sheet(
         title=_tf("txn.mob.pick_payable", "Choose payable"),
         options=options,
         picker_kind="payable",
@@ -11361,7 +11470,7 @@ def _mob_at_render_bank_picker_sheet(bank_accounts: list) -> bool:
         st.session_state["mob_at_bank_acct_sel"] = opt.value_name or opt.label
         st.session_state["at_bank_acct"] = opt.value_name or opt.label
 
-    return _mob_at_render_grid_picker_sheet(
+    return _mob_at_render_list_picker_sheet(
         title=_tf("txn.mob.pick_bank", "Choose bank account"),
         options=options,
         picker_kind="bank_acct",
@@ -11436,6 +11545,233 @@ def _mob_at_render_bank_trigger(bank_accounts: list) -> bool:
     return False
 
 
+# ---------------------------------------------------------------------------
+# Concept C — new picker sheets for txn_type / payment / date / currency
+# ---------------------------------------------------------------------------
+
+# Type display labels for the Row 1 type button and the type picker sheet.
+_MOB_AT_C_TYPE_ROWS = (
+    (0, "Sale",              "sale"),
+    (1, "Expense",           "expense"),
+    (2, "Purchase",          "purchase"),
+    (3, "Supplier Payment",  "supplier"),
+    (4, "Customer Payment",  "customer"),
+    (5, "Bank Transaction",  "bank"),
+    (_MOB_AT_SALARY_IDX, "Salary", "salary"),
+)
+
+# Dot colours per type key (matches design spec).
+_MOB_AT_C_TYPE_COLOUR: dict[str, str] = {
+    "sale":     "#10b981",
+    "expense":  "#f59e0b",
+    "purchase": "#8b5cf6",
+    "supplier": "#ec4899",
+    "customer": "#06b6d4",
+    "bank":     "#64748b",
+    "salary":   "#f97316",
+}
+
+
+def _mob_at_c_current_type_key() -> str:
+    """Return the short type key for the current at_type_idx / mob_at_more_idx."""
+    if _mob_at_is_salary_mode():
+        return "salary"
+    idx = st.session_state.get("at_type_idx", 0)
+    for row_idx, _label, key in _MOB_AT_C_TYPE_ROWS:
+        if row_idx == idx:
+            return key
+    return "sale"
+
+
+def _mob_at_c_type_label() -> str:
+    key = _mob_at_c_current_type_key()
+    for _idx, label, k in _MOB_AT_C_TYPE_ROWS:
+        if k == key:
+            return label
+    return "Sale"
+
+
+def _mob_at_c_apply_type(idx: int) -> None:
+    """Set at_type_idx and sync mob_at_tab / mob_at_more_idx from a Concept C type selection."""
+    st.session_state["at_type_idx"] = idx
+    if idx < 3:
+        st.session_state["mob_at_tab"] = idx
+    else:
+        st.session_state["mob_at_tab"] = 3
+        st.session_state["mob_at_more_idx"] = idx
+    # Clear category when type changes
+    for k in ("mob_at_cat_id", "mob_at_subcat_id", "mob_at_cat_name", "at_cat", "at_subcat"):
+        st.session_state.pop(k, None)
+
+
+def _mob_at_render_txn_type_picker_sheet() -> bool:
+    """Concept C — bottom sheet to pick transaction type."""
+    with st.container(border=False, key="erp_mob_at_picker_sheet"):
+        st.markdown('<div class="erp-mob-at-picker-grab"></div>', unsafe_allow_html=True)
+        with st.container(border=False, key="mob_at_picker_hdr"):
+            hc, xc = st.columns([6, 1], gap="small")
+            with hc:
+                st.markdown(
+                    '<div class="erp-mob-at-picker-title">Transaction Type</div>',
+                    unsafe_allow_html=True,
+                )
+            with xc:
+                if st.button("×", key="mob_at_picker_close", help=_t("common.cancel")):
+                    _mob_at_close_picker()
+                    return True
+
+        current_key = _mob_at_c_current_type_key()
+        with st.container(border=False, key="mob_at_picker_grid"):
+            for row_idx, label, key in _MOB_AT_C_TYPE_ROWS:
+                colour = _MOB_AT_C_TYPE_COLOUR.get(key, "#94a3b8")
+                is_active = key == current_key
+                # st.button does not render HTML — use markdown dot + plain text button
+                dc, bc = st.columns([0.06, 1], gap="small")
+                with dc:
+                    st.markdown(
+                        f'<div class="erp-mob-at-cat-dot" style="background:{colour}"></div>',
+                        unsafe_allow_html=True,
+                    )
+                with bc:
+                    if st.button(
+                        label,
+                        key=f"mob_at_pick_type_{key}",
+                        use_container_width=True,
+                        type="primary" if is_active else "secondary",
+                    ):
+                        _mob_at_c_apply_type(row_idx)
+                        _mob_at_close_picker()
+                        return True
+    return False
+
+
+def _mob_at_render_payment_picker_sheet(session) -> bool:
+    """Concept C — bottom sheet to pick payment method for current type."""
+    idx = st.session_state.get("at_type_idx", 0)
+    if _mob_at_is_salary_mode():
+        methods = [("Cash", "Cash"), ("Bank", "Bank")]
+    elif idx == 0:
+        methods = [("Cash", "Cash"), ("Card", "Card"), ("Credit", "On Account")]
+    elif idx == 1:
+        raw = _at_expense_pay_methods(session)
+        methods = [(m, _at_payment_method_label("Expense", m)) for m in raw]
+    elif idx == 2:
+        raw = _at_purchase_pay_methods(session)
+        methods = [(m, _at_payment_method_label("Purchase", m)) for m in raw]
+    elif idx == 3:
+        raw = _at_supplier_pay_methods(session)
+        methods = [(m, _at_payment_method_label("Supplier Payment", m)) for m in raw]
+    elif idx == 4:
+        methods = [("Cash", "Cash"), ("Bank", "Bank")]
+    else:
+        # Bank Transaction / Salary — no PM picker
+        _mob_at_close_picker()
+        return False
+
+    current_pm = st.session_state.get("at_pm", "Cash")
+    with st.container(border=False, key="erp_mob_at_picker_sheet"):
+        st.markdown('<div class="erp-mob-at-picker-grab"></div>', unsafe_allow_html=True)
+        with st.container(border=False, key="mob_at_picker_hdr"):
+            hc, xc = st.columns([6, 1], gap="small")
+            with hc:
+                st.markdown(
+                    '<div class="erp-mob-at-picker-title">Payment Method</div>',
+                    unsafe_allow_html=True,
+                )
+            with xc:
+                if st.button("×", key="mob_at_picker_close", help=_t("common.cancel")):
+                    _mob_at_close_picker()
+                    return True
+
+        with st.container(border=False, key="mob_at_picker_grid"):
+            for pm_val, pm_label in methods:
+                is_active = pm_val == current_pm
+                if st.button(
+                    pm_label,
+                    key=f"mob_at_pick_pm_{pm_val}",
+                    use_container_width=True,
+                    type="primary" if is_active else "secondary",
+                ):
+                    st.session_state["at_pm"] = pm_val
+                    _mob_at_close_picker()
+                    return True
+    return False
+
+
+def _mob_at_render_date_picker_sheet() -> bool:
+    """Concept C — bottom sheet with a date_input for at_date."""
+    with st.container(border=False, key="erp_mob_at_picker_sheet"):
+        st.markdown('<div class="erp-mob-at-picker-grab"></div>', unsafe_allow_html=True)
+        with st.container(border=False, key="mob_at_picker_hdr"):
+            hc, xc = st.columns([6, 1], gap="small")
+            with hc:
+                st.markdown(
+                    '<div class="erp-mob-at-picker-title">Date</div>',
+                    unsafe_allow_html=True,
+                )
+            with xc:
+                if st.button("×", key="mob_at_picker_close", help=_t("common.cancel")):
+                    _mob_at_close_picker()
+                    return True
+
+        new_date = st.date_input(
+            "Date",
+            value=st.session_state.get("at_date", datetime.date.today()),
+            key="mob_at_c_date_input",
+            label_visibility="collapsed",
+        )
+        if new_date != st.session_state.get("at_date"):
+            st.session_state["at_date"] = new_date
+        if st.button(
+            "✓ Confirm Date",
+            key="mob_at_c_date_confirm",
+            use_container_width=True,
+            type="primary",
+        ):
+            _mob_at_close_picker()
+            return True
+    return False
+
+
+def _mob_at_render_currency_picker_sheet(currency_default: str) -> bool:
+    """Concept C — bottom sheet for currency selection."""
+    currencies = CURRENCIES
+    current = st.session_state.get("at_currency", currency_default)
+    with st.container(border=False, key="erp_mob_at_picker_sheet"):
+        st.markdown('<div class="erp-mob-at-picker-grab"></div>', unsafe_allow_html=True)
+        with st.container(border=False, key="mob_at_picker_hdr"):
+            hc, xc = st.columns([6, 1], gap="small")
+            with hc:
+                st.markdown(
+                    '<div class="erp-mob-at-picker-title">Currency</div>',
+                    unsafe_allow_html=True,
+                )
+            with xc:
+                if st.button("×", key="mob_at_picker_close", help=_t("common.cancel")):
+                    _mob_at_close_picker()
+                    return True
+
+        with st.container(border=False, key="mob_at_picker_grid"):
+            ccols = st.columns(len(currencies), gap="small")
+            for col, cur in zip(ccols, currencies):
+                is_active = cur == current
+                if col.button(
+                    cur,
+                    key=f"mob_at_pick_cur_{cur}",
+                    use_container_width=True,
+                    type="primary" if is_active else "secondary",
+                ):
+                    st.session_state["at_currency"] = cur
+                    _mob_at_close_picker()
+                    return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# End Concept C picker sheets
+# ---------------------------------------------------------------------------
+
+
 def _mob_at_render_picker_sheet(
     session,
     *,
@@ -11446,6 +11782,16 @@ def _mob_at_render_picker_sheet(
     currency_default: str,
 ) -> bool:
     """Scrollable picker above the blue entry panel. Returns True if rerun needed."""
+    # Concept C new picker modes
+    if picker_kind == "txn_type":
+        return _mob_at_render_txn_type_picker_sheet()
+    if picker_kind == "payment":
+        return _mob_at_render_payment_picker_sheet(session)
+    if picker_kind == "date":
+        return _mob_at_render_date_picker_sheet()
+    if picker_kind == "currency":
+        return _mob_at_render_currency_picker_sheet(currency_default)
+    # Existing picker modes
     if picker_kind == "vendor":
         return _mob_at_render_vendor_picker_sheet(session, vendors)
     if picker_kind == "invoice":
@@ -11519,29 +11865,143 @@ def _mob_at_append_amount_digit(digit: str) -> bool:
     return True
 
 
-@st.fragment
-def _mob_at_render_amount_keypad_fragment(currency_default: str) -> None:
-    """Amount display + keypad — fragment rerun keeps type chips from re-rendering."""
-    amount_display = _mob_at_amount_display_text()
-    with st.container(border=False, key="mob_at_amount_row"):
-        ac1, ac2 = st.columns([5, 1], gap="small")
-        with ac1:
+# ---------------------------------------------------------------------------
+# Concept C — Row 1 + Category row helpers
+# ---------------------------------------------------------------------------
+
+
+def _mob_at_c_row1_date_label() -> str:
+    """Short formatted date for the Row 1 date button (e.g. '09 Jun')."""
+    d = st.session_state.get("at_date", datetime.date.today())
+    try:
+        return d.strftime("%-d %b")
+    except ValueError:
+        return d.strftime("%d %b")
+
+
+def _mob_at_render_c_row1(currency_default: str) -> None:
+    """Concept C — compact header row: [Type | Payment | Date | Currency]."""
+    type_label = _mob_at_c_type_label()
+    pm_raw = st.session_state.get("at_pm", "Cash")
+    idx = st.session_state.get("at_type_idx", 0)
+    if _mob_at_is_salary_mode():
+        pm_label = pm_raw
+    elif idx == 0:
+        pm_label = _at_payment_method_label("Sale", pm_raw)
+    elif idx == 1:
+        pm_label = _at_payment_method_label("Expense", pm_raw)
+    elif idx == 2:
+        pm_label = _at_payment_method_label("Purchase", pm_raw)
+    elif idx == 3:
+        pm_label = _at_payment_method_label("Supplier Payment", pm_raw)
+    else:
+        pm_label = pm_raw
+    date_label = _mob_at_c_row1_date_label()
+    currency_label = st.session_state.get("at_currency", currency_default)
+
+    with st.container(border=False, key="mob_at_row1"):
+        rc = st.columns([2.2, 2.0, 1.5, 0.9], gap="small")
+        with rc[0]:
+            if st.button(
+                type_label,
+                key="mob_at_c_type_btn",
+                use_container_width=True,
+                type="secondary",
+            ):
+                _mob_at_open_picker("txn_type")
+        with rc[1]:
+            # Hide PM button for types that have no payment choice
+            has_pm = idx not in (5,) and not _mob_at_is_salary_mode() or _mob_at_is_salary_mode()
+            if st.button(
+                pm_label,
+                key="mob_at_c_pm_btn",
+                use_container_width=True,
+                type="secondary",
+                disabled=(idx == 5),
+            ):
+                if idx != 5:
+                    _mob_at_open_picker("payment")
+        with rc[2]:
+            if st.button(
+                date_label,
+                key="mob_at_c_date_btn",
+                use_container_width=True,
+                type="secondary",
+            ):
+                _mob_at_open_picker("date")
+        with rc[3]:
+            if st.button(
+                currency_label,
+                key="mob_at_c_currency_btn",
+                use_container_width=True,
+                type="secondary",
+            ):
+                _mob_at_open_picker("currency")
+
+
+def _mob_at_render_c_cat_row(session, txn_type: str, *, picker_kind: str) -> bool:
+    """Concept C — full-width category button with type-coloured dot.
+
+    st.button does not render HTML in its label — it escapes it.
+    The coloured dot is rendered via st.markdown (unsafe_allow_html=True)
+    in a narrow column; the click target is a plain-text st.button.
+    """
+    options = _mob_at_category_options(session, txn_type)
+    if not options:
+        return False
+
+    type_key = _mob_at_c_current_type_key()
+    colour = _MOB_AT_C_TYPE_COLOUR.get(type_key, "#94a3b8")
+    cat_name = _mob_at_category_label(session, txn_type)
+
+    with st.container(border=False, key="mob_at_c_cat_row"):
+        dot_col, btn_col = st.columns([0.06, 1], gap="small")
+        with dot_col:
             st.markdown(
-                f'<div class="erp-mob-at-amount-display">'
-                f'<span class="erp-mob-at-ccy">{html.escape(currency_default)}</span>'
-                f'<span class="erp-mob-at-amt">{html.escape(amount_display)}</span>'
-                f'</div>',
+                f'<div class="erp-mob-at-cat-dot" style="background:{colour}"></div>',
                 unsafe_allow_html=True,
             )
-        with ac2:
+        with btn_col:
             if st.button(
-                _tf("txn.mob.save", "✓ Save"),
-                key="mob_at_save",
-                type="primary",
+                cat_name,
+                key=f"mob_at_c_cat_open_{picker_kind}",
                 use_container_width=True,
+                type="secondary",
             ):
-                st.session_state["mob_at_save_clicked"] = True
-                st.rerun(scope="app")
+                _mob_at_open_picker(picker_kind)
+                return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# End Concept C helpers
+# ---------------------------------------------------------------------------
+
+
+@st.fragment
+def _mob_at_render_amount_keypad_fragment(currency_default: str) -> None:
+    """Amount display + Save (full-width) + keypad — fragment keeps type row from re-rendering."""
+    amount_display = _mob_at_amount_display_text()
+    currency = st.session_state.get("at_currency", currency_default)
+
+    with st.container(border=False, key="mob_at_amount_row"):
+        st.markdown(
+            f'<div class="erp-mob-at-amount-display">'
+            f'<span class="erp-mob-at-ccy">{html.escape(currency)}</span>'
+            f'<span class="erp-mob-at-amt">{html.escape(amount_display)}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    with st.container(border=False, key="mob_at_save_row"):
+        if st.button(
+            _tf("txn.mob.save", "✓ Save"),
+            key="mob_at_save",
+            type="primary",
+            use_container_width=True,
+        ):
+            st.session_state["mob_at_save_clicked"] = True
+            st.rerun(scope="app")
 
     with st.container(border=False, key="mob_at_keypad"):
         for row in (("7", "8", "9"), ("4", "5", "6"), ("1", "2", "3"), (".", "0", "⌫")):
@@ -11815,7 +12275,7 @@ def _mob_at_render_bank_pay_picker_sheet(bank_accounts: list) -> bool:
         st.session_state["mob_at_bank_pay_sel"] = opt.value_name or opt.label
         st.session_state["at_bank_pay_acct"] = opt.value_name or opt.label
 
-    return _mob_at_render_grid_picker_sheet(
+    return _mob_at_render_list_picker_sheet(
         title=_tf("txn.mob.pick_bank_pay", "Which bank account?"),
         options=options,
         picker_kind="bank_pay",
@@ -11870,7 +12330,7 @@ def _mob_at_render_card_bank_picker_sheet(bank_accounts: list) -> bool:
         st.session_state["mob_at_card_bank_sel"] = opt.value_name or opt.label
         st.session_state["at_card_bank_acct"] = opt.value_name or opt.label
 
-    return _mob_at_render_grid_picker_sheet(
+    return _mob_at_render_list_picker_sheet(
         title=_tf("txn.mob.pick_card_bank", "Choose card deposit account"),
         options=options,
         picker_kind="card_bank",
@@ -11927,6 +12387,7 @@ def _mob_at_ensure_defaults(session, txn_type: str, currency_default: str, vendo
     st.session_state.setdefault("at_currency", currency_default)
     st.session_state.setdefault("at_notes_field", "")
     st.session_state.setdefault("at_expense_mode", "general")
+    st.session_state.setdefault("at_picker_mode", "")
     if txn_type == "Sale":
         st.session_state.setdefault("at_pm", "Cash")
         st.session_state.setdefault("at_cust", "Walk-in Customer")
@@ -11992,6 +12453,13 @@ def _at_gather_submit_fields(
         if cid:
             at_cat_id = cid
             at_cat = session.get(TransactionCategory, cid)
+        elif st.session_state.get("at_cat") and cats:
+            at_cat = next(
+                (c for c in cats if c.name == st.session_state["at_cat"]),
+                None,
+            )
+            if at_cat:
+                at_cat_id = at_cat.id
         elif st.session_state.get("at_last_cat_id"):
             at_cat_id = st.session_state["at_last_cat_id"]
             at_cat = session.get(TransactionCategory, at_cat_id)
@@ -12031,8 +12499,11 @@ def _at_gather_submit_fields(
     )
     bank_dest_val = st.session_state.get("at_bank_dest")
 
-    fallback_category = st.session_state.get("mob_at_cat_name") or _AT_EXPENSE_CATS[0]
-    effective_category = at_cat.name if at_cat else fallback_category
+    effective_category = ""
+    if at_cat:
+        effective_category = at_cat.name
+    elif st.session_state.get("mob_at_cat_name"):
+        effective_category = st.session_state["mob_at_cat_name"]
 
     return {
         "date": date,
@@ -12080,15 +12551,26 @@ def _at_process_submit(
         _sub_obj = next((s for s in ctx["subcats_list"] if s.name == ctx["at_subcat_name"]), None)
         at_subcat_id = _sub_obj.id if _sub_obj else None
 
-    if txn_type in ("Sale", "Expense", "Purchase") and ctx["at_cat_id"]:
-        _need_subcats = (
-            cq(session, TransactionSubcategory)
-            .filter_by(category_id=ctx["at_cat_id"], is_active=True)
-            .count()
-        )
-        if _need_subcats and not ctx["at_subcat_name"]:
-            st.error(_tf("txn.mob.subcategory_required", "Select a subcategory"))
+    _skip_cat = txn_type == "Expense" and (
+        _mob_at_is_salary_mode() or st.session_state.get("at_expense_mode") == "worker"
+    )
+    if txn_type in ("Sale", "Expense", "Purchase") and not _skip_cat:
+        if not ctx["at_cat_id"] and not (
+            txn_type == "Expense" and st.session_state.get("mob_at_cat_name")
+        ):
+            _cat_err = _t("txn.category_required")
+            st.error(_cat_err)
+            _at_set_flash("error", _cat_err)
             return
+        if ctx["at_cat_id"]:
+            _need_subcats = (
+                cq(session, TransactionSubcategory)
+                .filter_by(category_id=ctx["at_cat_id"], is_active=True)
+                .count()
+            )
+            if _need_subcats and not ctx["at_subcat_name"]:
+                st.error(_tf("txn.mob.subcategory_required", "Select a subcategory"))
+                return
 
     if _mob_at_is_salary_mode():
         st.session_state["at_expense_mode"] = "worker"
@@ -12326,79 +12808,21 @@ def _render_add_transaction_mobile(
             unsafe_allow_html=True,
         )
 
-        with st.container(border=False, key="mob_at_tabs"):
-            tab_cols = st.columns(len(_MOB_AT_TABS), gap="small")
-            mob_tab = st.session_state.get("mob_at_tab", 0)
-            for col, (tab_i, i18n_key, fallback) in zip(tab_cols, _MOB_AT_TABS):
-                if col.button(
-                    fallback,
-                    key=f"mob_at_tab_{tab_i}",
-                    use_container_width=True,
-                    type="primary" if mob_tab == tab_i else "secondary",
-                ):
-                    st.session_state["mob_at_tab"] = tab_i
-                    if tab_i < 3:
-                        st.session_state["at_type_idx"] = tab_i
-                        if tab_i == 1:
-                            st.session_state["at_expense_mode"] = "general"
-                    else:
-                        more_idx = st.session_state.get("mob_at_more_idx", 3)
-                        st.session_state["at_type_idx"] = more_idx
-                        if more_idx == _MOB_AT_SALARY_IDX:
-                            st.session_state["at_expense_mode"] = "worker"
-                            st.session_state["at_worker_mv_type"] = "Salary"
-                    _coerce_at_payment_method(
-                        session, _at_effective_txn_type(type_names)
-                    )
-                    _mob_at_close_picker()
-                    for _ck in (
-                        "mob_at_cat_id",
-                        "mob_at_subcat_id",
-                        "mob_at_cat_name",
-                        "at_subcat",
-                    ):
-                        st.session_state.pop(_ck, None)
-                    st.rerun()
+        # ── Concept C: compact Row 1 (type | payment | date | currency) ──
+        _mob_at_render_c_row1(currency_default)
 
-        at_idx = st.session_state["at_type_idx"]
+        # Re-derive type after any picker selection in this render pass
+        at_idx = st.session_state.get("at_type_idx", 0)
+        if _mob_at_is_salary_mode():
+            at_idx = _MOB_AT_SALARY_IDX
         txn_type = (
             type_names[at_idx]
-            if at_idx < len(type_names)
+            if 0 <= at_idx < len(type_names)
             else "Expense"
         )
         _mob_at_ensure_defaults(session, txn_type, currency_default, vendors)
 
-        if st.session_state.get("mob_at_tab") == 3:
-            more_labels = [_tf(t[1], t[2]) for t in _MOB_AT_MORE_TYPES]
-            more_idx = st.session_state.get("mob_at_more_idx", 3)
-            pick = st.radio(
-                _tf("txn.mob.more_type", "Type"),
-                options=[t[0] for t in _MOB_AT_MORE_TYPES],
-                format_func=lambda i: more_labels[[t[0] for t in _MOB_AT_MORE_TYPES].index(i)],
-                index=max(0, [t[0] for t in _MOB_AT_MORE_TYPES].index(more_idx)),
-                key="mob_at_more_pick",
-                horizontal=True,
-                label_visibility="collapsed",
-            )
-            if pick != more_idx:
-                st.session_state["mob_at_more_idx"] = pick
-                st.session_state["at_type_idx"] = pick
-                if type_names[pick] == "Supplier Payment":
-                    _at_clear_category_session_state()
-                if pick == _MOB_AT_SALARY_IDX:
-                    st.session_state["at_expense_mode"] = "worker"
-                    st.session_state["at_worker_mv_type"] = "Salary"
-                _coerce_at_payment_method(
-                    session, _at_effective_txn_type(type_names)
-                )
-                st.rerun()
-            at_idx = st.session_state["at_type_idx"]
-            txn_type = (
-                type_names[at_idx]
-                if at_idx < len(type_names)
-                else "Expense"
-            )
-
+        # ── Context-specific fields (no PM chips / currency chips — those are in Row 1) ──
         if _mob_at_is_salary_mode():
             workers = (
                 cq(session, Worker)
@@ -12417,31 +12841,13 @@ def _render_add_transaction_mobile(
                 )
             else:
                 st.caption(_t("worker.no_workers"))
-            if _mob_at_button_row(
-                _at_pm_chip_labels("Expense", ["Cash", "Bank"]),
-                st.session_state.get("at_pm", "Cash"),
-                "mob_at_pm",
-                "at_pm",
-                row_key="mob_at_pm2",
-            ):
-                st.rerun()
             if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
                 st.rerun()
             _mob_at_render_salary_fields(session, currency_default)
-            if _mob_at_types_with_currency("Expense"):
-                if _mob_at_render_currency_chips(currency_default):
-                    st.rerun()
-                _mob_at_render_fx_hook(currency_default)
-        elif at_idx == 0:
-            if _mob_at_button_row(
-                _at_pm_chip_labels("Sale", ["Cash", "Card", "Credit"]),
-                st.session_state.get("at_pm", "Cash"),
-                "mob_at_pm",
-                "at_pm",
-                row_key="mob_at_pm3",
-            ):
-                st.rerun()
-            if st.session_state.get("at_pm") == "Card":
+            _mob_at_render_fx_hook(currency_default)
+
+        elif at_idx == 0:  # Sale
+            if st.session_state.get("at_pm") == "Card" and not _card_settlement_on(session):
                 _at_clear_invalid_card_bank_selection(bank_accounts)
                 _deposit_accts = _at_sale_card_deposit_accounts(bank_accounts)
                 if _deposit_accts:
@@ -12449,67 +12855,36 @@ def _render_add_transaction_mobile(
                         st.rerun()
                 else:
                     st.caption(_t("txn.no_bank_add"))
-            if _mob_at_render_cat_subcat_triggers(
-                session,
-                "Sale",
-                cat_picker_kind="sale_cat",
-                subcat_picker_kind="sale_subcat",
-            ):
+            if _mob_at_render_c_cat_row(session, "Sale", picker_kind="sale_cat"):
                 st.rerun()
-            if _mob_at_types_with_currency("Sale"):
-                if _mob_at_render_currency_chips(currency_default):
-                    st.rerun()
-                _mob_at_render_fx_hook(currency_default)
-        elif at_idx == 1 and st.session_state.get("mob_at_tab") == 1:
-            if _mob_at_button_row(
-                _at_pm_chip_labels("Expense", _at_expense_pay_methods(session)),
-                st.session_state.get("at_pm", "Cash"),
-                "mob_at_pm",
-                "at_pm",
-                row_key="mob_at_pm2",
-            ):
+            if _mob_at_render_subcategory_trigger(session, "Sale", picker_kind="sale_subcat"):
                 st.rerun()
-            if _mob_at_render_cat_subcat_triggers(
-                session,
-                "Expense",
-                cat_picker_kind="expense_cat",
-                subcat_picker_kind="expense_subcat",
-            ):
+            _mob_at_render_fx_hook(currency_default)
+
+        elif at_idx == 1:  # Expense
+            if _mob_at_render_c_cat_row(session, "Expense", picker_kind="expense_cat"):
+                st.rerun()
+            if _mob_at_render_subcategory_trigger(session, "Expense", picker_kind="expense_subcat"):
                 st.rerun()
             if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
                 st.rerun()
             _mob_at_render_company_cc_select(session, txn_type="Expense")
-            if _mob_at_types_with_currency("Expense"):
-                if _mob_at_render_currency_chips(currency_default):
-                    st.rerun()
-                _mob_at_render_fx_hook(currency_default)
-        elif at_idx == 2:
-            if _mob_at_button_row(
-                _at_pm_chip_labels("Purchase", _at_purchase_pay_methods(session)),
-                st.session_state.get("at_pm", "Credit"),
-                "mob_at_pm",
-                "at_pm",
-                row_key="mob_at_pm3",
-            ):
-                st.rerun()
+            _mob_at_render_fx_hook(currency_default)
+
+        elif at_idx == 2:  # Purchase
             if _mob_at_render_vendor_trigger(session, vendors):
                 st.rerun()
-            if _mob_at_render_cat_subcat_triggers(
-                session,
-                "Purchase",
-                cat_picker_kind="purchase_cat",
-                subcat_picker_kind="purchase_subcat",
-            ):
+            if _mob_at_render_c_cat_row(session, "Purchase", picker_kind="purchase_cat"):
+                st.rerun()
+            if _mob_at_render_subcategory_trigger(session, "Purchase", picker_kind="purchase_subcat"):
                 st.rerun()
             if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
                 st.rerun()
             _mob_at_render_company_cc_select(session, txn_type="Purchase")
-            if _mob_at_types_with_currency("Purchase"):
-                if _mob_at_render_currency_chips(currency_default):
-                    st.rerun()
-                _mob_at_render_fx_hook(currency_default)
-        elif txn_type in ("Supplier Payment", "Customer Payment", "Bank Transaction"):
-            if txn_type == "Customer Payment" and open_sales:
+            _mob_at_render_fx_hook(currency_default)
+
+        elif txn_type == "Customer Payment":
+            if open_sales:
                 if _mob_at_render_invoice_trigger(open_sales):
                     st.rerun()
                 _mob_inv = _at_sale_from_invoice_choice(
@@ -12523,81 +12898,61 @@ def _render_add_transaction_mobile(
                             balance=_mob_inv.balance,
                         )
                     )
-                if _mob_at_button_row(
-                    _at_pm_chip_labels("Customer Payment", ["Cash", "Bank"]),
-                    st.session_state.get("at_pm", "Cash"),
-                    "mob_at_pm",
-                    "at_pm",
-                    row_key="mob_at_pm2",
-                ):
-                    st.rerun()
-                if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
-                    st.rerun()
-                if _mob_at_types_with_currency("Customer Payment"):
-                    if _mob_at_render_currency_chips(currency_default):
-                        st.rerun()
-                    _mob_at_render_fx_hook(currency_default)
-            elif txn_type == "Supplier Payment":
-                _at_clear_category_session_state()
-                if _mob_at_render_vendor_trigger(session, vendors):
-                    st.rerun()
-                if vendors and st.session_state.get("at_vendor"):
-                    _mob_at_sync_select_widgets()
-                    _sp_vendor = next(
-                        (v for v in vendors if v.name == st.session_state.get("at_vendor")),
-                        None,
-                    )
-                    if _sp_vendor:
-                        _pay_opts = _mob_at_payable_options(
-                            session, _sp_vendor.id, currency_default
-                        )
-                    else:
-                        _pay_opts = []
-                    if _pay_opts:
-                        if _mob_at_render_payable_trigger(session, vendors, currency_default):
-                            st.rerun()
-                        if st.session_state.get("at_payable_id"):
-                            _mob_pay = session.get(
-                                Payable, st.session_state["at_payable_id"]
-                            )
-                            if _mob_pay:
-                                st.caption(
-                                    _t(
-                                        "txn.payable_outstanding",
-                                        currency=currency_default,
-                                        balance=_payable_balance(_mob_pay),
-                                    )
-                                )
-                    else:
-                        st.caption(_t("txn.no_open_payable"))
-                if _mob_at_button_row(
-                    _at_pm_chip_labels("Supplier Payment", _at_supplier_pay_methods(session)),
-                    st.session_state.get("at_pm", "Cash"),
-                    "mob_at_pm",
-                    "at_pm",
-                    row_key="mob_at_pm2",
-                ):
-                    st.rerun()
-                if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
-                    st.rerun()
-                _mob_at_render_company_cc_select(session, txn_type="Supplier Payment")
-                if _mob_at_types_with_currency("Supplier Payment"):
-                    if _mob_at_render_currency_chips(currency_default):
-                        st.rerun()
-                    _mob_at_render_fx_hook(currency_default)
-            elif txn_type == "Bank Transaction" and bank_accounts:
-                if _mob_at_render_bank_trigger(bank_accounts):
-                    st.rerun()
-                if _mob_at_button_row(
-                    [("Deposit", "Deposit"), ("Withdrawal", "Withdrawal")],
-                    st.session_state.get("at_bank_sub", "Deposit"),
-                    "mob_at_bank",
-                    "at_bank_sub",
-                    row_key="mob_at_pm2",
-                ):
-                    st.rerun()
+            if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
+                st.rerun()
+            _mob_at_render_fx_hook(currency_default)
 
-        _mob_at_render_amount_keypad_fragment(currency_default)
+        elif txn_type == "Supplier Payment":
+            _at_clear_category_session_state()
+            if _mob_at_render_vendor_trigger(session, vendors):
+                st.rerun()
+            if vendors and st.session_state.get("at_vendor"):
+                _mob_at_sync_select_widgets()
+                _sp_vendor = next(
+                    (v for v in vendors if v.name == st.session_state.get("at_vendor")),
+                    None,
+                )
+                _pay_opts = (
+                    _mob_at_payable_options(session, _sp_vendor.id, currency_default)
+                    if _sp_vendor
+                    else []
+                )
+                if _pay_opts:
+                    if _mob_at_render_payable_trigger(session, vendors, currency_default):
+                        st.rerun()
+                    if st.session_state.get("at_payable_id"):
+                        _mob_pay = session.get(Payable, st.session_state["at_payable_id"])
+                        if _mob_pay:
+                            st.caption(
+                                _t(
+                                    "txn.payable_outstanding",
+                                    currency=currency_default,
+                                    balance=_payable_balance(_mob_pay),
+                                )
+                            )
+                else:
+                    st.caption(_t("txn.no_open_payable"))
+            if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
+                st.rerun()
+            _mob_at_render_company_cc_select(session, txn_type="Supplier Payment")
+            _mob_at_render_fx_hook(currency_default)
+
+        elif txn_type == "Bank Transaction" and bank_accounts:
+            if _mob_at_render_bank_trigger(bank_accounts):
+                st.rerun()
+            if _mob_at_button_row(
+                [("Deposit", "Deposit"), ("Withdrawal", "Withdrawal")],
+                st.session_state.get("at_bank_sub", "Deposit"),
+                "mob_at_bank",
+                "at_bank_sub",
+                row_key="mob_at_pm2",
+            ):
+                st.rerun()
+
+        # When a picker sheet is open, suppress the amount/save/keypad so the
+        # picker floats above a clean panel instead of overlapping the keypad.
+        if not st.session_state.get("mob_at_picker"):
+            _mob_at_render_amount_keypad_fragment(currency_default)
 
     submitted = bool(st.session_state.pop("mob_at_save_clicked", False))
 
@@ -12847,7 +13202,7 @@ def render_add_transaction(session):
                             index=CURRENCIES.index(currency_default) if currency_default in CURRENCIES else 0,
                             key="at_currency",
                         )
-                        if at_payment_method == "Card":
+                        if at_payment_method == "Card" and not _card_settlement_on(session):
                             _at_clear_invalid_card_bank_selection(bank_accounts)
                             _card_acct_names = [
                                 a.name for a in _at_sale_card_deposit_accounts(bank_accounts)
@@ -14758,6 +15113,7 @@ def render_transaction_history(session):
             type_filter = fc1.selectbox(
                 _t("col.type"),
                 [_txh_all, "Sale", "Expense", "Purchase", "Banking", "Payable"],
+                format_func=lambda v: v if v == _txh_all else _i18n_db(_TXH_TYPE_FILTER_I18N, v),
                 key="txh_type",
             )
             method_filter = fc2.selectbox(
@@ -21505,15 +21861,33 @@ def _inline_cat_row(session, txn_type: str, cats: list):
     """Render [ Category ▼ ] [＋] [⚙] row. Returns (at_cat, at_cat_id)."""
     cats = _at_filter_transaction_categories(cats)
     _cat_names = [c.name for c in cats]
-    _cur_name  = st.session_state.get("at_cat")
-    _cur_cat   = next((c for c in cats if c.name == _cur_name), cats[0] if cats else None)
+    _cur_name = st.session_state.get("at_cat")
+    if _cur_name not in _cat_names:
+        st.session_state.pop("at_cat", None)
+        st.session_state.pop("at_last_cat_id", None)
+        _cur_name = None
+    _cur_cat = next((c for c in cats if c.name == _cur_name), None) if _cur_name else None
 
     col_sel, col_act = st.columns([6, 1], vertical_alignment="bottom", gap="small")
     with col_sel:
         if cats:
-            _idx = _cat_names.index(_cur_cat.name) if _cur_cat else 0
-            _sel = st.selectbox(_t("form.category"), _cat_names, index=_idx, key="at_cat")
-            at_cat    = next((c for c in cats if c.name == _sel), None)
+            _cat_ph = _t("txn.select_category_ph")
+            if _cur_cat:
+                _sel = st.selectbox(
+                    _t("form.category"),
+                    _cat_names,
+                    index=_cat_names.index(_cur_cat.name),
+                    key="at_cat",
+                )
+            else:
+                _sel = st.selectbox(
+                    _t("form.category"),
+                    _cat_names,
+                    index=None,
+                    placeholder=_cat_ph,
+                    key="at_cat",
+                )
+            at_cat = next((c for c in cats if c.name == _sel), None) if _sel else None
             at_cat_id = at_cat.id if at_cat else None
         else:
             st.selectbox(_t("form.category"), [], key="at_cat", disabled=True,
@@ -23449,7 +23823,7 @@ def main():
     # company_1 when no company context is set.
     if DEVELOPMENT_MODE and not is_setup01_active():
         st.markdown(
-            '<div class="dev-mode-stripe">⚠️ DEVELOPMENT_MODE active — auto login enabled</div>',
+            f'<div class="dev-mode-stripe">{html.escape(_t("dev.banner"))}</div>',
             unsafe_allow_html=True,
         )
         if (
