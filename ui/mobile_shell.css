@@ -3,7 +3,6 @@
  */
 
 html.erp-mobile {
-  --hdr-h: 120px;
   --bottom-nav-h: 62px;
   --mob-fab-size: 56px;
   --mob-top-nav-h: 0px;
@@ -11,7 +10,6 @@ html.erp-mobile {
 
 @media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
   :root {
-    --hdr-h: 120px;
     --bottom-nav-h: 62px;
     --mob-fab-size: 56px;
   }
@@ -32,7 +30,6 @@ html.erp-mobile {
   }
 
   section[data-testid="stMain"] .block-container {
-    padding-top: calc(var(--hdr-h) + 16px) !important;
     padding-left: 1rem !important;
     padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
   }
@@ -468,6 +465,216 @@ html.erp-mobile {
     padding: 0 !important;
   }
 
+  /* E13 — hub sheet list chrome (grab, title, nav rows) */
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-hub-host)
+    [data-testid="stVerticalBlockBorderWrapper"] {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  [data-testid="stAppViewContainer"]:has(.erp-mobile-hub-host)::before {
+    content: "" !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 10060 !important;
+    background: color-mix(in srgb, var(--theme-text) 42%, transparent) !important;
+    pointer-events: none !important;
+  }
+
+  .erp-mobile-hub-grab {
+    display: block !important;
+    width: 36px !important;
+    height: 4px !important;
+    border-radius: 99px !important;
+    background: var(--theme-border) !important;
+    margin: 8px auto 10px !important;
+  }
+
+  .erp-mobile-hub-title {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: var(--theme-text) !important;
+    padding: 2px 0 4px !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_close"] button {
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    background: var(--theme-bg) !important;
+    border: 1px solid var(--theme-border) !important;
+    color: var(--theme-muted) !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_"]:not([class*="mob_hub_close"]) button {
+    min-height: 44px !important;
+    font-size: 14px !important;
+    line-height: 1.3 !important;
+    border-radius: 0 !important;
+    text-align: left !important;
+    justify-content: space-between !important;
+    padding: 10px 4px 10px 2px !important;
+    border: none !important;
+    border-bottom: 1px solid var(--theme-border) !important;
+    background: transparent !important;
+    color: var(--theme-text) !important;
+    font-weight: 500 !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_"]:not([class*="mob_hub_close"]) button::after {
+    content: "›" !important;
+    color: var(--theme-muted) !important;
+    font-size: 18px !important;
+    font-weight: 400 !important;
+    margin-left: 8px !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_"] button[kind="primary"] {
+    background: var(--theme-info) !important;
+    color: var(--erp-on-primary, #fff) !important;
+    border-color: var(--theme-info) !important;
+    font-weight: 700 !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_"] button[kind="primary"] p,
+  [data-testid="stMain"] [class*="st-key-mob_hub_"] button[kind="primary"] span {
+    color: var(--erp-on-primary, #fff) !important;
+  }
+
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-hub-host) hr {
+    margin: 10px 0 6px !important;
+    border-color: var(--theme-border) !important;
+  }
+
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-hub-host)
+    [data-testid="stCaptionContainer"] p {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    color: var(--theme-muted) !important;
+  }
+
+  /* E13 — mobile profile sheet */
+  html.erp-mobile [data-testid="stAppViewContainer"]:has(.erp-mobile-profile-host)::before {
+    content: "" !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 10078 !important;
+    background: color-mix(in srgb, var(--theme-text) 42%, transparent) !important;
+    pointer-events: auto !important;
+  }
+
+  html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_profile_sheet"] {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: calc(var(--hdr-h) + 8px) !important;
+    z-index: 10082 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    max-height: calc(100vh - var(--hdr-h) - var(--bottom-nav-h) - 16px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    background: var(--theme-card) !important;
+    border: 1px solid var(--theme-border) !important;
+    border-radius: 16px 16px 0 0 !important;
+    box-shadow: 0 -12px 40px color-mix(in srgb, var(--theme-shadow) 80%, transparent) !important;
+    padding: 4px 14px 14px !important;
+    margin: 0 !important;
+  }
+
+  html.erp-mobile
+    [data-testid="stMain"] [class*="st-key-erp_mob_profile_sheet"]
+    [data-testid="stVerticalBlockBorderWrapper"] {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  html.erp-mobile .erp-mobile-profile-title {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: var(--theme-text) !important;
+    line-height: 1.3 !important;
+    padding: 6px 0 4px !important;
+  }
+
+  html.erp-mobile
+    [data-testid="stMain"] [class*="st-key-erp_mob_profile_sheet"]
+    [class*="st-key-mob_prof_"] button {
+    width: 100% !important;
+    min-height: 44px !important;
+    margin: 0 0 8px 0 !important;
+    border-radius: 10px !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+  }
+
+  /* E13 — mobile company switch sheet */
+  html.erp-mobile [data-testid="stAppViewContainer"]:has(.erp-mobile-co-switch-host)::before {
+    content: "" !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 10080 !important;
+    background: color-mix(in srgb, var(--theme-text) 42%, transparent) !important;
+    pointer-events: auto !important;
+  }
+
+  html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_co_switch_sheet"] {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: calc(var(--hdr-h) + 8px) !important;
+    z-index: 10085 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    max-height: calc(100vh - var(--hdr-h) - var(--bottom-nav-h) - 16px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    background: var(--theme-card) !important;
+    border: 1px solid var(--theme-border) !important;
+    border-radius: 16px 16px 0 0 !important;
+    box-shadow: 0 -12px 40px color-mix(in srgb, var(--theme-shadow) 80%, transparent) !important;
+    padding: 4px 14px 14px !important;
+    margin: 0 !important;
+  }
+
+  html.erp-mobile
+    [data-testid="stMain"] [class*="st-key-erp_mob_co_switch_sheet"]
+    [data-testid="stVerticalBlockBorderWrapper"] {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  html.erp-mobile .erp-mobile-co-switch-title {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: var(--theme-text) !important;
+    line-height: 1.3 !important;
+    padding: 6px 0 4px !important;
+  }
+
+  html.erp-mobile
+    [data-testid="stMain"] [class*="st-key-erp_mob_co_switch_sheet"]
+    [class*="st-key-mob_mco_co_"] button {
+    width: 100% !important;
+    min-height: 44px !important;
+    margin: 0 0 8px 0 !important;
+    border-radius: 10px !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+  }
+
   [data-testid="stMain"] [data-testid="stElementContainer"]:has(.erp-mobile-chrome-active) {
     height: 0 !important;
     min-height: 0 !important;
@@ -490,7 +697,6 @@ html.erp-mobile [data-testid="stAppViewContainer"] {
 }
 
 html.erp-mobile section[data-testid="stMain"] .block-container {
-  padding-top: calc(var(--hdr-h) + 16px) !important;
   padding-left: 1rem !important;
   padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
 }
@@ -664,14 +870,14 @@ html.erp-mobile [class*="st-key-hdr_toolbar_row"] [data-testid="stHorizontalBloc
   width: auto !important;
 }
 
+/* E10 — desktop visibility guards for mobile shell chrome (CSS-01: mobile_shell.css only) */
 @media (min-width: 969px) {
   [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"],
   [data-testid="stMain"] [class*="st-key-erp_mob_hub_sheet"],
   [data-testid="stMain"] [class*="st-key-erp_mob_co_switch_sheet"],
   [data-testid="stMain"] [class*="st-key-erp_mob_profile_sheet"],
   [data-testid="stMain"] [class*="st-key-erp_mob_quick_create"],
-  .erp-dash-mobile-greeting,
-  .erp-dash-mobile-kpi-scroll {
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-quick-create-host) {
     display: none !important;
   }
 

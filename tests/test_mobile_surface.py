@@ -121,13 +121,40 @@ def test_mobile_open_surface_co_switch_sets_sheet_flag(monkeypatch):
 
 def test_css_confirm_suppresses_co_switch_sheet_on_mobile():
     widgets = (ROOT / "ui" / "widgets.css").read_text(encoding="utf-8")
-    assert "erp_mob_co_switch_sheet" in widgets
-    assert "erp-mobile-co-switch-host" in widgets
+    shell = (ROOT / "ui" / "mobile_shell.css").read_text(encoding="utf-8")
+    assert "erp-mobile-co-switch-host" in shell
     marker = "/* Confirm active — suppress hub/header sheets"
     block = widgets.split(marker, 1)[1].split("/* Header popover open", 1)[0]
     assert "html.erp-mobile" in block
     assert "erp_mob_co_switch_sheet" in block
-    assert "z-index: 10085" in widgets
+    assert "z-index: 10085" in shell
+    assert "erp_mob_co_switch_sheet" in shell
+
+
+def test_e13_mobile_sheet_chrome_owned_by_mobile_shell():
+    """MOBILE-14 E13 — profile/co-switch/hub list chrome in mobile_shell.css only."""
+    widgets = (ROOT / "ui" / "widgets.css").read_text(encoding="utf-8")
+    shell = (ROOT / "ui" / "mobile_shell.css").read_text(encoding="utf-8")
+    for marker in (
+        "/* E13 — hub sheet list chrome",
+        "/* E13 — mobile profile sheet",
+        "/* E13 — mobile company switch sheet",
+    ):
+        assert marker in shell
+    assert "erp-mobile-hub-grab" in shell
+    assert "erp-mobile-profile-title" in shell
+    assert "erp-mobile-co-switch-title" in shell
+    assert "z-index: 10082" in shell
+    assert "z-index: 10085" in shell
+    # Sheet shell styling must not remain duplicated in widgets.css
+    assert "erp-mobile-profile-title" not in widgets
+    assert "erp-mobile-co-switch-title" not in widgets
+    assert "z-index: 10060" not in widgets
+    assert "z-index: 10078" not in widgets
+    assert "z-index: 10080" not in widgets
+    assert "z-index: 10082" not in widgets
+    assert "z-index: 10085" not in widgets
+    assert ".erp-mobile-hub-title" not in widgets
 
 
 def test_css_confirm_host_suppresses_hub_mobile_only():
