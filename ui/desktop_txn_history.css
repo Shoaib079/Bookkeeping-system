@@ -162,7 +162,7 @@
   word-break: keep-all !important;
 }
 
-[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-cell--amt-in { color: var(--theme-success); }
+[data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-cell--amt-in { color: var(--theme-success-text); }
 [data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-cell--amt-out { color: var(--theme-danger); }
 [data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-cell--amt-muted { color: var(--theme-muted); }
 

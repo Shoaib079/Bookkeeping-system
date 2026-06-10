@@ -59,6 +59,10 @@ def test_light_and_dark_vars_include_new_tokens():
         "--theme-banner-primary-start",
         "--theme-shadow",
         "--theme-caption",
+        "--erp-primary-fill",
+        "--erp-primary-fill-hover",
+        "--theme-success-text",
+        "--theme-warning-text",
     ):
         assert token in LIGHT_ROOT_VARS
         assert token in DARK_ROOT_VARS

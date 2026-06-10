@@ -795,7 +795,195 @@ Keypad rows reordered from calculator layout (`7 8 9 / 4 5 6 / 1 2 3`) to phone/
 
 **Files changed:** `app.py`, `registry/locales/transactional.py`, `tests/test_ux03_inline_category.py`.
 
-**Next active roadmap item:** **UX-04** — Selector Interaction Audit.
+**Next active roadmap item:** **UX-04** — Selector Interaction Audit (Payment Method chips next).
+
+---
+
+## 2026-06-10 — UX-04A closed (post-save state retention)
+
+**Status:** ✅ **Closed**
+
+**Scope delivered:** Small post-save reset correction in Add Transaction (`_at_process_submit`). No `_at_save`, accounting, or `_COMPANY_SCOPED_AT_KEYS` changes.
+
+### Completed
+
+- `_AT_POST_SAVE_CLEAR_KEYS` + `_at_clear_post_save_transient_fields()` — centralized post-save reset.
+- Removed `at_last_cat_id` from post-save clear list — desktop subcategory retained via `_inline_subcat_row` contract.
+- Added post-save clears: `at_cust_sel`, `at_worker_gross`/`mob_at_worker_gross`, `at_worker_ded`/`mob_at_worker_ded`, `at_worker_adv_rec`/`mob_at_worker_adv_rec`.
+- Retained after save: type, payment method, category, subcategory, vendor, date, currency, bank account, quick-entry memory.
+
+### Tests
+
+- `tests/test_ux04a_post_save_retention.py` — 8 tests.
+- Host `pytest tests/` — **826/826 passed**
+
+**Files changed:** `app.py`, `tests/test_ux04a_post_save_retention.py`.
+
+**Next under UX-04:** ~~Payment Method chips~~ UX-04B closed below. Repeat Last · Smart Defaults remain.
+
+---
+
+## 2026-06-10 — UX-04B closed (mobile payment method chips)
+
+**Status:** ✅ **Closed**
+
+**Scope delivered:** Mobile Add Transaction only — replace payment-method bottom sheet with inline PM chip row. Desktop AT, accounting/posting, validation, date/currency pickers, category/subcategory, and Bank `mob_at_pm2` unchanged.
+
+### Completed
+
+- Row 1: **Type | Date | Currency** (3 buttons).
+- `_mob_at_render_pm_chip_row` — uses `_at_sale_pay_methods`, `_at_expense_pay_methods`, `_at_purchase_pay_methods`.
+- Chip tap: `at_pm` + `_at_clear_stale_payment_account_keys`; post-save retains active PM.
+- Retired `"payment"` picker branch and `_mob_at_render_payment_picker_sheet`.
+- Company CC chip when `_company_cc_charge_ready`; short label `txn.pm.company_cc_short`.
+- CSS: `mob_at_pm_row` (`mobile_txn.css`) + selected-chip rule (`widgets.css`).
+
+### Tests
+
+- `tests/test_ux04b_payment_method_chips.py` — 14 tests.
+- Host `pytest tests/` — **840/840 passed**
+
+**Files changed:** `app.py`, `registry/locales/transactional.py`, `ui/mobile_txn.css`, `ui/widgets.css`, `tests/test_ux04b_payment_method_chips.py`, `tests/test_mobile_layout_contract.py`.
+
+**UX-04 remainder:** ~~Smart Defaults~~ UX-04C closed below. Repeat Last Transaction — not started.
+
+---
+
+## 2026-06-10 — UX-04C closed (safe smart defaults)
+
+**Status:** ✅ **Closed**
+
+**Scope delivered:** Small smart-default layer in `app.py` only — per-type PM memory and single-bank auto-pick. No schema, persistence beyond session/company-scoped state, CSS, locale, or accounting/posting changes.
+
+### Completed
+
+- `_MOB_AT_LAST_PM_BY_TYPE` memory keys (`mob_at_last_pm_sale` / `expense` / `purchase`).
+- `_mob_at_remember_last_pm` on PM chip tap; `_mob_at_recall_last_pm` in default chain.
+- `_at_default_pay_method`: memory → `_AT_DEFAULT_PM` → first allowed; invalid memory falls back safely.
+- `_coerce_at_payment_method` restores valid remembered PM on type switch (`_mob_at_coerce_pm_type`).
+- Memory keys added to `_COMPANY_SCOPED_AT_KEYS` (cleared on company switch).
+- `_at_apply_single_bank_auto_pick` — auto-select bank only when exactly one active account; zero or multiple → no inference.
+- No inference for customer, vendor, worker, subcategory, amount, payable/invoice, or multi-bank/CC.
+
+### Tests
+
+- `tests/test_ux04c_smart_defaults.py` — 12 tests.
+- Host `pytest tests/` — **852/852 passed**
+
+**Files changed:** `app.py`, `tests/test_ux04c_smart_defaults.py`.
+
+**UX-04 remainder:** ~~Repeat Last Transaction~~ closed below. UX-04 umbrella complete.
+
+---
+
+## 2026-06-10 — Repeat Last Transaction v1 closed (TXH row action)
+
+**Status:** ✅ **Closed**
+
+**Scope delivered:** Transaction History row action only — no post-save flash Repeat button. Expense (non-salary) and Purchase only. No schema, posting, or CSS changes.
+
+### Completed
+
+- Row action **Repeat** (🔁) visible for eligible non-void Expense/Purchase rows (`_txh_repeat_eligible`).
+- `_txh_apply_repeat_prefill` — explicit allowlist copy; date → today; PM coercion; inactive category/vendor dropped.
+- Navigates to Add Transaction; user must Save manually.
+- Sale keeps legacy Duplicate; Expense/Purchase use Repeat in the third action slot.
+- Locale: `txh.repeat_help` (EN/TR).
+
+### Tests
+
+- `tests/test_ux04_repeat_transaction.py` — 20 tests.
+- Host `pytest tests/` — **872/872 passed**
+
+**Files changed:** `app.py`, `registry/locales/transactional.py`, `tests/test_ux04_repeat_transaction.py`.
+
+**UX-04 umbrella:** Complete (04A/B/C + Repeat v1).
+
+---
+
+## 2026-06-10 — DATE-01 closed (fast mobile date entry)
+
+**Status:** ✅ **Closed**
+
+**Scope delivered:** Mobile Add Transaction date sheet only — quick Today/Yesterday/Custom choices with weekday labels, `at_date_follows_today` rollover guard, backdated Row 1 indicator, closed-period courtesy check. Desktop date unchanged.
+
+### Completed
+
+- Sheet labels: Today · weekday+date, Yesterday · weekday+date, Custom date...
+- `at_date_follows_today` in `_COMPANY_SCOPED_AT_KEYS`; rollover via `_mob_at_apply_date_follow_today`.
+- Backdated marker CSS on Row 1 date pill when `at_date != today`.
+- `_entry_date_posting_blocked` shared with `create_journal_entry`; courtesy caption on Yesterday/Custom confirm.
+- Repeat Transaction sets `at_date_follows_today = True`.
+
+### Tests
+
+- `tests/test_date01_fast_mobile_date.py` — 15 tests.
+- Host `pytest tests/` — **887/887 passed**
+
+**Files changed:** `app.py`, `ui/mobile_txn.css`, `registry/locales/transactional.py`, `tests/test_date01_fast_mobile_date.py`.
+
+---
+
+## 2026-06-10 — UX-01 v1 closed (narrow session restore)
+
+**Status:** ✅ **Closed**
+
+**Scope delivered:** Safe login/session continuity after browser refresh — user identity + active company only. No AT, navigation, locale, or filter persistence.
+
+### Completed
+
+- HMAC-signed restore token in cookie `erp_session_restore` (8h TTL, constant-time compare).
+- Payload: `user_id`, `iat`, `exp`, password-hash fragment, optional `active_company_id`.
+- Company restored only via `_activate_company_in_session` (membership + active company DB checks).
+- Invalid/revoked/deactivated company from token → company picker (no silent fallback).
+- Cookie set/cleared via JS (`SameSite=Lax`, `Secure` on HTTPS) — **not HttpOnly** (JS-set limitation).
+- Feature disabled when `ERP_SESSION_RESTORE_SECRET` unset; `DEV_MODE` untouched.
+
+### Pre-production requirement
+
+Set environment variable **`ERP_SESSION_RESTORE_SECRET`** to a long random secret (≥32 characters) before deploying. Without it, restore is disabled and users must log in after refresh.
+
+### Tests
+
+- `tests/test_ux01_session_restore.py` — 17 tests.
+- Host `pytest tests/` — **904/904 passed**
+
+**Files changed:** `app.py`, `tests/test_ux01_session_restore.py`.
+
+---
+
+## 2026-06-10 — MOBILE-14 re-baselined (M1–M6; documentation only)
+
+**Status:** 🟡 **Re-baselined** — no CSS movement, no test file added yet.
+
+**Decision:** Original MOBILE-14 E1–E13 consolidation plan is **superseded**. Prior UI work (HDR-01, AT-LIGHT-01, UI-1 chip grammar, E4–E6, E8a/b, E9, QUICK-ENTRY, UX-04B, etc.) already closed many E-steps. Remaining cleanup is smaller and focused on **ownership dedupe**, not layout migration.
+
+### New scope (M1–M6)
+
+| Step | Summary |
+|------|---------|
+| **M1** | `--hdr-h` dedupe within `theme.css`; mobile header dedupe within `mobile_header.css` — no new tokens |
+| **M2** | Verify/remove dead `block-container padding-top` in `mobile_shell.css` (old E2) — only if proven dead |
+| **M3** | Bottom-nav / FAB / hub remnants: `widgets.css` → `mobile_shell.css` |
+| **M4** | Profile / co-switch sheet rules: `widgets.css` → `mobile_shell.css` |
+| **M5** | KPI / dashboard rules: `widgets.css` → `theme.css` |
+| **M6** | Re-audit notification liveness + sidebar triple-hide — delete only provably dead rules |
+
+### Explicit non-goals
+
+- AT picker z-index, AT-LIGHT wrapper-strip, `--mob-at-*` tokens, UI-1 chip grammar — **do not touch**.
+- **Zero visible UI change** expected.
+
+### Blocking (superseded 2026-06-10)
+
+- ~~**LOGIN-01** and **UX-02** remain blocked until **M1 + M2** minimum complete.~~ → **Unblocked** after M1+M2 close; not started.
+- **Current priority:** MOBILE-14 **M5** next (KPI move); M6 open; M3/M4 optional.
+
+### Pre-implementation tests (planned, not yet added)
+
+`tests/test_mobile14_ownership_contract.py` — header token contract, shell-only bottom-nav/FAB/hub, shell-only profile/co-switch sheets, no KPI in widgets, sidebar hide ownership, no `mob_at_`/`mob_rpt_`/`txh_` grids in widgets, notification liveness pin.
+
+**Files changed:** `ROADMAP.md`, `docs/AUDIT_HISTORY.md`, `docs/TEST_COVERAGE_MAP.md`.
 
 ---
 
@@ -808,6 +996,171 @@ Keypad rows reordered from calculator layout (`7 8 9 / 4 5 6 / 1 2 3`) to phone/
 **Proposed toolbar cluster:** Bell 32px + 8px gap + Profile 32px; center reserve 84px; company pill `max-width: calc(100% - reserve)` with ellipsis on button `p` and static `.erp-hdr-mobile-co`.
 
 **Sign-off gates before patch:** 320px + 390px visual check; unify padding conflict (theme.css 84px vs mobile_header.css 76px); no new `--hdr-h` definitions.
+
+---
+
+## 2026-06-10 — MOBILE-14 Phase 1: ownership contract tests (no CSS movement)
+
+**Scope:** Tests only. No CSS moved, no selectors moved, no app.py changes, no roadmap re-baseline.
+
+**Done:** `tests/test_mobile14_ownership_contract.py` completed — all 7 required contracts (header token, bottom chrome, overlay sheets, KPI/dashboard, sidebar hide, widgets.css layout-grid ban, notification liveness pins). Added the two missing staged M1 dedup contracts (`--hdr-h` within-file duplication in theme.css / mobile_header.css) to match the staged M3–M6 pattern already in the file.
+
+**Result (sandbox static run):** 8 pass (current ownership locked), 7 xfail (staged targets for M1/M3/M4/M5/M6 + txh_actions_ grid remnant), 0 unexpected failures. Host `pytest tests/` required for the official count.
+
+**Rule encoded:** non-owner files may reference owned selectors for state suppression only; xfail contracts flip to plain passes in the same commit as their M-step.
+
+---
+
+## 2026-06-10 — MOBILE-14 M1 closed (header `--hdr-h` dedupe)
+
+**Scope:** `ui/theme.css`, `ui/mobile_header.css` only. No app.py changes.
+
+**Done:**
+- Removed duplicate `--hdr-h: 120px` on `[data-testid="stAppViewContainer"]` in `theme.css` (redundant with `:root` in same `@media` block).
+- Consolidated `mobile_header.css` to ≤2 `--hdr-h` definitions (base 56px + search variant); expanded `@media` gates to mirror `inject_mobile_viewport_detector()`; removed duplicate outside `html.erp-mobile` token block.
+- Promoted `test_mobile14_hdr_h_theme_dedup` and `test_mobile14_hdr_h_mobile_header_dedup` from xfail → pass.
+
+**Result:** Host `pytest tests/` — **914 passed, 5 xfailed**. Zero visible UI change.
+
+**Files changed:** `ui/theme.css`, `ui/mobile_header.css`, `tests/test_mobile14_ownership_contract.py`.
+
+---
+
+## 2026-06-10 — MOBILE-14 M2 closed (verified no-op remaining)
+
+**Scope:** `ui/mobile_shell.css` audit only.
+
+**Finding:** The old E2 dead rule `padding-top: calc(var(--hdr-h) + 16px)` on `section[data-testid="stMain"] .block-container` was **already removed** from `mobile_shell.css` during the M1 session (prior E13 refactor). No further CSS deletion required.
+
+**Evidence:**
+- `mobile_shell.css` block-container rules set only `padding-left` + `padding-bottom` (bottom-nav clearance).
+- M2 tombstone comments document that top inset is owned by `mobile_header.css` (`padding-top: calc(var(--hdr-h) + 10px)`).
+- `load_theme_css()` injects `mobile_header.css` after `mobile_shell.css` — canonical mobile top inset wins in cascade.
+
+**Done:** Added `test_mobile14_m2_mobile_shell_no_block_container_padding_top` contract test + tombstone comments.
+
+**Result:** Host `pytest tests/` — **915 passed, 5 xfailed**.
+
+**Files changed:** `ui/mobile_shell.css` (comments only), `tests/test_mobile14_ownership_contract.py`.
+
+---
+
+## 2026-06-10 — MOBILE-14 roadmap correction (documentation only)
+
+**Decision:** Re-prioritize remaining M-steps after M1+M2 close. No CSS or app.py changes.
+
+| Item | Disposition |
+|------|-------------|
+| **M1** | ✅ Closed — header `--hdr-h` dedupe; tests promoted |
+| **M2** | ✅ Closed — verified no-op; padding-top already gone |
+| **M3 / M4** | Downgraded to **optional low-priority** suppression-rule relocation. Ownership contracts already allow non-owner suppression references in `widgets.css`. Not blockers. |
+| **M5** | **Next active CSS step** — real styling move: `.erp-kpi-section`, `.kpi-grid` from `widgets.css` → `theme.css`. Not started. |
+| **M6** | Open — sidebar single-owner decision pending. Notification: `hdr_toolbar_row` rules in `widgets.css` are **live for legacy desktop**; do not delete blindly; document two-owner exception or permanent liveness contract. |
+| **TXH xfail** | Relabeled independent micro-step — target owner `mobile_txn_history.css` (not `mobile_shell.css`) |
+| **LOGIN-01 / UX-02** | **Unblocked** (M1+M2 done); not started |
+
+**Files changed:** `ROADMAP.md`, `docs/AUDIT_HISTORY.md`, `docs/TEST_COVERAGE_MAP.md`.
+
+---
+
+## 2026-06-10 — MOBILE-14 M6 (sidebar half) implemented; notification half closed as two-owner exception
+
+**Scope:** One CSS deletion + contract test promotion + ownership comments. No M3/M4/TXH work. No visual change intended.
+
+**Sidebar:** Deleted the redundant sidebar-hide selector-list block from `theme.css`'s mobile `@media (max-width: 968px)` block (`stSidebar` + collapse-control selectors, `display:none/visibility/width/min-width` body, former lines ~802–811) — a strict-subset duplicate of `mobile_shell.css`'s hide (all CSS is concatenated by `load_theme_css()`, so shell's copy always applies). Surrounding rules untouched: `--hdr-h: 120px`, block-container padding, `stAppViewContainer` margin, desktop (≥969px) sidebar show rules. A tombstone comment marks the removal. `mobile_shell.css` is now sole owner (2 intentional rules: viewport media + `html.erp-mobile` fallback).
+
+**Notifications:** No rules deleted. Liveness pin converted to a permanent two-owner contract (widgets.css = legacy desktop toolbar, confirmed live via app.py's `hdr_toolbar_row` slot; mobile_header.css = mobile slots). One-line ownership comments added at both rule sites referencing the contract test.
+
+**Tests:** `test_mobile14_sidebar_hide_single_owner` xfail removed (now plain pass); baseline test rewritten as post-M6 lock (`theme: 0, shell: 2`); notification pin docstring rewritten as permanent contract. Contract file now 13 pass + 3 xfail (M3 optional, M4 optional, TXH micro-step). Static harness: 0 unexpected. **Host `pytest tests/` + manual visual check required:** mobile ≤968px sidebar hidden, desktop ≥969px sidebar normal, both notification bells work.
+
+---
+
+## 2026-06-10 — MOBILE-14 M5 closed (KPI ownership move)
+
+**Scope:** `ui/widgets.css` → `ui/theme.css` only.
+
+**Moved:** Four KPI/dashboard spacing rules (bordered-section `.erp-kpi-section` margins, `.kpi-grid` gap, markdown KPI container/paragraph resets). Declarations preserved exactly.
+
+**Tests:** `test_mobile14_kpi_dashboard_not_in_widgets` promoted from xfail → pass.
+
+**Result:** Host `pytest tests/` — **916 passed, 4 xfailed**. Zero visible UI change.
+
+**Files changed:** `ui/theme.css`, `ui/widgets.css`, `tests/test_mobile14_ownership_contract.py`.
+
+---
+
+## 2026-06-10 — MOBILE-14 TXH micro-step closed
+
+**Scope:** Remove duplicate `txh_actions_` grid from `widgets.css`. Canonical owner: `mobile_txn_history.css` (already contained full action-bar rules including grid + column + button chrome).
+
+**Finding:** No new CSS needed in `mobile_txn_history.css` — E6 had already established ownership there. `widgets.css` carried a strict-subset duplicate inside a `@media` block (missing `padding: 0` on horizontal block and column border-right rules). `load_theme_css()` injects `mobile_txn_history.css` after `widgets.css`, so removal is a pure dedupe with no visual change.
+
+**Removed from `widgets.css`:**
+- `html.erp-mobile … [class*="st-key-txh_actions_"] [data-testid="stHorizontalBlock"]` grid block
+- `html.erp-mobile … [class*="st-key-txh_actions_"] [data-testid="stColumn"]` flex-reset block
+
+**Tests:** `test_mobile14_widgets_no_txh_layout_grids` promoted from xfail → pass.
+
+**Result:** Host `pytest tests/` — **918 passed, 2 xfailed** (M3/M4 optional only). **MOBILE-14 ready to close.**
+
+**Files changed:** `ui/widgets.css`, `ui/mobile_txn_history.css` (ownership comment), `tests/test_mobile14_ownership_contract.py`, `ROADMAP.md`, `docs/AUDIT_HISTORY.md`, `docs/TEST_COVERAGE_MAP.md`.
+
+---
+
+## 2026-06-05 — THEME-CONTRAST-01 — Desktop/theme contrast (P0 + P1)
+
+**Scope:** Token + CSS contrast fix only. No layout, auth UI, chip redesign, hover pass, or app/accounting logic changes.
+
+**P0:** `--erp-primary-fill` / `--erp-primary-fill-hover` added; filled primary buttons in `widgets.css`, `mobile_shell.css`, `mobile_txn.css` use fill token. `--theme-info` preserved (`#3b82f6` dark) for links/tints.
+
+**P1:** `--theme-success-text` / `--theme-warning-text` added for light-mode foreground text; applied in `theme.css`, `mobile_txn.css`, `mobile_txn_history.css`, `desktop_txn_history.css`.
+
+**Contrast ratios (test report):** white on primary 5.17:1 (light+dark); text on card 17.85:1; muted on card 7.58:1; success-text on card 5.02:1; warning-text on card 5.02:1.
+
+**Tests:** `tests/test_theme_contrast.py` (15 pass). Updated `tests/test_phase16a_theme.py` token list.
+
+**Result:** Host `pytest tests/` — **943 passed, 2 xfailed**.
+
+**Files changed:** `ui/theme.css`, `ui/theme.py`, `ui/widgets.css`, `ui/mobile_shell.css`, `ui/mobile_txn.css`, `ui/mobile_txn_history.css`, `ui/desktop_txn_history.css`, `tests/test_theme_contrast.py`, `tests/test_phase16a_theme.py`, `ROADMAP.md`, `docs/AUDIT_HISTORY.md`, `docs/TEST_COVERAGE_MAP.md`.
+
+---
+
+## 2026-06-05 — LOGIN-01 — Login / Company Picker UI modernization
+
+**Scope:** Visual/UI only for `render_login` and `render_company_picker`. No auth logic, DEV-AUTH-01, UX-01 restore, password validation, permission logic, or company membership validation changes.
+
+**CSS ownership:**
+- Created `ui/auth.css` as sole owner for all `erp-auth-*` selectors.
+- Registered in `load_theme_css()` (after `mobile_header.css`, before `mobile_txn.css`).
+- Removed migrated `erp-auth-*` rules from `ui/mobile_header.css`.
+
+**UI changes:**
+- Replaced gradient banner + emoji with flat `erp-auth-header-card`.
+- User tiles → avatar cards (`erp-mono-avatar`, name, role chip) + stable `select_user_{id}` keys.
+- Password step → card layout; errors tinted inside card via CSS; no inline `style=`.
+- Company picker → full-width tappable rows with chevron; quiet secondary create + text-style sign out.
+- `_start_create_company_wizard(return_to="picker")` preserved on `picker_start_setup01`.
+
+**Tests:** `tests/test_login01_auth_ui.py` (10 contracts). Updated `tests/test_mobile_header_compact.py` for auth.css loader order.
+
+**Result:** Host `pytest tests/` — **928 passed, 2 xfailed** (M3/M4 optional only).
+
+**Files changed:** `app.py`, `ui/auth.css`, `ui/theme.py`, `ui/mobile_header.css`, `tests/test_login01_auth_ui.py`, `tests/test_mobile_header_compact.py`, `ROADMAP.md`, `docs/AUDIT_HISTORY.md`, `docs/TEST_COVERAGE_MAP.md`.
+
+---
+
+## 2026-06-10 — Roadmap reconciliation (documentation only)
+
+**Scope:** ROADMAP.md corrections from the full roadmap-vs-code reconciliation. No code, no tests, no CSS changed.
+
+**Corrections applied:**
+
+- **SETUP-01** → built and tested. Evidence: `registry/setup01_wizard.py`, `ui/setup01_wizard.py` (`render_setup01_wizard`), wizard CSS + locale strings, tests `setup01_wizard_b1/b2/b3`, `setup01_i18n`, `setup01_error_messages`, `setup01_entry_regression`. Removed from active list.
+- **DEVELOPMENT_MODE** → resolved by DEV-AUTH-01: `DEV_MODE = os.getenv("ERP_DEV_MODE", "0") == "1"` (default off). Production checklist item retained: never run production with `ERP_DEV_MODE=1`.
+- **AD-UI-001** → D1 + D2-P0 shipped (app.py promoted daily lookup route).
+- **BANK-03** / **CHART-01** → marked "needs short verification pass" — BANK-03 wording live in SETUP-01 locales but Banking-page rename unverified; CHART-01 `chart_theme_tokens()` exists with 0 call sites and 0 native st.chart instances remain.
+- **MOBILE-14** → confirmed closed: M1+M2+M5+M6+TXH micro-step done (TXH grid verified in `mobile_txn_history.css`, contract promoted); M3/M4 remain as optional backlog xfails. Host pytest 918 passed / 2 xfailed.
+- **Next state** → LOGIN-01/UX-02 unblocked, not started; next recommended item is their modernization **audit** only.
 
 ---
 

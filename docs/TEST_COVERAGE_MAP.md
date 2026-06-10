@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-10 (UX-03 inline Expense category creation)  
-**Full suite:** run `pytest tests/` (**818** tests total; count grows with new files).
+**Last updated:** 2026-06-05 (THEME-CONTRAST-01 closed · WCAG token contracts)  
+**Full suite:** run `pytest tests/` — **943 passed, 2 xfailed** (16 ownership-contract tests: **14 pass, 2 xfail**).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -252,6 +252,155 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 
 ---
 
+## MOBILE-14 M1–M6 — ownership contracts (implemented)
+
+**Status:** ✅ **MOBILE-14 closed** — `tests/test_mobile14_ownership_contract.py` — **14 pass, 2 xfail** (16 total). All required steps done (M1+M2+M5+M6+TXH). Remaining xfails: M3 (optional), M4 (optional) only.
+
+| Contract | M-step | Business rule protected | State |
+|----------|--------|-------------------------|-------|
+| `--hdr-h` ownership + within-file dedup (`theme.css`, `mobile_header.css`) | M1 | No fifth `--hdr-h` token; HDR-01 not regressed | ✅ Pass |
+| `mobile_shell.css` has no `block-container padding-top` | M2 | Top inset owned by `mobile_header.css` only | ✅ Pass |
+| Bottom-nav / FAB / hub styling owned by `mobile_shell.css` | Regression lock | Shell owns chrome styling | ✅ Pass |
+| No bottom-chrome selectors in `widgets.css` | M3 optional | Suppression refs allowed; relocation optional | xfail |
+| Profile / co-switch sheets owned by `mobile_shell.css` (E13) | Regression lock | Overlay sheet chrome in shell | ✅ Pass |
+| No sheet selectors in `widgets.css` | M4 optional | Suppression refs allowed; relocation optional | xfail |
+| No KPI / dashboard rules in `widgets.css` | M5 | `.erp-kpi-section`, `.kpi-grid` in `theme.css` only | ✅ Pass |
+| Sidebar hide single-owner contract | M6 | `mobile_shell.css` sole owner (`theme: 0, shell: 2`) | ✅ Pass |
+| No `mob_at_`/`mob_rpt_` layout grids in `widgets.css` | E4–E5 guard | AT/report layout ownership preserved | ✅ Pass |
+| No `txh_` layout grids in `widgets.css` | TXH micro-step | `mobile_txn_history.css` canonical owner | ✅ Pass |
+| Notification rule liveness pin (3 files) | M6 | Permanent two-owner contract — do not blind-delete | ✅ Pass |
+
+**Rule:** Non-owner files may reference owned selectors for **state suppression** only. M3/M4 xfails are optional — not required for closure.
+
+**Execution order:** M1 ✅ → M2 ✅ → M5 ✅ → M6 ✅ → TXH ✅ → optional M3/M4 (deferred).
+
+---
+
+## THEME-CONTRAST-01 — WCAG contrast tokens (implemented)
+
+**Status:** ✅ **Closed** — `tests/test_theme_contrast.py` — **15 pass**.
+
+| Contract | Business rule protected | State |
+|----------|-------------------------|-------|
+| White on `--erp-primary-fill` ≥ 4.5 (light + dark) | Primary CTA readable in both modes | ✅ Pass (5.17:1) |
+| `--theme-text` / `--theme-muted` on card/bg ≥ 4.5 | Body copy readable on surfaces | ✅ Pass |
+| `--theme-success-text` / `--theme-warning-text` on light card/bg ≥ 4.5 | Status/KPI foreground readable | ✅ Pass (~5.0:1) |
+| Filled primary buttons use `--erp-primary-fill` | P0 scoped to solid buttons only | ✅ Pass |
+| `--theme-info` unchanged in dark injection | Links/tints keep existing accent | ✅ Pass |
+
+---
+
+## LOGIN-01 — auth UI modernization (implemented)
+
+**Status:** ✅ **Closed** — `tests/test_login01_auth_ui.py` — **10 pass**.
+
+| Contract | Business rule protected | State |
+|----------|-------------------------|-------|
+| `auth.css` registered in `load_theme_css()` | Auth styles load on every page | ✅ Pass |
+| `erp-auth-*` selectors only in `auth.css` | CSS-02 ownership; no drift in `mobile_header.css` | ✅ Pass |
+| No inline `style=` in auth renderers | Token-driven styling only | ✅ Pass |
+| Widget keys frozen | Streamlit state + test stability | ✅ Pass |
+| `picker_start_setup01` → `_start_create_company_wizard(return_to="picker")` | Create-company entry unchanged | ✅ Pass |
+| UX-01 restore before `render_login` | Session restore hook order | ✅ Pass |
+| Login form + `_login` + error paths preserved | Auth behavior unchanged | ✅ Pass |
+| Company picker membership revalidation | Security: never trust submitted ID alone | ✅ Pass |
+
+---
+
+### `tests/test_ux01_session_restore.py` (17 tests) — UX-01 v1
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Token mint/verify round trip | HMAC integrity + 8h expiry | **High** |
+| Expired/tampered/password-changed tokens rejected | Restore cannot be forged or replayed | **High** |
+| Inactive user rejected | Disabled accounts cannot restore | **High** |
+| Revoked/deactivated company → picker | Token company not trusted without DB | **High** |
+| Role re-derived from DB | Token carries no permissions | **High** |
+| Restore never writes `at_*` / `mob_at_*` | Narrow scope — no draft leakage | **High** |
+| Logout clears cookie + session | Explicit sign-out invalidates restore | **High** |
+| No secret disables feature | Safe default when env unset | **High** |
+| DEV_MODE skips restore/cookie | Dev bypass unchanged | **High** |
+| Restore failure → login, no raise | Graceful degrade on bad cookie | **Medium** |
+
+---
+
+### `tests/test_date01_fast_mobile_date.py` (15 tests) — DATE-01
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| `at_date_follows_today` on default/Today | Date rolls forward with calendar day | **High** |
+| Flag cleared on Yesterday/Custom | Explicit backdate not overwritten overnight | **High** |
+| Rollover guard (`_mob_at_apply_date_follow_today`) | Pinned Today stays current | **High** |
+| Repeat sets today + follow flag | Repeat compatible with DATE-01 | **Medium** |
+| Company switch clears flag | No cross-company date pin leakage | **High** |
+| `_entry_date_posting_blocked` shared with JE | Courtesy check matches posting engine | **High** |
+| Backdated Row 1 marker when date ≠ today | User sees non-today posting intent | **Medium** |
+| Sheet weekday+date labels | Quick choices show full context | **Low** |
+| Desktop `st.date_input` unchanged | Mobile-only scope | **High** |
+
+---
+
+### `tests/test_ux04_repeat_transaction.py` (20 tests) — Repeat Last Transaction v1
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Repeat visible for eligible Expense/Purchase only | No Repeat on Sale/Salary/Bank/Payable | **High** |
+| Void + company-scope guards | Ineligible rows refused in UI and handler | **High** |
+| Date → today; amount/notes copied | Fresh dated entry; user must Save | **High** |
+| Active category/subcategory copied; inactive dropped | Stale taxonomy not prefilled | **High** |
+| Purchase vendor active-only; PM coercion | Invalid vendor/PM fall back safely | **High** |
+| Forbidden fields never copied (customer, worker, ids) | Explicit allowlist; no column iteration | **High** |
+| No `_at_save` / posting during repeat | Prefill-only; no silent transaction | **High** |
+| Navigate to Add Transaction | Opens AT panel after Repeat tap | **Medium** |
+
+---
+
+### `tests/test_ux04c_smart_defaults.py` (12 tests) — UX-04C
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Per-type PM memory isolation (Sale/Expense/Purchase) | Cash/Card/Credit remembered separately per type | **High** |
+| Default chain: memory → static → first allowed | Chip tap preference honored on next open | **High** |
+| Invalid remembered PM falls back when CC disabled | Company CC off does not leave stale PM | **High** |
+| Type switch restores valid remembered PM | Sale Card → Expense → back to Sale restores Card | **Medium** |
+| Company switch clears PM memory keys | No cross-company PM leakage | **High** |
+| Single-bank auto-pick when PM requires Bank | One active account auto-selected | **High** |
+| Two banks do not auto-pick | No wrong-bank inference | **High** |
+| Bank trigger does not default first of many | Multi-bank requires explicit pick | **High** |
+| PM chip tap calls `_mob_at_remember_last_pm` | Memory updated on user action only | **Medium** |
+| No customer/vendor/worker inference added | Scope guard on UX-04C block | **Medium** |
+
+---
+
+### `tests/test_ux04b_payment_method_chips.py` (14 tests) — UX-04B
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Sale/Expense/Purchase PM lists from shared helpers | No duplicated method lists | **High** |
+| Company CC chip gated by `_company_cc_charge_ready` | CC only when posting ready | **High** |
+| Chip tap sets `at_pm` + clears stale account keys | Bank/card/CC picker state consistency | **High** |
+| Type change coerces invalid PM | Sale Card → Expense resets to Cash | **Medium** |
+| Bank Transaction has no PM chip row; `mob_at_pm2` preserved | Subtype row untouched | **High** |
+| Row 1 exactly 3 buttons; payment picker retired | UX-04B layout contract | **Medium** |
+| Post-save retains `at_pm` | PM chip stays selected after save | **Medium** |
+| Desktop AT still uses `at_pm` selectbox | Mobile-only scope | **High** |
+| `mob_at_pm_row` CSS + widgets selected-chip rule | Chip grammar parity with category chips | **Low** |
+
+---
+
+### `tests/test_ux04a_post_save_retention.py` (8 tests) — UX-04A
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| `_at_clear_post_save_transient_fields` clears amount/notes | Fresh amount line after each save | **Medium** |
+| `at_last_cat_id` not cleared post-save | Desktop subcategory retained across saves | **High** |
+| `at_cust_sel` cleared post-save | Credit Sale customer dropdown not reused | **High** |
+| Worker gross/deduction/advance keys cleared (desktop + mobile) | Salary values not copied to next worker | **High** |
+| Type/payment/category/date/currency/vendor/bank/quick-entry memory retained | Workflow continuity after save | **Medium** |
+| `_at_process_submit` uses helper; `at_last_cat_id` absent from inline clear | Regression guard on post-save block | **Medium** |
+
+---
+
 ### `tests/test_ux03_inline_category.py` (11 tests) — UX-03
 
 | Feature covered | Business rule protected | Risk if untested |
@@ -266,6 +415,29 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 | No always-visible add control on AT panel | UX placement stays inside picker sheet | **Medium** |
 | `_cat_add_dialog` uses shared helper | Desktop/mobile parity on create logic | **Medium** |
 | `txn.mob.add_category_cta` EN/TR locale keys | i18n contract | **Low** |
+
+---
+
+### `tests/test_mobile14_ownership_contract.py` (16 tests: 14 pass + 2 xfail) — MOBILE-14 closed
+
+| Contract | State | Notes |
+|---|---|---|
+| `--hdr-h` defined only in theme.css + mobile_header.css | Pass | Regression lock |
+| `--hdr-h` within-file dedup (theme ≤2, mobile_header ≤2) | Pass | M1 ✅ |
+| `mobile_shell.css` no `block-container padding-top` | Pass | M2 ✅ |
+| Bottom nav/FAB/hub styling owned by mobile_shell.css | Pass | Regression lock |
+| No bottom-chrome selectors in widgets.css | xfail | M3 optional |
+| Profile/co-switch sheets owned by mobile_shell.css (E13) | Pass | Regression lock |
+| No sheet selectors in widgets.css | xfail | M4 optional |
+| KPI/dashboard owned by theme.css | Pass | Regression lock |
+| No KPI rules in widgets.css | Pass | M5 ✅ |
+| Sidebar-hide post-M6 lock (`theme: 0, shell: 2`) | Pass | M6 ✅ |
+| Sidebar-hide single owner (mobile_shell.css) | Pass | M6 ✅ |
+| No `mob_at_`/`mob_rpt_` layout grids in widgets.css | Pass | E4/E5 lock |
+| No `txh_` layout grids in widgets.css | Pass | TXH micro-step ✅ |
+| Notification rule liveness pins (3 files) | Pass | Permanent two-owner contract |
+
+Remaining xfails (M3/M4) are optional suppression relocations — not MOBILE-14 blockers.
 
 ---
 

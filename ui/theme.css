@@ -20,6 +20,12 @@
   --theme-danger: #dc2626;
   --theme-warning: #d97706;
   --theme-info: #2563eb;
+  /* THEME-CONTRAST-01 — filled primary buttons (white text); --theme-info stays for links/tints */
+  --erp-primary-fill: #2563eb;
+  --erp-primary-fill-hover: #1d4ed8;
+  /* THEME-CONTRAST-01 — light-mode foreground text on card/bg */
+  --theme-success-text: #15803d;
+  --theme-warning-text: #b45309;
   --theme-purple: #6d28d9;
   --theme-teal: #0ea5a4;
   --theme-input-border: #cbd5e1;
@@ -74,6 +80,10 @@
     --theme-danger: #f87171;
     --theme-warning: #fbbf24;
     --theme-info: #3b82f6;
+    --erp-primary-fill: #2563eb;
+    --erp-primary-fill-hover: #1d4ed8;
+    --theme-success-text: #4ade80;
+    --theme-warning-text: #fbbf24;
     --theme-purple: #8b5cf6;
     --theme-teal: #14b8a6;
     --theme-input-border: #334155;
@@ -394,10 +404,10 @@
   margin-bottom: 4px;
   color: var(--theme-text);
 }
-.txn-tip-box.sale .txn-tip-title { color: var(--theme-success); }
+.txn-tip-box.sale .txn-tip-title { color: var(--theme-success-text); }
 .txn-tip-box.expense .txn-tip-title { color: var(--theme-danger); }
 .txn-tip-box.purchase .txn-tip-title { color: var(--theme-purple); }
-.txn-tip-box.supplier .txn-tip-title { color: var(--theme-warning); }
+.txn-tip-box.supplier .txn-tip-title { color: var(--theme-warning-text); }
 .txn-tip-box.customer .txn-tip-title { color: var(--theme-info); }
 .txn-tip-box.bank .txn-tip-title { color: var(--theme-teal); }
 
@@ -538,6 +548,26 @@
   color: var(--theme-text);
 }
 
+/* MOBILE-14 M5 — KPI inside bordered dashboard sections (moved from widgets.css) */
+[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] .erp-kpi-section {
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] .erp-kpi-section .kpi-grid {
+  gap: 14px;
+}
+
+/* Markdown KPI blocks — strip default paragraph margins */
+[data-testid="stMain"] [data-testid="stMarkdownContainer"]:has(.erp-kpi-section) {
+  margin-bottom: 0 !important;
+}
+
+[data-testid="stMain"] [data-testid="stMarkdownContainer"]:has(.erp-kpi-section) p {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 /* Banners — mono card surface (UI Sweep 3) */
 .banner {
   padding: 18px 24px;
@@ -673,7 +703,7 @@
   font-weight: 700;
   font-size: 1.05rem;
 }
-.amt-pos { color: var(--theme-success); }
+.amt-pos { color: var(--theme-success-text); }
 .amt-neg { color: var(--theme-danger); }
 .amt-zero { color: var(--theme-text); }
 
@@ -779,16 +809,8 @@
   .block-container {
     padding-top: calc(var(--hdr-h) + 16px) !important;
   }
-  [data-testid="stSidebar"],
-  [data-testid="stSidebarCollapseButton"],
-  [data-testid="stSidebarCollapsedControl"],
-  [data-testid="collapsedControl"],
-  [data-testid="stExpandSidebarButton"] {
-    display: none !important;
-    visibility: hidden !important;
-    width: 0 !important;
-    min-width: 0 !important;
-  }
+  /* M6 — sidebar hide removed (redundant copy); mobile_shell.css is the sole owner
+     of mobile sidebar hiding (viewport media rule + html.erp-mobile fallback). */
   [data-testid="stAppViewContainer"] {
     margin-left: 0 !important;
   }
@@ -1004,9 +1026,6 @@
     color: var(--theme-text) !important;
     box-shadow: none !important;
   }
-  [data-testid="stAppViewContainer"] {
-    --hdr-h: 120px;
-  }
   [class*="st-key-hdr_shell_row"] {
     min-height: var(--hdr-h) !important;
     max-height: var(--hdr-h) !important;
@@ -1210,7 +1229,7 @@
     text-overflow: unset;
     line-height: 1.25;
   }
-  .erp-dash-mobile-kpi-value.kpi-success { color: var(--theme-success); }
+  .erp-dash-mobile-kpi-value.kpi-success { color: var(--theme-success-text); }
   .erp-dash-mobile-kpi-value.kpi-danger { color: var(--theme-danger); }
   [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-dash-mobile-arap-host) {
     background: var(--theme-card) !important;

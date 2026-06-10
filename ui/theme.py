@@ -15,6 +15,7 @@ _MOBILE_TXN_HISTORY_CSS_PATH = Path(__file__).with_name("mobile_txn_history.css"
 _DESKTOP_TXN_HISTORY_CSS_PATH = Path(__file__).with_name("desktop_txn_history.css")
 _SETUP01_WIZARD_CSS_PATH = Path(__file__).with_name("setup01_wizard.css")
 _MOBILE_HEADER_CSS_PATH = Path(__file__).with_name("mobile_header.css")
+_AUTH_CSS_PATH = Path(__file__).with_name("auth.css")
 _CSS_CACHE: str | None = None
 _CSS_MTIME: float | None = None
 
@@ -31,6 +32,10 @@ LIGHT_ROOT_VARS: dict[str, str] = {
     "--theme-danger": "#DC2626",
     "--theme-warning": "#D97706",
     "--theme-info": "#2563EB",
+    "--erp-primary-fill": "#2563EB",
+    "--erp-primary-fill-hover": "#1D4ED8",
+    "--theme-success-text": "#15803D",
+    "--theme-warning-text": "#B45309",
     "--theme-purple": "#6D28D9",
     "--theme-teal": "#0EA5A4",
     "--theme-input-border": "#CBD5E1",
@@ -52,6 +57,10 @@ DARK_ROOT_VARS: dict[str, str] = {
     "--theme-danger": "#F87171",
     "--theme-warning": "#FBBF24",
     "--theme-info": "#3B82F6",
+    "--erp-primary-fill": "#2563EB",
+    "--erp-primary-fill-hover": "#1D4ED8",
+    "--theme-success-text": "#4ADE80",
+    "--theme-warning-text": "#FBBF24",
     "--theme-purple": "#8B5CF6",
     "--theme-teal": "#14B8A6",
     "--theme-input-border": "#334155",
@@ -82,19 +91,21 @@ def load_theme_css() -> str:
         _DESKTOP_TXN_HISTORY_CSS_PATH.stat().st_mtime,
         _SETUP01_WIZARD_CSS_PATH.stat().st_mtime,
         _MOBILE_HEADER_CSS_PATH.stat().st_mtime,
+        _AUTH_CSS_PATH.stat().st_mtime,
     )
     if _CSS_CACHE is None or _CSS_MTIME != mtime:
         base = _THEME_CSS_PATH.read_text(encoding="utf-8")
         widgets = _WIDGETS_CSS_PATH.read_text(encoding="utf-8")
         mobile = _MOBILE_SHELL_CSS_PATH.read_text(encoding="utf-8")
         mobile_header = _MOBILE_HEADER_CSS_PATH.read_text(encoding="utf-8")
+        auth = _AUTH_CSS_PATH.read_text(encoding="utf-8")
         mobile_txn = _MOBILE_TXN_CSS_PATH.read_text(encoding="utf-8")
         mobile_reports = _MOBILE_REPORTS_CSS_PATH.read_text(encoding="utf-8")
         mobile_txn_history = _MOBILE_TXN_HISTORY_CSS_PATH.read_text(encoding="utf-8")
         desktop_txn_history = _DESKTOP_TXN_HISTORY_CSS_PATH.read_text(encoding="utf-8")
         setup01_wizard = _SETUP01_WIZARD_CSS_PATH.read_text(encoding="utf-8")
         _CSS_CACHE = (
-            f"{base}\n\n{widgets}\n\n{mobile}\n\n{mobile_header}\n\n{mobile_txn}\n\n"
+            f"{base}\n\n{widgets}\n\n{mobile}\n\n{mobile_header}\n\n{auth}\n\n{mobile_txn}\n\n"
             f"{mobile_reports}\n\n{mobile_txn_history}\n\n{desktop_txn_history}\n\n"
             f"{setup01_wizard}"
         )

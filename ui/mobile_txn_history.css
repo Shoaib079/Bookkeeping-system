@@ -55,7 +55,7 @@
   color: var(--theme-text);
 }
 
-[data-testid="stMain"]:has(.erp-txh-mobile-host) .erp-txh-row-amt--in { color: var(--theme-success); }
+[data-testid="stMain"]:has(.erp-txh-mobile-host) .erp-txh-row-amt--in { color: var(--theme-success-text); }
 [data-testid="stMain"]:has(.erp-txh-mobile-host) .erp-txh-row-amt--out { color: var(--theme-danger); }
 [data-testid="stMain"]:has(.erp-txh-mobile-host) .erp-txh-row-amt--muted { color: var(--theme-muted); }
 
@@ -112,12 +112,12 @@
 
 .erp-txh-pill--success {
   background: color-mix(in srgb, var(--theme-success) 14%, var(--theme-card) 86%);
-  color: var(--theme-success);
+  color: var(--theme-success-text);
 }
 
 .erp-txh-pill--warning {
   background: color-mix(in srgb, var(--theme-warning) 14%, var(--theme-card) 86%);
-  color: var(--theme-warning);
+  color: var(--theme-warning-text);
 }
 
 .erp-txh-pill--danger {
@@ -143,7 +143,7 @@
 
 .erp-txh-pill--corrected {
   background: color-mix(in srgb, var(--theme-warning) 12%, var(--theme-card) 88%);
-  color: var(--theme-warning);
+  color: var(--theme-warning-text);
 }
 
 .erp-txh-filters-label {
@@ -190,6 +190,7 @@ html.erp-mobile [data-testid="stMain"]:has(.erp-txh-mobile-host) [class*="st-key
   margin: 0 !important;
 }
 
+/* MOBILE-14 TXH micro-step — canonical txh_actions_ grid owner (removed from widgets.css) */
 html.erp-mobile [data-testid="stMain"]:has(.erp-txh-mobile-host) [class*="st-key-txh_actions_"] [data-testid="stHorizontalBlock"] {
   display: grid !important;
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;

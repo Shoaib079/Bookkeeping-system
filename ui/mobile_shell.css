@@ -29,6 +29,7 @@ html.erp-mobile {
     margin-left: 0 !important;
   }
 
+  /* M2 — padding-top omitted (dead E2 copy); mobile_header.css owns block-container top inset */
   section[data-testid="stMain"] .block-container {
     padding-left: 1rem !important;
     padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
@@ -366,7 +367,7 @@ html.erp-mobile {
     margin: -22px auto 2px !important;
     padding: 0 !important;
     border-radius: 50% !important;
-    background: var(--theme-info) !important;
+    background: var(--erp-primary-fill) !important;
     color: var(--erp-on-primary) !important;
     font-size: 30px !important;
     font-weight: 700 !important;
@@ -384,7 +385,7 @@ html.erp-mobile {
 
   [data-testid="stMain"] [class*="st-key-mob_bar_new"] button[kind="secondary"],
   [data-testid="stMain"] [class*="st-key-mob_bar_new"] button[kind="primary"] {
-    background: var(--theme-info) !important;
+    background: var(--erp-primary-fill) !important;
     color: var(--erp-on-primary) !important;
   }
 
@@ -538,9 +539,9 @@ html.erp-mobile {
   }
 
   [data-testid="stMain"] [class*="st-key-mob_hub_"] button[kind="primary"] {
-    background: var(--theme-info) !important;
+    background: var(--erp-primary-fill) !important;
     color: var(--erp-on-primary, #fff) !important;
-    border-color: var(--theme-info) !important;
+    border-color: var(--erp-primary-fill) !important;
     font-weight: 700 !important;
   }
 
@@ -696,6 +697,7 @@ html.erp-mobile [data-testid="stAppViewContainer"] {
   margin-left: 0 !important;
 }
 
+/* M2 — html.erp-mobile fallback: horizontal/bottom inset only; no padding-top */
 html.erp-mobile section[data-testid="stMain"] .block-container {
   padding-left: 1rem !important;
   padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
