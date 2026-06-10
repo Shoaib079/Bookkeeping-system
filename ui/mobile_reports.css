@@ -1,6 +1,8 @@
 /* Mobile Reports — chip selectors, date bars, tab strip (Phase 18-MUX) */
 
-@media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
+@media (max-width: 968px),
+  ((max-width: 1366px) and (hover: none) and (pointer: coarse)),
+  ((max-height: 520px) and (hover: none) and (pointer: coarse)) {
   /* Hide desktop report selectboxes on phone */
   [data-testid="stMain"] [class*="st-key-erp_rpt_sel_desktop_"] {
     display: none !important;

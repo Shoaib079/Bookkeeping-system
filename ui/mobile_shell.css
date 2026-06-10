@@ -8,7 +8,9 @@ html.erp-mobile {
   --mob-top-nav-h: 0px;
 }
 
-@media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
+@media (max-width: 968px),
+  ((max-width: 1366px) and (hover: none) and (pointer: coarse)),
+  ((max-height: 520px) and (hover: none) and (pointer: coarse)) {
   :root {
     --bottom-nav-h: 62px;
     --mob-fab-size: 56px;

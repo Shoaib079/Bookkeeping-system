@@ -46,7 +46,8 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | **AT-LIGHT-01** — Mobile AT Light-Mode Polish (P1–P6) | ✅ **Closed** — manual phone/POS verification complete (2026-06-10) |
 | **DATE-01** — Fast Mobile Date Entry | ✅ **Closed** — mobile date sheet + rollover + backdated marker (2026-06-10) |
 | **UX-01** — Session Persistence (v1) | ✅ **Closed** — signed restore token + company revalidation (2026-06-10) |
-| **UX-02** — Responsive Viewport & Device Auto-Fit | 🟡 **HIGH** — approved; **unblocked** (M1+M2 done); not started |
+| **VIEWPORT-SYNC-01** — JS/CSS Mobile Threshold Sync | ✅ **Closed** — align-up to 1366px touch tablets (2026-06-05) |
+| **UX-02** — Responsive Viewport & Device Auto-Fit | ✅ **Superseded** — reduced to VIEWPORT-SYNC-01 (HDR-01/MOBILE-14/UX-01 covered rest) |
 | **HDR-01** — Combined Header Pass (UX-07 + UX-06) | ✅ **Closed** — responsive selector, ellipsis, toolbar cluster (2026-06-10) |
 | **UX-03** — Inline Expense Category Creation | ✅ **Closed** — Expense picker search CTA (2026-06-10) |
 | **UX-04** — Selector Interaction Audit | ✅ **Closed** — UX-04A/B/C + Repeat v1 (2026-06-10) |
@@ -69,7 +70,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 
 **Recently closed:** **THEME-CONTRAST-01** (P0 primary fill + P1 success/warning text tokens; WCAG contrast tests). Host pytest: **943 passed, 2 xfailed** (2026-06-05). **LOGIN-01** and **MOBILE-14** closed prior.
 
-**Next recommended active item:** **UX-02** — responsive viewport & device auto-fit (unblocked; not started).
+**Next recommended active item:** operational friction log (**OBS-01**) during daily use — build only what causes real bookkeeping friction.
 
 **Short verification passes pending:** **BANK-03** (Banking-page rename) · **CHART-01** (helper call sites / chart migration state).
 
@@ -1377,9 +1378,23 @@ This section does not change or remove:
 
 ---
 
+## VIEWPORT-SYNC-01 — JS/CSS Mobile Threshold Sync
+
+**Status:** ✅ **Closed** (2026-06-05) · Replaces/reduces **UX-02** · **Align-up** decision approved.
+
+**Problem:** JS `inject_mobile_viewport_detector()` tagged touch tablets up to **1366px** as `html.erp-mobile`, but CSS `@media` fallback arms only reached **1024px** coarse pointer — 1025–1366px tablets got mobile widgets without full mobile layout CSS.
+
+**Fix:** Canonical mobile `@media` header (narrow ≤968 | touch tablet ≤1366 coarse | phone landscape ≤520 coarse) applied uniformly in `mobile_shell.css`, `mobile_txn.css`, `mobile_header.css`, `mobile_reports.css`, `mobile_txn_history.css`, `widgets.css`. Constants pinned in `ui/theme.py`.
+
+**Tests:** `tests/test_viewport_sync01.py` (5 contracts).
+
+**Caveat:** Fine-pointer laptops at 1024–1200px remain desktop unless width ≤968; coarse touch devices up to 1366px receive POS/mobile UI.
+
+---
+
 ## UX-02 — Responsive Viewport & Device Auto-Fit
 
-**Status:** ✅ Approved · **Priority:** High · **Unblocked** — MOBILE-14 M1+M2 complete; **not started**.
+**Status:** ✅ **Superseded by VIEWPORT-SYNC-01** (2026-06-05). Original scope mostly solved by **HDR-01**, **MOBILE-14**, **UX-01**; remaining gap was JS/CSS threshold mismatch.
 
 **Purpose:** Users should never need to manually adjust browser zoom, viewport size, or scaling after login. Viewport adaptation is a core usability requirement — the ERP must automatically fit the device it is opened on.
 

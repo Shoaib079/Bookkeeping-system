@@ -1107,6 +1107,29 @@ Set environment variable **`ERP_SESSION_RESTORE_SECRET`** to a long random secre
 
 ---
 
+## 2026-06-05 — VIEWPORT-SYNC-01 — JS/CSS mobile threshold sync (replaces UX-02)
+
+**Decision:** Align-up — restaurant counter tablets and large touch devices up to 1366px receive coherent POS/mobile UI.
+
+**Problem:** JS detector tagged `html.erp-mobile` when `coarse && viewport <= 1366`, but CSS `@media` coarse arm stopped at 1024px — 1025–1366px touch tablets rendered mobile widgets without full mobile layout CSS.
+
+**Fix:** Canonical `@media` header applied uniformly across six mobile CSS owners:
+- `(max-width: 968px)`
+- `((max-width: 1366px) and (hover: none) and (pointer: coarse))`
+- `((max-height: 520px) and (hover: none) and (pointer: coarse))`
+
+Constants pinned in `ui/theme.py` (`MOBILE_VIEWPORT_*`). `mobile_header.css` already had 1366; others updated from 1024.
+
+**UX-02 status:** Original scope largely closed by HDR-01, MOBILE-14, UX-01; remaining gap reduced to VIEWPORT-SYNC-01.
+
+**Tests:** `tests/test_viewport_sync01.py` (5 pass). Full suite **948 passed, 2 xfailed**.
+
+**Caveat:** Fine-pointer laptops 1024–1200px stay desktop unless width ≤968.
+
+**Files changed:** `ui/theme.py`, `ui/mobile_shell.css`, `ui/mobile_txn.css`, `ui/mobile_reports.css`, `ui/mobile_txn_history.css`, `ui/widgets.css`, `tests/test_viewport_sync01.py`, `ROADMAP.md`, `docs/AUDIT_HISTORY.md`, `docs/TEST_COVERAGE_MAP.md`.
+
+---
+
 ## 2026-06-05 — THEME-CONTRAST-01 — Desktop/theme contrast (P0 + P1)
 
 **Scope:** Token + CSS contrast fix only. No layout, auth UI, chip redesign, hover pass, or app/accounting logic changes.
@@ -1161,6 +1184,20 @@ Set environment variable **`ERP_SESSION_RESTORE_SECRET`** to a long random secre
 - **BANK-03** / **CHART-01** → marked "needs short verification pass" — BANK-03 wording live in SETUP-01 locales but Banking-page rename unverified; CHART-01 `chart_theme_tokens()` exists with 0 call sites and 0 native st.chart instances remain.
 - **MOBILE-14** → confirmed closed: M1+M2+M5+M6+TXH micro-step done (TXH grid verified in `mobile_txn_history.css`, contract promoted); M3/M4 remain as optional backlog xfails. Host pytest 918 passed / 2 xfailed.
 - **Next state** → LOGIN-01/UX-02 unblocked, not started; next recommended item is their modernization **audit** only.
+
+---
+
+## 2026-06-10 — PORTAL-THEME-01: portal surface theming fix
+
+**Scope:** CSS + tests + docs only. No app.py, theme tokens, Streamlit config, auth, notification, picker, or dialog-behavior changes. Existing selectbox dropdown fix untouched (contract-pinned).
+
+**Root cause (verified):** `stPopoverBody`, `stDialog`, and BaseWeb calendar popups render outside `[data-testid="stMain"]`; all stMain-scoped UI-1/theme rules miss them, so Streamlit's base theme (which follows the **OS** scheme, not the app preference) leaks in. Reproduced as near-invisible text whenever OS theme ≠ app theme (notification popovers desktop+mobile, profile/company popover selected row, st.dialog forms, date calendar).
+
+**Fix:** New additive `PORTAL-THEME-01` section in `ui/widgets.css` (beside the existing popover/dropdown rules): popover-body + dialog text (markdown/captions/labels), dialog surface bg, dialog/popover inputs incl. placeholder + caret (closes the gap where input containers were themed but input text was stMain-scoped), secondary buttons (UI-1 grammar), primary buttons (`--erp-primary-fill`/`--erp-on-primary` + hover), and BaseWeb calendar (card bg, readable cells, selected day on primary fill). All rules unscoped, token-only, light/dark safe.
+
+**Tests:** New `tests/test_portal_theme_contract.py` (7): per-surface rule presence, primary-fill grammar, calendar rules, **no-stMain-prefix regression guard**, no-literal-hex guard, selectbox-fix-untouched pin. Extended `tests/test_theme_contrast.py` (+2): portal text/caption on card and on-primary-on-fill pairs, both modes ≥ 4.5:1. Static harness: 23/23 across both files; mobile14/UI-1/layout contracts re-run clean (38 pass, 2 optional xfail). Host `pytest tests/` required for official count.
+
+**Manual matrix (user):** OS-dark+app-light, OS-light+app-dark, both aligned × (notification popover, profile menu, Add Category dialog, date calendar).
 
 ---
 

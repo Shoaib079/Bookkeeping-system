@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-05 (THEME-CONTRAST-01 closed · WCAG token contracts)  
-**Full suite:** run `pytest tests/` — **943 passed, 2 xfailed** (16 ownership-contract tests: **14 pass, 2 xfail**).
+**Last updated:** 2026-06-05 (VIEWPORT-SYNC-01 closed · JS/CSS threshold sync)  
+**Full suite:** run `pytest tests/` — **948 passed, 2 xfailed** (16 ownership-contract tests: **14 pass, 2 xfail**).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -276,6 +276,19 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 
 ---
 
+## VIEWPORT-SYNC-01 — JS/CSS mobile threshold sync (implemented)
+
+**Status:** ✅ **Closed** — `tests/test_viewport_sync01.py` — **5 pass**.
+
+| Contract | Business rule protected | State |
+|----------|-------------------------|-------|
+| JS detector thresholds match `MOBILE_VIEWPORT_*` constants | 968 / 1366 / 520 boundaries pinned | ✅ Pass |
+| CSS coarse arm uses 1366px not 1024px | Touch tablets get layout CSS | ✅ Pass |
+| Identical `@media` header across 6 mobile CSS owners | No partial mobile chrome | ✅ Pass |
+| `erp_mobile_ui` cookie in detector + sync | UA/cookie hint stable | ✅ Pass |
+
+---
+
 ## THEME-CONTRAST-01 — WCAG contrast tokens (implemented)
 
 **Status:** ✅ **Closed** — `tests/test_theme_contrast.py` — **15 pass**.
@@ -438,6 +451,22 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 | Notification rule liveness pins (3 files) | Pass | Permanent two-owner contract |
 
 Remaining xfails (M3/M4) are optional suppression relocations — not MOBILE-14 blockers.
+
+---
+
+### `tests/test_portal_theme_contract.py` (7 tests) — PORTAL-THEME-01
+
+| Contract | Protects |
+|---|---|
+| Popover-body text/caption rules present, tokenised | Notification + profile popover readability |
+| Dialog text + input rules (incl. placeholder/caret) | st.dialog forms readable in OS/app theme splits |
+| Primary/secondary button grammar in portals | `--erp-primary-fill` + `--erp-on-primary` usage |
+| Calendar popup rules | st.date_input popup readability |
+| **No stMain prefix on portal rules** | The regression that caused the bug |
+| No literal hex in portal section | Token-only policy |
+| Selectbox dropdown fix untouched | Original portal fix preserved |
+
+`test_theme_contrast.py` +2: portal text/caption-on-card and on-primary-on-fill pairs, both modes.
 
 ---
 

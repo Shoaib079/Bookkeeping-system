@@ -19,6 +19,24 @@ _AUTH_CSS_PATH = Path(__file__).with_name("auth.css")
 _CSS_CACHE: str | None = None
 _CSS_MTIME: float | None = None
 
+# VIEWPORT-SYNC-01 — mobile boundaries (must match @media in mobile_*.css + widgets.css)
+MOBILE_VIEWPORT_NARROW_MAX_PX = 968
+MOBILE_VIEWPORT_TOUCH_TABLET_MAX_PX = 1366
+MOBILE_VIEWPORT_PHONE_LANDSCAPE_MAX_PX = 520
+MOBILE_VIEWPORT_MEDIA_QUERY_ARMS: tuple[str, ...] = (
+    "(max-width: 968px)",
+    "((max-width: 1366px) and (hover: none) and (pointer: coarse))",
+    "((max-height: 520px) and (hover: none) and (pointer: coarse))",
+)
+MOBILE_VIEWPORT_CSS_OWNER_FILES: tuple[str, ...] = (
+    "mobile_shell.css",
+    "mobile_txn.css",
+    "mobile_header.css",
+    "mobile_reports.css",
+    "mobile_txn_history.css",
+    "widgets.css",
+)
+
 # Injected after theme.css; wins over @media (prefers-color-scheme).
 LIGHT_ROOT_VARS: dict[str, str] = {
     "--hdr-bg": "#EEF2F7",
@@ -124,7 +142,10 @@ def render_global_style() -> None:
 
 
 def inject_mobile_viewport_detector() -> None:
-    """Tag html.erp-mobile on phones (portrait + landscape) for shell CSS."""
+    """Tag html.erp-mobile on phones/tablets (portrait + landscape) for shell CSS.
+
+    Boundaries must stay aligned with MOBILE_VIEWPORT_MEDIA_QUERY_ARMS / mobile CSS @media.
+    """
     st.iframe(
         """
         <script>

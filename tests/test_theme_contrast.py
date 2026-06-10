@@ -176,6 +176,32 @@ def test_theme_info_unchanged_for_dark_accent_use():
     assert DARK_ROOT_VARS["--erp-primary-fill"].upper() == "#2563EB"
 
 
+def test_portal_surface_text_contrast_both_modes():
+    """PORTAL-THEME-01 — popover/dialog content renders on --theme-card with
+    --theme-text / --theme-caption; both modes must clear WCAG AA normal text."""
+    for vars_map, mode in ((LIGHT_ROOT_VARS, "light"), (DARK_ROOT_VARS, "dark")):
+        card = _resolve_hex(vars_map, "--theme-card")
+        for token in ("--theme-text", "--theme-caption"):
+            ratio = wcag_contrast(_resolve_hex(vars_map, token), card)
+            assert ratio >= WCAG_AA_NORMAL, (
+                f"{mode}: {token} on --theme-card (portal surface) = {ratio:.2f}:1"
+            )
+
+
+def test_portal_primary_button_contrast_both_modes(css_root_tokens: dict[str, str]):
+    """PORTAL-THEME-01 — portal primary buttons use --erp-on-primary on --erp-primary-fill.
+
+    --erp-on-primary lives only in theme.css :root (constant across modes, not
+    swapped by the injection maps), so it is resolved from the parsed CSS tokens.
+    """
+    on_primary = _resolve_hex(css_root_tokens, "--erp-on-primary")
+    for vars_map, mode in ((LIGHT_ROOT_VARS, "light"), (DARK_ROOT_VARS, "dark")):
+        ratio = wcag_contrast(on_primary, _resolve_hex(vars_map, "--erp-primary-fill"))
+        assert ratio >= WCAG_AA_NORMAL, (
+            f"{mode}: --erp-on-primary on --erp-primary-fill (portal button) = {ratio:.2f}:1"
+        )
+
+
 def test_contrast_ratios_report(capsys):
     """Emit resolved ratios for audit trail (always passes)."""
     light_card = _resolve_hex(LIGHT_ROOT_VARS, "--theme-card")

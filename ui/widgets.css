@@ -630,7 +630,9 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
 }
 
 /* UI-1 — Mobile chrome + header: secondary/global rules must not override frozen nav */
-@media (max-width: 968px) {
+@media (max-width: 968px),
+  ((max-width: 1366px) and (hover: none) and (pointer: coarse)),
+  ((max-height: 520px) and (hover: none) and (pointer: coarse)) {
   [data-testid="stMain"] [class*="st-key-mob_bar_"]:not([class*="mob_bar_new"]) button[kind="secondary"],
   [data-testid="stMain"] [class*="st-key-mob_bar_"]:not([class*="mob_bar_new"]) button[kind="primary"] {
     background: transparent !important;
@@ -779,6 +781,124 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
   border: 1px solid var(--theme-border) !important;
   color: var(--theme-text) !important;
 }
+
+/* ── PORTAL-THEME-01 — portal surfaces (popover bodies, dialogs, calendar popups) ──
+   These render OUTSIDE [data-testid="stMain"], so stMain-scoped UI-1/theme rules
+   never reach them and Streamlit's base theme (which follows the OS, not the app
+   preference) leaks in. Rules here MUST stay unscoped (no stMain prefix) and
+   token-based only. Selectbox dropdown rules above are the original fix for the
+   same mechanism — do not merge or disturb them. */
+
+/* Popover body + dialog: readable text (markdown, captions, labels, spans) */
+[data-testid="stPopoverBody"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stPopoverBody"] [data-testid="stMarkdownContainer"] li,
+[data-testid="stPopoverBody"] [data-testid="stMarkdownContainer"] span,
+[data-testid="stPopoverBody"] label,
+[data-testid="stPopoverBody"] [data-testid="stWidgetLabel"] p,
+[data-testid="stDialog"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stDialog"] [data-testid="stMarkdownContainer"] li,
+[data-testid="stDialog"] [data-testid="stMarkdownContainer"] span,
+[data-testid="stDialog"] label,
+[data-testid="stDialog"] [data-testid="stWidgetLabel"] p {
+  color: var(--theme-text) !important;
+}
+
+[data-testid="stPopoverBody"] [data-testid="stCaptionContainer"],
+[data-testid="stPopoverBody"] [data-testid="stCaptionContainer"] p,
+[data-testid="stPopoverBody"] small,
+[data-testid="stDialog"] [data-testid="stCaptionContainer"],
+[data-testid="stDialog"] [data-testid="stCaptionContainer"] p,
+[data-testid="stDialog"] small {
+  color: var(--theme-caption) !important;
+}
+
+/* Dialog surface: card background (Streamlit paints OS-theme surface otherwise) */
+[data-testid="stDialog"] > div,
+div[role="dialog"][data-testid="stDialog"] {
+  background-color: var(--theme-card) !important;
+  border-color: var(--theme-border) !important;
+}
+
+/* Dialog inputs: close the gap — input containers were themed (unscoped rules
+   above) but input TEXT rules were stMain-scoped and never reached dialogs */
+[data-testid="stPopoverBody"] [data-testid="stTextInput"] input,
+[data-testid="stPopoverBody"] [data-testid="stTextArea"] textarea,
+[data-testid="stPopoverBody"] [data-testid="stNumberInput"] input,
+[data-testid="stDialog"] [data-testid="stTextInput"] input,
+[data-testid="stDialog"] [data-testid="stTextArea"] textarea,
+[data-testid="stDialog"] [data-testid="stNumberInput"] input {
+  color: var(--theme-text) !important;
+  background-color: var(--theme-card) !important;
+  caret-color: var(--theme-text) !important;
+}
+
+[data-testid="stPopoverBody"] [data-testid="stTextInput"] input::placeholder,
+[data-testid="stDialog"] [data-testid="stTextInput"] input::placeholder,
+[data-testid="stDialog"] [data-testid="stTextArea"] textarea::placeholder {
+  color: var(--theme-muted) !important;
+}
+
+/* Popover body + dialog: secondary buttons (UI-1 grammar, portal scope) */
+[data-testid="stPopoverBody"] [data-testid="stButton"] button[kind="secondary"],
+[data-testid="stPopoverBody"] [data-testid="stButton"] button[data-testid="stBaseButton-secondary"],
+[data-testid="stDialog"] [data-testid="stButton"] button[kind="secondary"],
+[data-testid="stDialog"] [data-testid="stButton"] button[data-testid="stBaseButton-secondary"] {
+  background-color: var(--theme-card) !important;
+  border: 1px solid var(--theme-border) !important;
+  color: var(--theme-text) !important;
+}
+
+[data-testid="stPopoverBody"] [data-testid="stButton"] button[kind="secondary"] p,
+[data-testid="stPopoverBody"] [data-testid="stButton"] button[kind="secondary"] span,
+[data-testid="stDialog"] [data-testid="stButton"] button[kind="secondary"] p,
+[data-testid="stDialog"] [data-testid="stButton"] button[kind="secondary"] span {
+  color: var(--theme-text) !important;
+}
+
+/* Popover body + dialog: primary buttons (compliant fill, white text) */
+[data-testid="stPopoverBody"] [data-testid="stButton"] button[kind="primary"],
+[data-testid="stPopoverBody"] [data-testid="stButton"] button[data-testid="stBaseButton-primary"],
+[data-testid="stDialog"] [data-testid="stButton"] button[kind="primary"],
+[data-testid="stDialog"] [data-testid="stButton"] button[data-testid="stBaseButton-primary"] {
+  background-color: var(--erp-primary-fill) !important;
+  border: 1px solid var(--erp-primary-fill) !important;
+  color: var(--erp-on-primary) !important;
+}
+
+[data-testid="stPopoverBody"] [data-testid="stButton"] button[kind="primary"]:hover,
+[data-testid="stDialog"] [data-testid="stButton"] button[kind="primary"]:hover {
+  background-color: var(--erp-primary-fill-hover) !important;
+  border-color: var(--erp-primary-fill-hover) !important;
+}
+
+[data-testid="stPopoverBody"] [data-testid="stButton"] button[kind="primary"] p,
+[data-testid="stPopoverBody"] [data-testid="stButton"] button[kind="primary"] span,
+[data-testid="stDialog"] [data-testid="stButton"] button[kind="primary"] p,
+[data-testid="stDialog"] [data-testid="stButton"] button[kind="primary"] span {
+  color: var(--erp-on-primary) !important;
+}
+
+/* Calendar / date popup (BaseWeb portal — st.date_input) */
+div[data-baseweb="calendar"],
+div[data-baseweb="datepicker"] {
+  background-color: var(--theme-card) !important;
+  color: var(--theme-text) !important;
+  border: 1px solid var(--theme-border) !important;
+}
+
+div[data-baseweb="calendar"] div,
+div[data-baseweb="calendar"] span,
+div[data-baseweb="calendar"] abbr,
+div[data-baseweb="calendar"] button {
+  color: var(--theme-text) !important;
+}
+
+div[data-baseweb="calendar"] [aria-selected="true"],
+div[data-baseweb="calendar"] [aria-selected="true"] div {
+  background-color: var(--erp-primary-fill) !important;
+  color: var(--erp-on-primary) !important;
+}
+/* ── end PORTAL-THEME-01 ─────────────────────────────────────────────────── */
 
 /* ── Header toolbar triggers only (not popover menu actions) ─────────────
    M6 ownership: these notification/profile rules serve the LEGACY DESKTOP toolbar
@@ -930,7 +1050,9 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
 }
 
 /* Mobile header shell layout — keyed st.columns rows (TXH grids → mobile_txn_history.css) */
-@media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
+@media (max-width: 968px),
+  ((max-width: 1366px) and (hover: none) and (pointer: coarse)),
+  ((max-height: 520px) and (hover: none) and (pointer: coarse)) {
   [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] {
     display: flex !important;
     flex-direction: row !important;

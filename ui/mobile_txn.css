@@ -44,7 +44,9 @@
   --mob-at-save-font: 15px;
 }
 
-@media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
+@media (max-width: 968px),
+  ((max-width: 1366px) and (hover: none) and (pointer: coarse)),
+  ((max-height: 520px) and (hover: none) and (pointer: coarse)) {
   /* Hide desktop add-transaction host on phone */
   [data-testid="stMain"] [class*="st-key-erp_at_desktop_host"] {
     display: none !important;
