@@ -1,11 +1,16 @@
 /* Mobile header compact pass — company pill, toolbar icons, auth screens.
- * Scope: header + login/picker only. Does not change bottom nav, hubs, or banking. */
+ * Scope: header + login/picker only. Does not change bottom nav, hubs, or banking.
+ * HDR-01: layout tokens (--hdr-toolbar-*) — do not add alternate --hdr-h definitions. */
 
 @media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
   :root,
   html.erp-mobile {
     --hdr-h: 56px;
     --hdr-h-search: 86px;
+    --hdr-toolbar-cluster-w: 72px;
+    --hdr-toolbar-edge: 12px;
+    --hdr-toolbar-gap: 8px;
+    --hdr-title-side-reserve: calc(var(--hdr-toolbar-cluster-w) + var(--hdr-toolbar-edge));
   }
 
   html.erp-mobile:has([class*="st-key-hdr_search_panel"] [data-testid="stTextInput"]),
@@ -27,7 +32,10 @@
     flex: 0 0 32px !important;
     min-height: 32px !important;
     max-height: 32px !important;
-    padding: 0 76px !important;
+    min-width: 0 !important;
+    padding: 0 var(--hdr-title-side-reserve) !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
 
   [class*="st-key-hdr_mobile_title"] .erp-hdr-mobile-title,
@@ -43,11 +51,19 @@
     letter-spacing: -0.01em !important;
   }
 
-  /* Company switcher — compact pill */
+  /* Company switcher — compact pill (HDR-01: responsive width, ellipsis) */
+  [class*="st-key-hdr_mobile_title"] [data-testid="stButton"],
+  [class*="st-key-hdr_mobile_title"] .erp-hdr-mobile-title {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
   [class*="st-key-hdr_mobile_title"] [data-testid="stButton"] > button,
   .erp-hdr-co-pill {
-    width: auto !important;
-    max-width: min(100%, 220px) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     min-height: 28px !important;
     height: 28px !important;
     padding: 0 12px !important;
@@ -60,29 +76,56 @@
     align-items: center !important;
     justify-content: center !important;
     gap: 4px !important;
+    overflow: hidden !important;
   }
 
+  [class*="st-key-hdr_mobile_title"] [data-testid="stButton"] > button p {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    line-height: 1.1 !important;
+  }
+
+  .erp-hdr-mobile-co,
   .erp-hdr-co-pill .erp-hdr-mobile-co {
     font-size: 14px !important;
     font-weight: 700 !important;
     line-height: 1.1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
   }
 
   [class*="st-key-hdr_search_panel"] {
     margin: 4px 0 0 !important;
   }
 
+  /* HDR-01: bell + profile toolbar cluster */
   [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child,
   html.erp-mobile [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child {
     top: 2px !important;
+    right: var(--hdr-toolbar-edge) !important;
     height: 32px !important;
     max-height: 32px !important;
-    gap: 10px !important;
+    gap: var(--hdr-toolbar-gap) !important;
+    min-width: var(--hdr-toolbar-cluster-w) !important;
+    flex: 0 0 var(--hdr-toolbar-cluster-w) !important;
+  }
+
+  [class*="st-key-hdr_col_right"] {
+    gap: var(--hdr-toolbar-gap) !important;
+    min-width: var(--hdr-toolbar-cluster-w) !important;
   }
 
   [class*="st-key-hdr_toolbar_row"] [data-testid="stHorizontalBlock"],
   html.erp-mobile [class*="st-key-hdr_toolbar_row"] [data-testid="stHorizontalBlock"] {
-    gap: 10px !important;
+    gap: var(--hdr-toolbar-gap) !important;
+    flex-wrap: nowrap !important;
   }
 
   /* Standalone bell + profile icon buttons */
@@ -123,6 +166,10 @@
 html.erp-mobile {
   --hdr-h: 56px;
   --hdr-h-search: 86px;
+  --hdr-toolbar-cluster-w: 72px;
+  --hdr-toolbar-edge: 12px;
+  --hdr-toolbar-gap: 8px;
+  --hdr-title-side-reserve: calc(var(--hdr-toolbar-cluster-w) + var(--hdr-toolbar-edge));
 }
 
 html.erp-mobile:has([class*="st-key-hdr_search_panel"] [data-testid="stTextInput"]) {

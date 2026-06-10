@@ -3,6 +3,7 @@ import datetime
 import hashlib
 import html
 import json
+import logging
 import math
 import os
 import secrets
@@ -4179,6 +4180,9 @@ _COMPANY_SCOPED_AT_KEYS = (
     "at_cat",
     "at_subcat",
     "at_last_cat_id",
+    "mob_at_last_cat_sale",
+    "mob_at_last_cat_expense",
+    "mob_at_last_cat_purchase",
     "mob_at_cat_id",
     "mob_at_subcat_id",
     "mob_at_cat_name",
@@ -5108,6 +5112,14 @@ def _at_supplier_payment_submit_error(
     return _t("txn.payable_none_selected")
 
 
+def _at_sale_credit_customer_error(customer_name: str | None) -> str | None:
+    """Credit (on-account) sales need a real customer — not blank or walk-in default."""
+    name = (customer_name or "").strip()
+    if not name or name == "Walk-in Customer":
+        return _t("txn.credit_sale_customer_required")
+    return None
+
+
 def _at_validate_payment_method_for_submit(session, txn_type: str) -> str | None:
     """Coerce stale at_pm; return an error if payment method is still invalid."""
     if txn_type not in _AT_PM_TXN_TYPES:
@@ -5128,6 +5140,44 @@ def _mark_at_save_succeeded(message: str | None = None) -> None:
     st.session_state["_at_save_succeeded"] = True
     if message:
         _at_set_flash("success", message)
+
+
+def _at_consume_mobile_save_pending() -> bool:
+    """True when mobile Save was clicked; survives panel st.rerun() before submit handler."""
+    return bool(
+        st.session_state.pop("_mob_at_submit_pending", False)
+        or st.session_state.pop("mob_at_save_clicked", False)
+    )
+
+
+def _at_dev_log_submit(
+    phase: str,
+    *,
+    txn_type: str = "",
+    ctx: dict | None = None,
+    amount=None,
+    blocked: str | None = None,
+    reached_save: bool = False,
+) -> None:
+    if not DEV_MODE:
+        return
+    cat_name = (ctx or {}).get("at_cat").name if (ctx or {}).get("at_cat") else None
+    parts = [
+        f"AT[{phase}]",
+        f"txn_type={txn_type}",
+        f"pm={(ctx or {}).get('at_payment_method')}",
+        f"amount={amount}",
+        f"cat_id={(ctx or {}).get('at_cat_id')}",
+        f"cat_name={cat_name}",
+        f"subcat_id={st.session_state.get('mob_at_subcat_id')}",
+        f"subcat_name={(ctx or {}).get('at_subcat_name')}",
+        f"at_last_cat_id={st.session_state.get('at_last_cat_id')}",
+    ]
+    if blocked:
+        parts.append(f"blocked={blocked}")
+    if reached_save:
+        parts.append("reached_save=True")
+    logging.warning(" ".join(str(p) for p in parts))
 
 
 def _save_and_post_expense_record(
@@ -10868,17 +10918,37 @@ def _at_filter_transaction_categories(cats: list) -> list:
     return [c for c in cats if not _at_is_payment_like_category_name(c.name)]
 
 
+_MOB_AT_LAST_CAT_BY_TYPE = {
+    "Sale": "mob_at_last_cat_sale",
+    "Expense": "mob_at_last_cat_expense",
+    "Purchase": "mob_at_last_cat_purchase",
+}
+
+
 def _at_clear_category_session_state() -> None:
     """Remove stale category keys when a txn type has no category fields."""
     for _k in (
         "at_cat",
         "at_subcat",
         "at_last_cat_id",
+        "mob_at_last_cat_sale",
+        "mob_at_last_cat_expense",
+        "mob_at_last_cat_purchase",
         "mob_at_cat_id",
         "mob_at_subcat_id",
         "mob_at_cat_name",
     ):
         st.session_state.pop(_k, None)
+
+
+def _mob_at_remember_last_category(txn_type: str, cat_id: int | None) -> None:
+    key = _MOB_AT_LAST_CAT_BY_TYPE.get(txn_type)
+    if not key:
+        return
+    if cat_id:
+        st.session_state[key] = cat_id
+    else:
+        st.session_state.pop(key, None)
 
 _MOB_AT_TABS = (
     (0, "txn.mob.tab.sale", "SALE"),
@@ -11111,17 +11181,136 @@ def _mob_at_subcat_selected_key() -> str | None:
     return f"s{sid}" if sid else None
 
 
-def _mob_at_apply_category_pick(session, pick: _MobAtGridPick) -> None:
+def _mob_at_quick_chips(
+    session,
+    txn_type: str,
+    *,
+    max_chips: int = 5,
+) -> list[_MobAtGridPick]:
+    """QUICK-ENTRY-01 — top category chips for mobile AT (pure helper, no session writes)."""
+    options = _mob_at_category_options(session, txn_type)
+    if not options:
+        return []
+    top = list(options[:max_chips])
+    selected = _mob_at_cat_selected_key()
+    if selected:
+        sel_pick = next((p for p in options if p.key == selected), None)
+        if sel_pick and sel_pick.key not in {p.key for p in top}:
+            top = top[: max_chips - 1] + [sel_pick]
+    return top
+
+
+def _mob_at_coerce_visible_category(session, txn_type: str) -> None:
+    """Drop mobile category selection when it no longer matches the active txn type."""
+    cid = st.session_state.get("mob_at_cat_id")
+    if not cid:
+        return
+    cat = session.get(TransactionCategory, cid)
+    if not cat or not cat.is_active or cat.transaction_type != txn_type:
+        st.session_state.pop("mob_at_cat_id", None)
+        st.session_state.pop("mob_at_subcat_id", None)
+        st.session_state.pop("mob_at_cat_name", None)
+        st.session_state.pop("at_subcat", None)
+
+
+def _mob_at_seed_visible_category(session, txn_type: str) -> None:
+    """Visible preselection only — last-used per type, or sole category when unambiguous."""
+    if txn_type not in _MOB_AT_LAST_CAT_BY_TYPE:
+        return
+    _mob_at_coerce_visible_category(session, txn_type)
+    if st.session_state.get("mob_at_cat_id") or st.session_state.get("mob_at_cat_name"):
+        return
+    options = _mob_at_category_options(session, txn_type)
+    if not options:
+        return
+    last_key = _MOB_AT_LAST_CAT_BY_TYPE[txn_type]
+    last_id = st.session_state.get(last_key)
+    if last_id:
+        pick = next((p for p in options if p.cat_id == last_id), None)
+        if pick:
+            _mob_at_apply_category_pick(session, pick, txn_type=txn_type)
+            return
+    if len(options) == 1:
+        _mob_at_apply_category_pick(session, options[0], txn_type=txn_type)
+
+
+def _mob_at_apply_default_subcategory(session, cat_id: int | None) -> None:
+    """Desktop parity: when a category has subcategories, default the first if none chosen."""
+    if session is None or not cat_id:
+        return
+    sid = st.session_state.get("mob_at_subcat_id")
+    if sid:
+        sub = session.get(TransactionSubcategory, sid)
+        if sub and sub.category_id == cat_id and sub.is_active:
+            return
+        st.session_state.pop("mob_at_subcat_id", None)
+        st.session_state.pop("at_subcat", None)
+    subcats = _mob_at_subcategory_options(session, cat_id)
+    if not subcats:
+        return
+    first = subcats[0]
+    if first.subcat_id:
+        st.session_state["mob_at_subcat_id"] = first.subcat_id
+        st.session_state["at_subcat"] = first.label
+
+
+def _mob_at_apply_category_pick(
+    session,
+    pick: _MobAtGridPick,
+    *,
+    txn_type: str | None = None,
+) -> None:
     if pick.cat_name_fallback:
         st.session_state["mob_at_cat_name"] = pick.cat_name_fallback
         st.session_state.pop("mob_at_cat_id", None)
         st.session_state.pop("at_last_cat_id", None)
+        if txn_type:
+            _mob_at_remember_last_category(txn_type, None)
     elif pick.cat_id:
         st.session_state["mob_at_cat_id"] = pick.cat_id
         st.session_state["at_last_cat_id"] = pick.cat_id
         st.session_state.pop("mob_at_cat_name", None)
+        if txn_type:
+            _mob_at_remember_last_category(txn_type, pick.cat_id)
     st.session_state.pop("mob_at_subcat_id", None)
     st.session_state.pop("at_subcat", None)
+    if pick.cat_id:
+        _mob_at_apply_default_subcategory(session, pick.cat_id)
+
+
+def _mob_at_render_quick_cat_chips(
+    session,
+    txn_type: str,
+    *,
+    picker_kind: str,
+) -> bool:
+    """QUICK-ENTRY-01 — wrapped category chips + More picker trigger."""
+    _mob_at_seed_visible_category(session, txn_type)
+    chips = _mob_at_quick_chips(session, txn_type)
+    if not chips:
+        return False
+    selected = _mob_at_cat_selected_key()
+    more_label = _tf("txn.mob.more_categories", "More…")
+    with st.container(border=False, key="mob_at_quick_cat_chips"):
+        cols = st.columns(len(chips) + 1, gap="small")
+        for col, pick in zip(cols, chips):
+            if col.button(
+                pick.label,
+                key=f"mob_at_qc_{picker_kind}_{pick.key}",
+                use_container_width=True,
+                type="primary" if pick.key == selected else "secondary",
+            ):
+                _mob_at_apply_category_pick(session, pick, txn_type=txn_type)
+                return True
+        if cols[-1].button(
+            more_label,
+            key=f"mob_at_qc_{picker_kind}_more",
+            use_container_width=True,
+            type="secondary",
+        ):
+            _mob_at_open_picker(picker_kind)
+            return True
+    return False
 
 
 def _mob_at_apply_subcategory_pick(session, pick: _MobAtGridPick) -> None:
@@ -11306,6 +11495,8 @@ def _mob_at_render_list_picker_sheet(
     on_pick,
     searchable: bool = True,
     row_dot_colour: str | None = None,
+    allow_empty_search_add: bool = False,
+    on_empty_search_add=None,
 ) -> bool:
     """Full-width list picker — same contract as grid picker; one option per row."""
     if not options:
@@ -11320,6 +11511,7 @@ def _mob_at_render_list_picker_sheet(
         if _mob_at_render_picker_hdr(title):
             return True
 
+        query = ""
         display_options = options
         if searchable:
             query = st.text_input(
@@ -11331,6 +11523,21 @@ def _mob_at_render_list_picker_sheet(
             display_options = _mob_at_filter_options(options, query)
 
         if not display_options:
+            stripped = (query or "").strip()
+            if (
+                allow_empty_search_add
+                and stripped
+                and _can("manage_categories")
+                and on_empty_search_add
+            ):
+                if st.button(
+                    _t("txn.mob.add_category_cta", name=stripped),
+                    key=f"mob_at_pick_{picker_kind}_add_cta",
+                    use_container_width=True,
+                    type="secondary",
+                ):
+                    if on_empty_search_add(stripped):
+                        return True
             st.caption(_tf("txn.mob.search_empty", "No matches"))
             return False
 
@@ -11368,6 +11575,17 @@ def _mob_at_render_list_picker_sheet(
     return False
 
 
+def _mob_at_expense_category_empty_search_add(session, name: str) -> bool:
+    """UX-03 — create/reactivate Expense category from picker search CTA."""
+    cat, _err = _cat_create_or_reactivate(session, "Expense", name)
+    if not cat:
+        return False
+    pick = _MobAtGridPick(f"c{cat.id}", cat.name, cat_id=cat.id)
+    _mob_at_apply_category_pick(session, pick, txn_type="Expense")
+    _mob_at_close_picker()
+    return True
+
+
 def _mob_at_render_category_picker_sheet(
     session,
     *,
@@ -11375,13 +11593,22 @@ def _mob_at_render_category_picker_sheet(
 ) -> bool:
     txn_type = _mob_at_picker_txn_type(picker_kind)
     options = _mob_at_category_options(session, txn_type)
+    expense_add = picker_kind == "expense_cat"
     return _mob_at_render_list_picker_sheet(
         title=_tf("txn.mob.pick_category", "Choose category"),
         options=options,
         picker_kind=picker_kind,
         selected_key=_mob_at_cat_selected_key(),
-        on_pick=lambda pick: _mob_at_apply_category_pick(session, pick),
+        on_pick=lambda pick: _mob_at_apply_category_pick(
+            session, pick, txn_type=_mob_at_picker_txn_type(picker_kind)
+        ),
         row_dot_colour=_mob_at_picker_row_dot_colour(picker_kind),
+        allow_empty_search_add=expense_add,
+        on_empty_search_add=(
+            lambda name: _mob_at_expense_category_empty_search_add(session, name)
+            if expense_add
+            else None
+        ),
     )
 
 
@@ -11638,7 +11865,14 @@ def _mob_at_c_apply_type(idx: int) -> None:
         st.session_state["mob_at_tab"] = 3
         st.session_state["mob_at_more_idx"] = idx
     # Clear category when type changes
-    for k in ("mob_at_cat_id", "mob_at_subcat_id", "mob_at_cat_name", "at_cat", "at_subcat"):
+    for k in (
+        "mob_at_cat_id",
+        "mob_at_subcat_id",
+        "mob_at_cat_name",
+        "at_cat",
+        "at_subcat",
+        "at_last_cat_id",
+    ):
         st.session_state.pop(k, None)
 
 
@@ -12055,11 +12289,13 @@ def _mob_at_render_amount_keypad_fragment(currency_default: str) -> None:
             type="primary",
             use_container_width=True,
         ):
+            st.session_state["_mob_at_submit_pending"] = True
             st.session_state["mob_at_save_clicked"] = True
             st.rerun(scope="app")
 
     with st.container(border=False, key="mob_at_keypad"):
-        for row in (("7", "8", "9"), ("4", "5", "6"), ("1", "2", "3"), (".", "0", "⌫")):
+        # AT-LIGHT-01 P6 — phone/POS keypad ordering (ITU E.161 / ISO 9564), not calculator
+        for row in (("1", "2", "3"), ("4", "5", "6"), ("7", "8", "9"), (".", "0", "⌫")):
             kc = st.columns(3, gap="small")
             for col, key in zip(kc, row):
                 digit = "bksp" if key == "⌫" else key
@@ -12516,8 +12752,13 @@ def _at_gather_submit_fields(
             if at_cat:
                 at_cat_id = at_cat.id
         elif st.session_state.get("at_last_cat_id"):
-            at_cat_id = st.session_state["at_last_cat_id"]
-            at_cat = session.get(TransactionCategory, at_cat_id)
+            _lc = session.get(TransactionCategory, st.session_state["at_last_cat_id"])
+            if _lc and _lc.is_active and _lc.transaction_type == txn_type:
+                at_cat_id = _lc.id
+                at_cat = _lc
+
+        if at_cat_id:
+            _mob_at_apply_default_subcategory(session, at_cat_id)
 
         sid = st.session_state.get("mob_at_subcat_id")
         if sid and at_cat_id:
@@ -12595,6 +12836,7 @@ def _at_process_submit(
     ctx = _at_gather_submit_fields(
         session, txn_type, currency_default, vendors, bank_accounts, open_sales
     )
+    _at_dev_log_submit("gather", txn_type=txn_type, ctx=ctx, amount=amount)
     _submit_cc_card_id = _resolve_submit_company_cc_card_id(
         session,
         ctx["at_payment_method"],
@@ -12609,13 +12851,16 @@ def _at_process_submit(
     _skip_cat = txn_type == "Expense" and (
         _mob_at_is_salary_mode() or st.session_state.get("at_expense_mode") == "worker"
     )
-    if txn_type in ("Sale", "Expense", "Purchase") and not _skip_cat:
+    if txn_type in ("Expense", "Purchase") and not _skip_cat:
         if not ctx["at_cat_id"] and not (
             txn_type == "Expense" and st.session_state.get("mob_at_cat_name")
         ):
             _cat_err = _t("txn.category_required")
             st.error(_cat_err)
             _at_set_flash("error", _cat_err)
+            _at_dev_log_submit(
+                "validate", txn_type=txn_type, ctx=ctx, amount=amount, blocked="category"
+            )
             return
         if ctx["at_cat_id"]:
             _need_subcats = (
@@ -12624,7 +12869,12 @@ def _at_process_submit(
                 .count()
             )
             if _need_subcats and not ctx["at_subcat_name"]:
-                st.error(_tf("txn.mob.subcategory_required", "Select a subcategory"))
+                _sub_err = _tf("txn.mob.subcategory_required", "Select a subcategory")
+                st.error(_sub_err)
+                _at_set_flash("error", _sub_err)
+                _at_dev_log_submit(
+                    "validate", txn_type=txn_type, ctx=ctx, amount=amount, blocked="subcategory"
+                )
                 return
 
     if _mob_at_is_salary_mode():
@@ -12649,6 +12899,11 @@ def _at_process_submit(
         _msg = _t("txn.invalid_amount_zero")
         st.error(_msg)
         _at_set_flash("error", _msg)
+    elif txn_type == "Sale" and ctx["at_payment_method"] == "Credit" and (
+        _cr_cust_err := _at_sale_credit_customer_error(ctx.get("customer_name_val"))
+    ):
+        st.error(_cr_cust_err)
+        _at_set_flash("error", _cr_cust_err)
     elif _mob_at_is_salary_mode() and not st.session_state.get("at_worker_id"):
         st.error(_t("txn.expense_worker_required"))
     elif _mob_at_is_salary_mode() and not _parse_amount_str(
@@ -12694,6 +12949,7 @@ def _at_process_submit(
         st.error(_cc_card_err)
         _at_set_flash("error", _cc_card_err)
     else:
+        _at_dev_log_submit("pre_save", txn_type=txn_type, ctx=ctx, amount=amount, reached_save=True)
         try:
             _selected_currency = st.session_state.get("at_currency", currency_default)
             st.session_state["_at_save_succeeded"] = False
@@ -12926,14 +13182,14 @@ def _render_add_transaction_mobile(
                             st.rerun()
                     else:
                         st.caption(_t("txn.no_bank_add"))
-                if _mob_at_render_c_cat_row(session, "Sale", picker_kind="sale_cat"):
+                if _mob_at_render_quick_cat_chips(session, "Sale", picker_kind="sale_cat"):
                     st.rerun()
                 if _mob_at_render_subcategory_trigger(session, "Sale", picker_kind="sale_subcat"):
                     st.rerun()
                 _mob_at_render_fx_hook(currency_default)
 
             elif at_idx == 1:  # Expense
-                if _mob_at_render_c_cat_row(session, "Expense", picker_kind="expense_cat"):
+                if _mob_at_render_quick_cat_chips(session, "Expense", picker_kind="expense_cat"):
                     st.rerun()
                 if _mob_at_render_subcategory_trigger(session, "Expense", picker_kind="expense_subcat"):
                     st.rerun()
@@ -12945,7 +13201,7 @@ def _render_add_transaction_mobile(
             elif at_idx == 2:  # Purchase
                 if _mob_at_render_vendor_trigger(session, vendors):
                     st.rerun()
-                if _mob_at_render_c_cat_row(session, "Purchase", picker_kind="purchase_cat"):
+                if _mob_at_render_quick_cat_chips(session, "Purchase", picker_kind="purchase_cat"):
                     st.rerun()
                 if _mob_at_render_subcategory_trigger(session, "Purchase", picker_kind="purchase_subcat"):
                     st.rerun()
@@ -13022,10 +13278,8 @@ def _render_add_transaction_mobile(
 
             _mob_at_render_amount_keypad_fragment(currency_default)
 
-    submitted = bool(st.session_state.pop("mob_at_save_clicked", False))
-
     _mob_at_sync_select_widgets()
-    return submitted
+    return False
 
 
 def render_add_transaction(session):
@@ -13287,6 +13541,8 @@ def render_add_transaction(session):
                                 customer_name_val = st.text_input(
                                     "👤 " + _t("txn.customer_name"), placeholder=_t("txn.customer_name_ph"), key="at_cust"
                                 )
+                        at_cat, at_cat_id = _inline_cat_row(session, txn_type, cats)
+                        at_subcat_name, subcats_list = _inline_subcat_row(session, at_cat)
     
                     elif txn_type == "Expense":
                         fc1, fc2 = st.columns(2)
@@ -13579,10 +13835,11 @@ def render_add_transaction(session):
             st.markdown('<div class="erp-at-desktop-host-skip"></div>', unsafe_allow_html=True)
 
     # ── SUBMISSION HANDLER (desktop + mobile) ─────────────────────────────────
-    if submitted or mob_submitted:
+    _mob_save_pending = _at_consume_mobile_save_pending() if _is_mobile_at else False
+    if submitted or _mob_save_pending:
         _submit_type = (
             _at_effective_txn_type(_TYPE_NAMES)
-            if mob_submitted
+            if _mob_save_pending
             else _TYPE_NAMES[st.session_state["at_type_idx"]]
         )
         _at_process_submit(
@@ -21810,33 +22067,51 @@ def _inline_vendor_row(session, vendors: list):
 
 # ─── Inline category management: dialogs + row helpers ───────────────────────
 
+def _cat_create_or_reactivate(
+    session,
+    txn_type: str,
+    name: str,
+) -> tuple[TransactionCategory | None, str | None]:
+    """Create or reactivate a company-scoped transaction category.
+
+    Returns ``(category, error_key)``. ``error_key`` is ``None`` on success;
+    ``empty`` if name is blank; ``exists_active`` if an active duplicate exists.
+    """
+    stripped = (name or "").strip()
+    if not stripped:
+        return None, "empty"
+    exists = cq(session, TransactionCategory).filter(
+        TransactionCategory.transaction_type == txn_type,
+        func.lower(TransactionCategory.name) == stripped.lower(),
+    ).first()
+    if exists and exists.is_active:
+        return None, "exists_active"
+    if exists:
+        exists.is_active = True
+        session.commit()
+        return exists, None
+    cat = TransactionCategory(
+        transaction_type=txn_type, name=stripped, is_active=True
+    )
+    session.add(cat)
+    session.commit()
+    return cat, None
+
+
 @st.dialog("Add Category")
 def _cat_add_dialog(txn_type: str, session):
     st.caption(_t("cat.txn_type_caption", type=txn_type))
     name = st.text_input(_t("cat.name_label"), key="dlg_cat_name")
     c1, c2 = st.columns(2)
     if c1.button(_t("form.save"), use_container_width=True, type="primary", disabled=not _can("manage_categories")):
-        stripped = (name or "").strip()
-        if not stripped:
+        cat, err = _cat_create_or_reactivate(session, txn_type, name)
+        if err == "empty":
             st.error(_t("form.name_required"))
-        else:
-            exists = cq(session, TransactionCategory).filter(
-                TransactionCategory.transaction_type == txn_type,
-                func.lower(TransactionCategory.name) == stripped.lower(),
-            ).first()
-            if exists and exists.is_active:
-                st.error(_t("cat.exists", name=stripped))
-            else:
-                if exists:
-                    exists.is_active = True
-                else:
-                    exists = TransactionCategory(
-                        transaction_type=txn_type, name=stripped, is_active=True
-                    )
-                    session.add(exists)
-                session.commit()
-                st.session_state["at_cat"] = exists.name
-                st.rerun()
+        elif err == "exists_active":
+            st.error(_t("cat.exists", name=(name or "").strip()))
+        elif cat:
+            st.session_state["at_cat"] = cat.name
+            st.rerun()
     if c2.button("Cancel", use_container_width=True):
         st.rerun()
 

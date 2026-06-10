@@ -459,6 +459,24 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
   font-weight: 700 !important;
 }
 
+/* UI-1 — AT quick category chips: selected = solid accent (AT-LIGHT-01 P1).
+   The tinted active-chip treatment above is invisible on the tinted AT panel, so the
+   selected quick chip uses a solid accent fill. Specificity (0,6,1) ties the generic
+   selected-chip rule; later cascade position wins. Scoped to quick chips only. */
+[data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] [data-testid="stColumn"] [class*="st-key-mob_at_qc_"] [data-testid="stButton"] button[kind="primary"],
+[data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] [data-testid="stColumn"] [class*="st-key-mob_at_qc_"] [data-testid="stButton"] button[data-testid="stBaseButton-primary"] {
+  background: var(--theme-info) !important;
+  border: 1px solid var(--theme-info) !important;
+  color: #ffffff !important;
+}
+
+[data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] [data-testid="stColumn"] [class*="st-key-mob_at_qc_"] [data-testid="stButton"] button[kind="primary"] p,
+[data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] [data-testid="stColumn"] [class*="st-key-mob_at_qc_"] [data-testid="stButton"] button[kind="primary"] span,
+[data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] [data-testid="stColumn"] [class*="st-key-mob_at_qc_"] [data-testid="stButton"] button[data-testid="stBaseButton-primary"] p,
+[data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] [data-testid="stColumn"] [class*="st-key-mob_at_qc_"] [data-testid="stButton"] button[data-testid="stBaseButton-primary"] span {
+  color: #ffffff !important;
+}
+
 /* UI-1 — Idle report chip (secondary kind in selection rows) */
 [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[kind="secondary"],
 [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[data-testid="stBaseButton-secondary"],

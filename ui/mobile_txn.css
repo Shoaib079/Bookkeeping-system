@@ -2,12 +2,13 @@
 
 /* E9 — canonical --mob-at-* tokens (CSS-01: mobile_txn.css only) */
 :root {
-  --mob-at-panel-h: 340px;
+  --mob-at-panel-h: 380px;
   /* Mobile AT color structure — all panel chrome derives from theme tokens */
+  /* AT-LIGHT-01 P4 — panel tint one step stronger (was 16%/6%) for page→panel→card layering */
   --mob-at-panel-bg: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--theme-info) 16%, var(--theme-card) 84%) 0%,
-    color-mix(in srgb, var(--theme-info) 6%, var(--theme-card) 94%) 100%
+    color-mix(in srgb, var(--theme-info) 22%, var(--theme-card) 78%) 0%,
+    color-mix(in srgb, var(--theme-info) 10%, var(--theme-card) 90%) 100%
   );
   --mob-at-panel-border: color-mix(in srgb, var(--theme-info) 55%, var(--theme-border) 45%);
   --mob-at-surface: var(--theme-card);
@@ -16,10 +17,19 @@
   --mob-at-chip-active-bg: var(--erp-chip-active-bg);
   --mob-at-chip-active-fg: var(--erp-chip-active-fg);
   --mob-at-chip-active-border: var(--erp-chip-active-border);
-  --mob-at-chip-idle-bg: var(--erp-chip-idle-bg);
+  /* AT-LIGHT-01 P1 — idle category chips: card fill + info-mixed border, distinct from
+     tinted Row 1 selectors (selector tokens below) */
+  --mob-at-chip-idle-bg: var(--theme-card);
   --mob-at-chip-idle-fg: var(--erp-chip-idle-fg);
-  --mob-at-chip-idle-border: var(--erp-chip-idle-border);
+  --mob-at-chip-idle-border: color-mix(in srgb, var(--theme-info) 22%, var(--theme-border) 78%);
+  /* AT-LIGHT-01 P1 — Row 1 selectors + category fallback row: tinted surface (context layer) */
+  --mob-at-selector-bg: color-mix(in srgb, var(--theme-info) 12%, var(--theme-card) 88%);
+  --mob-at-selector-border: color-mix(in srgb, var(--theme-info) 30%, var(--theme-border) 70%);
+  /* AT-LIGHT-01 P2 — keypad keys: flat card fill + subtle border (pop off the tinted panel) */
   --mob-at-key-bg: var(--theme-card);
+  --mob-at-key-hover-bg: color-mix(in srgb, var(--theme-info) 18%, var(--theme-card) 82%);
+  /* AT-LIGHT-01 P3 — amount hero card: clean card surface, no wrapper band */
+  --mob-at-amount-surface: var(--theme-card);
   --mob-at-key-fg: var(--theme-text);
   --mob-at-key-border: var(--theme-border);
   --mob-at-key-shadow: 0 1px 0 color-mix(in srgb, var(--theme-shadow) 40%, transparent);
@@ -247,7 +257,8 @@
     width: 100% !important;
     max-width: 100vw !important;
     margin: 0 !important;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
+    /* AT-LIGHT-01 P5 — nav-safe bottom padding so the last keypad row clears the bottom nav */
+    padding: 10px 12px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
     background: var(--mob-at-panel-bg) !important;
     border-radius: 16px 16px 0 0 !important;
     border-top: 2px solid var(--mob-at-panel-border) !important;
@@ -265,7 +276,12 @@
   [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stHorizontalBlock"],
   [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stElementContainer"],
   [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stVerticalBlock"],
-  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stVerticalBlockBorderWrapper"] {
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stVerticalBlockBorderWrapper"],
+  [data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] [data-testid="stColumn"],
+  [data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] [data-testid="stHorizontalBlock"],
+  [data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] [data-testid="stElementContainer"],
+  [data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] [data-testid="stVerticalBlock"],
+  [data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] [data-testid="stVerticalBlockBorderWrapper"] {
     border: none !important;
     background: transparent !important;
     background-color: transparent !important;
@@ -787,12 +803,6 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_at_desktop_host"] {
   display: none !important;
 }
 
-html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] {
-  position: fixed !important;
-  bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px)) !important;
-  background: #0f1629 !important;
-  border-top: 2px solid var(--mob-at-panel-border) !important;
-}
 
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] [data-testid="stHorizontalBlock"] {
   display: grid !important;
@@ -882,7 +892,7 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_row1"] {
   padding: 8px 0 4px !important;
 }
 
-/* Row 1 buttons: compact, dark surface */
+/* Row 1 buttons: compact, tinted selector surface (AT-LIGHT-01 P1 — distinct from chips) */
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_row1"] button {
   font-size: 0.78rem !important;
   padding: 6px 4px !important;
@@ -890,20 +900,57 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_row1"] button {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   border-radius: 8px !important;
-  background: #1a2540 !important;
-  border-color: #2a3a5c !important;
-  color: #e2e8f0 !important;
+  background: var(--mob-at-selector-bg) !important;
+  border-color: var(--mob-at-selector-border) !important;
+  color: var(--mob-at-key-fg) !important;
   min-height: 36px !important;
 }
 
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_row1"] button:hover {
-  background: #243050 !important;
-  border-color: #3b82f6 !important;
+  background: var(--mob-at-key-hover-bg) !important;
+  border-color: var(--theme-info) !important;
 }
 
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_row1"] button p,
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_row1"] button span {
-  color: #e2e8f0 !important;
+  color: var(--mob-at-key-fg) !important;
+}
+
+/* QUICK-ENTRY-01 — quick category chips (wrap, no horizontal scroll) */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] [data-testid="stHorizontalBlock"] {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: stretch !important;
+  gap: 6px !important;
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] [data-testid="stColumn"] {
+  flex: 0 1 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* QUICK-ENTRY-01 — idle chip styling on broad button (widgets.css global secondary uses --theme-card;
+   broad rule 0,3,2 beats global secondary 0,3,1; active chip in widgets.css UI-1 at 0,5,1 still wins) */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] button {
+  min-height: 32px !important;
+  padding: 6px 12px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  border-radius: 8px !important;
+  background: var(--mob-at-chip-idle-bg) !important;
+  color: var(--mob-at-chip-idle-fg) !important;
+  border: 1px solid var(--mob-at-chip-idle-border) !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] button p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_quick_cat_chips"] button span {
+  color: var(--mob-at-chip-idle-fg) !important;
+  font-weight: 600 !important;
 }
 
 /* Category row: dot column (markdown) + button column (plain text) */
@@ -938,34 +985,38 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_c_cat_row"] button
   padding: 10px 14px !important;
   border-radius: 10px !important;
   font-size: 0.88rem !important;
-  background: #1a2540 !important;
-  border-color: #2a3a5c !important;
-  color: #e2e8f0 !important;
+  background: var(--mob-at-selector-bg) !important;
+  border-color: var(--mob-at-selector-border) !important;
+  color: var(--mob-at-key-fg) !important;
   min-height: 42px !important;
   display: flex !important;
   align-items: center !important;
 }
 
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_c_cat_row"] button:hover {
-  background: #243050 !important;
-  border-color: #3b82f6 !important;
+  background: var(--mob-at-key-hover-bg) !important;
+  border-color: var(--theme-info) !important;
 }
 
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_c_cat_row"] button p,
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_c_cat_row"] button span {
-  color: #e2e8f0 !important;
+  color: var(--mob-at-key-fg) !important;
 }
 
-/* Amount row: full-width, centred, large text — Concept C dark surface */
+/* Amount row: full-width, centred, large text (AT-LIGHT-01 P3 — hero card).
+   Outer container transparent: no wrapper band behind the card. */
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] {
   padding: 12px 0 4px !important;
-  background: #0f1629 !important;
+  background: transparent !important;
 }
 
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_amount_row"]
   [data-testid="stVerticalBlockBorderWrapper"] {
-  background: #0f1629 !important;
-  border-color: #2a3a5c !important;
+  background: var(--mob-at-amount-surface) !important;
+  border: 1px solid var(--mob-at-surface-border) !important;
+  border-color: var(--mob-at-surface-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--mob-at-surface-shadow) !important;
 }
 
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] .erp-mob-at-amount-display {
@@ -973,19 +1024,34 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] .erp-
   width: 100% !important;
 }
 
-/* Keypad buttons: Concept C dark surface */
+/* Keypad buttons: card fill + subtle border + tactile shadow (AT-LIGHT-01 P2) */
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_key_"] button,
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_keypad"] button {
-  background: #1a2540 !important;
-  border-color: #2a3a5c !important;
-  color: #e2e8f0 !important;
+  background: var(--mob-at-key-bg) !important;
+  border: 1px solid var(--mob-at-key-border) !important;
+  border-color: var(--mob-at-key-border) !important;
+  color: var(--mob-at-key-fg) !important;
+  box-shadow: var(--mob-at-key-shadow) !important;
+}
+
+/* AT-LIGHT-01 P2 — pressed key feedback */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_key_"] button:active,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_keypad"] button:active {
+  background: var(--mob-at-key-hover-bg) !important;
+  box-shadow: none !important;
+}
+
+/* AT-LIGHT-01 P5 — keypad bottom clearance: last row never sits flush against the nav edge
+   (beats the panel wrapper padding:0 strip at (0,3,0) with (0,3,1)) */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_keypad"] {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px) !important;
 }
 
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_key_"] button p,
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_key_"] button span,
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_keypad"] button p,
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_keypad"] button span {
-  color: #e2e8f0 !important;
+  color: var(--mob-at-key-fg) !important;
 }
 
 /* Save row: full-width primary button */
@@ -1003,10 +1069,10 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] button[
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] button[data-testid="stBaseButton-primary"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] [class*="st-key-mob_at_save"] button[kind="primary"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] [class*="st-key-mob_at_save"] button[data-testid="stBaseButton-primary"] {
-  background: #3b82f6 !important;
-  border: 1px solid #3b82f6 !important;
-  border-color: #3b82f6 !important;
-  color: #ffffff !important;
+  background: var(--mob-at-save-bg) !important;
+  border: 1px solid var(--mob-at-save-bg) !important;
+  border-color: var(--mob-at-save-bg) !important;
+  color: var(--mob-at-save-fg) !important;
   border-radius: 12px !important;
   font-size: 1rem !important;
   font-weight: 600 !important;
@@ -1029,8 +1095,8 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] button[
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] button[data-testid="stBaseButton-primary"]:hover,
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] [class*="st-key-mob_at_save"] button[kind="primary"]:hover,
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] [class*="st-key-mob_at_save"] button[data-testid="stBaseButton-primary"]:hover {
-  background: #2563eb !important;
-  border-color: #2563eb !important;
+  background: color-mix(in srgb, var(--mob-at-save-bg) 80%, #000 20%) !important;
+  border-color: color-mix(in srgb, var(--mob-at-save-bg) 80%, #000 20%) !important;
 }
 
 /* Type picker: full-width buttons with dot HTML */
@@ -1039,41 +1105,38 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] butt
   padding: 10px 14px !important;
 }
 
-/* PICKER-02 — inactive picker grid buttons */
-html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[kind="secondary"],
-html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[data-testid="stBaseButton-secondary"] {
-  background: #1a2540 !important;
-  border-color: #2a3a5c !important;
-  color: #e2e8f0 !important;
+/* PICKER-02 — inactive picker grid buttons (broad selector; PICKER-01 active rule has higher specificity) */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button {
+  background: var(--mob-at-key-bg) !important;
+  border-color: var(--mob-at-key-border) !important;
+  color: var(--mob-at-key-fg) !important;
 }
 
-html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[kind="secondary"] p,
-html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[kind="secondary"] span,
-html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[data-testid="stBaseButton-secondary"] p,
-html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[data-testid="stBaseButton-secondary"] span {
-  color: #e2e8f0 !important;
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button span {
+  color: var(--mob-at-key-fg) !important;
 }
 
-/* PICKER-01 — active picker grid buttons */
+/* PICKER-01 — active picker grid buttons (overrides PICKER-02 broad rule via attribute specificity) */
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[kind="primary"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[data-testid="stBaseButton-primary"] {
-  background: #3b82f6 !important;
-  border-color: #3b82f6 !important;
-  color: #e2e8f0 !important;
+  background: var(--theme-info) !important;
+  border-color: var(--theme-info) !important;
+  color: #ffffff !important;
 }
 
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[kind="primary"] p,
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[kind="primary"] span,
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[data-testid="stBaseButton-primary"] p,
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[data-testid="stBaseButton-primary"] span {
-  color: #e2e8f0 !important;
+  color: #ffffff !important;
 }
 
 /* PICKER-03 — date confirm button inside date picker sheet */
 html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] button[data-testid="stBaseButton-primary"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="baseButton-primary"] {
-  background: #3b82f6 !important;
-  border-color: #3b82f6 !important;
+  background: var(--theme-info) !important;
+  border-color: var(--theme-info) !important;
   color: #ffffff !important;
   width: 100% !important;
   border-radius: 10px !important;

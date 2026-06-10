@@ -600,6 +600,217 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-10 — QUICK-ENTRY-01 quick category chips — implementation verified
+
+**Scope:** Mobile Add Transaction panel only. No accounting/posting changes. No schema changes. No desktop changes.
+
+**Feature (as implemented):**
+
+- `_mob_at_quick_chips(session, txn_type)` — pure helper; returns top 5 active categories alphabetically; if the currently selected category falls outside the top 5, it replaces the 5th slot so the selection is always visible.
+- `_mob_at_render_quick_cat_chips(session, txn_type, picker_kind=...)` — renders wrapped chips + a `More…` chip that opens the existing category picker (`_mob_at_open_picker`); wired for Sale, Expense, and Purchase only.
+- `_mob_at_seed_visible_category()` — visible preselection: last-used category per txn type (`mob_at_last_cat_sale` / `_expense` / `_purchase`), or auto-select when exactly one active category exists. Stale selections dropped via `_mob_at_coerce_visible_category()`.
+- `_mob_at_apply_category_pick()` — single apply path shared by chips and picker; resets subcategory on every pick; records per-type last-category memory.
+- Last-category keys added to `_COMPANY_SCOPED_AT_KEYS` — cleared on company switch.
+- `ui/mobile_txn.css` — QUICK-ENTRY-01 chip block (wrap, no horizontal scroll; `--mob-at-chip-idle-*` tokens), placed in the AT-owned file per CSS-02 ownership rules.
+
+**Audit (host run, 2026-06-10):** `pytest tests/test_quick_entry.py` — **14/14 passed** in 1.28s. Covers: top-5 alphabetical selection, selected-outside-top-5 retention, pure-helper guarantee, subcategory reset on pick, per-type last-category memory, seeding (last-used + single-category), company-scoped key registration + clearing, Sale/Expense/Purchase wiring, picker fallback intact (`_mob_at_render_c_cat_row` still available, `More…` opens existing picker), non-category txn types unchanged, CSS contract.
+
+**Accounting unchanged:** `_at_save()`, all posting functions, journal entry logic, schema — untouched. The picker remains fully reachable; chips are a shortcut layer only.
+
+**Related docs:** [TEST_COVERAGE_MAP.md](./TEST_COVERAGE_MAP.md) — `tests/test_quick_entry.py` section added. `ROADMAP.md` — QUICK-ENTRY-01 status moved to implemented.
+
+---
+
+## 2026-06-10 — UX-03–UX-07 UX audit + roadmap acceptance (no code changes)
+
+**Scope:** Opinion/UX audit only — no implementation, no patches.
+
+**Audited:** UX-03 (inline expense category creation), UX-04 (selector interaction), UX-05 (universal outside-tap dismiss), UX-06 (company switching duplication), UX-07 (header responsive behaviour).
+
+**Key findings:**
+
+- Desktop already has inline category creation (`_cat_add_dialog`: dedup, reactivation, permission-gated) — UX-03 is a mobile-only gap; create belongs inside the `More…` picker sheet.
+- Header pill and profile sheet both render the same `_render_company_switch_menu()` — UX-06 duplication is UI-level only, logic is shared.
+- `mobile_header.css` caps the company pill at fixed 220px but has no ellipsis rule or guaranteed toolbar gap — UX-07 risk is real on narrow devices with long names.
+- Mobile surfaces are session-state driven with a CSS-only (non-clickable) scrim; outside-tap dismiss requires a scrim-button pattern and must land after MOBILE-14.
+
+**Decision (recorded in ROADMAP decision log):** Roadmap accepted with adjustment. After AT-LIGHT-01 is fully approved: **HDR-01** (combined UX-07 + UX-06 header pass, mobile only) → **UX-03** → **UX-04** (PM chips likely first; date remains picker) → **UX-05** backlog/last pending its own infrastructure audit and tests.
+
+**Code changes:** None. `ROADMAP.md` updated only (HDR-01/UX-03/UX-04/UX-05 sections, summary table rows, decision log entry).
+
+---
+
+## 2026-06-10 — AT-LIGHT-01 final polish (P1–P5) implemented
+
+**Scope:** Mobile AT panel visual polish only. CSS-only — no app.py, accounting, posting, or schema changes.
+
+**Changes (per approved priorities):**
+
+- **P1 — chip grammar split:** `--mob-at-chip-idle-bg` → `var(--theme-card)` with info-mixed border (chips = white bordered pills); new `--mob-at-selector-bg/-border` tokens (info 12%/30% mixes) applied to Row 1 buttons and the category fallback row (selectors = tinted pills). Selected quick chip: new UI-1 rule in `widgets.css` — solid `var(--theme-info)` fill + white text, scoped to `mob_at_quick_cat_chips`/`mob_at_qc_*` only (the tinted generic active-chip treatment was invisible on the tinted panel). Specificity (0,6,1) ties the generic UI-1 rule; later cascade position wins.
+- **P2 — keypad keys:** `--mob-at-key-bg` → `var(--theme-card)`; explicit 1px border + `--mob-at-key-shadow`; new `:active` pressed state (hover-bg fill, shadow removed).
+- **P3 — amount card:** outer `mob_at_amount_row` container → transparent (wrapper band removed); inner border wrapper → card surface, 1px `--mob-at-surface-border`, 12px radius, surface shadow.
+- **P4 — panel tint:** gradient strengthened 16%/6% → 22%/10% info mix. Light-mode direction preserved; all values theme-token-derived (dark mode unaffected structurally).
+- **P5 — nav clearance:** panel bottom padding 10px → 16px (+safe-area); new keypad container `padding-bottom` rule at (0,3,1) beating the wrapper padding-strip at (0,3,0); `--mob-at-panel-h` 340px → 380px.
+
+**Ownership:** All tokens remain in `mobile_txn.css` :root (CSS-01/E9). Chip colour grammar addition in `widgets.css` UI-1 block (MOBILE-14 E8 ruling). No changes to `mobile_reports.css`, `theme.css`, or token aliases pinned by contract (`--mob-at-chip-active-bg: var(--erp-chip-active-bg)` untouched).
+
+**Verification (host, 2026-06-10):** `pytest tests/` — **800/800 passed**. Includes `test_ui1_design_language.py`, `test_mobile_layout_contract.py`, `test_quick_entry.py` (14/14), `test_at_sale_submit.py` (ADD-TXN-BR-01).
+
+**Closure (2026-06-10):** Manual phone/POS visual verification signed off. **AT-LIGHT-01 → Closed.** P1–P6 complete (phone/POS keypad order verified on device). HDR-01 was next active item (now closed — see §2026-06-10 HDR-01 closed).
+
+**Out of scope (intentionally untouched):** FAB glyph (bottom nav, not AT panel — not in approved priorities).
+
+### AT-LIGHT-01 P6 — Mobile keypad ordering (approved addendum, 2026-06-10)
+
+Keypad rows reordered from calculator layout (`7 8 9 / 4 5 6 / 1 2 3`) to phone/POS layout (`1 2 3 / 4 5 6 / 7 8 9`), matching ITU E.161 / ISO 9564 and the iOS/Android decimal pads. `. 0 ⌫` row unchanged. One tuple in `_mob_at_render_amount_keypad_fragment` (app.py) — no CSS, logic, or schema changes; button keys (`mob_at_key_*`) and container key unchanged, so no test impact (verified: no test pins digit order). Explicitly approved as P6 — not silent scope expansion.
+
+**Roadmap status (2026-06-10):** AT-LIGHT-01 → **Closed**. HDR-01 → **Closed**. UX-03 next active item. QUICK-ENTRY-02 deferred; subcategory workflow unchanged. See `ROADMAP.md` decision log.
+
+---
+
+## 2026-06-10 — ADD-TXN-BR-01 Sale validation vs bookkeeping (closed)
+
+**Trigger:** Sale Cash/Card blocked at Add Transaction by category/subcategory validation despite GL posting not requiring them (legacy `render_sales` never asked).
+
+**Audit conclusion:** Category/subcategory on Sale are reporting metadata only — `post_cash_sale` / `post_card_sale` / `post_credit_sale` always credit **Sales Revenue**. Hard-blocking Sale on category was a validation/bookkeeping mismatch.
+
+**Implemented rules:**
+
+| Sale type | Required | Optional (no block) |
+|-----------|----------|---------------------|
+| Cash / Card | Amount, date, payment method | Category, subcategory, notes, currency, customer (walk-in default) |
+| Credit | Above + **named customer** (not blank, not walk-in default) | Category, subcategory, notes, currency |
+
+**Code:** `_at_process_submit` — Sale removed from category/subcategory gate; `_at_sale_credit_customer_error` for Credit; `_at_save` / posting unchanged. Expense and Purchase validation unchanged.
+
+**Verification:** Manual AT sign-off (Cash/Card without category; Credit customer gate). `pytest tests/` — **800/800 passed** (`test_sale_cash_without_category_records`, `test_sale_card_without_category_records`, `test_sale_credit_requires_customer`).
+
+**Status:** ✅ **Closed**
+
+---
+
+## 2026-06-10 — HDR-01 pre-implementation audit (no code changes)
+
+**Status:** ✅ **Superseded by implementation closure** (see §2026-06-10 HDR-01 closed below). Audit findings were accurate; patch delivered per approved mockup.
+
+**Scope:** Combined mobile header pass — **UX-07** (responsive company selector) + **UX-06** (duplicate company-switch surfaces). Mobile header only; desktop unchanged unless audit proves otherwise.
+
+### UX-07 — Responsive company selector
+
+| Item | Current state | Risk | Proposed fix |
+|------|---------------|------|--------------|
+| Pill max width | `mobile_header.css` L50: `max-width: min(100%, 220px)` | Long company names truncate abruptly or overflow on narrow phones | Replace fixed cap with responsive `clamp()`; add `overflow: hidden; text-overflow: ellipsis; white-space: nowrap` on `.erp-hdr-mobile-co` and Streamlit button inner text |
+| Title column padding | `hdr_mobile_title` `padding: 0 76px` reserves space for toolbar | Fixed padding may not scale across 320–430px widths | Re-audit after ellipsis; tune padding vs `hdr_col_center` flex |
+| Column layout | `hdr_shell_inner` columns `[2.8, 5.4, 2.8]` | Center column competes with absolute-positioned toolbar (`lc`/`rc`) | Verify bell + profile never overlap pill at min width |
+| Single-company display | Non-switcher uses `st.markdown` pill (no button) | Ellipsis rules must apply to both button and static pill | Single CSS target for `.erp-hdr-co-pill` / `.erp-hdr-mobile-co` |
+
+**Code anchors:** `app.py` `_render_app_header` (`hdr_mobile_co_switch_btn`, `hdr_mobile_title`); `ui/mobile_header.css` lines 39–69.
+
+### UX-06 — Company switch duplication
+
+| Surface | Behaviour today | Issue |
+|---------|-----------------|-------|
+| Header (multi-co) | `hdr_mobile_co_switch_btn` → `_mobile_open_surface("co_switch")` → `_render_mobile_co_switch_sheet` → `_render_company_switch_menu(key_prefix="mob_mco")` | Canonical path |
+| Profile sheet | Full `_render_company_switch_menu()` inline when multi-company | Duplicate UI — same menu in two places |
+| Confirm flow | `_render_company_switch_confirm` / `_confirm_company_switch` | Shared — keep unchanged |
+
+**Proposed direction:** Header remains canonical switch surface. Profile replaces inline menu with one “Switch company” row that opens `co_switch` (same sheet). No change to company-switch logic, permissions, or accounting session scoping.
+
+**Code anchors:** `app.py` `_render_mobile_profile_sheet` (`show_co_switch_link`, L950–958); `_render_mobile_co_switch_sheet` (L1017+).
+
+### Ownership & constraints
+
+- **Owner:** `ui/mobile_header.css` for mobile header layout changes.
+- **Desktop:** `ui/theme.css` only if desktop header audit requires — not in initial scope.
+- **Do not add** a fifth `--hdr-h` definition (AUDIT-01 / MOBILE-14 E1).
+- **Non-goals:** Accounting, schema, posting, auth, notification logic.
+
+### Test plan (required before HDR-01 close)
+
+- Extend `tests/test_mobile_header_compact.py` — ellipsis CSS selectors, toolbar gap, no 220px-only cap (or documented replacement).
+- Manual: 320px / 390px viewport; long company name; multi-company switch from header only after Profile dedup.
+- Host `pytest tests/` green after implementation.
+
+**Next step:** ~~Sign off this audit → implement HDR-01 per `ROADMAP.md` §HDR-01.~~ **Done** — closed 2026-06-10.
+
+---
+
+## 2026-06-10 — HDR-01 closed (UX-07 + UX-06)
+
+**Status:** ✅ **Closed**
+
+**Scope delivered:** Combined mobile header pass — responsive company selector, ellipsis, toolbar cluster, unified spacing, header ownership cleanup. CSS-first; no accounting/auth/notification logic changes; no company-switch logic rewrite.
+
+### Completed
+
+- Responsive company selector (token-based side reserve; fixed 220px cap removed)
+- Ellipsis for long company names (multi-company Streamlit button `p` + single-company `.erp-hdr-mobile-co`)
+- Toolbar cluster — bell + profile treated as one right-side group (32×32 controls, 8px gap)
+- Unified spacing via layout tokens (`--hdr-toolbar-cluster-w: 72px`, `--hdr-toolbar-edge: 12px`, `--hdr-toolbar-gap: 8px`)
+- Header ownership cleanup — `mobile_header.css` owns mobile header; `theme.css` mobile block reconciled for padding/gap conflicts only
+- Company switch parity verified — header `hdr_mobile_co_switch_btn` is canonical entry point
+- No duplicate mobile company switch menu — Profile `show_co_switch_link=True` opens the same `co_switch` sheet
+
+### Decision (2026-06-10)
+
+- Header company selector remains the canonical company switch entry point.
+- Profile “Switch Company” remains available but opens the same `co_switch` sheet.
+- No company-switch logic duplication.
+
+### Tests
+
+- `tests/test_mobile_header_compact.py` extended (7 HDR-01 contract tests)
+- Host `pytest tests/` — **807/807 passed**
+
+### Implementation notes
+
+- `ui/mobile_header.css` remains owner of mobile header styling.
+- `ui/mobile_shell.css` contains a fixed `84px` title reserve; it currently matches active token values (`--hdr-title-side-reserve` = 72px + 12px). Future header spacing changes should be audited before modifying the shell reserve.
+- No new `--hdr-h` definitions. No `app.py` changes required.
+
+**Files changed:** `ui/mobile_header.css`, `ui/theme.css` (mobile header block only), `tests/test_mobile_header_compact.py`.
+
+**Next active roadmap item:** ~~**UX-03**~~ **UX-04** (UX-03 closed below). Post-Save State Retention · Repeat Last Transaction · Smart Defaults blocked on UX-04. **UX-05** backlog/last.
+
+---
+
+## 2026-06-10 — UX-03 closed (inline Expense category creation)
+
+**Status:** ✅ **Closed**
+
+**Scope delivered:** Expense-only inline category creation inside the mobile `More…` category picker sheet. No Sale/Purchase/subcategory/AT panel layout changes. QUICK-ENTRY-02 remains deferred.
+
+### Completed
+
+- `_cat_create_or_reactivate(session, txn_type, name)` — strip/normalize, case-insensitive dedup, company-scoped via `cq()`, reactivate inactive duplicate, create otherwise; preserves `_cat_add_dialog` validation semantics.
+- `_cat_add_dialog` refactored to call the shared helper.
+- Expense picker CTA (`expense_cat` only): non-empty search with zero matches → `+ Add "{name}"` when `_can("manage_categories")`.
+- CTA tap: helper → `_mob_at_apply_category_pick(..., txn_type="Expense")` → close picker → rerun; last-used memory updated; quick-chip outside-top-5 promotion unchanged.
+- Locale: `txn.mob.add_category_cta` (EN/TR).
+
+### Tests
+
+- `tests/test_ux03_inline_category.py` — 11 tests (helper create/dedup/reactivate/whitespace, CTA wiring, permission gate, Sale/Purchase exclusion, no AT panel controls).
+- Host `pytest tests/` — **818/818 passed**
+
+**Files changed:** `app.py`, `registry/locales/transactional.py`, `tests/test_ux03_inline_category.py`.
+
+**Next active roadmap item:** **UX-04** — Selector Interaction Audit.
+
+---
+
+## 2026-06-10 — HDR-01 visual mockup review (no code changes)
+
+**Deliverable:** Interactive mockup canvas — [hdr-01-mockup-review.canvas.tsx](/Users/shoaib/.cursor/projects/Users-shoaib-Documents-streamlit-accounting-erp-registry/canvases/hdr-01-mockup-review.canvas.tsx)
+
+**UX-06 correction:** Mobile Profile already uses `show_co_switch_link=True` → `_mobile_open_surface("co_switch")`. No duplicate inline `_render_company_switch_menu()` on mobile. Implementation scope is primarily UX-07 CSS; UX-06 is verify + document (desktop popover inline menu remains out of scope).
+
+**Proposed toolbar cluster:** Bell 32px + 8px gap + Profile 32px; center reserve 84px; company pill `max-width: calc(100% - reserve)` with ellipsis on button `p` and static `.erp-hdr-mobile-co`.
+
+**Sign-off gates before patch:** 320px + 390px visual check; unify padding conflict (theme.css 84px vs mobile_header.css 76px); no new `--hdr-h` definitions.
+
+---
+
 ## How to use this file
 
 1. Before a banking/CC task, read [BANKING_RECON_CC_STATUS.md](./BANKING_RECON_CC_STATUS.md) and the latest entry here.

@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-09 (UI readability Sweep 2 + Opening Balance CC)  
-**Full suite:** run `pytest tests/` (452+ tests total; count grows with new files).
+**Last updated:** 2026-06-10 (UX-03 inline Expense category creation)  
+**Full suite:** run `pytest tests/` (**818** tests total; count grows with new files).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -233,6 +233,39 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 | Duplicate `OBBank` blocked | No double post | **High** |
 | CC OB blocked when feature OFF | Gating | **Medium** |
 | CardSale does not credit 2110 | AD-003 separation | **High** |
+
+---
+
+### `tests/test_quick_entry.py` (14 tests) — QUICK-ENTRY-01
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Top-5 alphabetical chips; selected category kept visible outside top 5 | Deterministic chip set; selection never hidden | **Medium** |
+| `_mob_at_quick_chips` is a pure helper (no session writes) | Render must not mutate state | **Medium** |
+| `_mob_at_apply_category_pick` resets subcategory | No stale subcategory on category change | **High** |
+| Per-type last-category memory (`mob_at_last_cat_*`) | Sale/Expense/Purchase memories don't cross-contaminate | **Medium** |
+| Seeding: last-used or sole active category | Correct visible preselection only — no auto-post | **Medium** |
+| Last-cat keys in `_COMPANY_SCOPED_AT_KEYS` + cleared on switch | No category leakage across companies | **High** |
+| Chips wired for Sale/Expense/Purchase only; other types unchanged | Vendor/customer/bank flows untouched | **Medium** |
+| `More…` opens existing picker; `_mob_at_render_c_cat_row` still available | Picker fallback always reachable | **Medium** |
+| CSS contract (`mob_at_quick_cat_chips` wrap + `--mob-at-chip-idle-*` tokens) | No horizontal scroll; CSS-02 ownership in `mobile_txn.css` | **Low** |
+
+---
+
+### `tests/test_ux03_inline_category.py` (11 tests) — UX-03
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| `_cat_create_or_reactivate` creates company-scoped Expense category | New categories stamped to active company | **High** |
+| Case-insensitive dedup returns `exists_active` | No duplicate active categories | **High** |
+| Inactive duplicate reactivated (same id) | Reactivation path matches desktop dialog | **Medium** |
+| Whitespace-only input blocked (`empty`) | No blank category rows | **Medium** |
+| CTA only on `expense_cat` picker; Sale/Purchase excluded | Scope limited to Expense workflow | **High** |
+| `_can("manage_categories")` gate on list-picker CTA | Permission model unchanged | **High** |
+| CTA path auto-selects + updates `mob_at_last_cat_expense` | Last-used memory + chip promotion work | **Medium** |
+| No always-visible add control on AT panel | UX placement stays inside picker sheet | **Medium** |
+| `_cat_add_dialog` uses shared helper | Desktop/mobile parity on create logic | **Medium** |
+| `txn.mob.add_category_cta` EN/TR locale keys | i18n contract | **Low** |
 
 ---
 

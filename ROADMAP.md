@@ -1,7 +1,7 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** June 2026 (UX-01 + UX-02 + DATE-01 + QUICK-ENTRY-01 added; AUDIT-01 ERP Ownership Audit added; ERP-Wide UI Ownership Principle + CSS-02 added; CSS-01 / MOBILE-14 / LOGIN-01 / CHART-01 added)  
+**Last updated:** 2026-06-10 (UX-03 closed · UX-04 next active)  
 **Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
@@ -20,7 +20,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | Company creation (14D-D) | ✅ Complete |
 | Sidebar uses company role (nav fix) | ✅ Complete |
 | Simplified Company Setup UI | ✅ Complete (Expert policies stub) |
-| Automated tests | ✅ **663+ passing** (run `pytest tests/`) |
+| Automated tests | ✅ **818 passing** (run `pytest tests/` on host) |
 | Member management (14D-E) | ✅ Complete |
 | Member roster polish (14D-F) | ✅ Complete |
 | Setup wizard v1 (14D-G) | ✅ Complete — **superseded by SETUP-01** (design approved, not built) |
@@ -40,10 +40,19 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | **CSS-02** — ERP-Wide UI Ownership Standard | 🟡 **HIGH** — approved; 8 enforceable rules; ongoing standard |
 | **MOBILE-14** — Mobile Theme Ownership Cleanup | 🟡 **HIGH** — approved; E1–E13 consolidation steps |
 | **LOGIN-01** — Login / Company Picker Modernization | 📋 Medium — planned; blocked on MOBILE-14 |
-| **QUICK-ENTRY-01** — Context-Aware Mobile Category Selection | 🟡 **HIGH** — approved; blocked on MOBILE-14 |
+| **QUICK-ENTRY-01** — Context-Aware Mobile Category Selection | ✅ **DONE** — implemented; 14/14 tests passing (2026-06-10) |
+| **ADD-TXN-BR-01** — Sale validation vs bookkeeping rules | ✅ **Closed** — manual + pytest verified (2026-06-10) |
+| **AT-LIGHT-01** — Mobile AT Light-Mode Polish (P1–P6) | ✅ **Closed** — manual phone/POS verification complete (2026-06-10) |
 | **DATE-01** — Fast Mobile Date Entry | 📋 Medium — future; independent |
 | **UX-01** — Session Persistence | 📋 Medium — future; independent |
 | **UX-02** — Responsive Viewport & Device Auto-Fit | 🟡 **HIGH** — approved; blocked on MOBILE-14; investigation required |
+| **HDR-01** — Combined Header Pass (UX-07 + UX-06) | ✅ **Closed** — responsive selector, ellipsis, toolbar cluster (2026-06-10) |
+| **UX-03** — Inline Expense Category Creation | ✅ **Closed** — Expense picker search CTA (2026-06-10) |
+| **UX-04** — Selector Interaction Audit (PM chips likely first; date remains picker) | 🟡 **Next active** — approved; gates cleared |
+| **Post-Save State Retention** | 📋 **Blocked on UX-04** — not started |
+| **Repeat Last Transaction** | 📋 **Blocked on UX-04** — not started |
+| **Smart Defaults** | 📋 **Blocked on UX-04** — not started |
+| **UX-05** — Universal Outside-Tap Dismiss | 📋 Backlog — last; needs separate infrastructure audit + tests |
 | **CHART-01** — Chart Theme Consolidation | 📋 Medium — planned; independent of MOBILE-14 |
 | **AUDIT-01** — ERP Ownership Audit | ✅ **Complete** — findings recorded; quick wins identified |
 | Future UX / navigation vision | 📋 **Low** — design direction only (MOBILE-07–12, DESIGN-05, DESKTOP-04) — implementation gated on MOBILE-11 system |
@@ -56,7 +65,11 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 
 **Use the system daily** — build only what causes friction during real bookkeeping.
 
-**Next build (HIGH):** **SETUP-01** — ensure every new company starts with the correct workflow from day one (prevents e.g. Spice Corner POS settlement ON vs India Gate OFF discovered months later).
+**Next build (approved):** **UX-04** — selector interaction audit (Payment Method chips likely first; date remains picker). See [UX-04](#ux-04--selector-interaction-audit).
+
+**Recently closed:** **UX-03** (inline Expense category creation in `More…` picker) · **HDR-01** · **AT-LIGHT-01** · **ADD-TXN-BR-01**. Host pytest: **818/818 passed** (2026-06-10).
+
+**Also active (HIGH):** **SETUP-01** — ensure every new company starts with the correct workflow from day one.
 
 **CSS architecture cleanup (HIGH — approved):** **MOBILE-14** — execute E1–E13 consolidation steps before any further UI redesign. **CSS-01** defines the ownership targets. Neither is a visual redesign.
 
@@ -1085,7 +1098,7 @@ CSS-01 maps the current ownership state and identifies the gaps. MOBILE-14 fixes
 
 ## QUICK-ENTRY-01 — Context-Aware Mobile Category Selection
 
-**Status:** ✅ Approved · **Priority:** High · **Blocked:** Until [MOBILE-14](#mobile-14--mobile-theme-ownership-cleanup) complete.
+**Status:** ✅ Implemented & verified (2026-06-10) — `pytest tests/test_quick_entry.py` 14/14 passing on host. · **Priority:** High
 
 **Design philosophy:** FAST ENTRY FIRST — fewer taps, less typing, faster bookkeeping.
 
@@ -1159,6 +1172,71 @@ This section does not change or remove:
 | Picker required for majority of transactions | Yes | No — picker is a fallback, not the default path |
 
 **Cross-references:** [MOB-AT-C1](#mob-at-c1--concept-c-mobile-add-transaction-ui) · [MOBILE-14](#mobile-14--mobile-theme-ownership-cleanup) · [MOBILE_UI_SYSTEM.md](./docs/MOBILE_UI_SYSTEM.md)
+
+**Deferred:** **QUICK-ENTRY-02** (subcategory quick-entry workflow) — not approved; subcategory flow unchanged.
+
+---
+
+## ADD-TXN-BR-01 — Sale Validation vs Bookkeeping Rules
+
+**Status:** ✅ **Closed** (2026-06-10).  
+**Priority:** Urgent regression fix — completed.  
+**Scope:** Add Transaction Sale validation only. Expense and Purchase rules unchanged.
+
+### Business rule (implemented)
+
+| Field | Cash / Card Sale | Credit Sale |
+|-------|------------------|-------------|
+| Amount | Required | Required |
+| Date | Required (defaulted) | Required |
+| Payment method | Required | Required |
+| Customer | Optional (walk-in default) | **Required** (named customer; not blank / not walk-in default) |
+| Category / Subcategory | **Optional** — must not block save | Optional |
+
+### Record
+
+- Sale Cash/Card record without category/subcategory (matches legacy `render_sales` posting path).
+- Credit Sale blocks empty or `"Walk-in Customer"`; named customer saves and posts to AR.
+- `_at_save` / GL posting unchanged — category stored when present, not required for journal.
+- Tests: `tests/test_at_sale_submit.py` (+3 BR-01 cases); host **800/800 passed**.
+
+**Cross-references:** [docs/AUDIT_HISTORY.md](./docs/AUDIT_HISTORY.md) §2026-06-10 ADD-TXN-BR-01 · [QUICK-ENTRY-01](#quick-entry-01--context-aware-mobile-category-selection)
+
+---
+
+## AT-LIGHT-01 — Mobile AT Light-Mode Polish
+
+**Status:** ✅ **Closed** (2026-06-10).  
+**Priority:** High (was prerequisite for HDR-01).  
+**Scope:** Mobile Add Transaction panel only — CSS + keypad layout. No accounting, schema, or posting changes.
+
+### Completed scope (P1–P6)
+
+| Phase | Deliverable |
+|-------|-------------|
+| **P1 — Hierarchy & separation** | Row 1 selectors vs category chip grammar; selected chip state (UI-1 solid accent on quick chips) |
+| **P2 — Keypad separation** | White (`--theme-card`) keys; border treatment; `:active` pressed state |
+| **P3 — Amount card cleanup** | Wrapper band removed; clean border on inner card surface |
+| **P4 — Panel refinement** | Stronger panel tint (22%/10% info mix); Page → Panel → Card hierarchy |
+| **P5 — Nav-safe keypad spacing** | Bottom row visible above bottom nav (`--mob-at-panel-h` 380px; keypad padding) |
+| **P6 — Mobile keypad ordering** | Phone/POS order: `1 2 3` / `4 5 6` / `7 8 9` / `. 0 ⌫` (ITU E.161 / ISO 9564) |
+
+### Verification
+
+| Check | Status |
+|-------|--------|
+| Host `pytest tests/` | ✅ **800 passed** (2026-06-10) |
+| Phone / POS visual verification | ✅ Manual sign-off (2026-06-10) — light + dark; Row 1 vs chips; keypad order; nav clearance |
+
+### Ownership
+
+- Tokens + panel surface: `ui/mobile_txn.css` (`:root` `--mob-at-*`, AT-LIGHT-01 blocks)
+- Chip colour grammar: `ui/widgets.css` (UI-1; MOBILE-14 E8 ruling)
+- Keypad tuple: `app.py` `_mob_at_render_amount_keypad_fragment` (P6 only)
+
+**Next:** [UX-04](#ux-04--selector-interaction-audit) (UX-03 closed 2026-06-10).
+
+**Cross-references:** [QUICK-ENTRY-01](#quick-entry-01--context-aware-mobile-category-selection) · [docs/AUDIT_HISTORY.md](./docs/AUDIT_HISTORY.md) §2026-06-10 AT-LIGHT-01
 
 ---
 
@@ -1323,6 +1401,92 @@ The investigation output should identify the root cause(s) before any CSS or Pyt
 A user opens the ERP on any device and immediately receives the correct layout — no browser zoom change, no window resize, no refresh required.
 
 **Cross-references:** [CSS-01](#css-01--theme-ownership-consolidation) · [MOBILE-14](#mobile-14--mobile-theme-ownership-cleanup) · [MOBILE_UI_SYSTEM.md](./docs/MOBILE_UI_SYSTEM.md)
+
+---
+
+## HDR-01 — Combined Header Pass (UX-07 + UX-06)
+
+**Status:** ✅ **Closed** (2026-06-10). **Priority:** High.
+
+### Completed
+
+- Responsive company selector (replaced fixed 220px cap with token-based side reserve)
+- Ellipsis for long company names (multi-company Streamlit button `p` + single-company `.erp-hdr-mobile-co`)
+- Toolbar cluster — bell + profile as one right-side group (32×32 controls, 8px gap)
+- Unified spacing via layout tokens (`--hdr-toolbar-cluster-w`, `--hdr-toolbar-edge`, `--hdr-toolbar-gap`)
+- Header ownership cleanup — `mobile_header.css` owns mobile header; `theme.css` mobile block reconciled for padding/gap conflicts only
+- Company switch parity verified — header `hdr_mobile_co_switch_btn` is canonical; Profile “Switch Company” opens the same `co_switch` sheet
+- No duplicate mobile company switch menu (`show_co_switch_link=True`; no inline `_render_company_switch_menu()` on mobile profile)
+
+**Tests:** `tests/test_mobile_header_compact.py` extended (7 HDR-01 contract tests). Host `pytest tests/` — **807/807 passed**.
+
+**Decision:** Header company selector remains the canonical company switch entry point. Profile “Switch Company” remains available but opens the same `co_switch` sheet. No company-switch logic duplication.
+
+### Implementation notes
+
+- `ui/mobile_header.css` remains owner of mobile header styling.
+- `ui/mobile_shell.css` still contains a fixed `84px` title reserve; it currently matches active token values (`--hdr-title-side-reserve` = 72px + 12px). Future header spacing changes must be audited before modifying the shell reserve.
+- No new `--hdr-h` definitions added. No `app.py` changes required — switch wiring was already correct.
+
+Full audit + closure: [docs/AUDIT_HISTORY.md](./docs/AUDIT_HISTORY.md) §2026-06-10 HDR-01.
+
+---
+
+## UX-03 — Inline Expense Category Creation
+
+**Status:** ✅ **Closed** (2026-06-10). **Priority:** High.
+
+### Completed
+
+- Shared helper `_cat_create_or_reactivate(session, txn_type, name)` — strip/normalize, case-insensitive dedup, company-scoped, reactivate inactive duplicate, create otherwise; `_cat_add_dialog` refactored to call it.
+- Expense-only CTA in mobile category list picker (`expense_cat`): search with zero matches shows `+ Add "{name}"` when `_can("manage_categories")`.
+- On CTA tap: create/reactivate → `_mob_at_apply_category_pick(..., txn_type="Expense")` → close picker → rerun; last-used category memory updated; outside-top-5 promotion via existing quick-chip logic.
+- Locale: `txn.mob.add_category_cta` (EN/TR).
+- Sale/Purchase workflows, subcategory workflow, and main AT panel layout unchanged. QUICK-ENTRY-02 remains deferred.
+
+**Tests:** `tests/test_ux03_inline_category.py` (11 tests). Host `pytest tests/` — **818/818 passed**.
+
+**Ownership:** `app.py` picker-sheet helpers · `registry/locales/transactional.py` · no `mobile_txn.css` changes required.
+
+---
+
+## UX-04 — Selector Interaction Audit
+
+**Status:** 🟡 **Next active** · **Priority:** Medium · Gates cleared ([UX-03](#ux-03--inline-expense-category-creation) closed 2026-06-10).
+
+**Explicitly not started (blocked under UX-04 umbrella):**
+
+- Post-Save State Retention
+- Repeat Last Transaction
+- Smart Defaults
+
+**Decision heuristic:** cardinality × frequency. Few options used every transaction → chips; long or searchable lists → picker sheets.
+
+| Selector | Decision |
+|---|---|
+| Payment method | Likely first action — convert to chips (3–4 options, own row, last-used preselected) |
+| Date | **Remains picker** — no change in this item |
+| Currency | Keep picker; seed last-used per company |
+| Transaction type | Keep picker (Concept C Row 1) |
+| Vendor / customer / bank / invoice / payable | Keep pickers (searchable lists) |
+
+**Constraint:** Chip active/idle colour grammar lives in `widgets.css` per the MOBILE-14 E8 ruling; layout in `mobile_txn.css`. Do not recreate the pre-Concept-C Row 1 crowding.
+
+---
+
+## UX-05 — Universal Outside-Tap Dismiss
+
+**Status:** 📋 Backlog · **Priority:** Low · **Sequenced last.** Requires a separate infrastructure audit and its own CSS contract tests before approval.
+
+**Concept:** One reusable scrim-button dismissal pattern (`_render_scrim_dismiss(surface)`) anchored on the existing `_mobile_open_surface()` / `_mobile_close_app_surfaces()` lifecycle. Desktop popovers already dismiss natively — mobile session-state surfaces (hub sheets, AT picker, profile, notifications) are the gap.
+
+**Known constraints (recorded, not yet audited):**
+
+- Streamlit has no native outside-tap event for session-state surfaces; a transparent full-viewport scrim button is the only clean mechanism.
+- Company-switch confirm must never outside-dismiss (destructive decision).
+- AT picker dismiss must provably preserve in-progress entry state (needs a test).
+- Z-index / pointer-events regression history (popover click-trap guards in TEST_COVERAGE_MAP).
+- Must land after MOBILE-14 — do not build a universal overlay layer on unresolved ownership conflicts.
 
 ---
 
@@ -1544,6 +1708,15 @@ Restaurant (POS, recipes), retail (barcode), services (projects), tourism (booki
 | 2026-06-09 | **UX-02** approved. Decision: viewport adaptation is a core usability requirement. The ERP must automatically fit the user's device and viewport without requiring manual zoom or window resizing. Root cause investigation required before implementation — candidates include viewport meta handling, CSS breakpoint assumptions, Streamlit container sizing, and mobile detection timing. Blocked on MOBILE-14. |
 | 2026-06-09 | **DATE-01** recorded. Decision: mobile date picker should surface Today, Yesterday, This Week, and up to 3 recent session dates as immediate one-tap selections before the calendar input. Custom Date expands the existing calendar inline. Reduces date-entry taps for the majority of transactions. Independent — no blocking dependencies. |
 | 2026-06-09 | **QUICK-ENTRY-01** approved. Decision: for common mobile transactions, direct inline category selection is preferred over opening additional picker sheets. Maximum 4–5 chips inline; a "More…" chip always provides picker fallback. The category picker is unchanged and remains fully reachable. Blocked on MOBILE-14. No accounting, schema, or posting logic changes. |
+| 2026-06-10 | **QUICK-ENTRY-01** implemented and verified. Quick chips wired for Sale/Expense/Purchase; per-type last-category memory (company-scoped, cleared on switch); seeding via last-used or sole active category; subcategory reset on every pick; `More…` opens the unchanged picker. CSS lives in `mobile_txn.css` per CSS-02 ownership. Host audit: `tests/test_quick_entry.py` 14/14 passing. Accounting, schema, and posting logic untouched. |
+| 2026-06-10 | **AT-LIGHT-01 final polish (P1–P5) implemented** per approved design review: chip grammar split (tinted Row 1 selectors vs white bordered category chips), solid-accent selected chip (widgets.css UI-1, AT-scoped), white keypad keys with border + pressed state, amount hero card cleanup (wrapper band removed), panel tint 22%/10%, nav-safe bottom padding. CSS-only; tokens stay in `mobile_txn.css` :root per E9; chip colours in `widgets.css` per E8. Static contracts green (UI-1 20/20, layout contract 4/4, quick-entry CSS contract). Closure pending host `pytest tests/` + visual verification; then HDR-01 begins. |
+| 2026-06-10 | **AT-LIGHT-01 P6 — Mobile keypad ordering** approved and implemented. Keypad reordered from calculator layout to phone/POS layout (`1 2 3` top; ITU E.161 / ISO 9564, matches mobile OS decimal pads). Single tuple change in `_mob_at_render_amount_keypad_fragment`; no CSS/logic/schema changes; no test impact. Final AT-LIGHT-01 item — close after host pytest + phone visual verification, then HDR-01. |
+| 2026-06-10 | **UX-03–UX-07 roadmap accepted with adjustment** (post-AT-LIGHT-01 sequencing). Order: (1) **HDR-01** combined header pass (UX-07 + UX-06) — mobile header only: company selector max width, ellipsis for long names, guaranteed spacing between selector/notifications/profile, review of duplicate company switching in Profile. Ownership: `mobile_header.css`; `theme.css` only for desktop and only if audit proves needed; no new header token conflicts; respect AUDIT-01's `--hdr-h` finding. (2) **UX-03** inline Add Expense Category — blocked until header pass complete. (3) **UX-04** selector interaction audit — Payment Method chips likely first; **date remains picker**; Post-Save State Retention · Repeat Last Transaction · Smart Defaults explicitly blocked/not started. (4) **UX-05** universal outside-tap dismiss — backlog/last; requires separate infrastructure audit and dedicated tests. |
+| 2026-06-10 | **AT-LIGHT-01 status → code complete, pending final verification.** P1–P6 all implemented (hierarchy/chip grammar, keypad separation, amount card, panel tint, nav-safe spacing, phone/POS keypad order). Host `pytest tests/` — **787/787 passed**. Phone visual verification remains before sign-off. **HDR-01** is the next approved roadmap item after verification. **QUICK-ENTRY-02** deferred; subcategory workflow unchanged. |
+| 2026-06-10 | **ADD-TXN-BR-01 closed.** Sale validation aligned with bookkeeping: Cash/Card no longer blocked by category/subcategory; Credit Sale requires named customer (`_at_sale_credit_customer_error`). Expense/Purchase validation unchanged. Manual AT verification + host `pytest tests/` — **800/800 passed**. |
+| 2026-06-10 | **AT-LIGHT-01 closed.** P1–P6 complete including phone/POS keypad order (ITU E.161). Manual phone/POS visual verification signed off. Host `pytest tests/` — **800/800 passed**. **HDR-01** is next active item; pre-implementation audit recorded — implementation not started. |
+| 2026-06-10 | **HDR-01 closed.** Combined mobile header pass (UX-07 + UX-06): responsive company selector, ellipsis for long names, toolbar cluster (bell + profile, 8px gap), unified spacing tokens, header ownership cleanup. Header company selector remains canonical switch entry point; Profile “Switch Company” opens the same `co_switch` sheet — no duplicate mobile company menu. CSS-only (`mobile_header.css` + `theme.css` mobile block reconciliation). Host `pytest tests/` — **807/807 passed**. **UX-03** is next active item. |
+| 2026-06-10 | **UX-03 closed.** Inline Expense category creation in mobile `More…` picker: `_cat_create_or_reactivate` helper shared with desktop dialog; search-zero-match CTA (`txn.mob.add_category_cta`) gated on `manage_categories`; auto-select + last-used memory via `_mob_at_apply_category_pick`. Expense-only; Sale/Purchase/subcategory/AT panel layout unchanged. Host `pytest tests/` — **818/818 passed**. **UX-04** is next active item. |
 | 2026-06-09 | **ERP Ownership Audit** complete (**AUDIT-01**). Critical conflicts identified: `--hdr-h` 4-way token split, `widgets.css` KPI catch-all, mobile ownership drift, sidebar triple-hide, notification active state duplication, reports internal duplicate. Architectural finding: Dashboard, Banking, and Mobile Reports are mostly clean; Company Picker and Desktop Reports have no CSS surface (future work). Five quick wins identified that can be executed before MOBILE-14. Decision: all future UI work must follow ownership-first planning; new features must not introduce additional ownership conflicts. |
 
 ---
@@ -1555,7 +1728,7 @@ cd streamlit_accounting_erp
 ./venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: **747 passed**.
+Expected: **818 passed**.
 
 ---
 
