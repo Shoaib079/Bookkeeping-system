@@ -1107,6 +1107,20 @@ Set environment variable **`ERP_SESSION_RESTORE_SECRET`** to a long random secre
 
 ---
 
+## 2026-06-05 — TXH-DETAIL-01 — Transaction detail JE / Edit History polish
+
+**Scope:** Expanded Transaction History view panel readability only. No accounting, void/edit, invoice, or action changes.
+
+**Before:** Journal Entries and Edit History rendered as 11px inline `style=` markdown (`Dr X / Cr Y` single line; red/green inline spans).
+
+**After:** `_txh_render_view_je_block` + `_txh_render_view_edit_history_block` with semantic classes; JE account/Dr/Cr grid (12–13px, tabular nums); edit diffs via `--theme-danger-text` / `--theme-success-text`. Added `--theme-danger-text` token (THEME-CONTRAST-01 extension).
+
+**Tests:** `tests/test_txh_detail01.py` (6 pass). Full suite **963 passed, 2 xfailed**.
+
+**Files changed:** `app.py`, `ui/desktop_txn_history.css`, `ui/mobile_txn_history.css`, `ui/theme.css`, `ui/theme.py`, `tests/test_txh_detail01.py`, `tests/test_phase16a_theme.py`, `ROADMAP.md`, `docs/AUDIT_HISTORY.md`, `docs/TEST_COVERAGE_MAP.md`.
+
+---
+
 ## 2026-06-05 — VIEWPORT-SYNC-01 — JS/CSS mobile threshold sync (replaces UX-02)
 
 **Decision:** Align-up — restaurant counter tablets and large touch devices up to 1366px receive coherent POS/mobile UI.
@@ -1198,6 +1212,44 @@ Constants pinned in `ui/theme.py` (`MOBILE_VIEWPORT_*`). `mobile_header.css` alr
 **Tests:** New `tests/test_portal_theme_contract.py` (7): per-surface rule presence, primary-fill grammar, calendar rules, **no-stMain-prefix regression guard**, no-literal-hex guard, selectbox-fix-untouched pin. Extended `tests/test_theme_contrast.py` (+2): portal text/caption on card and on-primary-on-fill pairs, both modes ≥ 4.5:1. Static harness: 23/23 across both files; mobile14/UI-1/layout contracts re-run clean (38 pass, 2 optional xfail). Host `pytest tests/` required for official count.
 
 **Manual matrix (user):** OS-dark+app-light, OS-light+app-dark, both aligned × (notification popover, profile menu, Add Category dialog, date calendar).
+
+---
+
+## 2026-06-11 — LOGO-BUG-01: broken icon glyph rendering fixed
+
+**Root cause:** Text-presentation-default Unicode emoji (Emoji_Presentation=No: 🗂 🗓 🏛 🕵 🗑 👁 ⚙ ⚠ ⚖ ✏ ☀ ⏸ ⏭ ⬇ 🗒) used **without** the VS16 variation selector (U+FE0F). Without VS16 the browser draws them from the text font stack, which lacks these glyphs on many desktop platforms → tofu squares. The codebase was inconsistent — "🏛️ Balance Sheet"/"🕵️ Audit Log" already carried VS16 and rendered; "🗂 General Ledger"/"🗓 Fiscal Periods" didn't and broke. Also: circled digits ①–⑦ (tab/step prefixes) and ⏻ (power symbol, sign-out) have no emoji form and poor desktop coverage.
+
+**Fix (surgical, no redesign):** Appended VS16 to every bare fragile glyph in `app.py` (35 occurrences) and `registry/locales/transactional.py` (12); replaced ①–⑦ with plain "1."–"7." in app.py tab labels and locale strings (messages.py + transactional.py); replaced ⏻ → 🚪 in the sign-out button. Nav dispatch keys updated consistently via uniform transformation (same literal everywhere); unknown persisted `nav_selection` values fall back to Home by existing design (app.py:24741). Material Symbols deliberately **not** adopted: Streamlit's `icon=` param and label directives would change icon size/spacing (bug-fix constraint: same visual size/spacing) — VS16-forced emoji presentation meets the cross-platform requirement (macOS/Windows/iOS/Android OS emoji fonts) with zero layout change.
+
+**Files changed:** `app.py`, `registry/locales/messages.py`, `registry/locales/transactional.py`, `tests/test_mobile_nav.py` + `tests/test_nav_accounting_tools_d2_p1.py` (literals updated to VS16 forms), new `tests/test_icon_glyph_contract.py`.
+
+**Tests:** 3 new contracts — fragile-emoji-must-carry-VS16 (line-level violations reported), banned-glyph list (⏻, ①–⑦), nav-key consistency. All pass; all static contract suites re-run clean (45 pass, 2 optional xfail). Host `pytest tests/` + visual check required (sidebar Books group, Account Activity, Fiscal Periods, Owner Equity tab, TXH action buttons — on the desktop browser that showed squares).
+
+---
+
+## 2026-06-05 — ICON-SWEEP-01: remaining broken icon glyphs eliminated
+
+**Root cause:** Same as LOGO-BUG-01 — text-presentation-default emoji without U+FE0F (VS16) rendered from the desktop text font stack (tofu squares). LOGO-BUG-01 fixed `app.py` literals but left **registry drift**: `modules_catalog.py` and `nav_labels.py` still used bare 🗂/🗓/📓/🔍/📒 keys that did not match `app.py` dispatch (🗂️/🗓️). TXH repeat used 🔁 (U+1F501), which lacks reliable coverage in compact Streamlit emoji-only buttons on some desktop browsers — the last broken square in the Transaction History action bar.
+
+**Fix:** New `registry/icon_glyphs.py` — canonical `NAV_*` page keys and `TXH_*` action icons with `with_vs16()` helper. Wired through `app.py`, `modules_catalog.py`, `nav_labels.py`, and `registry/locales/transactional.py` (audit expander). TXH repeat → 🔄 (`TXH_REPEAT`). No layout/color/typography/spacing/logic changes; VS16-forced emoji only (Material Symbols/Lucide deliberately not adopted — would alter Streamlit button sizing).
+
+**Icons replaced:**
+
+| Location | Before | After |
+|---|---|---|
+| General Ledger nav (registry + dispatch) | 🗂 | 🗂️ |
+| Fiscal Periods nav (registry + dispatch) | 🗓 | 🗓️ |
+| Journal Entries nav | 📓 | 📓️ |
+| Chart of Accounts nav | 🔍 | 🔍️ |
+| Transaction Ledger nav | 📒 | 📒️ |
+| Advanced audit expander (EN/TR) | 🔍 | 🔍️ |
+| TXH repeat action button | 🔁 | 🔄 |
+
+**Files changed:** `registry/icon_glyphs.py` (new), `registry/modules_catalog.py`, `registry/nav_labels.py`, `app.py`, `registry/locales/transactional.py`, `tests/test_icon_glyph_contract.py`, `tests/test_mobile_nav.py`, `tests/test_nav_accounting_tools_d2_p1.py`, `tests/test_nav_transaction_ledger_d2.py`, `docs/TEST_COVERAGE_MAP.md`, `docs/AUDIT_HISTORY.md`.
+
+**Tests:** 969 passed, 2 xfailed (M3/M4 optional). Icon contracts expanded from 3 → 6 (fragile VS16 scan now includes registry files; `icon_glyphs`/`modules_catalog`/TXH wiring contracts added).
+
+**Remaining icon debt:** Nav pages not yet centralized in `icon_glyphs` (e.g. 🏠 Home, 💼 Sales) — these use emoji-presentation-default codepoints and render reliably; migrate only if a future audit finds breakage. Comments/docs (`NAVIGATION_AUDIT.md`, `UI_SHELL.md`) still show legacy bare glyphs in prose — non-runtime, no user impact.
 
 ---
 

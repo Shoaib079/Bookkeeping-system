@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-05 (VIEWPORT-SYNC-01 closed · JS/CSS threshold sync)  
-**Full suite:** run `pytest tests/` — **948 passed, 2 xfailed** (16 ownership-contract tests: **14 pass, 2 xfail**).
+**Last updated:** 2026-06-05 (TXH-DETAIL-01 closed · expanded row JE/Edit History)  
+**Full suite:** run `pytest tests/` — **963 passed, 2 xfailed** (16 ownership-contract tests: **14 pass, 2 xfail**).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -276,6 +276,20 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 
 ---
 
+## TXH-DETAIL-01 — expanded transaction detail polish (implemented)
+
+**Status:** ✅ **Closed** — `tests/test_txh_detail01.py` — **6 pass**.
+
+| Contract | Business rule protected | State |
+|----------|-------------------------|-------|
+| No inline `style=` in JE/Edit render helpers | Token-driven detail styling | ✅ Pass |
+| Semantic `erp-txh-je-*` / `erp-txh-edit-*` in app + CSS | CSS-02 ownership in `desktop_txn_history.css` | ✅ Pass |
+| Edit diff uses `--theme-danger-text` / `--theme-success-text` | THEME-CONTRAST-01 readable diffs | ✅ Pass |
+| JE grid: account + right-aligned Dr/Cr | Scannable ledger detail | ✅ Pass |
+| `_txh_render_row_panels` action/edit/void logic unchanged | Accounting behavior frozen | ✅ Pass |
+
+---
+
 ## VIEWPORT-SYNC-01 — JS/CSS mobile threshold sync (implemented)
 
 **Status:** ✅ **Closed** — `tests/test_viewport_sync01.py` — **5 pass**.
@@ -451,6 +465,19 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 | Notification rule liveness pins (3 files) | Pass | Permanent two-owner contract |
 
 Remaining xfails (M3/M4) are optional suppression relocations — not MOBILE-14 blockers.
+
+---
+
+### `tests/test_icon_glyph_contract.py` (6 tests) — LOGO-BUG-01 / ICON-SWEEP-01
+
+| Contract | Protects |
+|---|---|
+| Fragile emoji always carry VS16 (U+FE0F) | No tofu squares on desktop (sidebar, tabs, action icons) |
+| Banned glyphs absent (⏻, ①–⑦) | No codepoints without cross-platform coverage |
+| Nav dispatch keys use icon_glyphs constants | Dispatch map ↔ nav tree ↔ registry integrity |
+| `icon_glyphs` nav constants carry VS16 | Canonical nav key definitions |
+| `modules_catalog` nav pages match `icon_glyphs` | Registry ↔ app routing alignment |
+| TXH action bar uses `icon_glyphs` TXH_* | No inline fragile emoji in action buttons |
 
 ---
 

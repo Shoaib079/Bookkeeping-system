@@ -345,6 +345,17 @@ html.erp-mobile [data-testid="stMain"]:has(.erp-txh-mobile-host) [class*="st-key
     margin: 0 0 12px !important;
     border-color: var(--theme-border) !important;
   }
+
+  /* TXH-DETAIL-01 — mobile expand panel: JE grid column squeeze */
+  [data-testid="stMain"]:has(.erp-txh-mobile-host) [class*="st-key-txh_info_"] .erp-txh-je-line {
+    grid-template-columns: minmax(0, 1fr) 4.5rem 4.5rem;
+    font-size: 12px;
+  }
+
+  [data-testid="stMain"]:has(.erp-txh-mobile-host) [class*="st-key-txh_info_"] .erp-txh-edit-line {
+    padding-left: 8px;
+    font-size: 12px;
+  }
 }
 
 html.erp-mobile [data-testid="stMain"] [class*="st-key-txh_filter_row1"] [data-testid="stHorizontalBlock"] {

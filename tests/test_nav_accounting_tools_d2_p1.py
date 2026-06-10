@@ -6,11 +6,12 @@ import inspect
 
 import app as erp
 from registry.i18n import t
+from registry.icon_glyphs import NAV_GENERAL_LEDGER
 
 _BOOKS_PAGES = (
     "💰 Budget",
     "⚖️ Trial Balance",
-    "🗂 General Ledger",
+    NAV_GENERAL_LEDGER,
 )
 _REMOVED_PICKER_IDS = frozenset({"budget", "trial_balance", "general_ledger"})
 _REMAINING_PICKER_IDS = frozenset({"txn_ledger", "today_summary"})
@@ -44,7 +45,7 @@ def test_books_pages_still_in_sidebar_accordion():
 def test_legacy_rpt_exec_sel_redirects_to_books():
     assert set(erp._LEGACY_RPT_EXEC_TO_BOOKS.keys()) == _REMOVED_PICKER_IDS
     assert erp._LEGACY_RPT_EXEC_TO_BOOKS["trial_balance"] == "⚖️ Trial Balance"
-    assert erp._LEGACY_RPT_EXEC_TO_BOOKS["general_ledger"] == "🗂 General Ledger"
+    assert erp._LEGACY_RPT_EXEC_TO_BOOKS["general_ledger"] == NAV_GENERAL_LEDGER
     assert erp._LEGACY_RPT_EXEC_TO_BOOKS["budget"] == "💰 Budget"
     main_src = inspect.getsource(erp.main)
     assert "_LEGACY_RPT_EXEC_TO_BOOKS" in main_src

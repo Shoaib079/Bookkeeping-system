@@ -63,6 +63,7 @@ def test_light_and_dark_vars_include_new_tokens():
         "--erp-primary-fill-hover",
         "--theme-success-text",
         "--theme-warning-text",
+        "--theme-danger-text",
     ):
         assert token in LIGHT_ROOT_VARS
         assert token in DARK_ROOT_VARS

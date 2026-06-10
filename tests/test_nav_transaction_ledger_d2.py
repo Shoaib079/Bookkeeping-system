@@ -8,8 +8,9 @@ from unittest.mock import MagicMock
 
 import app as erp
 from registry.i18n import nav_display, t
+from registry.icon_glyphs import NAV_TXN_LEDGER
 
-_TXN_LEDGER_KEY = "📒 Transaction Ledger"
+_TXN_LEDGER_KEY = NAV_TXN_LEDGER
 
 
 def _page_dispatch_from_main() -> dict[str, str]:
@@ -90,8 +91,8 @@ def test_mobile_hubs_include_transaction_ledger():
 
 
 def test_transaction_ledger_label_consistent():
-    assert nav_display(_TXN_LEDGER_KEY, "en") == "📒 Transaction Ledger"
-    assert nav_display(_TXN_LEDGER_KEY, "tr") == "📒 İşlem Defteri"
+    assert nav_display(_TXN_LEDGER_KEY, "en") == NAV_TXN_LEDGER
+    assert nav_display(_TXN_LEDGER_KEY, "tr") == f"{NAV_TXN_LEDGER.split()[0]} İşlem Defteri"
     assert t("txn.page_banner", "en") == "Transaction Ledger"
     assert t("reports.exec.txn_ledger", "en") == "Transaction Ledger"
     assert t("dash.view_all_transactions", "en") == "View All Transactions"

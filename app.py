@@ -25,6 +25,19 @@ from exports import (
     generate_customer_statement_pdf,
     generate_vendor_statement_pdf,
 )
+from registry.icon_glyphs import (
+    NAV_CHART_OF_ACCOUNTS,
+    NAV_FISCAL_PERIODS,
+    NAV_GENERAL_LEDGER,
+    NAV_JOURNAL_ENTRIES,
+    NAV_RECURRING_EXPENSES,
+    NAV_TXN_LEDGER,
+    TXH_DUPLICATE,
+    TXH_EDIT,
+    TXH_REPEAT,
+    TXH_VIEW,
+    TXH_VOID,
+)
 from registry.loader import validate_on_load as _validate_settings_registry
 from registry.categories_seed import (
     DEFAULT_CATEGORIES as _DEFAULT_CATEGORIES,
@@ -959,7 +972,7 @@ def _render_hdr_profile_panel_content(
             _mobile_open_surface("co_switch")
             st.rerun()
     st.divider()
-    if st.button("⚙  " + _t("header.my_account"), key=acct_key, use_container_width=True):
+    if st.button("⚙️  " + _t("header.my_account"), key=acct_key, use_container_width=True):
         _mobile_close_app_surfaces()
         st.session_state.pop("mob_profile_open", None)
         st.session_state["nav_selection"] = "👤 My Account"
@@ -973,7 +986,7 @@ def _render_hdr_profile_panel_content(
             st.session_state["_hdr_open_create_after_picker"] = True
             st.rerun()
         _start_create_company_wizard()
-    if st.button("⏻  " + _t("header.sign_out"), key=out_key, use_container_width=True):
+    if st.button("🚪  " + _t("header.sign_out"), key=out_key, use_container_width=True):
         _mobile_close_app_surfaces()
         st.session_state.pop("mob_profile_open", None)
         _logout()
@@ -3170,7 +3183,7 @@ def _flip_header_theme(user: dict) -> None:
 
 
 # AD-UI-001 D2-P0 — promoted daily lookup route (render_transaction_history via thin wrapper).
-_TXN_LEDGER_PAGE_KEY = "📒 Transaction Ledger"
+_TXN_LEDGER_PAGE_KEY = NAV_TXN_LEDGER
 
 # AD-UI-001 D1 — financial statement top-level routes (routing only; render_* unchanged).
 _STATEMENT_PAGE_KEYS = frozenset({
@@ -3188,7 +3201,7 @@ _LEGACY_RPT_EXEC_TO_STATEMENT = {
 _LEGACY_RPT_EXEC_TO_BOOKS = {
     "budget": "💰 Budget",
     "trial_balance": "⚖️ Trial Balance",
-    "general_ledger": "🗂 General Ledger",
+    "general_ledger": NAV_GENERAL_LEDGER,
 }
 
 _NAV_GROUP_KEYS = {
@@ -3340,7 +3353,7 @@ _NAV_ACCORDION = [
         ("💼  Sales",              "💼 Sales"),
         ("💳  Expenses",           "💳 Expenses"),
         ("🛒  Purchases",          "🛒 Purchases"),
-        ("🔁  Recurring Expenses", "🔁 Recurring Expenses"),
+        (NAV_RECURRING_EXPENSES.replace(" ", "  ", 1), NAV_RECURRING_EXPENSES),
     ]),
     ("people", "Customers & suppliers", [
         ("👥  Customers",          "👥 Customers"),
@@ -3358,11 +3371,11 @@ _NAV_ACCORDION = [
         ("💸  Cash Flow",         "💸 Cash Flow"),
     ]),
     ("accounting", "Books", [
-        ("🗂  General Ledger",     "🗂 General Ledger"),
-        ("🔍  Chart of Accounts",  "🔍 Chart of Accounts"),
-        ("📓  Journal Entries",    "📓 Journal Entries"),
+        (NAV_GENERAL_LEDGER.replace(" ", "  ", 1), NAV_GENERAL_LEDGER),
+        (NAV_CHART_OF_ACCOUNTS.replace(" ", "  ", 1), NAV_CHART_OF_ACCOUNTS),
+        (NAV_JOURNAL_ENTRIES.replace(" ", "  ", 1), NAV_JOURNAL_ENTRIES),
         ("⚖️  Trial Balance",      "⚖️ Trial Balance"),
-        ("🗓  Fiscal Periods",     "🗓 Fiscal Periods"),
+        (NAV_FISCAL_PERIODS.replace(" ", "  ", 1), NAV_FISCAL_PERIODS),
         ("📆  Year-End Close",     "📆 Year-End Close"),
         ("💰  Budget",             "💰 Budget"),
         ("🩺  Recon Health",       "🩺 Recon Health"),
@@ -3394,14 +3407,14 @@ _NAV_ROLE_PAGES = {
     "owner": _NAV_ALL_PAGES + [_NAV_MY_ACCOUNT],
     "manager": [
         "🏠 Home",
-        "➕ New Transaction", _TXN_LEDGER_PAGE_KEY, "💼 Sales", "💳 Expenses", "🔁 Recurring Expenses", "🛒 Purchases",
+        "➕ New Transaction", _TXN_LEDGER_PAGE_KEY, "💼 Sales", "💳 Expenses", NAV_RECURRING_EXPENSES, "🛒 Purchases",
         "💸 Cash Reconciliation", "🌙 End-of-Day Close",
         "👥 Customers", "🏢 Vendors", "📄 Receivables", "📌 Payables",
         "📦 Inventory", "🏦 Banking",
         "📊 Reports",
         "💰 Profit & Loss", "🏛️ Balance Sheet", "💸 Cash Flow",
-        "🗂 General Ledger", "⚖️ Trial Balance", "📓 Journal Entries",
-        "🗓 Fiscal Periods", "📆 Year-End Close", "💰 Budget", "🔍 Chart of Accounts",
+        NAV_GENERAL_LEDGER, "⚖️ Trial Balance", NAV_JOURNAL_ENTRIES,
+        NAV_FISCAL_PERIODS, "📆 Year-End Close", "💰 Budget", NAV_CHART_OF_ACCOUNTS,
         "🩺 Recon Health",
         "🏦 Partner Accounts",
         "👷 Workers",
@@ -3411,7 +3424,7 @@ _NAV_ROLE_PAGES = {
     ],
     "cashier": [
         "🏠 Home",
-        "➕ New Transaction", _TXN_LEDGER_PAGE_KEY, "💼 Sales", "💳 Expenses", "🔁 Recurring Expenses", "🛒 Purchases",
+        "➕ New Transaction", _TXN_LEDGER_PAGE_KEY, "💼 Sales", "💳 Expenses", NAV_RECURRING_EXPENSES, "🛒 Purchases",
         "💸 Cash Reconciliation", "🌙 End-of-Day Close",
         "📄 Receivables", "📌 Payables",
         "🏦 Banking",
@@ -7722,7 +7735,7 @@ def render_attachment_section(session, entity_type: str, entity_id: int, key_pre
             else:
                 ac2.caption(_t("attach.file_missing"))
             if _can("delete_attachment"):
-                if ac3.button("🗑", key=f"del_att_{key_prefix}_{att.id}",
+                if ac3.button("🗑️", key=f"del_att_{key_prefix}_{att.id}",
                               help=_t("attach.delete_help")):
                     err = _soft_delete_attachment(
                         session, att.id, user["id"] if user else None
@@ -8315,7 +8328,7 @@ def render_year_end_close(session):
 
 
 def render_fiscal_periods(session):
-    _st_page_title("🗓 Fiscal Periods")
+    _st_page_title(NAV_FISCAL_PERIODS)
     st.markdown(
         "Define accounting periods, close them to post retained earnings, "
         "and lock them against further posting."
@@ -8924,13 +8937,13 @@ def render_partner_accounts(session):
         else _t("partner.sole_prop_mode_hint")
     )
     _partner_tab_labels = [
-        f"① {_t('partner.tab_partners')}",
-        f"② {_t('partner.tab_movements')}",
-        f"③ {_t('partner.tab_allocations')}",
-        f"④ {_t('partner.tab_summary')}",
+        f"1. {_t('partner.tab_partners')}",
+        f"2. {_t('partner.tab_movements')}",
+        f"3. {_t('partner.tab_allocations')}",
+        f"4. {_t('partner.tab_summary')}",
     ]
     if not _uses_partners:
-        _partner_tab_labels.append(f"⑤ {_t('partner.tab_owner_equity')}")
+        _partner_tab_labels.append(f"5. {_t('partner.tab_owner_equity')}")
     _partner_tabs = st.tabs(_partner_tab_labels)
     tab1, tab2, tab3, tab4 = _partner_tabs[:4]
     tab5 = _partner_tabs[4] if len(_partner_tabs) > 4 else None
@@ -9268,9 +9281,9 @@ def render_workers(session):
 
     ytd_year = today.year
     tab_workers, tab_movements, tab_summary = st.tabs([
-        f"① {_t('worker.tab_workers')}",
-        f"② {_t('worker.tab_movements')}",
-        f"③ {_t('worker.tab_summary')}",
+        f"1. {_t('worker.tab_workers')}",
+        f"2. {_t('worker.tab_movements')}",
+        f"3. {_t('worker.tab_summary')}",
     ])
 
     with tab_workers:
@@ -10464,7 +10477,7 @@ def render_export_buttons(df, prefix, pdf=True):
     excel_data = df_to_excel_bytes(df, sheet_name=sheet)
     csv_data   = df.to_csv(index=False).encode("utf-8")
 
-    with st.popover(f"⬇ {_t('export.download')}"):
+    with st.popover(f"⬇️ {_t('export.download')}"):
         st.download_button(
             label=f"📊 {_t('export.excel')}",
             data=excel_data,
@@ -10473,7 +10486,7 @@ def render_export_buttons(df, prefix, pdf=True):
             key=f"dl_xlsx_{safe}",
         )
         st.download_button(
-            label=f"🗒 {_t('export.csv')}",
+            label=f"🗒️ {_t('export.csv')}",
             data=csv_data,
             file_name=f"{stem}.csv",
             mime="text/csv",
@@ -10786,12 +10799,12 @@ def render_dashboard(session):
 
     # Mobile AR / AP — one box, two tappable halves (below today KPIs)
     _ar_sub_plain = (
-        f"⚠ {currency} {overdue_rec_amount:,.2f} {_tf('dash.mobile.overdue', 'overdue')}"
+        f"⚠️ {currency} {overdue_rec_amount:,.2f} {_tf('dash.mobile.overdue', 'overdue')}"
         if overdue_count else _tf("dash.mobile.all_current", "All current")
     )
     if overdue_pay_count:
         _ap_sub_plain = (
-            f"⚠ {overdue_pay_count} {_tf('dash.mobile.overdue', 'overdue')} · "
+            f"⚠️ {overdue_pay_count} {_tf('dash.mobile.overdue', 'overdue')} · "
             f"{currency} {overdue_pay_amount:,.2f}"
         )
     elif open_payables_count > 0:
@@ -10939,7 +10952,7 @@ def render_dashboard(session):
         with _c1:
             st.markdown(_sec(_t("dash.receivables")), unsafe_allow_html=True)
             _ar_sub = (
-                f'<span style="color:var(--theme-danger);">⚠ {currency} {overdue_rec_amount:,.2f} overdue</span>'
+                f'<span style="color:var(--theme-danger);">⚠️ {currency} {overdue_rec_amount:,.2f} overdue</span>'
                 if overdue_count else "All current"
             )
             render_kpi_grid([{"label": _t("dash.kpi.outstanding_ar"), "value": _fmt(outstanding_rec, currency),
@@ -10954,7 +10967,7 @@ def render_dashboard(session):
         with _c2:
             st.markdown(_sec(_t("dash.payables")), unsafe_allow_html=True)
             _ap_sub = (
-                f'<span style="color:var(--theme-danger);">⚠ {overdue_pay_count} overdue · '
+                f'<span style="color:var(--theme-danger);">⚠️ {overdue_pay_count} overdue · '
                 f'{currency} {overdue_pay_amount:,.2f}</span>'
                 if overdue_pay_count else f"{open_payables_count} open"
             )
@@ -15224,11 +15237,11 @@ def _txh_bind_action_buttons(
 ) -> None:
     """Wire View / Edit / Repeat|Duplicate / Void callbacks into pre-built columns."""
     c_v, c_e, c_d, c_vd = action_cols
-    if c_v.button("👁", key=f"txh_v_{row_key}", help=_t("txh.view_help")):
+    if c_v.button(TXH_VIEW, key=f"txh_v_{row_key}", help=_t("txh.view_help")):
         st.session_state["txh_active_view"] = None if st.session_state.get("txh_active_view") == row_key else row_key
         st.session_state["txh_active_edit"] = None
         st.rerun()
-    if c_e.button("✏️", key=f"txh_e_{row_key}", help=_t("txh.edit_help"), disabled=not defs["can_edit"]):
+    if c_e.button(TXH_EDIT, key=f"txh_e_{row_key}", help=_t("txh.edit_help"), disabled=not defs["can_edit"]):
         if st.session_state.get("txh_active_edit") == row_key:
             st.session_state["txh_active_edit"] = None
         else:
@@ -15238,12 +15251,12 @@ def _txh_bind_action_buttons(
             st.session_state["txh_active_view"] = None
         st.rerun()
     if defs["can_repeat"]:
-        if c_d.button("🔁", key=f"txh_r_{row_key}", help=_t("txh.repeat_help")):
+        if c_d.button(TXH_REPEAT, key=f"txh_r_{row_key}", help=_t("txh.repeat_help")):
             if _txh_apply_repeat_prefill(session, etype, eobj):
                 st.session_state["txh_active_view"] = None
                 st.session_state["txh_active_edit"] = None
                 st.rerun()
-    elif c_d.button("📋", key=f"txh_d_{row_key}", help=_t("txh.duplicate_help"), disabled=not defs["can_duplicate"]):
+    elif c_d.button(TXH_DUPLICATE, key=f"txh_d_{row_key}", help=_t("txh.duplicate_help"), disabled=not defs["can_duplicate"]):
         _TYPE_IDX = {"Sale": 0, "ExpenseRecord": 1, "Purchase": 2}
         st.session_state["at_type_idx"] = _TYPE_IDX.get(etype, 0)
         st.session_state["at_amount_display"] = str(eobj.amount)
@@ -15257,7 +15270,7 @@ def _txh_bind_action_buttons(
             st.session_state["at_pm"] = eobj.purchase_type or "Credit"
         st.session_state["nav_selection"] = "➕ New Transaction"
         st.rerun()
-    if c_vd.button("🚫", key=f"txh_vd_{row_key}", help=_t("txh.void_help"), disabled=not defs["can_void"]):
+    if c_vd.button(TXH_VOID, key=f"txh_vd_{row_key}", help=_t("txh.void_help"), disabled=not defs["can_void"]):
         st.session_state[f"txh_void_confirm_{row_key}"] = True
         st.rerun()
 
@@ -15292,6 +15305,73 @@ def _txh_render_desktop_actions(
         with st.container(border=False, key=f"txh_dt_actions_{row_key}"):
             _txh_bind_action_buttons(
                 st.columns(4), session, row_key=row_key, etype=etype, eobj=eobj, defs=defs
+            )
+
+
+def _txh_je_amount_cell(amount: float) -> str:
+    if amount and abs(amount) > 0.0001:
+        return html.escape(f"{amount:,.2f}")
+    return "—"
+
+
+def _txh_render_view_je_block(session, journal_entries: list) -> None:
+    """TXH-DETAIL-01 — Journal Entries grid in expanded view panel."""
+    st.markdown(f"**{_t('je.journal_entries')}**")
+    if not journal_entries:
+        st.caption(_t("je.no_entries"))
+        return
+    for _je in journal_entries:
+        _head = html.escape(f"{_je.entry_date} — {_je.description}")
+        st.markdown(f'<div class="erp-txh-je-head">{_head}</div>', unsafe_allow_html=True)
+        _rows = [
+            '<div class="erp-txh-je-grid">',
+            '<div class="erp-txh-je-line erp-txh-je-line--hdr">',
+            f'<span class="erp-txh-je-account">{html.escape(_t("je.account"))}</span>',
+            '<span class="erp-txh-je-dr">Dr</span>',
+            '<span class="erp-txh-je-cr">Cr</span>',
+            "</div>",
+        ]
+        for _ln in _je.lines:
+            _ac = session.get(ChartOfAccounts, _ln.account_id)
+            _aname = html.escape(_ac.account_name if _ac else f"Acct#{_ln.account_id}")
+            _rows.extend([
+                '<div class="erp-txh-je-line">',
+                f'<span class="erp-txh-je-account">{_aname}</span>',
+                f'<span class="erp-txh-je-dr">{_txh_je_amount_cell(_ln.debit)}</span>',
+                f'<span class="erp-txh-je-cr">{_txh_je_amount_cell(_ln.credit)}</span>',
+                "</div>",
+            ])
+        _rows.append("</div>")
+        st.markdown("".join(_rows), unsafe_allow_html=True)
+
+
+def _txh_render_view_edit_history_block(edit_logs: list) -> None:
+    """TXH-DETAIL-01 — Edit History in expanded view panel."""
+    if not edit_logs:
+        return
+    st.divider()
+    st.markdown(f"**{_t('je.edit_history')}**")
+    for _log in edit_logs:
+        _ts = _log.timestamp.strftime("%d %b %Y %H:%M") if _log.timestamp else "—"
+        try:
+            _d = json.loads(_log.description or "{}")
+            _usr = _d.get("user", "—")
+            _bef = _d.get("before", {})
+            _aft = _d.get("after", {})
+        except Exception:
+            _usr, _bef, _aft = "—", {}, {}
+        _head = html.escape(f"{_ts} — {_usr}")
+        st.markdown(f'<div class="erp-txh-edit-head">{_head}</div>', unsafe_allow_html=True)
+        for _fld, _old in _bef.items():
+            _old_s = html.escape(str(_old))
+            _new_s = html.escape(str(_aft.get(_fld, "—")))
+            _fld_s = html.escape(str(_fld))
+            st.markdown(
+                f'<div class="erp-txh-edit-line">'
+                f'{_fld_s}: <span class="erp-txh-edit-old">{_old_s}</span>'
+                f' → <span class="erp-txh-edit-new">{_new_s}</span>'
+                f"</div>",
+                unsafe_allow_html=True,
             )
 
 
@@ -15395,7 +15475,6 @@ def _txh_render_row_panels(
                 _ref_types = []
 
             st.divider()
-            st.markdown(f"**{_t('je.journal_entries')}**")
             _direct_je = cq(session, JournalEntry).filter(
                 JournalEntry.reference_type.in_(_ref_types),
                 JournalEntry.reference_id == eid,
@@ -15405,23 +15484,7 @@ def _txh_render_row_panels(
                 JournalEntry.reference_id.in_([_je.id for _je in _direct_je]),
             ).order_by(JournalEntry.entry_date).all() if _direct_je else []
             _all_je = sorted(_direct_je + _reversal_je, key=lambda _e: _e.entry_date)
-            if not _all_je:
-                st.caption(_t("je.no_entries"))
-            else:
-                for _je in _all_je:
-                    st.markdown(
-                        f'<div style="font-size:11px;font-weight:600;color:var(--theme-muted);margin-top:6px;">'
-                        f'{_je.entry_date} — {_je.description}</div>',
-                        unsafe_allow_html=True,
-                    )
-                    for _ln in _je.lines:
-                        _ac = session.get(ChartOfAccounts, _ln.account_id)
-                        _aname = _ac.account_name if _ac else f"Acct#{_ln.account_id}"
-                        st.markdown(
-                            f'<div style="font-size:11px;color:var(--theme-muted);padding-left:14px;">'
-                            f'{_aname}: Dr {_ln.debit:,.2f} / Cr {_ln.credit:,.2f}</div>',
-                            unsafe_allow_html=True,
-                        )
+            _txh_render_view_je_block(session, _all_je)
 
             _edit_logs = (
                 cq(session, AuditLog)
@@ -15429,30 +15492,7 @@ def _txh_render_row_panels(
                 .order_by(AuditLog.timestamp.desc())
                 .all()
             )
-            if _edit_logs:
-                st.divider()
-                st.markdown(f"**{_t('je.edit_history')}**")
-                for _log in _edit_logs:
-                    _ts = _log.timestamp.strftime("%d %b %Y %H:%M") if _log.timestamp else "—"
-                    try:
-                        _d = json.loads(_log.description or "{}")
-                        _usr = _d.get("user", "—")
-                        _bef = _d.get("before", {})
-                        _aft = _d.get("after", {})
-                    except Exception:
-                        _usr, _bef, _aft = "—", {}, {}
-                    st.markdown(
-                        f'<div style="font-size:11px;font-weight:600;color:var(--theme-muted);margin-top:6px;">'
-                        f'{_ts} — {_usr}</div>',
-                        unsafe_allow_html=True,
-                    )
-                    for _fld, _old in _bef.items():
-                        st.markdown(
-                            f'<div style="font-size:11px;color:var(--theme-muted);padding-left:14px;">'
-                            f'{_fld}: <span style="color:var(--theme-danger);">{_old}</span>'
-                            f' → <span style="color:var(--theme-success);">{_aft.get(_fld, "—")}</span></div>',
-                            unsafe_allow_html=True,
-                        )
+            _txh_render_view_edit_history_block(_edit_logs)
 
     elif st.session_state.get("txh_active_edit") == row_key:
         with st.container(border=True):
@@ -17697,7 +17737,7 @@ def render_vendors(session):
                         f"_{stmt_vstart}_{stmt_vend}.pdf"
                     )
                     st.download_button(
-                        "⬇ " + _t("vendor.stmt_download"),
+                        "⬇️ " + _t("vendor.stmt_download"),
                         data=_pdf,
                         file_name=_fname,
                         mime="application/pdf",
@@ -18415,7 +18455,7 @@ _PAYMENT_METHS = ["Cash", "Bank"]
 
 
 def render_recurring_expenses(session):
-    _st_page_title("🔁 Recurring Expenses")
+    _st_page_title(NAV_RECURRING_EXPENSES)
 
     if not (_can("manage_recurring_templates") or _can("post_recurring_draft")):
         st.error(_t("form.access_denied"))
@@ -18450,7 +18490,7 @@ def render_recurring_expenses(session):
     # ── Tabs ──────────────────────────────────────────────────────────────────
     tab_labels = ["📋 Pending Drafts", "📅 History", "📝 Templates"]
     if can_manage:
-        tab_labels.append("⚙ Manage Templates")
+        tab_labels.append("⚙️ Manage Templates")
     tabs = st.tabs(tab_labels)
 
     # ── Tab 0: Pending Drafts ─────────────────────────────────────────────────
@@ -18571,7 +18611,7 @@ def render_recurring_expenses(session):
                             fc1, fc2, fc3 = st.columns([3, 1, 1])
                             do_post          = fc1.form_submit_button("✅ Post Expense", type="primary",
                                                                        disabled=not _can("post_recurring_draft"))
-                            do_open_skip     = fc2.form_submit_button("⏭ Skip…",     disabled=not can_manage)
+                            do_open_skip     = fc2.form_submit_button("⏭️ Skip…",     disabled=not can_manage)
                             do_open_postpone = fc3.form_submit_button("📅 Postpone…", disabled=not can_manage)
 
                             if do_post:
@@ -18685,7 +18725,7 @@ def render_recurring_expenses(session):
                     "Amount":    t.amount,
                     "Frequency": t.frequency.title(),
                     "Next Due":  t.next_due_date.strftime("%d %b %Y"),
-                    "Active":    "✅" if t.is_active else "⏸",
+                    "Active":    "✅" if t.is_active else "⏸️",
                     "Pending":   pc,
                 })
             _render_readable_df(pd.DataFrame(rows))
@@ -18767,7 +18807,7 @@ def render_recurring_expenses(session):
                 st.info(_t("recurring.no_templates_yet"))
             else:
                 for t in all_tmpls:
-                    badge = "✅" if t.is_active else "⏸"
+                    badge = "✅" if t.is_active else "⏸️"
                     with st.expander(f"{badge} {t.name} — {t.frequency.title()} — {t.amount:,.2f}"):
                         with st.form(key=f"edit_tmpl_{t.id}"):
                             ec1, ec2 = st.columns(2)
@@ -18845,10 +18885,10 @@ def render_cash_reconciliation(session):
         return
 
     tab1, tab2, tab3, tab4 = st.tabs([
-        f"① {_t('recon.tab.chip.today')}",
-        f"② {_t('recon.tab.chip.pending')}",
-        f"③ {_t('recon.tab.chip.history')}",
-        f"④ {_t('recon.tab.chip.reports')}",
+        f"1. {_t('recon.tab.chip.today')}",
+        f"2. {_t('recon.tab.chip.pending')}",
+        f"3. {_t('recon.tab.chip.history')}",
+        f"4. {_t('recon.tab.chip.reports')}",
     ])
 
     # ── TAB 1: Today's Reconciliation (Cashier) ──────────────────────────────
@@ -18898,7 +18938,7 @@ def render_cash_reconciliation(session):
                 st.write(f"**{_t('form.notes')}:** {existing.notes}")
             
             if _can("void_reconciliation"):
-                if st.button(f"🗑 {_t('recon.void_btn')}", key="void_existing_recon"):
+                if st.button(f"🗑️ {_t('recon.void_btn')}", key="void_existing_recon"):
                     void_reason = st.text_input(_t("recon.void_reason"), key="void_reason_input")
                     if void_reason and st.button(_t("recon.confirm_void")):
                         error = void_reconciliation(session, existing.id, user["id"], void_reason)
@@ -19323,8 +19363,8 @@ def render_end_of_day_close(session):
     )
 
     tab1, tab2 = st.tabs([
-        f"① {_t('eod.tab.chip.today')}",
-        f"② {_t('eod.tab.chip.history')}",
+        f"1. {_t('eod.tab.chip.today')}",
+        f"2. {_t('eod.tab.chip.history')}",
     ])
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -19704,7 +19744,7 @@ def render_customers(session):
                             f"_{stmt_start}_{stmt_end}.pdf"
                         )
                         st.download_button(
-                            "⬇ " + _t("vendor.stmt_download"),
+                            "⬇️ " + _t("vendor.stmt_download"),
                             data=_pdf,
                             file_name=_fname,
                             mime="application/pdf",
@@ -20451,7 +20491,7 @@ def render_banking(session):
 
 
 def render_journal_entries(session):
-    _st_page_title("📓 Journal Entries")
+    _st_page_title(NAV_JOURNAL_ENTRIES)
 
     accounts = cq(session, ChartOfAccounts).order_by(ChartOfAccounts.account_code).all()
     account_map = {f"{a.account_code} - {a.account_name}": a.id for a in accounts}
@@ -20517,7 +20557,7 @@ def render_journal_entries(session):
 
 
 def render_general_ledger(session):
-    _st_page_title("🗂 General Ledger")
+    _st_page_title(NAV_GENERAL_LEDGER)
 
     accounts = cq(session, ChartOfAccounts).order_by(ChartOfAccounts.account_code).all()
     account_choices = [f"{a.account_code} - {a.account_name}" for a in accounts]
@@ -20723,7 +20763,7 @@ def render_trial_balance(session):
 
 
 def render_chart_of_accounts(session):
-    _st_page_title("🔍 Chart of Accounts")
+    _st_page_title(NAV_CHART_OF_ACCOUNTS)
 
     accounts = cq(session, ChartOfAccounts).order_by(ChartOfAccounts.account_code).all()
     data = []
@@ -20987,7 +21027,7 @@ def render_receivables(session):
     for sale in filtered:
         pill_bg, pill_fg = _STATUS_STYLE.get(sale.status, ("#f3f4f6","#374151"))
         is_open  = st.session_state.get("rec_active_inv") == sale.id
-        btn_lbl  = "✕ " + _t("receivable.details_close") if is_open else "👁 " + _t("receivable.details_open")
+        btn_lbl  = "✕ " + _t("receivable.details_close") if is_open else TXH_VIEW + " " + _t("receivable.details_open")
         with st.container(border=True):
             c1, c2, c3, c4, c5 = st.columns([2, 2, 1, 1, 1])
             c1.markdown(f"**{sale.invoice_number}**")
@@ -21365,13 +21405,13 @@ def render_reports(session):
     else:
         (tab_exec, tab_sales, tab_exp, tab_cust,
          tab_vend, tab_bank, tab_eod) = st.tabs([
-            f"① {_t('reports.tab.exec')}",
-            f"② {_t('reports.tab.sales')}",
-            f"③ {_t('reports.tab.expenses')}",
-            f"④ {_t('reports.tab.customers')}",
-            f"⑤ {_t('reports.tab.vendors')}",
-            f"⑥ {_t('reports.tab.banking')}",
-            f"⑦ {_t('reports.tab.eod')}",
+            f"1. {_t('reports.tab.exec')}",
+            f"2. {_t('reports.tab.sales')}",
+            f"3. {_t('reports.tab.expenses')}",
+            f"4. {_t('reports.tab.customers')}",
+            f"5. {_t('reports.tab.vendors')}",
+            f"6. {_t('reports.tab.banking')}",
+            f"7. {_t('reports.tab.eod')}",
         ])
 
     # Sidebar dates used by existing accounting reports
@@ -21390,7 +21430,7 @@ def render_reports(session):
             ])
             st.markdown("---")
             if exec_sel == "txn_ledger":
-                # D2-P0 legacy path — sidebar/mobile "📒 Transaction Ledger" is preferred; remove in D2-P2+.
+                # D2-P0 legacy path — sidebar/mobile Transaction Ledger route is preferred; remove in D2-P2+.
                 render_transaction_history(session)
             elif exec_sel == "today_summary":
                 render_today_summary(session)
@@ -22468,7 +22508,7 @@ def _vendor_manage_dialog(vendor: Vendor, session):
 
 
 def _inline_vendor_row(session, vendors: list):
-    """Render [ Supplier ▼ ] [＋] [⚙] row. Returns selected vendor name or None."""
+    """Render [ Supplier ▼ ] [＋] [⚙️] row. Returns selected vendor name or None."""
     _vendor_names = [v.name for v in vendors]
     _at_clear_invalid_at_vendor(_vendor_names)
     _vendor_ph = _at_supplier_placeholder()
@@ -22514,7 +22554,7 @@ def _inline_vendor_row(session, vendors: list):
             ):
                 _vendor_add_dialog(session)
             if st.button(
-                "⚙",
+                "⚙️",
                 key="vendor_cog_btn",
                 help=_t("vendor.manage_help"),
                 disabled=_cur_vendor is None or not _can("edit_customer_vendor"),
@@ -22650,7 +22690,7 @@ def _subcat_manage_dialog(sub, session):
 
 
 def _inline_cat_row(session, txn_type: str, cats: list):
-    """Render [ Category ▼ ] [＋] [⚙] row. Returns (at_cat, at_cat_id)."""
+    """Render [ Category ▼ ] [＋] [⚙️] row. Returns (at_cat, at_cat_id)."""
     cats = _at_filter_transaction_categories(cats)
     _cat_names = [c.name for c in cats]
     _cur_name = st.session_state.get("at_cat")
@@ -22690,14 +22730,14 @@ def _inline_cat_row(session, txn_type: str, cats: list):
             if st.button("＋", key="cat_add_btn", help=_t("cat.add_help"),
                          disabled=not _can("manage_categories")):
                 _cat_add_dialog(txn_type, session)
-            if st.button("⚙", key="cat_cog_btn", help=_t("cat.manage_help"),
+            if st.button("⚙️", key="cat_cog_btn", help=_t("cat.manage_help"),
                          disabled=_cur_cat is None or not _can("manage_categories")):
                 _cat_manage_dialog(_cur_cat, session)
     return at_cat, at_cat_id
 
 
 def _inline_subcat_row(session, at_cat):
-    """Render [ Subcategory ▼ ] [＋] [⚙] row. Returns (at_subcat_name, subcats_list)."""
+    """Render [ Subcategory ▼ ] [＋] [⚙️] row. Returns (at_subcat_name, subcats_list)."""
     if not at_cat:
         return None, []
 
@@ -22733,7 +22773,7 @@ def _inline_subcat_row(session, at_cat):
             if st.button("＋", key="subcat_add_btn", help=_t("subcat.add_help"),
                          disabled=not _can("manage_categories")):
                 _subcat_add_dialog(at_cat, session)
-            if st.button("⚙", key="subcat_cog_btn", help=_t("subcat.manage_help"),
+            if st.button("⚙️", key="subcat_cog_btn", help=_t("subcat.manage_help"),
                          disabled=_cur_sub_obj is None or not _can("manage_categories")):
                 _subcat_manage_dialog(_cur_sub_obj, session)
     return at_subcat_name, subcats_list
@@ -24330,10 +24370,10 @@ def render_my_account(session):
     _default_tab = st.session_state.pop("my_account_tab", 0)
 
     tab_labels = [
-        f"① {_t('account.tab.profile')}",
-        f"② {_t('account.tab.security')}",
-        f"③ {_t('account.tab.preferences')}",
-        f"④ {_t('account.tab.notifications')}",
+        f"1. {_t('account.tab.profile')}",
+        f"2. {_t('account.tab.security')}",
+        f"3. {_t('account.tab.preferences')}",
+        f"4. {_t('account.tab.notifications')}",
     ]
     tabs = st.tabs(tab_labels)
 
@@ -24799,7 +24839,7 @@ def main():
         _TXN_LEDGER_PAGE_KEY:  render_transaction_ledger_page,
         "💼 Sales":             render_sales,
         "💳 Expenses":              render_expenses,
-        "🔁 Recurring Expenses":    render_recurring_expenses,
+        NAV_RECURRING_EXPENSES:    render_recurring_expenses,
         "🛒 Purchases":             render_purchases,
         "💸 Cash Reconciliation":   render_cash_reconciliation,
         "🌙 End-of-Day Close":      render_end_of_day_close,
@@ -24813,13 +24853,13 @@ def main():
         "💰 Profit & Loss":     render_profit_loss_page,
         "🏛️ Balance Sheet":     render_balance_sheet_page,
         "💸 Cash Flow":         render_cash_flow_page,
-        "🗂 General Ledger":    render_general_ledger,
+        NAV_GENERAL_LEDGER:    render_general_ledger,
         "⚖️ Trial Balance":     render_trial_balance,
-        "📓 Journal Entries":   render_journal_entries,
-        "🗓 Fiscal Periods":    render_fiscal_periods,
+        NAV_JOURNAL_ENTRIES:   render_journal_entries,
+        NAV_FISCAL_PERIODS:    render_fiscal_periods,
         "📆 Year-End Close":    render_year_end_close,
         "💰 Budget":            render_budget,
-        "🔍 Chart of Accounts": render_chart_of_accounts,
+        NAV_CHART_OF_ACCOUNTS: render_chart_of_accounts,
         "🩺 Recon Health":      render_reconciliation_health,
         "🏦 Partner Accounts":  render_partner_accounts,
         "👷 Workers":           render_workers,
@@ -24829,7 +24869,7 @@ def main():
         "💾 Backup & Restore":  lambda s: render_backup_restore(),
         "⚡ Opening Balances":  render_opening_balances,
         "👤 My Account":        render_my_account,
-        # render_manage_categories is accessible via the ⚙ dialogs on the transaction form
+        # render_manage_categories is accessible via the ⚙️ dialogs on the transaction form
     }
 
     with get_session() as session:

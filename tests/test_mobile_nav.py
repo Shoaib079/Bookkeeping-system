@@ -5,6 +5,7 @@ import pytest
 
 # Import after pytest collection path is set (project root)
 import app as erp
+from registry.icon_glyphs import NAV_GENERAL_LEDGER, NAV_RECURRING_EXPENSES
 
 
 _ACCORDION_BY_KEY = {
@@ -12,7 +13,7 @@ _ACCORDION_BY_KEY = {
         ("💼  Sales", "💼 Sales"),
         ("💳  Expenses", "💳 Expenses"),
         ("🛒  Purchases", "🛒 Purchases"),
-        ("🔁  Recurring Expenses", "🔁 Recurring Expenses"),
+        (NAV_RECURRING_EXPENSES.replace(" ", "  ", 1), NAV_RECURRING_EXPENSES),
     ]),
     "people": ("Customers & suppliers", [
         ("👥  Customers", "👥 Customers"),
@@ -24,7 +25,7 @@ _ACCORDION_BY_KEY = {
         ("💸  Cash Flow", "💸 Cash Flow"),
     ]),
     "accounting": ("Books", [
-        ("🗂  General Ledger", "🗂 General Ledger"),
+        (NAV_GENERAL_LEDGER.replace(" ", "  ", 1), NAV_GENERAL_LEDGER),
         ("💰  Budget", "💰 Budget"),
     ]),
 }
@@ -56,7 +57,7 @@ def test_owner_all_hubs_have_entries():
         "📊 Reports",
         "👥 Customers",
         "💼 Sales",
-        "🗂 General Ledger",
+        NAV_GENERAL_LEDGER,
         "📦 Inventory",
         "🏢 Company Settings",
     }
@@ -68,7 +69,7 @@ def test_module_hidden_inventory_removed_from_more():
     allowed = {
         "🏠 Home",
         "💼 Sales",
-        "🗂 General Ledger",
+        NAV_GENERAL_LEDGER,
         "🏢 Company Settings",
     }
     assert erp._mobile_hub_entry_visible(

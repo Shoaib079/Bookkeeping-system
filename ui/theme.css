@@ -26,6 +26,7 @@
   /* THEME-CONTRAST-01 — light-mode foreground text on card/bg */
   --theme-success-text: #15803d;
   --theme-warning-text: #b45309;
+  --theme-danger-text: #b91c1c;
   --theme-purple: #6d28d9;
   --theme-teal: #0ea5a4;
   --theme-input-border: #cbd5e1;
@@ -84,6 +85,7 @@
     --erp-primary-fill-hover: #1d4ed8;
     --theme-success-text: #4ade80;
     --theme-warning-text: #fbbf24;
+    --theme-danger-text: #f87171;
     --theme-purple: #8b5cf6;
     --theme-teal: #14b8a6;
     --theme-input-border: #334155;

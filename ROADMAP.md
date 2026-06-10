@@ -46,6 +46,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | **AT-LIGHT-01** — Mobile AT Light-Mode Polish (P1–P6) | ✅ **Closed** — manual phone/POS verification complete (2026-06-10) |
 | **DATE-01** — Fast Mobile Date Entry | ✅ **Closed** — mobile date sheet + rollover + backdated marker (2026-06-10) |
 | **UX-01** — Session Persistence (v1) | ✅ **Closed** — signed restore token + company revalidation (2026-06-10) |
+| **TXH-DETAIL-01** — Transaction Detail JE/Edit History Polish | ✅ **Closed** — semantic classes + readable grid (2026-06-05) |
 | **VIEWPORT-SYNC-01** — JS/CSS Mobile Threshold Sync | ✅ **Closed** — align-up to 1366px touch tablets (2026-06-05) |
 | **UX-02** — Responsive Viewport & Device Auto-Fit | ✅ **Superseded** — reduced to VIEWPORT-SYNC-01 (HDR-01/MOBILE-14/UX-01 covered rest) |
 | **HDR-01** — Combined Header Pass (UX-07 + UX-06) | ✅ **Closed** — responsive selector, ellipsis, toolbar cluster (2026-06-10) |
@@ -1375,6 +1376,18 @@ This section does not change or remove:
 - Page restore, locale restore, PM/category memory, registry/user preference persistence, theme/sidebar/filters.
 
 **Cross-references:** [LOGIN-01](#login-01--login--company-picker-modernization) · [UX-02](#ux-02--responsive-viewport--device-auto-fit)
+
+---
+
+## TXH-DETAIL-01 — Transaction Detail JE / Edit History Polish
+
+**Status:** ✅ **Closed** (2026-06-05) · Visual/readability only — no accounting or action changes.
+
+**Problem:** Expanded Transaction History view panel rendered Journal Entries and Edit History as 11px inline-styled debug-like text.
+
+**Delivered:** `_txh_render_view_je_block` + `_txh_render_view_edit_history_block` with semantic `erp-txh-je-*` / `erp-txh-edit-*` classes; JE account/Dr/Cr grid (13px, tabular nums, right-aligned amounts); edit diffs use `--theme-danger-text` / `--theme-success-text`. CSS owner: `desktop_txn_history.css` (+ mobile panel tweaks in `mobile_txn_history.css`).
+
+**Tests:** `tests/test_txh_detail01.py` (6 contracts).
 
 ---
 
