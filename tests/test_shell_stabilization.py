@@ -15,6 +15,7 @@ def _css_blob() -> str:
         ROOT / "ui" / "theme.css",
         ROOT / "ui" / "widgets.css",
         ROOT / "ui" / "mobile_shell.css",
+        ROOT / "ui" / "mobile_header.css",
     )
     return "\n".join(p.read_text(encoding="utf-8") for p in parts)
 
@@ -107,8 +108,10 @@ def test_form_controls_single_border_contract():
     assert "--erp-on-primary" in (ROOT / "ui" / "theme.css").read_text(encoding="utf-8")
     reports = (ROOT / "ui" / "mobile_reports.css").read_text(encoding="utf-8")
     assert "mob_rpt_main_tabs" in reports
-    # Mobile report chips/tabs use global chip tokens (UI-1), not solid on-primary CTA.
-    assert "var(--erp-chip-active-fg" in reports
+    # CSS-01 / E8a: report chip active colour owned by widgets.css UI-1, not mobile_reports.css.
+    assert "st-key-mob_rpt_sel_" in widgets
+    assert "var(--erp-chip-active-fg" in widgets
+    assert "var(--erp-chip-active-fg" not in reports
 
 
 def test_people_hub_wired_not_duplicated_in_more():
@@ -200,5 +203,5 @@ def test_mobile_header_center_column_stacks_title_and_search():
     assert "align-items: stretch" in theme
     assert "min-height: 0" in theme
     assert "flex-direction: column" in shell
-    assert "min-height: 40px" in theme
-    assert "--hdr-h: 120px" in theme
+    assert "min-height: 32px" in (ROOT / "ui" / "mobile_header.css").read_text(encoding="utf-8")
+    assert "--hdr-h: 56px" in (ROOT / "ui" / "mobile_header.css").read_text(encoding="utf-8")

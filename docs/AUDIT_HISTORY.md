@@ -8,6 +8,26 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-09 — MOB-AT-C1 Concept C minimal repair (HTML fix + picker overlay)
+
+**Task:** Fix four bugs discovered from real phone screenshots after Concept C implementation.
+
+**Root causes fixed:**
+1. `_mob_at_render_c_cat_row` — HTML `<span>` passed as `st.button()` label. `st.button` escapes HTML by design; raw `<span style="...` appeared as literal text. Fixed by Option B: `st.markdown` dot column + plain-text `st.button`.
+2. `_mob_at_render_txn_type_picker_sheet` — same HTML-in-button bug. Fixed by removing HTML from label, using `st.markdown` dot + plain-text label in 2-column layout.
+3. Picker overlay — `_mob_at_render_amount_keypad_fragment` was rendered unconditionally inside `erp_mob_at_panel` even when a picker sheet was open. Picker floats above panel (position:fixed) but keypad was visible below/behind. Fixed by guarding with `if not st.session_state.get("mob_at_picker")`.
+4. CSS for cat row / picker grid dot columns — `mob_at_c_cat_row` grid updated from `1fr` to `22px 1fr`; `.erp-mob-at-cat-dot` rule added; `mob_at_picker_grid` stHorizontalBlock updated to `22px 1fr` for each type row.
+
+**Files changed:**
+- `app.py` — `_mob_at_render_c_cat_row`, `_mob_at_render_txn_type_picker_sheet`, keypad guard at line ~12864
+- `ui/mobile_txn.css` — cat row grid, picker grid row grid, `.erp-mob-at-cat-dot` styles
+
+**Not changed:** Desktop, accounting/posting, Banking/Reports/More, CSS file structure.
+
+**Tests:** Static contract checks (6/6 pass). Full `pytest tests/` must be run on host Mac (Python 3.13 venv required).
+
+---
+
 ## 2026-06-05 — AD-UI-001 Pre-D2 navigation cleanup (SAFE TO REMOVE)
 
 **Task:** Remove orphan nav renderers and dead mobile/i18n artifacts identified in Post-D1 Navigation Debt Verification.
@@ -558,6 +578,25 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 **Actions taken:** Identified **next approved task** (sub-ledger sync). No code changes.
 
 **Related tests:** Gap documented in [TEST_COVERAGE_MAP.md](./TEST_COVERAGE_MAP.md) — drift tests not yet written.
+
+---
+
+## 2026-06-09 — Concept C Mobile AT UI (MOB-AT-C1) implementation
+
+**Scope:** Mobile Add Transaction panel only. No accounting/posting changes. No schema changes. No desktop changes.
+
+**Changes made:**
+
+- `app.py`: Added `"at_picker_mode"` to `_COMPANY_SCOPED_AT_KEYS`. Added `at_picker_mode` default in `_mob_at_ensure_defaults()`. Added `_MOB_AT_C_TYPE_ROWS` constant and `_MOB_AT_C_TYPE_COLOUR` dict. Added new Concept C helpers: `_mob_at_c_current_type_key`, `_mob_at_c_type_label`, `_mob_at_c_apply_type`, `_mob_at_render_txn_type_picker_sheet`, `_mob_at_render_payment_picker_sheet`, `_mob_at_render_date_picker_sheet`, `_mob_at_render_currency_picker_sheet`, `_mob_at_c_row1_date_label`, `_mob_at_render_c_row1`, `_mob_at_render_c_cat_row`. Added new picker branches (`"txn_type"`, `"payment"`, `"date"`, `"currency"`) to `_mob_at_render_picker_sheet`. Rewrote AT panel section of `_render_add_transaction_mobile()`: removed 4-tab row, date row, More type radio, per-type PM chips, currency chips; added Concept C Row 1 + category row. Restructured `_mob_at_render_amount_keypad_fragment`: amount display is now full-width (no side column), Save is full-width button below amount, currency read from session state.
+- `ui/mobile_txn.css`: Added CSS for `mob_at_row1` (4-col grid), `mob_at_c_cat_row` (full-width with dot alignment), `mob_at_save_row` (full-width primary Save), date picker confirm button.
+- `docs/MOBILE_AT_CONCEPT_C.md`: Created — colour tokens, layout rules, implementation reference.
+- `ROADMAP.md`: Added MOB-AT-C1 section + decision log entry.
+- `tests/test_mobile_layout_contract.py`: Updated contract — removed `mob_at_tabs`, `mob_at_pm3`; added `mob_at_row1`, `mob_at_c_cat_row`, `mob_at_save_row`.
+- `tests/test_mob_at_tab_labels.py`: Replaced old tab-button source check with Concept C Row 1 and `_MOB_AT_C_TYPE_ROWS` checks.
+
+**Accounting unchanged:** `_at_save()`, all posting functions, journal entry logic, schema — untouched.
+
+**Tests:** All static contract checks pass (verified via Python). Full `pytest tests/` must be run on host (requires Python 3.13 venv). Expected: 663+ passing.
 
 ---
 

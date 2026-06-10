@@ -20,6 +20,7 @@ _EN: dict[str, str] = {
     "common.access_denied": "Access denied.",
     "common.preferences_saved": "Preferences saved.",
     "common.settings_saved": "Settings saved.",
+    "dev.banner": "DEVELOPMENT MODE ACTIVE\nAuthentication bypass enabled",
     # Language
     "lang.en": "English",
     "lang.tr": "Türkçe",
@@ -368,6 +369,7 @@ _TR: dict[str, str] = {
     "common.access_denied": "Erişim reddedildi.",
     "common.preferences_saved": "Tercihler kaydedildi.",
     "common.settings_saved": "Ayarlar kaydedildi.",
+    "dev.banner": "GELİŞTİRME MODU AKTİF\nKimlik doğrulama atlandı",
     "lang.en": "English",
     "lang.tr": "Türkçe",
     "prefs.ui_language": "Arayüz dili",

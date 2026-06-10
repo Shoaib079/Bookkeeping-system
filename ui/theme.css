@@ -677,89 +677,6 @@
 .amt-neg { color: var(--theme-danger); }
 .amt-zero { color: var(--theme-text); }
 
-/* Map legacy inline hex colors to theme variables */
-[style*="color:#374151"],
-[style*="color:#111827"],
-[style*="color:#0f172a"] {
-  color: var(--theme-text) !important;
-}
-[style*="color:#6b7280"],
-[style*="color:#9ca3af"],
-[style*="color:#64748b"],
-[style*="color:#94a3b8"] {
-  color: var(--theme-muted) !important;
-}
-[style*="color:#2563eb"],
-[style*="color:#1d4ed8"],
-[style*="color:#3b82f6"] {
-  color: var(--theme-info) !important;
-}
-[style*="color:#ef4444"],
-[style*="color:#dc2626"],
-[style*="color:#991b1b"],
-[style*="color:#b91c1c"] {
-  color: var(--theme-danger) !important;
-}
-[style*="color:#10b981"],
-[style*="color:#16a34a"],
-[style*="color:#15803d"],
-[style*="color:#065f46"] {
-  color: var(--theme-success) !important;
-}
-[style*="color:#f59e0b"],
-[style*="color:#d97706"],
-[style*="color:#b45309"] {
-  color: var(--theme-warning) !important;
-}
-[style*="background:#eff6ff"] {
-  background: color-mix(in srgb, var(--theme-info) 8%, var(--theme-card) 92%) !important;
-}
-[style*="background:#f0fdf4"] {
-  background: color-mix(in srgb, var(--theme-success) 8%, var(--theme-card) 92%) !important;
-}
-[style*="background:#fee2e2"] {
-  background: color-mix(in srgb, var(--theme-danger) 8%, var(--theme-card) 92%) !important;
-}
-[style*="background:#f9fafb"] {
-  background: var(--theme-card) !important;
-}
-[style*="background:#fef3c7"] {
-  background: color-mix(in srgb, var(--theme-warning) 8%, var(--theme-card) 92%) !important;
-}
-[style*="background:#d1fae5"] {
-  background: color-mix(in srgb, var(--theme-success) 12%, var(--theme-card) 88%) !important;
-}
-[style*="background:#fff"] {
-  background: var(--theme-card) !important;
-}
-[style*="background:#f3f4f6"] {
-  background: color-mix(in srgb, var(--theme-border) 50%, var(--theme-bg) 50%) !important;
-}
-[style*="background:#fef2f2"] {
-  background: color-mix(in srgb, var(--theme-danger) 8%, var(--theme-card) 92%) !important;
-}
-[style*="background:#fef9c3"] {
-  background: color-mix(in srgb, var(--theme-warning) 8%, var(--theme-card) 92%) !important;
-}
-[style*="background:#f5f3ff"] {
-  background: color-mix(in srgb, var(--theme-purple) 8%, var(--theme-card) 92%) !important;
-}
-[style*="background-color:#fee2e2"] {
-  background-color: color-mix(in srgb, var(--theme-danger) 10%, var(--theme-card) 90%) !important;
-}
-[style*="background-color:#f0fdf4"] {
-  background-color: color-mix(in srgb, var(--theme-success) 10%, var(--theme-card) 90%) !important;
-}
-[style*="background:#dcfce7"] {
-  background: color-mix(in srgb, var(--theme-success) 8%, var(--theme-card) 92%) !important;
-}
-[style*="background:#f3e8ff"] {
-  background: color-mix(in srgb, var(--theme-purple) 8%, var(--theme-card) 92%) !important;
-}
-[style*="background:#f0fdfa"] {
-  background: color-mix(in srgb, var(--theme-teal) 8%, var(--theme-card) 92%) !important;
-}
-
 /* Hide Streamlit chrome */
 [data-testid="stDecoration"],
 [data-testid="stToolbar"],
@@ -1354,9 +1271,6 @@
   .erp-mobile-report-filters {
     display: none !important;
   }
-  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-quick-create-host) {
-    display: none !important;
-  }
   .erp-dash-mobile-greeting,
   .erp-dash-mobile-kpi-scroll {
     display: none !important;
@@ -1664,6 +1578,7 @@ section[data-testid="stSidebarContent"] {
   padding: 6px 12px;
   border-radius: 8px;
   margin-bottom: 8px;
+  white-space: pre-line;
 }
 /* Header toolbar (right column) */
 [class*="st-key-hdr_shell_row"] [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child {
@@ -1750,11 +1665,13 @@ section[data-testid="stSidebarContent"] {
   margin: 0 !important;
   padding: 0 !important;
 }
-[class*="st-key-hdr_shell_row"] [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child:has(.erp-hdr-notif-active) > div > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:first-child [data-testid="stPopover"] > button {
-  border-color: color-mix(in srgb, var(--theme-warning) 50%, var(--theme-border) 50%) !important;
-  background: color-mix(in srgb, var(--theme-warning) 12%, var(--theme-card) 88%) !important;
-  font-weight: 700 !important;
-  font-size: 13px !important;
+/* NOTIF-THEME-01 — desktop unread bell (canonical key path; mobile → mobile_header.css) */
+@media (min-width: 969px) {
+  [data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-notif-active) .st-key-hdr_notif_pop [data-testid="stPopover"] > button {
+    background: color-mix(in srgb, var(--theme-warning) 12%, var(--theme-card) 88%) !important;
+    border-color: color-mix(in srgb, var(--theme-warning) 40%, var(--theme-border) 60%) !important;
+    font-weight: 700 !important;
+  }
 }
 [class*="st-key-hdr_shell_row"] [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child > div > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child [data-testid="stPopover"] > button {
   width: 36px !important;

@@ -14,6 +14,7 @@ _MOBILE_REPORTS_CSS_PATH = Path(__file__).with_name("mobile_reports.css")
 _MOBILE_TXN_HISTORY_CSS_PATH = Path(__file__).with_name("mobile_txn_history.css")
 _DESKTOP_TXN_HISTORY_CSS_PATH = Path(__file__).with_name("desktop_txn_history.css")
 _SETUP01_WIZARD_CSS_PATH = Path(__file__).with_name("setup01_wizard.css")
+_MOBILE_HEADER_CSS_PATH = Path(__file__).with_name("mobile_header.css")
 _CSS_CACHE: str | None = None
 _CSS_MTIME: float | None = None
 
@@ -80,18 +81,20 @@ def load_theme_css() -> str:
         _MOBILE_TXN_HISTORY_CSS_PATH.stat().st_mtime,
         _DESKTOP_TXN_HISTORY_CSS_PATH.stat().st_mtime,
         _SETUP01_WIZARD_CSS_PATH.stat().st_mtime,
+        _MOBILE_HEADER_CSS_PATH.stat().st_mtime,
     )
     if _CSS_CACHE is None or _CSS_MTIME != mtime:
         base = _THEME_CSS_PATH.read_text(encoding="utf-8")
         widgets = _WIDGETS_CSS_PATH.read_text(encoding="utf-8")
         mobile = _MOBILE_SHELL_CSS_PATH.read_text(encoding="utf-8")
+        mobile_header = _MOBILE_HEADER_CSS_PATH.read_text(encoding="utf-8")
         mobile_txn = _MOBILE_TXN_CSS_PATH.read_text(encoding="utf-8")
         mobile_reports = _MOBILE_REPORTS_CSS_PATH.read_text(encoding="utf-8")
         mobile_txn_history = _MOBILE_TXN_HISTORY_CSS_PATH.read_text(encoding="utf-8")
         desktop_txn_history = _DESKTOP_TXN_HISTORY_CSS_PATH.read_text(encoding="utf-8")
         setup01_wizard = _SETUP01_WIZARD_CSS_PATH.read_text(encoding="utf-8")
         _CSS_CACHE = (
-            f"{base}\n\n{widgets}\n\n{mobile}\n\n{mobile_txn}\n\n"
+            f"{base}\n\n{widgets}\n\n{mobile}\n\n{mobile_header}\n\n{mobile_txn}\n\n"
             f"{mobile_reports}\n\n{mobile_txn_history}\n\n{desktop_txn_history}\n\n"
             f"{setup01_wizard}"
         )
@@ -168,18 +171,162 @@ def role_accent_css_var(role: str | None) -> str:
     return "color-mix(in srgb, var(--theme-info) 16%, var(--theme-card) 84%)"
 
 
+def _resolve_chart_dark(dark: bool | None = None) -> bool:
+    """Resolve ERP chart palette: explicit light/dark, else session dark_mode (system → OS via CSS)."""
+    if dark is not None:
+        return dark
+    mode = st.session_state.get("theme_mode", "system")
+    if mode == "dark":
+        return True
+    if mode == "light":
+        return False
+    return bool(st.session_state.get("dark_mode", False))
+
+
+def chart_theme_tokens(*, dark: bool | None = None) -> dict[str, str]:
+    """ERP chart colours derived from LIGHT/DARK_ROOT_VARS (CHART-01)."""
+    palette = DARK_ROOT_VARS if _resolve_chart_dark(dark) else LIGHT_ROOT_VARS
+    return {
+        "bg": palette["--theme-bg"],
+        "card": palette["--theme-card"],
+        "text": palette["--theme-text"],
+        "muted": palette["--theme-muted"],
+        "border": palette["--theme-border"],
+        "info": palette["--theme-info"],
+        "success": palette["--theme-success"],
+        "warning": palette["--theme-warning"],
+    }
+
+
+def chart_accent_color(*, dark: bool | None = None) -> str:
+    """Primary series colour — --theme-info."""
+    return chart_theme_tokens(dark=dark)["info"]
+
+
+def chart_palette(*, dark: bool | None = None) -> list[str]:
+    """Mono-safe multi-series palette (max 4 series)."""
+    tokens = chart_theme_tokens(dark=dark)
+    return [tokens["info"], tokens["muted"], tokens["success"], tokens["warning"]]
+
+
 def chart_series_color() -> str:
     """Neutral Altair series color aligned with --theme-muted."""
-    dark = bool(st.session_state.get("dark_mode", False))
-    palette = DARK_ROOT_VARS if dark else LIGHT_ROOT_VARS
-    return palette["--theme-muted"]
+    return chart_theme_tokens()["muted"]
 
 
 def chart_reference_color() -> str:
     """Neutral Altair reference/rule color aligned with --theme-border."""
-    dark = bool(st.session_state.get("dark_mode", False))
-    palette = DARK_ROOT_VARS if dark else LIGHT_ROOT_VARS
-    return palette["--theme-border"]
+    return chart_theme_tokens()["border"]
+
+
+def apply_altair_theme(chart, *, dark: bool | None = None):
+    """Apply ERP background, axis, title, and legend tokens to an Altair chart."""
+    import altair as alt
+
+    tokens = chart_theme_tokens(dark=dark)
+    return chart.configure(
+        background=tokens["card"],
+        view=alt.ViewConfig(stroke=tokens["border"], fill=tokens["card"]),
+        axis=alt.AxisConfig(
+            labelColor=tokens["muted"],
+            titleColor=tokens["text"],
+            gridColor=tokens["border"],
+            domainColor=tokens["border"],
+            tickColor=tokens["border"],
+        ),
+        title=alt.TitleConfig(color=tokens["text"], anchor="start"),
+        legend=alt.LegendConfig(labelColor=tokens["text"], titleColor=tokens["text"]),
+    )
+
+
+def render_themed_bar(
+    df,
+    x_col: str,
+    y_col: str,
+    *,
+    x_type: str = "N",
+    height: int = 300,
+) -> None:
+    """Single-series bar chart using ERP theme tokens."""
+    import altair as alt
+
+    chart = (
+        alt.Chart(df)
+        .mark_bar(color=chart_accent_color())
+        .encode(
+            x=alt.X(f"{x_col}:{x_type}", sort=None, title=None),
+            y=alt.Y(f"{y_col}:Q", title=None),
+            tooltip=[x_col, y_col],
+        )
+        .properties(height=height)
+    )
+    st.altair_chart(apply_altair_theme(chart), use_container_width=True)
+
+
+def render_themed_grouped_bar(
+    df,
+    x_col: str,
+    series_cols: list[str],
+    *,
+    height: int = 300,
+) -> None:
+    """Grouped bar chart from wide DataFrame columns."""
+    import altair as alt
+
+    df_long = df[[x_col, *series_cols]].melt(
+        id_vars=[x_col], var_name="Series", value_name="Value"
+    )
+    palette = chart_palette()
+    chart = (
+        alt.Chart(df_long)
+        .mark_bar()
+        .encode(
+            x=alt.X(f"{x_col}:N", sort=None, title=None),
+            y=alt.Y("Value:Q", title=None),
+            color=alt.Color(
+                "Series:N",
+                scale=alt.Scale(range=palette),
+                legend=alt.Legend(title=None),
+            ),
+            xOffset="Series:N",
+            tooltip=[x_col, "Series:N", "Value:Q"],
+        )
+        .properties(height=height)
+    )
+    st.altair_chart(apply_altair_theme(chart), use_container_width=True)
+
+
+def render_themed_line(
+    df,
+    x_col: str,
+    y_cols: list[str],
+    *,
+    x_type: str = "N",
+    height: int = 300,
+) -> None:
+    """Multi-series line chart using ERP palette."""
+    import altair as alt
+
+    df_long = df[[x_col, *y_cols]].melt(
+        id_vars=[x_col], var_name="Series", value_name="Value"
+    )
+    palette = chart_palette()
+    chart = (
+        alt.Chart(df_long)
+        .mark_line(point=True)
+        .encode(
+            x=alt.X(f"{x_col}:{x_type}", sort=None, title=None),
+            y=alt.Y("Value:Q", title=None),
+            color=alt.Color(
+                "Series:N",
+                scale=alt.Scale(range=palette[: len(y_cols)]),
+                legend=alt.Legend(title=None),
+            ),
+            tooltip=[x_col, "Series:N", "Value:Q"],
+        )
+        .properties(height=height)
+    )
+    st.altair_chart(apply_altair_theme(chart), use_container_width=True)
 
 
 def apply_user_theme_from_db(session, user_id: int) -> str | None:

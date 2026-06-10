@@ -1,0 +1,210 @@
+/* Mobile header compact pass — company pill, toolbar icons, auth screens.
+ * Scope: header + login/picker only. Does not change bottom nav, hubs, or banking. */
+
+@media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
+  :root,
+  html.erp-mobile {
+    --hdr-h: 56px;
+    --hdr-h-search: 86px;
+  }
+
+  html.erp-mobile:has([class*="st-key-hdr_search_panel"] [data-testid="stTextInput"]),
+  :root:has([class*="st-key-hdr_search_panel"] [data-testid="stTextInput"]) {
+    --hdr-h: var(--hdr-h-search);
+  }
+
+  section[data-testid="stMain"] .block-container {
+    padding-top: calc(var(--hdr-h) + 10px) !important;
+  }
+
+  [class*="st-key-hdr_shell_row"] {
+    padding: 2px 10px 6px !important;
+    min-height: var(--hdr-h) !important;
+    max-height: var(--hdr-h) !important;
+  }
+
+  [class*="st-key-hdr_mobile_title"] {
+    flex: 0 0 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    padding: 0 76px !important;
+  }
+
+  [class*="st-key-hdr_mobile_title"] .erp-hdr-mobile-title,
+  .erp-hdr-mobile-title {
+    min-height: 32px !important;
+    max-height: 32px !important;
+  }
+
+  .erp-hdr-mobile-co,
+  [class*="st-key-hdr_mobile_title"] [data-testid="stButton"] > button {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em !important;
+  }
+
+  /* Company switcher — compact pill */
+  [class*="st-key-hdr_mobile_title"] [data-testid="stButton"] > button,
+  .erp-hdr-co-pill {
+    width: auto !important;
+    max-width: min(100%, 220px) !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    padding: 0 12px !important;
+    margin: 0 auto !important;
+    border-radius: 999px !important;
+    border: 1px solid var(--theme-border) !important;
+    background: color-mix(in srgb, var(--theme-bg) 72%, var(--theme-card) 28%) !important;
+    box-shadow: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+  }
+
+  .erp-hdr-co-pill .erp-hdr-mobile-co {
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    line-height: 1.1 !important;
+  }
+
+  [class*="st-key-hdr_search_panel"] {
+    margin: 4px 0 0 !important;
+  }
+
+  [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child,
+  html.erp-mobile [class*="st-key-hdr_shell_inner"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child {
+    top: 2px !important;
+    height: 32px !important;
+    max-height: 32px !important;
+    gap: 10px !important;
+  }
+
+  [class*="st-key-hdr_toolbar_row"] [data-testid="stHorizontalBlock"],
+  html.erp-mobile [class*="st-key-hdr_toolbar_row"] [data-testid="stHorizontalBlock"] {
+    gap: 10px !important;
+  }
+
+  /* Standalone bell + profile icon buttons */
+  [data-testid="stMain"] [class*="st-key-hdr_notif_pop"] [data-testid="stPopover"] > button {
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    border-radius: 10px !important;
+    font-size: 16px !important;
+    background: var(--theme-card) !important;
+    border: 1px solid var(--theme-border) !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-hdr_mobile_profile_btn"] button {
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+    background: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%) !important;
+    color: var(--theme-text) !important;
+    border: 1px solid var(--theme-border) !important;
+    box-shadow: none !important;
+  }
+
+  [data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-notif-active) .st-key-hdr_notif_pop [data-testid="stPopover"] > button {
+    background: color-mix(in srgb, var(--theme-warning) 12%, var(--theme-card) 88%) !important;
+    border-color: color-mix(in srgb, var(--theme-warning) 40%, var(--theme-border) 60%) !important;
+  }
+}
+
+html.erp-mobile {
+  --hdr-h: 56px;
+  --hdr-h-search: 86px;
+}
+
+html.erp-mobile:has([class*="st-key-hdr_search_panel"] [data-testid="stTextInput"]) {
+  --hdr-h: var(--hdr-h-search);
+}
+
+html.erp-mobile section[data-testid="stMain"] .block-container {
+  padding-top: calc(var(--hdr-h) + 10px) !important;
+}
+
+/* Login + company picker — compact auth chrome */
+.erp-auth-top-spacer {
+  height: 12px;
+}
+
+.erp-auth-banner {
+  padding: 12px 16px 10px;
+  text-align: center;
+  margin-bottom: 12px;
+  border-radius: 12px;
+}
+
+.erp-auth-banner-icon {
+  font-size: 20px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.erp-auth-banner-title {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--theme-text);
+}
+
+.erp-auth-banner-sub {
+  font-size: 11px;
+  opacity: 0.72;
+  margin-top: 2px;
+  color: var(--theme-muted);
+}
+
+.erp-auth-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-text);
+  margin-bottom: 8px;
+}
+
+.erp-auth-section-label.is-center {
+  text-align: center;
+}
+
+@media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
+  [data-testid="stMain"] [class*="st-key-pick_co_"] [data-testid="stVerticalBlockBorderWrapper"] {
+    padding: 8px 10px !important;
+    margin-bottom: 6px !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-pick_co_"] [data-testid="stMarkdown"] p,
+  [data-testid="stMain"] [class*="st-key-pick_co_"] [data-testid="stMarkdown"] div {
+    margin: 0 !important;
+    line-height: 1.25 !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-pick_co_"] button {
+    min-height: 34px !important;
+    height: 34px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-select_user_"] button {
+    min-height: 64px !important;
+    padding: 6px 4px !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    white-space: pre-line !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-login_"] [data-testid="stVerticalBlockBorderWrapper"],
+  [data-testid="stMain"] [class*="st-key-picker_"] [data-testid="stVerticalBlockBorderWrapper"] {
+    padding: 10px 12px !important;
+  }
+}

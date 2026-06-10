@@ -296,16 +296,21 @@ class TestSignOutClearsCompanyContext:
 
 class TestDevModeSignOut:
     def test_logout_in_dev_mode_returns_no_current_user(self, db):
-        prev = app.DEVELOPMENT_MODE
+        prev_dev = app.DEV_MODE
+        prev_legacy = app.DEVELOPMENT_MODE
         try:
+            app.DEV_MODE = True
             app.DEVELOPMENT_MODE = True
             ss = _ss()
             ss.clear()
+            ss["auth_user"] = dict(app._DEV_USER)
+            ss["auth_expires"] = datetime.datetime.now() + datetime.timedelta(hours=24)
             ss["active_company_id"] = 1
             app._logout()
             assert app._current_user() is None
         finally:
-            app.DEVELOPMENT_MODE = prev
+            app.DEV_MODE = prev_dev
+            app.DEVELOPMENT_MODE = prev_legacy
 
 
 # ─── 12. Company switch returns to picker flow ───────────────────────────────

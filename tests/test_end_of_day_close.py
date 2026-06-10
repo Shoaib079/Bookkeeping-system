@@ -40,6 +40,15 @@ import models
 import app
 
 app.DEVELOPMENT_MODE = True
+app.DEV_MODE = True
+
+
+def _seed_dev_auth_user():
+    sys.modules["streamlit"].session_state["auth_user"] = dict(app._DEV_USER)
+    sys.modules["streamlit"].session_state["auth_expires"] = (
+        datetime.datetime.now() + datetime.timedelta(hours=24)
+    )
+
 
 TEST_DATE = datetime.date(2025, 7, 1)
 
@@ -49,6 +58,7 @@ TEST_DATE = datetime.date(2025, 7, 1)
 @pytest.fixture(autouse=True)
 def clear_session():
     sys.modules["streamlit"].session_state.clear()
+    _seed_dev_auth_user()
     yield
     sys.modules["streamlit"].session_state.clear()
 

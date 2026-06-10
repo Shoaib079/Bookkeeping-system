@@ -35,6 +35,12 @@ _COMPANY_A_DRAFT = {
     "at_cc_card_id": 3,
     "mob_at_picker": "vendor",
     "mob_at_picker_search": "acme",
+    "at_date": datetime.date(2026, 3, 1),
+    "at_type_idx": 1,
+    "at_expense_mode": "general",
+    "at_currency": "EUR",
+    "at_pm": "Bank",
+    "at_notes_field": "draft note",
 }
 
 

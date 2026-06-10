@@ -62,6 +62,7 @@ def test_mobile_sale_branch_no_company_cc_select():
     assert "_mob_at_render_company_cc_select" not in sale_block
     assert "_mob_at_render_card_bank_trigger" in sale_block
     assert "_at_sale_card_deposit_accounts" in sale_block
+    assert "not _card_settlement_on(session)" in sale_block
 
 
 def test_desktop_sale_branch_no_company_cc_select():
@@ -69,6 +70,7 @@ def test_desktop_sale_branch_no_company_cc_select():
     sale_block = src.split('if txn_type == "Sale":', 1)[1].split('elif txn_type == "Expense":', 1)[0]
     assert "_at_render_company_cc_select" not in sale_block
     assert "_at_sale_card_deposit_accounts" in sale_block
+    assert "not _card_settlement_on(session)" in sale_block
 
 
 def test_customer_payment_branch_no_company_cc_select():

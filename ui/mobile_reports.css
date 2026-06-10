@@ -33,32 +33,7 @@
     white-space: normal !important;
   }
 
-  /* UI-1 — selected report chips match global chip grammar (not solid CTA) */
-  [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[kind="primary"],
-  [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[data-testid="stBaseButton-primary"],
-  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[kind="primary"],
-  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[data-testid="stBaseButton-primary"] {
-    background: var(--erp-chip-active-bg) !important;
-    color: var(--erp-chip-active-fg) !important;
-    border: 1px solid var(--erp-chip-active-border) !important;
-  }
-
-  [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[kind="primary"] p,
-  [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[kind="primary"] span,
-  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[kind="primary"] p,
-  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[kind="primary"] span {
-    color: var(--erp-chip-active-fg) !important;
-    font-weight: 700 !important;
-  }
-
-  [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[kind="secondary"],
-  [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[data-testid="stBaseButton-secondary"],
-  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[kind="secondary"],
-  [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[data-testid="stBaseButton-secondary"] {
-    background: var(--erp-chip-idle-bg) !important;
-    color: var(--erp-chip-idle-fg) !important;
-    border: 1px solid var(--erp-chip-idle-border) !important;
-  }
+  /* UI-1 — chip active/idle colour owned by widgets.css (E8a/E8b) */
 
   [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button {
     min-height: 34px !important;
@@ -132,6 +107,13 @@
     box-shadow: none !important;
   }
 
+  [data-testid="stMain"] [class*="st-key-erp_mob_rpt_filters"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
   [data-testid="stMain"] [class*="st-key-erp_mob_rpt_filters"] [data-testid="stDateInput"] input {
     min-height: 38px !important;
   }
@@ -172,6 +154,7 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_rpt_sel_desktop_"] {
 }
 
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] [data-testid="stHorizontalBlock"],
-html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] [data-testid="stHorizontalBlock"] {
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] [data-testid="stHorizontalBlock"],
+html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_rpt_filters"] [data-testid="stHorizontalBlock"] {
   display: grid !important;
 }

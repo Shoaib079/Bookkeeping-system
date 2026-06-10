@@ -1,7 +1,7 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** June 2026 (SETUP-01 design approved — Setup & Onboarding phase)  
+**Last updated:** June 2026 (UX-01 + UX-02 + DATE-01 + QUICK-ENTRY-01 added; AUDIT-01 ERP Ownership Audit added; ERP-Wide UI Ownership Principle + CSS-02 added; CSS-01 / MOBILE-14 / LOGIN-01 / CHART-01 added)  
 **Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
@@ -32,6 +32,23 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | DEVELOPMENT_MODE | ⚠️ **On** in `app.py` (`DEVELOPMENT_MODE = True`) — set `False` before production |
 | Shell / mobile chrome (Phase A) | ✅ Stabilized — fixed header, 968px breakpoint, People hub wired |
 | Sidebar / navigation redesign (AD-UI-001) | 🟡 **D1 done** — Financial Statements routes; D2+ gated — see [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §16 |
+| **MOB-AT-C1** — Concept C Mobile AT UI | ✅ **Accepted** — reference implementation; 747 tests passing |
+| **MOBILE-11** — Mobile Design System | ✅ **Approved** — `docs/MOBILE_UI_SYSTEM.md` is the governing document for all future mobile work |
+| **MOBILE-12** — Design Governance | ✅ **Approved** — open decisions recorded; phased migration path defined |
+| ERP-Wide UI Ownership Principle | ✅ **Approved** — governs all CSS work going forward |
+| **CSS-01** — Theme Ownership Consolidation | 🟡 **HIGH** — approved; ownership map for existing CSS |
+| **CSS-02** — ERP-Wide UI Ownership Standard | 🟡 **HIGH** — approved; 8 enforceable rules; ongoing standard |
+| **MOBILE-14** — Mobile Theme Ownership Cleanup | 🟡 **HIGH** — approved; E1–E13 consolidation steps |
+| **LOGIN-01** — Login / Company Picker Modernization | 📋 Medium — planned; blocked on MOBILE-14 |
+| **QUICK-ENTRY-01** — Context-Aware Mobile Category Selection | 🟡 **HIGH** — approved; blocked on MOBILE-14 |
+| **DATE-01** — Fast Mobile Date Entry | 📋 Medium — future; independent |
+| **UX-01** — Session Persistence | 📋 Medium — future; independent |
+| **UX-02** — Responsive Viewport & Device Auto-Fit | 🟡 **HIGH** — approved; blocked on MOBILE-14; investigation required |
+| **CHART-01** — Chart Theme Consolidation | 📋 Medium — planned; independent of MOBILE-14 |
+| **AUDIT-01** — ERP Ownership Audit | ✅ **Complete** — findings recorded; quick wins identified |
+| Future UX / navigation vision | 📋 **Low** — design direction only (MOBILE-07–12, DESIGN-05, DESKTOP-04) — implementation gated on MOBILE-11 system |
+| UI architecture stability (UI-STAB) | 📋 **Planned** — Desktop/Mobile audit findings recorded — **not approved for implementation** |
+| Operational friction log (OBS-01) | 🟡 **Active** — record real-world UX friction; 3+ occurrences → roadmap candidate |
 
 ---
 
@@ -41,11 +58,48 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 
 **Next build (HIGH):** **SETUP-01** — ensure every new company starts with the correct workflow from day one (prevents e.g. Spice Corner POS settlement ON vs India Gate OFF discovered months later).
 
-**Observe during use (do not build yet):** Dashboard quick actions, worker advance mobile parity, BANK-01 reality audit (after weeks of real card/bank activity).
+**CSS architecture cleanup (HIGH — approved):** **MOBILE-14** — execute E1–E13 consolidation steps before any further UI redesign. **CSS-01** defines the ownership targets. Neither is a visual redesign.
+
+**Observe during use (do not build yet):** Dashboard quick actions, worker advance mobile parity, BANK-01 reality audit (after weeks of real card/bank activity). Log friction in **[OBS-01](#obs-01--operational-friction-log)** as it happens.
 
 **Deferred:** Inventory expansion, procurement, CRM, BI, PostgreSQL — until real usage demands them.
 
+**Do NOT start (future projects — see [FUTURE UX / NAVIGATION VISION](#future-ux--navigation-vision)):** Banking redesign · Reports redesign · Mobile shell redesign · Navigation redesign · More Hub redesign · Sidebar redesign.
+
+**Current focus stays on:** (1) Accounting stability · (2) Daily-use workflow testing · (3) Banking observation · (4) UX cleanup · (5) Real-world usage feedback.
+
 **Success metric:** Daily sales, expenses, and purchases are easy to enter; banking is understandable; month-end is fast; company switching is reliable — not feature count.
+
+---
+
+## OBS-01 — Operational Friction Log
+
+**Status:** Active (observation only — no implementation from this log alone)
+
+**Purpose:** Every UX change must originate from **repeated real-world friction**, not speculation or audit findings alone. Use this log during daily bookkeeping to capture what actually slows work down.
+
+**Gate:** Only issues experienced **3+ times** become roadmap candidates. Fewer occurrences stay in the log until the pattern repeats or is dismissed.
+
+**How to use:**
+
+1. After each friction moment, add a row (Screen · Task · Issue · Frequency · Impact).
+2. Increment **Frequency** on repeat encounters (same screen + task + issue).
+3. At **Frequency ≥ 3**, promote to a roadmap item (new `UX-*` / `OBS-*` candidate or elevation of an existing planned item) — still requires explicit approval before build.
+4. Architecture-audit items (**UI-STAB**, **FUTURE UX**) inform technical debt but do **not** bypass this gate for user-facing UX changes.
+
+| Screen | Task | Issue | Frequency | Impact |
+|--------|------|-------|-----------|--------|
+| *(add entries during daily use)* | | | | |
+
+**Impact scale (suggested):** Low = annoyance · Medium = extra steps or errors recoverable · High = blocks daily workflow or risks bad data.
+
+**Cross-references:**
+
+| Related | Relationship |
+|---------|--------------|
+| **Current priority** | “Use the system daily” — this log is where observations land |
+| **UI-STAB** | Technical separation debt — not a substitute for friction evidence |
+| **FUTURE UX** | Design vision — requires OBS-01 friction before implementation |
 
 ---
 
@@ -346,7 +400,302 @@ Complete dark mode, readability, header/sidebar polish, mobile pass.
 
 **Explicitly out of scope (all phases):** GL posting rules, AD-001–AD-015 accounting behavior, new report renderers.
 
+**Future direction (not D2+ — see below):** Full mobile shell, bottom-nav, More Hub, and compact sidebar modernization are recorded under **[FUTURE UX / NAVIGATION VISION](#future-ux--navigation-vision)**. AD-UI-001 D2+ remains incremental route/tab cleanup; it is **not** a rebuild of mobile chrome or the More menu.
+
 **Reference:** [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §16 (D1), §2–6 (pre-audit).
+
+---
+
+## FUTURE UX / NAVIGATION VISION
+
+**Status:** Planned Future Work  
+**Priority:** Low  
+**Not approved for implementation.** Design direction only.
+
+Record approved future-direction decisions so they are not forgotten. **No code, no screen redesign, no sprint** until explicitly approved.
+
+**Cross-references (do not duplicate):**
+
+| Existing roadmap item | Relationship |
+|----------------------|--------------|
+| **AD-UI-001** | D1 statement routes done; D2+ = incremental Reports/sidebar dedup — **not** this vision |
+| **Phase 18-MUX** | Mobile Add Transaction shipped; **current bottom nav unchanged** |
+| **Phase 16D** | Header foundation (truncation, responsive) — **not** MOBILE-10 compact SaaS header |
+| **SETUP-01 / SETUP-02 / SETUP-03** | Onboarding at company creation — separate from **DESIGN-05** progressive disclosure |
+| **Module state vocabulary** | `Hidden` = nav preference — aligns with **MOBILE-07** (see below) |
+
+### FUTURE UX PRINCIPLE
+
+> The ERP should prioritize **speed of daily operation** over feature visibility. Frequently used functions should be immediately accessible. Advanced or rarely-used functions should remain available but not dominate the interface.
+
+---
+
+### MOBILE-07 — Customizable More Hub
+
+**Status:** Planned
+
+**Goal:** Allow each company to choose which modules appear inside the **More** section.
+
+This hides navigation only. It does **not** disable functionality. Users can restore hidden modules later.
+
+**Examples:**
+
+| Company | Visible in More | Hidden (restorable) |
+|---------|-----------------|---------------------|
+| Restaurant A | Banking, Reports, Receivables, Payables | Inventory, Assets, CRM, Projects |
+| Restaurant B | Inventory, Purchasing, Banking | Receivables, CRM |
+
+**Requirements:**
+
+- Company-specific  
+- Permission-aware  
+- Reversible  
+- Navigation visibility only  
+- No accounting impact  
+
+**Explicitly:** This is **not** user-role security. This is **UI simplification** (same idea as registry `Hidden` module state — see [Module state vocabulary](#module-state-vocabulary-frozen)).
+
+---
+
+### MOBILE-08 — Organized More Hub
+
+**Status:** Planned
+
+**Goal:** Replace long flat menu lists with **grouped sections**.
+
+**Future structure example (illustrative only):**
+
+| Section | Items |
+|---------|--------|
+| **Banking** | *(section header)* |
+| **Inventory** | Products · Stock · Adjustments |
+| **Accounting** | Receivables · Payables · Ledger · Journal |
+| **Reports** | P&L · Balance Sheet · Cash Flow |
+| **Administration** | Users · Roles · Settings |
+
+**Do not implement now.** Future navigation cleanup project.
+
+---
+
+### DESIGN-05 — Progressive Disclosure
+
+**Status:** Planned
+
+**Principle:** New users should only see functionality required for **daily operation**. Advanced features appear when needed or enabled.
+
+**Example — new restaurant owner (illustrative):**
+
+| Primary chrome | Under More |
+|----------------|------------|
+| Home · Add · Cashflow · Ledger · More | Banking · Reports · Settings |
+
+**Advanced areas remain hidden until enabled or required:** Inventory · Assets · Projects · CRM · Advanced analytics
+
+**Goal:** Reduce overwhelm; keep first-day experience simple.
+
+*Complements SETUP-01 (correct defaults at create) but applies ongoing nav/module visibility — not a replacement for onboarding wizard.*
+
+---
+
+### MOBILE-09 — Future Mobile Navigation Vision
+
+**Status:** Concept approved · **not approved for implementation**
+
+**Current navigation remains unchanged.**
+
+**Future evaluation candidates (do not choose one yet):**
+
+| Option A | Option B |
+|----------|----------|
+| Home · Add · Cashflow · Ledger · More | Home · Banking · Add · Reports · More |
+
+**Reason:** Daily-use functions belong in primary navigation; rarely-used functions belong under More.
+
+---
+
+### MOBILE-10 — Mobile Header Modernization
+
+**Status:** Planned · user preference recorded
+
+**Future direction:** Replace oversized profile blocks and large identity cards. Move toward a **compact professional header**.
+
+**Desired characteristics:**
+
+- Compact company switcher  
+- Compact notification button  
+- Real profile avatar / photo / icon  
+- Avoid large single-letter profile circles  
+- Reduce vertical space usage  
+- Maximize workspace  
+
+**Reference style:** Modern SaaS mobile applications.
+
+**Not implementation-ready.** Design direction only. *(Phase 16D delivered truncation/responsive foundation; this is a later polish pass.)*
+
+**Prerequisite (architecture, not redesign):** **[UI-STAB-01](#ui-stab-01--header-architecture-consolidation)** — header CSS/sizing consolidation. Trigger only after compact mobile header visuals are approved.
+
+---
+
+### DESKTOP-04 — Sidebar Modernization
+
+**Status:** Planned · user preference recorded
+
+**Future direction:** Compact **icon-first** navigation.
+
+**Characteristics:**
+
+- Smaller visual footprint  
+- Clear active state  
+- Better hierarchy  
+- Reduced clutter  
+- Modern SaaS appearance  
+
+**Important:** This is **not** a rebuild request. Preserve design intent for future UX work. *(AD-UI-001 D2+ may adjust routes/labels; DESKTOP-04 is visual/IA modernization.)*
+
+---
+
+### Do NOT start (explicit)
+
+Until a separate architecture / UX approval:
+
+- Banking redesign  
+- Reports redesign  
+- Mobile shell redesign  
+- Navigation redesign  
+- More Hub redesign  
+- Sidebar redesign  
+
+These remain **future projects**. Current focus stays on accounting stability, daily-use testing, banking observation, UX cleanup (e.g. i18n/trust fixes), and real-world usage feedback.
+
+**Related (stability, not redesign):** **[UI-STAB](#ui-stab--ui-architecture-stability)** records audit findings for presentation separation and CSS cleanup — distinct from MOBILE-10 / DESKTOP-04 visual modernization.
+
+---
+
+## UI-STAB — UI Architecture Stability
+
+**Status:** Planned  
+**Not approved for implementation.**
+
+**Purpose:** Preserve findings from the Desktop/Mobile Architecture Audit so future UI work is based on known technical debt rather than rediscovery.
+
+**Cross-references (do not duplicate):**
+
+| Existing item | Relationship |
+|---------------|--------------|
+| **Phase 16D** | Header foundation — **UI-STAB-01** consolidates distributed CSS on top of it |
+| **MOBILE-10** | Compact mobile header polish — **UI-STAB-01** runs only after those visuals are approved |
+| **18-MUX** | Add Transaction dual-host pattern — reference model for **UI-STAB-02** banking split |
+| **AD-UI-001** | Route/sidebar dedup (D2+) — **UI-STAB-03** is nav *renderer* consolidation, not route redesign |
+| **FUTURE UX** | MOBILE-07–10, DESIGN-05, DESKTOP-04 — redesign vision; UI-STAB is stability/separation first |
+
+**Audit summary (June 2026):** Business logic separation is healthy (`_at_save`, posting, permissions, queries shared correctly). Presentation separation is partial — strongest on Transaction Ledger and Add Transaction; weakest on Banking and Notifications. CSS is globally injected with cascade conflicts (`--hdr-h` 60 / 120 / 56 / 86px) and unscoped rules leaking across viewports.
+
+**Theme ownership follow-up (June 2026):** A complete Theme Ownership Audit was completed and recorded as **[CSS-01](#css-01--theme-ownership-consolidation)**. Finding: CSS conflicts are concentrated in `widgets.css`, `mobile_shell.css`, and `mobile_header.css` — not globally fragmented. **[MOBILE-14](#mobile-14--mobile-theme-ownership-cleanup)** is the approved execution plan. UI-STAB-05 findings are fully superseded by CSS-01 for the mobile CSS domain.
+
+---
+
+### UI-STAB-01 — Header Architecture Consolidation
+
+**Priority:** High
+
+**Current findings:**
+
+- Header styling is distributed across `theme.css`, `mobile_shell.css`, and `mobile_header.css`.
+- Multiple header-height definitions exist (`--hdr-h` conflicts across files and breakpoints).
+- Header behavior has historically been difficult to change consistently.
+- Dead toolbar slot branches (`primary` / `mobile_left`) in `_render_hdr_toolbar`; obsolete `hdr_mobile_title` popover CSS after company-switch sheet migration.
+
+**Goals:**
+
+- Single source of truth for header sizing.
+- Single source of truth for toolbar spacing.
+- Single source of truth for company selector styling.
+- Single source of truth for avatar rendering.
+
+**Constraints:** No redesign. Architecture cleanup only.
+
+**Trigger:** Only after current mobile header visuals are approved (see [MOBILE-10](#mobile-10--mobile-header-modernization)).
+
+---
+
+### UI-STAB-02 — Banking Presentation Separation
+
+**Priority:** High
+
+**Current findings:**
+
+- Banking remains largely desktop-first (`render_banking()` — one presentation layer for all viewports).
+- Desktop and mobile share one presentation layer (horizontal radio, multi-column forms, dataframes).
+
+**Future direction:**
+
+Separate:
+
+- `render_banking_desktop()`
+- `render_banking_mobile()`
+
+while keeping shared:
+
+- Accounting logic
+- Posting
+- Permissions
+- Reconciliation logic
+
+**Goal:** Presentation separation only.
+
+---
+
+### UI-STAB-03 — Navigation Architecture Consolidation
+
+**Priority:** Medium
+
+**Current findings:**
+
+- Desktop and mobile use different navigation renderers (`_render_navigation_tree` in sidebar vs `_render_mobile_hub_sheet` + bottom bar) but share state (`nav_selection`) and duplicate navigation definitions.
+- Sidebar nav tree still renders on mobile (widgets hidden via CSS).
+
+**Future direction:**
+
+- One navigation definition.
+- Separate presenters: desktop presenter · mobile presenter.
+- Shared navigation metadata.
+
+**Goal:** Reduce duplication and maintenance cost.
+
+---
+
+### UI-STAB-04 — Notification Interaction Unification
+
+**Priority:** Medium
+
+**Current findings:**
+
+- Mobile uses sheets for profile and company switch.
+- Notifications still use `st.popover` on both mobile and desktop (`_render_hdr_toolbar`).
+
+**Future direction:** Consistent mobile interaction model (e.g. notification sheet mirroring profile/co-switch pattern).
+
+**Goal:** Reduce special cases.
+
+---
+
+### UI-STAB-05 — CSS Scope & Leakage Cleanup
+
+**Priority:** Medium
+
+**Current findings:**
+
+- Mobile CSS affecting desktop (e.g. global `.erp-txh-pill` in `mobile_txn_history.css` styles desktop ledger rows).
+- Desktop CSS affecting mobile (e.g. `theme.css` `@media (max-width:968px)` `--hdr-h: 120px` vs `mobile_header.css` `56px`).
+- Global selectors influencing multiple screens; all stylesheets concatenated in `load_theme_css()` on every viewport.
+
+**Future direction:**
+
+- Host-scoped CSS (`:has(.erp-*-host)` pattern from TXH/AT).
+- Viewport-scoped CSS (`html.erp-mobile` / `@media` used consistently with Python `_is_mobile_ui()`).
+- Reduced global selector usage.
+
+**Goal:** Predictable UI changes.
 
 ---
 
@@ -453,6 +802,641 @@ Full design: [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) (APPROVED
 
 **Reference:** Mobile nav contract in [UI_SHELL.md](./UI_SHELL.md) (mobile chrome section). Calculator mockup review in project canvases (`mobile-nav-mockups.canvas.tsx`).
 
+**Future nav (not 18-MUX):** Bottom-tab structure and More Hub organization are **unchanged** for now. Evaluation options and hub customization are under **[MOBILE-09](#mobile-09--future-mobile-navigation-vision)**, **[MOBILE-07](#mobile-07--customizable-more-hub)**, **[MOBILE-08](#mobile-08--organized-more-hub)**.
+
+---
+
+## MOBILE-11 — Mobile Design System
+
+**Status:** ✅ Approved 2026-06-09.
+
+**Reference:** [`docs/MOBILE_UI_SYSTEM.md`](./docs/MOBILE_UI_SYSTEM.md)
+
+The mobile design system is now the authoritative source for future mobile UX decisions.
+
+**Concept C Mobile Add Transaction is accepted as the reference implementation for:**
+
+- Progressive disclosure
+- Sheet picker interactions
+- Trigger row pattern
+- Mobile transaction entry workflow
+- Mobile spacing philosophy
+- Mobile colour token philosophy
+
+Future mobile screens should gradually migrate toward this design system. No full-app rewrite is approved. Migration remains phased and observation-driven.
+
+**Phased migration sequence (not approved for implementation yet — observation-driven):**
+
+1. Add Transaction — ✅ complete (Concept C)
+2. Home page
+3. Banking page
+4. Reports / Cashflow
+5. More Hub
+6. Transaction History / Ledger
+
+Each phase is visual rendering only. No accounting, posting, or schema changes in any phase.
+
+**Cross-references:** [OBS-01](#obs-01--operational-friction-log) · [FUTURE UX / NAVIGATION VISION](#future-ux--navigation-vision) · [MOB-AT-C1](#mob-at-c1--concept-c-mobile-add-transaction-ui) · [MOBILE-12](#mobile-12--design-governance)
+
+---
+
+## MOBILE-12 — Design Governance
+
+**Status:** ✅ Approved 2026-06-09.
+
+**Purpose:** Prevent repeated redesigns, conflicting UI patterns, duplicate CSS, and one-off implementations.
+
+**Rules:**
+
+- Follow [`docs/MOBILE_UI_SYSTEM.md`](./docs/MOBILE_UI_SYSTEM.md)
+- Reuse existing mobile components before creating new ones
+- Use the sheet picker standard
+- Use the trigger row standard
+- Use progressive disclosure
+- Hide invalid options instead of disabling them
+- Avoid desktop patterns on mobile
+- Do not place HTML inside Streamlit widget labels
+- Do not introduce new mobile visual patterns without updating the design system document
+- **No UI redesign work should begin until ownership conflicts for that area are understood.** Perform a CSS ownership audit for the target area first. Examples: login redesign requires login ownership audit (done — see CSS-01); banking redesign requires banking ownership audit; reports redesign requires reports ownership audit.
+
+Any future mobile UX proposal should explain why existing patterns cannot be reused before introducing a new pattern.
+
+### Future Observation Decisions
+
+**Status:** Not approved for implementation. Decision method: [OBS-01](#obs-01--operational-friction-log) operational usage observations. No implementation until repeated real-world usage identifies the better option.
+
+**1. Banking naming**
+
+| Option | Notes |
+|--------|-------|
+| Banking | Current label — familiar, conventional |
+| Cashflow | Broader framing — covers inflows and outflows |
+| Alternative | To be proposed via OBS-01 |
+
+**2. Bottom navigation placement**
+
+| Option | Notes |
+|--------|-------|
+| Ledger | Historical records focus |
+| Reports | Summary and analysis focus |
+| Banking | Account and balance focus |
+
+Current placement and labels are unchanged until resolved.
+
+**3. More naming**
+
+| Option | Notes |
+|--------|-------|
+| More | Current label — conventional, widely understood |
+| Hub | Suggests a central place for secondary tools |
+| Operations | More descriptive for restaurant operations context |
+| Alternative | To be proposed via OBS-01 |
+
+**Cross-references:** [OBS-01](#obs-01--operational-friction-log) · [`docs/MOBILE_UI_SYSTEM.md`](./docs/MOBILE_UI_SYSTEM.md) · [FUTURE UX / NAVIGATION VISION](#future-ux--navigation-vision) · [MOB-AT-C1](#mob-at-c1--concept-c-mobile-add-transaction-ui)
+
+---
+
+## ERP-Wide UI Ownership Principle
+
+**Status:** ✅ Approved · **Applies to:** All future CSS and UI work.
+
+**Goal:** The ERP must no longer have scattered UI rules where multiple files style the same component and override each other silently. This is not about merging everything into one CSS file. It is about assigning one clear owner per UI area.
+
+### Core principle
+
+| Rule | Statement |
+|---|---|
+| One component | One owner file |
+| One token | One source of truth |
+| One pattern | Reused everywhere |
+| Duplicate selectors | Only if intentionally documented |
+| Silent overrides | Not permitted from `widgets.css` or `theme.css` |
+| New UI work | Ownership must be clear before implementation begins |
+
+### What we do NOT want
+
+- One giant `theme.css` that owns everything
+- One giant `mobile.css` that owns everything
+- More global override layers added on top of existing conflicts
+
+### What we DO want
+
+| File | Owns |
+|---|---|
+| `theme.css` | Global tokens (`--theme-*`, `--erp-chip-*`) · desktop/shared base styles · sidebar · dashboard · header desktop |
+| `widgets.css` | Truly generic Streamlit widget behaviour only (inputs, selects, border containers, primary button base) |
+| `mobile_header.css` | Mobile header only — height, compact toolbar, auth screen |
+| `mobile_shell.css` | Mobile shell / bottom nav / hub sheet only |
+| `mobile_txn.css` | Mobile Add Transaction only — AT panel, pickers, `--mob-at-*` tokens |
+| `mobile_reports.css` | Mobile reports only — report layout grids, spacing, density, scroll behaviour; chip colour grammar owned by `widgets.css` |
+| `mobile_txn_history.css` | Mobile transaction history only |
+| `desktop_txn_history.css` | Desktop transaction history only |
+| `setup01_wizard.css` | Setup wizard only |
+| `mobile_banking.css` | Mobile banking only — **does not exist yet; create when banking redesign begins** |
+
+**Cross-references:** [CSS-01](#css-01--theme-ownership-consolidation) · [CSS-02](#css-02--erp-wide-ui-ownership-standard) · [MOBILE-14](#mobile-14--mobile-theme-ownership-cleanup) · [MOBILE-12](#mobile-12--design-governance)
+
+---
+
+## CSS-01 — Theme Ownership Consolidation
+
+**Status:** ✅ Approved · **Priority:** High
+
+**Purpose:** Establish single ownership for each CSS domain so future UI work does not produce MOBILE-13-style cascade conflicts. This is architecture documentation and the authority that MOBILE-14 executes against.
+
+**Reference:** Theme Ownership Audit (June 2026). Cross-reference: [UI-STAB-05](#ui-stab-05--css-scope--leakage-cleanup) (audit findings — CSS-01 is the approved execution).
+
+### Target ownership map
+
+| Domain | Canonical owner after CSS-01 |
+|---|---|
+| `--theme-*` and `--erp-chip-*` tokens | `theme.css :root` |
+| `--hdr-h` — desktop 60px | `theme.css :root` |
+| `--hdr-h` — mobile 56px / 86px search | `mobile_header.css` only |
+| Header column layout (desktop) | `theme.css` |
+| Header column layout (mobile compact) | `mobile_header.css` |
+| Bottom nav + FAB + hub sheet | `mobile_shell.css` only |
+| AT panel visual CSS | `mobile_txn.css` |
+| AT panel layout grids | `mobile_txn.css` (moved from `widgets.css`) |
+| `--mob-at-*` tokens | `mobile_txn.css` only |
+| Report visual CSS | `mobile_reports.css` |
+| Report layout grids | `mobile_reports.css` (moved from `widgets.css`) |
+| Chip button active state (AT + report) | `widgets.css` only |
+| Chip button idle state (AT + report) | `widgets.css` only (report idle migrated from `mobile_reports.css` by E8b) |
+| TXH layout grids | `mobile_txn_history.css` only |
+| Auth screen / login (`erp-auth-*`) | `mobile_header.css` |
+| Setup Wizard | `setup01_wizard.css` (no changes needed) |
+| Desktop TXH table | `desktop_txn_history.css` (no changes needed) |
+| `block-container` padding-top (mobile) | `mobile_header.css` only |
+
+### Blocking issues this resolves
+
+| ID | Issue | Severity |
+|---|---|---|
+| C1 | `stVerticalBlockBorderWrapper` global catch-all forces `--theme-card` on all border containers | High — documented; partial mitigation via targeted overrides |
+| C2 | `--hdr-h` defined in 4 files with conflicting values | High — removed from `widgets.css` and `mobile_shell.css` by E1 |
+| C3 | Chip override `:not` selector tests wrong element — save button always caught | Medium — fixed by E3 |
+| C4 | Layout grids for 3 components owned by `widgets.css` instead of their component files | Medium — resolved by E4/E5/E6 |
+| C5 | `html.erp-mobile` vs `@media` dual detection asymmetry | Medium — documented; no single fix |
+| C6 | `block-container padding-top` defined in 4 files | Low — dead copies removed by E2 |
+
+**Implementation:** See [MOBILE-14](#mobile-14--mobile-theme-ownership-cleanup) for the ordered execution plan.
+
+---
+
+## MOBILE-14 — Mobile Theme Ownership Cleanup
+
+**Status:** ✅ Approved · **Priority:** High
+
+**Purpose:** Architectural cleanup only. Not a visual redesign. Executes the consolidation order from [CSS-01](#css-01--theme-ownership-consolidation). If any step produces a visible change, a rule was missed from the target file — not intentional.
+
+**Prerequisite:** None — can begin immediately.
+
+**Unlocks:** [LOGIN-01](#login-01--login--company-picker-modernization).
+
+### Consolidation steps (execute in order)
+
+| Step | Action | Files touched | Risk |
+|---|---|---|---|
+| **E1** | Remove `--hdr-h` from `widgets.css` and `mobile_shell.css`. Keep only in `theme.css` (60px) and `mobile_header.css` (56px/86px). Audit every `var(--hdr-h)` usage after removal. | `widgets.css`, `mobile_shell.css` | Medium |
+| **E2** | Remove dead `block-container padding-top` from `mobile_shell.css`. `mobile_header.css` is canonical. | `mobile_shell.css` | Low |
+| **E3** | Fix chip override selector bug — `:not([class*="mob_at_save"])` tests the wrong element. Correct selector so the save button is genuinely excluded. Resolves MOBILE-13 save button colour. | `widgets.css` | Medium |
+| **E4** | Move AT panel layout grids (`mob_at_amount_row`, `mob_at_tabs`, `mob_at_keypad`, `mob_at_pm2/3`) from `widgets.css @media` block into `mobile_txn.css`. Highest risk step — verify full AT panel after. | `widgets.css`, `mobile_txn.css` | High |
+| **E5** | Move report layout grids (`mob_rpt_sel_*`, `mob_rpt_cf_kpi`, `erp_mob_rpt_filters`) from `widgets.css @media` block into `mobile_reports.css`. | `widgets.css`, `mobile_reports.css` | Medium |
+| **E6** | Remove dead TXH filter grids (`txh_filter_row1`, `txh_filter_row2`) from `widgets.css` — already live in `mobile_txn_history.css`. | `widgets.css` | Low |
+| **E7** | Remove duplicate bottom nav, FAB button, and hub sheet blocks from `widgets.css`. Verify `mobile_shell.css` covers all removed properties before deleting. | `widgets.css` | Low |
+| **E8a** | Remove duplicate report active chip rules from `mobile_reports.css` (primary button colour block). `widgets.css` lines 402–423 carry identical selectors and values — removing the `mobile_reports.css` copy is zero-risk. `widgets.css` becomes sole owner of report active chip state. | `mobile_reports.css` | Low |
+| **E8b** | Migrate report idle chip rules to `widgets.css` UI-1 block, then remove from `mobile_reports.css`. The idle rule (`--erp-chip-idle-bg/fg/border` on secondary buttons) is not correctly covered by the global secondary rule in `widgets.css` (`--theme-card`); removing without first adding to `widgets.css` causes visual regression. Add to `widgets.css`, verify visual parity, then remove from `mobile_reports.css`. `widgets.css` becomes sole owner of report idle chip state. | `widgets.css`, `mobile_reports.css` | Low–Medium |
+| **E9** | Deduplicate `--mob-at-*` token block. Single definition in `mobile_txn.css :root`. Remove copy from `widgets.css`. | `widgets.css`, `mobile_txn.css` | Medium |
+| **E10** | Remove internal `.banner.banner-primary` duplicate from `theme.css` — functionally identical to `.banner`. | `theme.css` | Trivial |
+| **E11** | Remove dead notification active state from `widgets.css` — `mobile_header.css` loads after it and wins. | `widgets.css` | Trivial |
+| **E12** | Fix hardcoded `#9ca3af` in `app.py` login credentials hint — replace with `color:var(--theme-muted)`. Then remove the attribute-selector colour fixers from `theme.css` lines 680–760. | `app.py`, `theme.css` | Low |
+| **E13** | Decide ownership of profile sheet and co-switch sheet. Currently only in `widgets.css @media`. Document the decision; consider moving to `mobile_shell.css` or a dedicated `mobile_overlays.css`. | `widgets.css`, possibly `mobile_shell.css` | Low |
+
+### Constraints
+
+- E1 and E2 before all other steps — remove dead `--hdr-h` values first.
+- E3 before E4 — chip selector fix may affect AT panel button interactions.
+- E4 is the highest-risk step. After moving AT grids, verify the full AT panel on a real mobile viewport before continuing.
+- Run `pytest tests/` after E4 and E9 as regression checks.
+
+---
+
+## CSS-02 — ERP-Wide UI Ownership Standard
+
+**Status:** ✅ Approved · **Priority:** High
+
+**Purpose:** Prevent future UI regressions caused by scattered styling, duplicate selectors, and unclear CSS ownership across the full ERP — not just the mobile Add Transaction area. Formalises the [ERP-Wide UI Ownership Principle](#erp-wide-ui-ownership-principle) as enforceable rules for all future work.
+
+**Cross-references:** [ERP-Wide UI Ownership Principle](#erp-wide-ui-ownership-principle) · [CSS-01](#css-01--theme-ownership-consolidation) · [MOBILE-14](#mobile-14--mobile-theme-ownership-cleanup) · [MOBILE-11](#mobile-11--mobile-design-system) · [MOBILE-12](#mobile-12--design-governance) · Theme Ownership Audit (June 2026).
+
+### Rules
+
+| # | Rule |
+|---|---|
+| 1 | Every UI surface must have one declared owner file. |
+| 2 | Generic widget styling may live in `widgets.css` only if it is truly global (applies to all Streamlit widgets app-wide with no component-specific logic). |
+| 3 | Component-specific layout grids must live in that component's CSS file — not in `widgets.css`. |
+| 4 | Component-specific colours must use approved `--theme-*` tokens or documented component-level tokens (e.g. `--mob-at-*`). Hardcoded hex is not permitted in component CSS. |
+| 5 | No CSS selector may be duplicated across files unless there is a written reason recorded in that section's comment or in the roadmap. |
+| 6 | New UI work must include an ownership check before implementation begins. If the target area has unresolved ownership conflicts, those must be resolved first. |
+| 7 | If a selector is overridden only by higher specificity or `!important` stacking, it must be documented or consolidated — not left as a silent win. |
+| 8 | Existing duplicate rules must be removed in planned cleanup phases (e.g. MOBILE-14). Do not remove them randomly during unrelated feature work. |
+
+### Scope
+
+CSS-02 applies to all CSS files in `ui/`. It is not time-boxed — it is the ongoing standard for all CSS added or modified after June 2026. Violations found during feature work should be logged as future cleanup candidates, not silently worked around.
+
+### Relationship to CSS-01 and MOBILE-14
+
+CSS-01 maps the current ownership state and identifies the gaps. MOBILE-14 fixes those gaps for the mobile layer. CSS-02 is the rule set that prevents the gaps from reappearing.
+
+---
+
+## LOGIN-01 — Login / Company Picker Modernization
+
+**Status:** 📋 Planned · **Priority:** Medium · **Blocked:** Until [MOBILE-14](#mobile-14--mobile-theme-ownership-cleanup) complete.
+
+**Purpose:** Bring the login screen and company picker into the approved Concept C design language so the entire app feels like one product from first load.
+
+**References:** [`docs/MOBILE_UI_SYSTEM.md`](./docs/MOBILE_UI_SYSTEM.md) · Concept C reference implementation ([MOB-AT-C1](#mob-at-c1--concept-c-mobile-add-transaction-ui)) · Login Audit (June 2026).
+
+**Dependency rationale:** MOBILE-14 must run first to establish a stable CSS ownership baseline in `mobile_header.css` (the canonical auth-screen owner) and eliminate cascade conflicts that would make new login CSS unpredictable.
+
+### Scope
+
+| Area | Current state | Target state |
+|---|---|---|
+| Company banner | `banner banner-primary` with gradient — desktop-first | Concept C surface panel; `erp-auth-banner` classes already defined in `mobile_header.css` |
+| User tiles | Unstyled `st.button` with multi-line text; 64–88px height | Avatar-style cards using `erp-mono-avatar` (class already in `theme.css` line 639) |
+| Login form | `st.container(border=True)` + `st.form` — generic widget styling | Scoped to auth context via `erp-auth-*` classes; no structural change to login logic |
+| Layout | `st.columns([1, 2, 1])` centering hack | `max-width` constraint on content block; no column hack on mobile |
+| Credentials hint | Hardcoded `color:#9ca3af` inline style | `color:var(--theme-muted)` — resolved by MOBILE-14 E12 |
+| Touch targets | Some interactive elements below 44px | All interactive targets ≥ 44px |
+
+### Constraints
+
+- Use `erp-auth-*` classes already defined in `mobile_header.css` — do not introduce new class families.
+- Colour: `--theme-*` tokens only. No Concept C hardcoded hex on auth screens.
+- No accounting, schema, or session logic changes.
+- Mobile-first. Desktop login is a lower priority.
+
+---
+
+## QUICK-ENTRY-01 — Context-Aware Mobile Category Selection
+
+**Status:** ✅ Approved · **Priority:** High · **Blocked:** Until [MOBILE-14](#mobile-14--mobile-theme-ownership-cleanup) complete.
+
+**Design philosophy:** FAST ENTRY FIRST — fewer taps, less typing, faster bookkeeping.
+
+**Purpose:** Reduce the number of taps required during daily mobile transaction entry by surfacing common categories directly inside the Add Transaction panel, without requiring the user to open a picker sheet for the majority of transactions.
+
+**Depends on:** MOBILE-14 complete. No accounting engine changes. No database schema changes.
+
+### Problem
+
+The current mobile flow requires opening a category picker for most transactions:
+
+```
+Type → Payment Method → Category Picker → Category → Amount → Save
+```
+
+For a high-frequency user logging 20–50 transactions a day, this extra picker interaction is the single most repeated friction point in the app.
+
+### Goal
+
+For common transaction types, show categories directly inside the AT panel. The picker remains fully available as a fallback — this is a shortcut layer only.
+
+```
+Type → Category Chip → Amount → Save
+```
+
+### Desired behaviour by transaction type
+
+| Type | Inline behaviour | Picker fallback |
+|---|---|---|
+| **Sale** | If only one active sales category exists: auto-select it, no chips shown. If multiple: show category chips inline. | "More…" chip opens picker |
+| **Expense** | Show the most common expense categories as chips directly below Row 1. Example: `Cleaning · Utilities · Maintenance · Payroll · Office · More…` | "More…" chip opens picker |
+| **Purchase** | Show purchase categories inline. | "More…" chip opens picker |
+| **Supplier Payment** | Vendor is the primary selector — no category chips required. | Picker unchanged |
+| **Customer Payment** | Customer / invoice is primary — no category chips required. | Picker unchanged |
+| **Bank Transaction** | Bank account is primary — no category chips required. | Picker unchanged |
+
+### "More…" behaviour
+
+When category chips are shown, a final `More…` chip is always included:
+
+```
+Cleaning  Utilities  Maintenance  Payroll  More…
+```
+
+Tapping `More…` opens the existing category picker sheet. The picker is unchanged. The user can always reach any category regardless of what appears inline.
+
+### UX rules
+
+- Mobile only. Desktop AT panel unchanged.
+- Maximum 4–5 visible category chips (excluding `More…`).
+- Must respect active / inactive category status — inactive categories never appear as chips.
+- Chip selection must call the same category-apply logic as the picker (`_mob_at_apply_category_pick`). No new posting path.
+- Must work with the current category architecture — no new category fields, no frequency tracking required for initial implementation.
+- Must not alter `_at_save()` or any accounting logic.
+
+### Non-goals
+
+This section does not change or remove:
+
+- Category picker sheet — remains fully functional
+- Category management (add / rename / activate / deactivate)
+- Existing accounting or posting logic
+- Desktop AT form
+- Any other picker (payment, type, vendor, bank, invoice, payable)
+
+### Success metric
+
+| Metric | Current | Target |
+|---|---|---|
+| Taps for a common expense transaction | 6 (Type → PM → Open picker → Select category → Amount → Save) | 5 (Type → PM → Category chip → Amount → Save) |
+| Picker required for majority of transactions | Yes | No — picker is a fallback, not the default path |
+
+**Cross-references:** [MOB-AT-C1](#mob-at-c1--concept-c-mobile-add-transaction-ui) · [MOBILE-14](#mobile-14--mobile-theme-ownership-cleanup) · [MOBILE_UI_SYSTEM.md](./docs/MOBILE_UI_SYSTEM.md)
+
+---
+
+## DATE-01 — Fast Mobile Date Entry
+
+**Status:** 📋 Future · **Priority:** Medium · **Independent** — no dependency on MOBILE-14 or other open items.
+
+**Design philosophy:** FAST ENTRY FIRST — for bookkeeping users, the date is nearly always today or yesterday. The current date picker opens a full sheet with a native `st.date_input`, which is reliable but requires more interaction than the common case demands.
+
+**Purpose:** Reduce date-entry taps for the majority of mobile transactions by surfacing the most common date choices directly inside the date picker sheet, before the calendar input.
+
+### Proposed picker sheet layout
+
+```
+┌─────────────────────────────────────────┐
+│  ── grab handle ──                      │
+│  Date                               ×   │
+├─────────────────────────────────────────┤
+│  [ Today      ]  [ Yesterday ]          │  ← quick-select row 1
+│  [ This Week  ]  [ Custom Date ]        │  ← quick-select row 2
+├─────────────────────────────────────────┤
+│  Recent                                 │
+│  9 Jun 2026                             │
+│  8 Jun 2026                             │
+│  7 Jun 2026                             │
+├─────────────────────────────────────────┤
+│  (calendar / YYYY-MM-DD input —         │
+│   shown only when Custom Date tapped)   │
+└─────────────────────────────────────────┘
+```
+
+### Behaviour rules
+
+| Element | Behaviour |
+|---|---|
+| **Today** | Selects today's date, closes sheet immediately — no confirm required |
+| **Yesterday** | Selects yesterday's date, closes sheet immediately |
+| **This Week** | Sets date to Monday of the current week — closes immediately |
+| **Custom Date** | Expands the existing `st.date_input` calendar inline; requires Confirm Date tap (existing behaviour, unchanged) |
+| **Recent dates** | Shows up to 3 distinct dates from the current session's prior transactions; tapping selects and closes immediately |
+| **Default state** | Today is pre-highlighted on open — matches `at_date` session key |
+
+### Scope
+
+- Mobile only. Desktop AT date field unchanged.
+- No new session keys required beyond existing `at_date`.
+- Recent dates derived from in-session transaction history — no persistent storage, no new database column.
+- No accounting, schema, or posting logic changes.
+- The existing Confirm Date flow (for Custom Date only) is unchanged.
+
+### Non-goals
+
+- No multi-date selection.
+- No date range picker.
+- No changes to how dates are stored, posted, or validated.
+
+**Cross-references:** [MOB-AT-C1](#mob-at-c1--concept-c-mobile-add-transaction-ui) · [QUICK-ENTRY-01](#quick-entry-01--context-aware-mobile-category-selection) · [MOBILE_UI_SYSTEM.md](./docs/MOBILE_UI_SYSTEM.md)
+
+---
+
+## UX-01 — Session Persistence
+
+**Status:** 📋 Future · **Priority:** Medium · **Independent** — no dependency on MOBILE-14 or other open items.
+
+**Purpose:** Users should not need to reconfigure the ERP after login, refresh, company switch, or browser restart. Non-accounting preferences should be remembered automatically so a returning user can open the app and continue working with minimal setup.
+
+### Problem
+
+Currently, every login or refresh resets the user's context — selected company, active page, currency, theme, and sidebar state are all lost. For daily-use bookkeeping, this means repetitive reconfiguration that adds friction before any actual work begins.
+
+### What to remember
+
+| Preference | Notes |
+|---|---|
+| Last selected company | On next login, open the previously active company automatically |
+| Preferred theme (light / dark) | Persist across sessions |
+| Sidebar state (open / collapsed) | Restore on reload |
+| Last visited page | Return the user to where they left off after login |
+| Last used currency | Pre-select on Add Transaction |
+| Dashboard filters | Optional — restore date range or filter state if set |
+| Desktop / mobile layout preference | If a user manually overrides layout mode in a future feature, remember that preference |
+
+### Examples
+
+| Scenario | Current behaviour | Target behaviour |
+|---|---|---|
+| Login after yesterday's session | Opens default company and default page | Opens India Gate (last used company) on Banking (last visited page) |
+| Refresh mid-session | Resets to defaults | Restores company, page, and currency |
+| Company switch | Forgets previous company context | On next login, remembers last active company |
+| Currency entry | Defaults to company currency every time | Pre-selects TRY (last used) |
+
+### Constraints
+
+- Must be company-aware — preferences that are company-specific (last page, last currency) must be stored and retrieved per company, not globally.
+- Must not affect accounting data, journal entries, balances, or reports.
+- Must not affect permissions or role enforcement — persisted preferences do not grant access to anything.
+- Must not bypass authentication — preference restoration happens after successful login only.
+- Preferences must be stored separately from accounting records (not in transaction tables, not in the COA).
+
+### Non-goals
+
+- No syncing preferences across devices (single-device persistence is sufficient for v1).
+- No preference management UI in v1 — preferences are set implicitly through normal use.
+- No changes to accounting logic, schema, or posting behaviour.
+
+**Cross-references:** [LOGIN-01](#login-01--login--company-picker-modernization) · [UX-02](#ux-02--responsive-viewport--device-auto-fit)
+
+---
+
+## UX-02 — Responsive Viewport & Device Auto-Fit
+
+**Status:** ✅ Approved · **Priority:** High · **Blocked:** Until [MOBILE-14](#mobile-14--mobile-theme-ownership-cleanup) complete.
+
+**Purpose:** Users should never need to manually adjust browser zoom, viewport size, or scaling after login. Viewport adaptation is a core usability requirement — the ERP must automatically fit the device it is opened on.
+
+### Problem
+
+Some users currently need to manually adjust browser zoom or viewport scaling to make the ERP render correctly. This creates friction on every session and is especially problematic on:
+
+- Mobile phones — layout may not switch to mobile mode automatically
+- Tablets — available width may not be used correctly
+- Shared / multi-user devices — each user may see a different zoom state
+- Any device where the JS mobile-detection cookie has not yet fired
+
+### Goal
+
+The ERP detects the device and viewport automatically and delivers the correct layout without any manual adjustment by the user. The correct layout must be stable after login, refresh, and company switch.
+
+### Requirements by device class
+
+| Device | Required behaviour |
+|---|---|
+| **Phone** | Mobile layout activates automatically; bottom navigation visible; AT panel fits viewport; no manual zoom needed |
+| **Tablet** | Tablet-optimised layout; available screen width used correctly; no manual zoom needed |
+| **Desktop** | Desktop layout with sidebar and header scaling correctly; no manual zoom needed |
+
+### Rules
+
+- ERP must respond to actual viewport size — not assumed or hardcoded dimensions.
+- ERP must not depend on the browser zoom level being set to 100%.
+- Users must not need to refresh to receive the correct layout.
+- Layout mode (mobile / desktop) must be determined automatically on first load.
+- Responsive behaviour must be consistent across: initial load, page refresh, and company switch.
+
+### Investigation required
+
+Before implementation, determine which layer(s) are causing the current mis-fit. Candidates:
+
+| Candidate | What to check |
+|---|---|
+| Viewport meta tag | Is `<meta name="viewport" content="width=device-width, initial-scale=1">` present and correct? Streamlit injects its own — verify it is not overridden or absent. |
+| Browser zoom assumptions | Does any CSS use fixed `px` widths that assume 100% zoom? |
+| Responsive breakpoint logic | Is the 968px breakpoint correctly matching the physical device class on all tested devices? |
+| Streamlit container sizing | Does `st.set_page_config(layout="wide")` interact with mobile viewports in ways that break the layout? |
+| Mobile detection timing | The JS cookie → Python flag path (`_sync_mobile_ui_flag_from_cookie`) fires after first render. Does the first render show desktop layout briefly before switching? |
+| CSS width constraints | Are any `max-width` or `min-width` constraints in `theme.css` or `mobile_shell.css` preventing correct scaling? |
+
+The investigation output should identify the root cause(s) before any CSS or Python changes are made.
+
+### Success metric
+
+A user opens the ERP on any device and immediately receives the correct layout — no browser zoom change, no window resize, no refresh required.
+
+**Cross-references:** [CSS-01](#css-01--theme-ownership-consolidation) · [MOBILE-14](#mobile-14--mobile-theme-ownership-cleanup) · [MOBILE_UI_SYSTEM.md](./docs/MOBILE_UI_SYSTEM.md)
+
+---
+
+## CHART-01 — Chart Theme Consolidation
+
+**Status:** 📋 Planned · **Priority:** Medium · **Independent** of MOBILE-14 and MOBILE-13. Can be executed in any order relative to other roadmap items.
+
+**Purpose:** Make all charts (Plotly, Altair) inherit ERP theme tokens — eliminating hardcoded chart backgrounds, text colours, and grid colours that break in dark mode or during theme switches.
+
+### Scope
+
+| Item | Action |
+|---|---|
+| `chart_theme()` helper in `ui/theme.py` | New function returning a Plotly layout dict populated with `var(--theme-*)` values (bg, paper_bg, font colour, gridcolor, zerolinecolor) |
+| 7 chart / plot call sites in `app.py` | Wrap each with `chart_theme()` — visual only, no data change |
+| `ui/widgets.css` | Scoped background override so chart containers inherit `--theme-card` rather than Streamlit's default white |
+
+**Constraint:** Visual only. No data, calculation, or schema changes.
+
+---
+
+## AUDIT-01 — ERP Ownership Audit Findings
+
+**Status:** ✅ Complete — June 2026
+**Purpose:** Record the final ownership audit results for all UI areas and establish priorities for consolidation work. This section is a reference document — no implementation is included here.
+
+### Critical Ownership Conflicts
+
+Conflicts shared with CSS-01 are referenced rather than restated — see CSS-01 blocking issues table for full detail. Conflicts found only during the full-ERP audit are stated in full below.
+
+| Conflict | Detail | Resolution Path |
+|---|---|---|
+| `--hdr-h` token — 4-way split | See **CSS-01 C2** | MOBILE-14 E1 |
+| `widgets.css` KPI catch-all | See **CSS-01 C1** | MOBILE-14 E3 |
+| Mobile ownership drift (layout grids) | See **CSS-01 C4** | MOBILE-14 E4–E9 |
+| Sidebar hide — 3 rules in 2 files | `theme.css @media`, `mobile_shell.css @media`, `mobile_shell.css html.erp-mobile` all hide sidebar on mobile | MOBILE-14 — keep `theme.css @media` as primary; document or remove the others |
+| Notification active state — duplicated | `widgets.css` line 1025 AND `mobile_header.css` line 117 | MOBILE-14 E11 — remove `widgets.css` copy; `mobile_header.css` is the correct owner |
+| Reports internal duplicate | `.erp-mobile-report-filters` visibility set twice inside `theme.css` (lines 1107 and 1354) | Independent quick win — remove line 1107; line 1354 is live |
+
+### Architectural Findings
+
+| Area | Finding |
+|---|---|
+| Dashboard | Ownership mostly clean — all `erp-dash-*` classes in `theme.css`. Two imported conflicts from `widgets.css` and `mobile_shell.css` (addressed by MOBILE-14). |
+| Banking | Ownership mostly clean — no banking-specific CSS file; uses shared `theme.css` classes only. No mobile layout adaptation exists (future `mobile_banking.css`). |
+| Mobile Reports | Ownership mostly clean — `mobile_reports.css` is isolated. Desktop reports have no dedicated ownership surface. |
+| Company Picker | Almost no styling ownership — emits no `erp-*` classes; tiles are plain `st.button`. This is intentional pending LOGIN-01. |
+| Mobile Banking | No dedicated CSS owner. If mobile banking is added, create `ui/mobile_banking.css` scoped to an `erp-banking-mobile-host` sentinel class, following `mobile_reports.css` as a template. |
+| Desktop Reports | No dedicated ownership surface. `erp-rpt-sel-desktop-host` class is emitted in `app.py` but has no CSS targeting it. Reserved for a future `ui/desktop_reports.css` (mirrors `desktop_txn_history.css` pattern). |
+
+### Chart Findings
+
+| Finding | Detail | Resolution Path |
+|---|---|---|
+| Incomplete chart theming | Only 2 of 8 chart instances use `chart_series_color()` / `chart_reference_color()` helpers | CHART-01 |
+| Dark mode breakage | 6 `st.bar_chart` / `st.line_chart` instances render on Streamlit default white — breaks in dark mode | CHART-01 — replace with Altair + `chart_theme()` |
+| No `chart_theme()` helper | Helper referenced in CHART-01 scope does not yet exist | CHART-01 |
+
+### Login Findings
+
+| Finding | Detail |
+|---|---|
+| Redesign blocked | Login / Company Picker redesign blocked on MOBILE-14 per LOGIN-01 |
+| Hardcoded color | `color:#9ca3af` in credentials hint in `app.py` — tracked under MOBILE-14 E12 |
+| No mobile layout | Desktop `st.columns([1, 2, 1])` centering does not adapt to mobile |
+| Email-based auth | Remains future **AUTH-01** work — not in scope for LOGIN-01 |
+
+### Quick Wins (Independent — No MOBILE-14 Dependency)
+
+These three items are not tracked in MOBILE-14 and can be executed at any time with minimal risk:
+
+1. **Reports duplicate rule** — remove `theme.css` line 1107 (`.erp-mobile-report-filters` visibility). Line 1354 is the live rule.
+2. **Dead desktop report host** — remove or activate `erp-rpt-sel-desktop-host` wrapper in `app.py` line 4158. Either delete the `st.markdown` wrapper or create `ui/desktop_reports.css` to use it as a scoping host (mirrors `desktop_txn_history.css` pattern).
+3. **Sidebar ownership decision** — document whether `mobile_shell.css html.erp-mobile` sidebar hide is intentional (JS-cookie guard) or redundant. Either add a comment or remove it.
+
+The following are tracked inside MOBILE-14 and listed here for visibility only — do not execute them as independent tasks:
+
+- **Login hardcoded color** (`color:#9ca3af` → `var(--theme-muted)`) — **MOBILE-14 E12**
+- **Header notification duplicate** (`widgets.css` line 1025) — **MOBILE-14 E11**
+
+**Cross-references:** CSS-01 · CSS-02 · MOBILE-14 · CHART-01 · LOGIN-01 · AUTH-01
+
+---
+
+## MOB-AT-C1 — Concept C Mobile Add Transaction UI
+
+**Status:** ✅ Accepted as reference implementation — 2026-06-09.
+
+**Design references:** [`docs/MOBILE_AT_CONCEPT_C.md`](./docs/MOBILE_AT_CONCEPT_C.md) (component detail) · [`docs/MOBILE_UI_SYSTEM.md`](./docs/MOBILE_UI_SYSTEM.md) (governing system)
+
+**Scope (locked):**
+
+| Item | Decision |
+|------|----------|
+| Mobile AT panel | ✅ Rewritten — Concept C "Full Pad" layout |
+| Desktop AT form | 🚫 Unchanged |
+| Posting / accounting logic | 🚫 Unchanged — `_at_save()` not touched |
+| Database schema | 🚫 Unchanged |
+| Banking, Reports, More, Header, Bottom Nav | 🚫 Unchanged |
+| App-wide Concept C theme rollout | 📋 Deferred — mobile AT only for now |
+
+**What changes:**
+
+- 4-tab row + separate PM chips + date row → single compact **Row 1** (`[Type | Payment | Date | Currency]`) — each cell opens a bottom-sheet picker
+- Category shown with type-coloured dot below Row 1 as full-width button
+- Amount display → full-width **Save** button → 3×4 keypad (Save moved out of side column)
+- Existing pickers (vendor, bank, payable, category sheets) reused unchanged
+- New picker modes added: `"txn_type"`, `"payment"`, `"date"`, `"currency"`
+- New session key `"at_picker_mode"` added to `_COMPANY_SCOPED_AT_KEYS`
+
+**Colour tokens:** see `docs/MOBILE_AT_CONCEPT_C.md §Colour tokens`
+
+**Files changed:** `app.py`, `ui/mobile_txn.css`, `docs/MOBILE_AT_CONCEPT_C.md`
+
 ---
 
 ## Phase 19 — VAT / tax
@@ -504,7 +1488,7 @@ Restaurant (POS, recipes), retail (barcode), services (projects), tourism (booki
 
 | State | Meaning |
 |-------|---------|
-| **Hidden** | Navigation preference — module still exists |
+| **Hidden** | Navigation preference — module still exists (future: per-company More Hub customization — **MOBILE-07**) |
 | **Disabled** | Functionality blocked (plan, safety, misconfiguration) |
 | **Locked** | Setting/module frozen after use (e.g. base currency after first post) |
 
@@ -545,6 +1529,22 @@ Restaurant (POS, recipes), retail (barcode), services (projects), tourism (booki
 | 2026-06-09 | **AD-UI-001** sidebar/navigation redesign approved (high priority); implementation gated on NAVIGATION_AUDIT.md |
 | 2026-06 | **SETUP-01** Company Creation Wizard design approved (8 steps + summary at create); SETUP-02/03 planned; BANK-03 POS Settlement wording |
 | 2026-06 | P0 complete: multi-company switch + persistence, mobile surfaces, AT safety, Transaction Ledger; daily-use priority over new features |
+| 2026-06 | **Future UX / Navigation vision** recorded (MOBILE-07–10, DESIGN-05, DESKTOP-04) — low priority, design direction only; explicit deferral of banking/reports/mobile shell/nav/More/sidebar redesigns |
+| 2026-06-09 | **MOB-AT-C1** Concept C Mobile AT UI approved for implementation — mobile panel only; desktop AT / accounting / schema / Banking / Reports / More / Header / Bottom Nav all unchanged; app-wide theme rollout deferred |
+| 2026-06-09 | **MOB-AT-C1** accepted as reference implementation — 747 tests passing; HTML-in-button bug fixed (st.button escapes HTML — use st.markdown for decorative elements); picker overlay fixed (keypad suppressed when picker open); date picker test updated to reflect new picker-sheet architecture |
+| 2026-06-09 | **MOBILE-11** Mobile Design System approved — `docs/MOBILE_UI_SYSTEM.md` is the governing document for all future mobile work; Concept C is the reference implementation |
+| 2026-06-09 | **MOBILE-12** Design Governance approved — forbidden patterns codified; phased migration sequence defined; three open naming decisions recorded (Banking label / Reports-or-Cashflow / More label) — do not rename until resolved via OBS-01 or explicit instruction |
+| 2026-06-09 | **Concept C** accepted as the reference implementation for future mobile UX. Reason: aligns with the ERP philosophy — *"The tool disappears and the work appears."* Concept C successfully establishes: Row 1 meta-strip, progressive disclosure, context-sensitive fields, sheet picker workflow, keypad-first transaction entry. Future mobile pages should follow these principles. |
+| 2026-06 | **Desktop/Mobile Architecture Audit** completed. Business logic separation is healthy. Presentation separation is partially complete. Future UI work should prioritize stability and separation before major redesign projects. Findings recorded as **UI-STAB** (not approved for implementation). |
+| 2026-06 | **OBS-01** Operational Friction Log added. UX changes must originate from repeated real-world friction (3+ occurrences) before becoming roadmap candidates. |
+| 2026-06-09 | **Theme Ownership Audit** completed. Finding: ERP is not globally fragmented — most CSS conflicts are concentrated in `widgets.css`, `mobile_shell.css`, and `mobile_header.css`. Decision: ownership cleanup (**MOBILE-14**) takes priority over further UI redesign. **CSS-01** establishes the target ownership map. **LOGIN-01** (login redesign) is blocked until MOBILE-14 is complete. **CHART-01** (chart theming) is independent and can proceed at any time. Design Governance rule added to MOBILE-12: no UI redesign work begins until ownership conflicts for that area are understood. |
+| 2026-06-09 | **ERP-Wide UI Ownership Principle** approved. Decision: the ERP will keep modular CSS files, but each UI area must have a single owner. `theme.css` for global tokens and desktop base; `widgets.css` for truly generic Streamlit widget behaviour only; each feature area owns its own CSS file. Future work must consolidate ownership rather than adding new override layers. **CSS-02** formalises this as 8 enforceable rules applying to all CSS added or modified after June 2026. |
+| 2026-06-09 | **MOBILE-14 E8 revised** (E8a + E8b). Audit finding: the report active chip rules in `mobile_reports.css` are true duplicates of `widgets.css` and safe to remove (E8a). The report idle chip rules are not — `--erp-chip-idle-bg` ≠ `--theme-card`; removing without first relocating to `widgets.css` causes visual regression. Decision: chip active/idle grammar for all contexts (AT and reports) belongs in `widgets.css` UI-1 block. `mobile_reports.css` owns layout, spacing, grids, and density only — not chip colours. E8b requires add-then-remove sequencing with visual parity verification. |
+| 2026-06-09 | **UX-01** recorded. Decision: the ERP should remember non-accounting user preferences (last company, last page, theme, sidebar state, last used currency, dashboard filters) to reduce repetitive setup after login, refresh, and company switch. Preferences must be stored separately from accounting records and must not affect accounting behaviour, permissions, or authentication. Session persistence is a productivity feature. |
+| 2026-06-09 | **UX-02** approved. Decision: viewport adaptation is a core usability requirement. The ERP must automatically fit the user's device and viewport without requiring manual zoom or window resizing. Root cause investigation required before implementation — candidates include viewport meta handling, CSS breakpoint assumptions, Streamlit container sizing, and mobile detection timing. Blocked on MOBILE-14. |
+| 2026-06-09 | **DATE-01** recorded. Decision: mobile date picker should surface Today, Yesterday, This Week, and up to 3 recent session dates as immediate one-tap selections before the calendar input. Custom Date expands the existing calendar inline. Reduces date-entry taps for the majority of transactions. Independent — no blocking dependencies. |
+| 2026-06-09 | **QUICK-ENTRY-01** approved. Decision: for common mobile transactions, direct inline category selection is preferred over opening additional picker sheets. Maximum 4–5 chips inline; a "More…" chip always provides picker fallback. The category picker is unchanged and remains fully reachable. Blocked on MOBILE-14. No accounting, schema, or posting logic changes. |
+| 2026-06-09 | **ERP Ownership Audit** complete (**AUDIT-01**). Critical conflicts identified: `--hdr-h` 4-way token split, `widgets.css` KPI catch-all, mobile ownership drift, sidebar triple-hide, notification active state duplication, reports internal duplicate. Architectural finding: Dashboard, Banking, and Mobile Reports are mostly clean; Company Picker and Desktop Reports have no CSS surface (future work). Five quick wins identified that can be executed before MOBILE-14. Decision: all future UI work must follow ownership-first planning; new features must not introduce additional ownership conflicts. |
 
 ---
 
@@ -555,7 +1555,7 @@ cd streamlit_accounting_erp
 ./venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: **663+ passed**.
+Expected: **747 passed**.
 
 ---
 

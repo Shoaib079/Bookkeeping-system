@@ -1,39 +1,40 @@
 /* Mobile New Transaction — bottom entry panel (Phase 18-MUX) */
 
-@media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
-  :root {
-    --mob-at-panel-h: 340px;
-    /* Mobile AT color structure — all panel chrome derives from theme tokens */
-    --mob-at-panel-bg: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--theme-info) 16%, var(--theme-card) 84%) 0%,
-      color-mix(in srgb, var(--theme-info) 6%, var(--theme-card) 94%) 100%
-    );
-    --mob-at-panel-border: color-mix(in srgb, var(--theme-info) 55%, var(--theme-border) 45%);
-    --mob-at-surface: var(--theme-card);
-    --mob-at-surface-border: var(--theme-border);
-    --mob-at-surface-shadow: 0 1px 3px color-mix(in srgb, var(--theme-shadow) 65%, transparent);
-    --mob-at-chip-active-bg: var(--erp-chip-active-bg);
-    --mob-at-chip-active-fg: var(--erp-chip-active-fg);
-    --mob-at-chip-active-border: var(--erp-chip-active-border);
-    --mob-at-chip-idle-bg: var(--erp-chip-idle-bg);
-    --mob-at-chip-idle-fg: var(--erp-chip-idle-fg);
-    --mob-at-chip-idle-border: var(--erp-chip-idle-border);
-    --mob-at-key-bg: var(--theme-card);
-    --mob-at-key-fg: var(--theme-text);
-    --mob-at-key-border: var(--theme-border);
-    --mob-at-key-shadow: 0 1px 0 color-mix(in srgb, var(--theme-shadow) 40%, transparent);
-    --mob-at-caret: color-mix(in srgb, var(--theme-muted) 40%, transparent);
-    --mob-at-save-bg: var(--theme-info);
-    --mob-at-save-fg: color-mix(in srgb, var(--theme-card) 8%, #ffffff 92%);
-    /* Typography hierarchy — amount hero > save > keypad */
-    --mob-at-keypad-font: 36px;
-    --mob-at-keypad-min-h: 44px;
-    --mob-at-amount-font: 72px;
-    --mob-at-amount-min-h: 56px;
-    --mob-at-save-font: 15px;
-  }
+/* E9 — canonical --mob-at-* tokens (CSS-01: mobile_txn.css only) */
+:root {
+  --mob-at-panel-h: 340px;
+  /* Mobile AT color structure — all panel chrome derives from theme tokens */
+  --mob-at-panel-bg: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--theme-info) 16%, var(--theme-card) 84%) 0%,
+    color-mix(in srgb, var(--theme-info) 6%, var(--theme-card) 94%) 100%
+  );
+  --mob-at-panel-border: color-mix(in srgb, var(--theme-info) 55%, var(--theme-border) 45%);
+  --mob-at-surface: var(--theme-card);
+  --mob-at-surface-border: var(--theme-border);
+  --mob-at-surface-shadow: 0 1px 3px color-mix(in srgb, var(--theme-shadow) 65%, transparent);
+  --mob-at-chip-active-bg: var(--erp-chip-active-bg);
+  --mob-at-chip-active-fg: var(--erp-chip-active-fg);
+  --mob-at-chip-active-border: var(--erp-chip-active-border);
+  --mob-at-chip-idle-bg: var(--erp-chip-idle-bg);
+  --mob-at-chip-idle-fg: var(--erp-chip-idle-fg);
+  --mob-at-chip-idle-border: var(--erp-chip-idle-border);
+  --mob-at-key-bg: var(--theme-card);
+  --mob-at-key-fg: var(--theme-text);
+  --mob-at-key-border: var(--theme-border);
+  --mob-at-key-shadow: 0 1px 0 color-mix(in srgb, var(--theme-shadow) 40%, transparent);
+  --mob-at-caret: color-mix(in srgb, var(--theme-muted) 40%, transparent);
+  --mob-at-save-bg: var(--theme-info);
+  --mob-at-save-fg: color-mix(in srgb, var(--theme-card) 8%, #ffffff 92%);
+  /* Typography hierarchy — amount hero > save > keypad */
+  --mob-at-keypad-font: 36px;
+  --mob-at-keypad-min-h: 44px;
+  --mob-at-amount-font: 72px;
+  --mob-at-amount-min-h: 56px;
+  --mob-at-save-font: 15px;
+}
 
+@media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
   /* Hide desktop add-transaction host on phone */
   [data-testid="stMain"] [class*="st-key-erp_at_desktop_host"] {
     display: none !important;
@@ -254,11 +255,26 @@
     overflow: visible !important;
   }
 
+  /* AT-LIGHT-01 — strip Streamlit/BaseWeb wrapper backgrounds inside AT panel + picker */
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] [data-testid="stColumn"],
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] [data-testid="stHorizontalBlock"],
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] [data-testid="stElementContainer"],
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] [data-testid="stVerticalBlock"],
   [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] [data-testid="stVerticalBlockBorderWrapper"],
-  [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] [data-testid="stVerticalBlock"] {
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stColumn"],
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stHorizontalBlock"],
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stElementContainer"],
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stVerticalBlock"],
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stVerticalBlockBorderWrapper"] {
     border: none !important;
     background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
     padding: 0 !important;
+    min-width: 0 !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] [data-testid="stVerticalBlock"] {
     gap: 6px !important;
   }
 
@@ -327,43 +343,139 @@
 
   [data-testid="stMain"] [class*="st-key-mob_at_picker_hdr"] [data-testid="stHorizontalBlock"] {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
     gap: 8px !important;
     align-items: center !important;
     width: 100% !important;
     margin: 0 0 8px !important;
   }
 
-  /* Category / vendor picker sheet — sits above the entry panel */
-  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] {
-    position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: calc(
-      var(--bottom-nav-h) + var(--mob-at-panel-h) + env(safe-area-inset-bottom, 0px)
-    ) !important;
-    z-index: 99988 !important;
-    width: 100% !important;
-    max-width: 100vw !important;
+  [data-testid="stMain"] [class*="st-key-mob_at_picker_hdr"] [data-testid="stColumn"] {
+    background: transparent !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_at_picker_hdr"] [data-testid="stVerticalBlock"] {
+    background: transparent !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_at_picker_hdr"] [class*="st-key-mob_at_picker_back"] button {
+    min-height: 32px !important;
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+  }
+
+  /* AT page open — lock background scroll; panel scrolls internally (Salary, etc.) */
+  [data-testid="stAppViewContainer"]:has(.erp-at-mobile-host)
+    section[data-testid="stMain"] .block-container {
+    overflow: hidden !important;
+    touch-action: none !important;
+  }
+
+  [data-testid="stAppViewContainer"]:has(.erp-at-mobile-host):not(:has(.erp-at-picker-open-host))
+    [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] {
     max-height: min(
-      58vh,
-      calc(100vh - var(--hdr-h) - var(--bottom-nav-h) - var(--mob-at-panel-h) - 24px)
+      78dvh,
+      calc(100dvh - var(--hdr-h) - var(--bottom-nav-h) - 8px)
     ) !important;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
-    background: var(--theme-card) !important;
-    border-radius: 16px 16px 0 0 !important;
-    border-top: 1px solid var(--theme-border) !important;
-    box-shadow: 0 -8px 32px color-mix(in srgb, var(--theme-shadow) 75%, transparent) !important;
-    padding: 8px 12px 12px !important;
+    touch-action: pan-y !important;
+  }
+
+  /* AT picker open — explicit host marker (not stale Streamlit keys); modal scrim */
+  [data-testid="stAppViewContainer"]:has(.erp-at-mobile-host):has(.erp-at-picker-open-host) {
+    overflow: hidden !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+  }
+
+  [data-testid="stAppViewContainer"]:has(.erp-at-mobile-host):has(.erp-at-picker-open-host)::before {
+    content: "" !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 99979 !important;
+    background: color-mix(in srgb, var(--theme-text) 42%, transparent) !important;
+    pointer-events: none !important;
+  }
+
+  [data-testid="stAppViewContainer"]:has(.erp-at-mobile-host):has(.erp-at-picker-open-host)
+    section[data-testid="stMain"],
+  [data-testid="stAppViewContainer"]:has(.erp-at-mobile-host):has(.erp-at-picker-open-host)
+    section[data-testid="stMain"] .block-container {
+    overflow: hidden !important;
+    touch-action: none !important;
+  }
+
+  /* Hide bottom nav + FAB while picker is the active modal sheet */
+  [data-testid="stAppViewContainer"]:has(.erp-at-mobile-host):has(.erp-at-picker-open-host)
+    [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] {
+    visibility: hidden !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+  }
+
+  [data-testid="stAppViewContainer"]:has(.erp-at-mobile-host):has(.erp-at-picker-open-host)
+    [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] {
+    bottom: env(safe-area-inset-bottom, 0px) !important;
+    max-height: min(
+      72dvh,
+      calc(100dvh - var(--hdr-h) - 12px)
+    ) !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    touch-action: pan-y !important;
+  }
+
+  /* Picker sheet — in-flow panel content (not a floating second sheet) */
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
     margin: 0 !important;
   }
 
   [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stVerticalBlockBorderWrapper"],
-  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stVerticalBlock"] {
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stVerticalBlock"],
+  [data-testid="stMain"] [class*="st-key-mob_at_picker_hdr"] {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  [data-testid="stAppViewContainer"]:has(.erp-at-mobile-host):has(.erp-at-picker-open-host)
+    [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"],
+  [data-testid="stAppViewContainer"]:has(.erp-at-mobile-host):has(.erp-at-picker-open-host)
+    [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] {
+    touch-action: pan-y !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] {
     border: none !important;
     background: transparent !important;
     padding: 0 !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .erp-mob-at-picker-grab {
@@ -381,11 +493,24 @@
     padding: 4px 2px;
   }
 
-  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] input {
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stTextInput"] div[data-baseweb="input"],
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stTextInput"] [data-baseweb="base-input"],
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stTextInput"] > div {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="stTextInput"] input {
     min-height: 36px !important;
     font-size: 14px !important;
     border-radius: 10px !important;
     margin: 0 0 8px !important;
+    background: var(--mob-at-surface) !important;
+    background-color: var(--mob-at-surface) !important;
+    color: var(--theme-text) !important;
+    border: 1px solid var(--mob-at-surface-border) !important;
   }
 
   [data-testid="stMain"] [class*="st-key-mob_at_picker_hdr"] button {
@@ -658,37 +783,6 @@
   }
 }
 
-html.erp-mobile {
-  --mob-at-panel-h: 340px;
-  --mob-at-panel-bg: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--theme-info) 16%, var(--theme-card) 84%) 0%,
-    color-mix(in srgb, var(--theme-info) 6%, var(--theme-card) 94%) 100%
-  );
-  --mob-at-panel-border: color-mix(in srgb, var(--theme-info) 55%, var(--theme-border) 45%);
-  --mob-at-surface: var(--theme-card);
-  --mob-at-surface-border: var(--theme-border);
-  --mob-at-surface-shadow: 0 1px 3px color-mix(in srgb, var(--theme-shadow) 65%, transparent);
-  --mob-at-chip-active-bg: var(--erp-chip-active-bg);
-  --mob-at-chip-active-fg: var(--erp-chip-active-fg);
-  --mob-at-chip-active-border: var(--erp-chip-active-border);
-  --mob-at-chip-idle-bg: var(--erp-chip-idle-bg);
-  --mob-at-chip-idle-fg: var(--erp-chip-idle-fg);
-  --mob-at-chip-idle-border: var(--erp-chip-idle-border);
-  --mob-at-key-bg: var(--theme-card);
-  --mob-at-key-fg: var(--theme-text);
-  --mob-at-key-border: var(--theme-border);
-  --mob-at-key-shadow: 0 1px 0 color-mix(in srgb, var(--theme-shadow) 40%, transparent);
-  --mob-at-caret: color-mix(in srgb, var(--theme-muted) 40%, transparent);
-  --mob-at-save-bg: var(--theme-info);
-  --mob-at-save-fg: color-mix(in srgb, var(--theme-card) 8%, #ffffff 92%);
-  --mob-at-keypad-font: 36px;
-  --mob-at-keypad-min-h: 44px;
-  --mob-at-amount-font: 72px;
-  --mob-at-amount-min-h: 56px;
-  --mob-at-save-font: 15px;
-}
-
 html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_at_desktop_host"] {
   display: none !important;
 }
@@ -696,7 +790,7 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_at_desktop_host"] {
 html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_at_panel"] {
   position: fixed !important;
   bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px)) !important;
-  background: var(--mob-at-panel-bg) !important;
+  background: #0f1629 !important;
   border-top: 2px solid var(--mob-at-panel-border) !important;
 }
 
@@ -749,7 +843,246 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_vendor_trigger"] [
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_bank_pay_trigger"] [data-testid="stHorizontalBlock"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_card_bank_trigger"] [data-testid="stHorizontalBlock"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_inv_trigger"] [data-testid="stHorizontalBlock"],
-html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] [data-testid="stHorizontalBlock"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_hdr"] [data-testid="stHorizontalBlock"] {
   display: grid !important;
+}
+
+/* Grid picker rows (category, vendor, currency, …) — 3-col layout from @media contract */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] [data-testid="stHorizontalBlock"]:not(:has(.erp-mob-at-cat-dot)) {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  width: 100% !important;
+  margin: 0 0 6px !important;
+}
+
+/* Type picker grid rows only: dot column (22px) + full-width button */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] [data-testid="stHorizontalBlock"]:has(.erp-mob-at-cat-dot) {
+  display: grid !important;
+  grid-template-columns: 22px 1fr !important;
+  gap: 0 !important;
+  width: 100% !important;
+  align-items: center !important;
+  margin-bottom: 4px !important;
+}
+
+/* =========================================================
+   Concept C — Row 1 / Category row / Save row
+   ========================================================= */
+
+/* Row 1: 4-column grid for [Type | PM | Date | Currency] */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_row1"] [data-testid="stHorizontalBlock"] {
+  display: grid !important;
+  grid-template-columns: 2.2fr 2fr 1.5fr 0.9fr !important;
+  gap: 6px !important;
+  width: 100% !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_row1"] {
+  padding: 8px 0 4px !important;
+}
+
+/* Row 1 buttons: compact, dark surface */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_row1"] button {
+  font-size: 0.78rem !important;
+  padding: 6px 4px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  border-radius: 8px !important;
+  background: #1a2540 !important;
+  border-color: #2a3a5c !important;
+  color: #e2e8f0 !important;
+  min-height: 36px !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_row1"] button:hover {
+  background: #243050 !important;
+  border-color: #3b82f6 !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_row1"] button p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_row1"] button span {
+  color: #e2e8f0 !important;
+}
+
+/* Category row: dot column (markdown) + button column (plain text) */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_c_cat_row"] [data-testid="stHorizontalBlock"] {
+  display: grid !important;
+  grid-template-columns: 22px 1fr !important;
+  gap: 0 !important;
+  width: 100% !important;
+  align-items: center !important;
+}
+
+/* Dot div: coloured circle, vertically centred in the dot column */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_c_cat_row"] .erp-mob-at-cat-dot {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  margin: auto !important;
+  flex-shrink: 0 !important;
+}
+
+/* Also style dots inside the type picker sheet */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] .erp-mob-at-cat-dot {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  margin: auto !important;
+  flex-shrink: 0 !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_c_cat_row"] button {
+  text-align: left !important;
+  padding: 10px 14px !important;
+  border-radius: 10px !important;
+  font-size: 0.88rem !important;
+  background: #1a2540 !important;
+  border-color: #2a3a5c !important;
+  color: #e2e8f0 !important;
+  min-height: 42px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_c_cat_row"] button:hover {
+  background: #243050 !important;
+  border-color: #3b82f6 !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_c_cat_row"] button p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_c_cat_row"] button span {
+  color: #e2e8f0 !important;
+}
+
+/* Amount row: full-width, centred, large text — Concept C dark surface */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] {
+  padding: 12px 0 4px !important;
+  background: #0f1629 !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_amount_row"]
+  [data-testid="stVerticalBlockBorderWrapper"] {
+  background: #0f1629 !important;
+  border-color: #2a3a5c !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_amount_row"] .erp-mob-at-amount-display {
+  text-align: center !important;
+  width: 100% !important;
+}
+
+/* Keypad buttons: Concept C dark surface */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_key_"] button,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_keypad"] button {
+  background: #1a2540 !important;
+  border-color: #2a3a5c !important;
+  color: #e2e8f0 !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_key_"] button p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_key_"] button span,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_keypad"] button p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_keypad"] button span {
+  color: #e2e8f0 !important;
+}
+
+/* Save row: full-width primary button */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] {
+  padding: 4px 0 8px !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] [data-testid="stHorizontalBlock"] {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  width: 100% !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] button[kind="primary"],
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] button[data-testid="stBaseButton-primary"],
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] [class*="st-key-mob_at_save"] button[kind="primary"],
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] [class*="st-key-mob_at_save"] button[data-testid="stBaseButton-primary"] {
+  background: #3b82f6 !important;
+  border: 1px solid #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+  border-radius: 12px !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  min-height: 48px !important;
+  letter-spacing: 0.03em !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] button[kind="primary"] p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] button[kind="primary"] span,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] button[data-testid="stBaseButton-primary"] p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] button[data-testid="stBaseButton-primary"] span,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] [class*="st-key-mob_at_save"] button[kind="primary"] p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] [class*="st-key-mob_at_save"] button[kind="primary"] span,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] [class*="st-key-mob_at_save"] button[data-testid="stBaseButton-primary"] p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] [class*="st-key-mob_at_save"] button[data-testid="stBaseButton-primary"] span {
+  color: #ffffff !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] button[kind="primary"]:hover,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] button[data-testid="stBaseButton-primary"]:hover,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] [class*="st-key-mob_at_save"] button[kind="primary"]:hover,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_save_row"] [class*="st-key-mob_at_save"] button[data-testid="stBaseButton-primary"]:hover {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+/* Type picker: full-width buttons with dot HTML */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button {
+  text-align: left !important;
+  padding: 10px 14px !important;
+}
+
+/* PICKER-02 — inactive picker grid buttons */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[kind="secondary"],
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[data-testid="stBaseButton-secondary"] {
+  background: #1a2540 !important;
+  border-color: #2a3a5c !important;
+  color: #e2e8f0 !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[kind="secondary"] p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[kind="secondary"] span,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[data-testid="stBaseButton-secondary"] p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[data-testid="stBaseButton-secondary"] span {
+  color: #e2e8f0 !important;
+}
+
+/* PICKER-01 — active picker grid buttons */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[kind="primary"],
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[data-testid="stBaseButton-primary"] {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: #e2e8f0 !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[kind="primary"] p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[kind="primary"] span,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[data-testid="stBaseButton-primary"] p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_picker_grid"] button[data-testid="stBaseButton-primary"] span {
+  color: #e2e8f0 !important;
+}
+
+/* PICKER-03 — date confirm button inside date picker sheet */
+html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] button[data-testid="stBaseButton-primary"],
+html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="baseButton-primary"] {
+  background: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+  width: 100% !important;
+  border-radius: 10px !important;
+  min-height: 44px !important;
+}
+
+html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] button[data-testid="stBaseButton-primary"] p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] button[data-testid="stBaseButton-primary"] span,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="baseButton-primary"] button p,
+html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_at_picker_sheet"] [data-testid="baseButton-primary"] button span {
+  color: #ffffff !important;
 }

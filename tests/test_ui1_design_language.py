@@ -42,13 +42,30 @@ def test_ui1_chip_primary_unified():
 
 
 def test_mobile_reports_chips_use_tinted_not_solid():
-    css = _read("ui", "mobile_reports.css")
-    assert "var(--erp-chip-active-bg)" in css
-    assert "background: var(--theme-info) !important" not in css.split("mob_rpt")[1]
+    """Report chips use ERP chip tokens (widgets.css); mobile_reports.css is layout only."""
+    widgets = _read("ui", "widgets.css")
+    reports = _read("ui", "mobile_reports.css")
+    assert "st-key-mob_rpt_sel_" in widgets
+    assert "st-key-mob_rpt_main_tabs" in widgets
+    assert "var(--erp-chip-active-bg)" in widgets
+    assert "var(--erp-chip-active-fg)" in widgets
+    assert "var(--erp-chip-idle-bg)" in widgets
+    assert "var(--erp-chip-idle-fg)" in widgets
+    # CSS-01 / E8a–E8b: chip colour grammar not duplicated in mobile_reports.css.
+    assert "var(--erp-chip-active-bg)" not in reports
+    assert "var(--erp-chip-active-fg)" not in reports
+    assert "var(--erp-chip-idle-bg)" not in reports
+    assert "var(--erp-chip-idle-fg)" not in reports
+    # No solid theme-info CTA styling in report layout sheet.
+    assert "background: var(--theme-info) !important" not in reports.split("mob_rpt")[1]
 
 
 def test_mob_at_chips_alias_erp_tokens():
+    widgets = _read("ui", "widgets.css")
     css = _read("ui", "mobile_txn.css")
+    # CSS-01 / E9: --mob-at-* tokens owned solely by mobile_txn.css :root.
+    assert "--mob-at-chip-active-bg:" not in widgets
+    assert css.count("--mob-at-chip-active-bg:") == 1
     assert "--mob-at-chip-active-bg: var(--erp-chip-active-bg)" in css
 
 

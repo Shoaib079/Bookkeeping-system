@@ -198,9 +198,11 @@ def test_switch_still_clears_at_draft(db):
 
 def test_main_and_login_use_shared_restore_path():
     main_src = inspect.getsource(erp.main)
+    establish_src = inspect.getsource(erp._establish_auth_session)
     login_src = inspect.getsource(erp._login)
     assert "_try_restore_last_active_company" in main_src
-    assert "_try_restore_last_active_company" in login_src
+    assert "_try_restore_last_active_company" in establish_src
+    assert "_establish_auth_session" in login_src
 
 
 def test_company_picker_uses_activate_helper():

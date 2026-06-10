@@ -185,7 +185,16 @@ from ui.section import (
     theme_table_html,
 )
 from ui.setup01_wizard import render_setup01_wizard
-from ui.theme import bootstrap_theme, chart_reference_color, chart_series_color, role_accent_css_var
+from ui.theme import (
+    apply_altair_theme,
+    bootstrap_theme,
+    chart_reference_color,
+    chart_series_color,
+    render_themed_bar,
+    render_themed_grouped_bar,
+    render_themed_line,
+    role_accent_css_var,
+)
 
 _validate_settings_registry()
 
@@ -247,10 +256,12 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Development mode ──────────────────────────────────────────────────────────
-# Enabled only when ERP_DEVELOPMENT_MODE is set (e.g. export ERP_DEVELOPMENT_MODE=true).
-# The full auth system stays intact; leave unset for production deployments.
-DEVELOPMENT_MODE = os.environ.get("ERP_DEVELOPMENT_MODE", "").lower() in ("1", "true", "yes")
+# ── Development mode (DEV-AUTH-01) ───────────────────────────────────────────
+# Local bypass only: ERP_DEV_MODE=1 streamlit run app.py
+# Optional dev user: ERP_DEV_USER=admin (default)
+DEV_MODE = os.getenv("ERP_DEV_MODE", "0") == "1"
+DEVELOPMENT_MODE = DEV_MODE  # legacy alias for tests and existing call sites
+_DEV_USERNAME = (os.getenv("ERP_DEV_USER", "admin") or "admin").strip()
 
 SETTINGS_FILE = "settings.json"  # kept for one-time migration reference only
 
@@ -2802,22 +2813,16 @@ _DEV_USER = {
 
 
 def _current_user() -> dict | None:
-    """Return the logged-in user dict from session state, or None.
-
-    When DEVELOPMENT_MODE is True, returns _DEV_USER unless the user signed out
-    (session_logged_out), in which case None is returned so render_login() runs.
-    """
-    if DEVELOPMENT_MODE:
-        if st.session_state.get(_SESSION_LOGGED_OUT):
-            return None
-        return _DEV_USER
+    """Return the logged-in user dict from session state, or None."""
+    if st.session_state.get(_SESSION_LOGGED_OUT):
+        return None
     u = st.session_state.get("auth_user")
     exp = st.session_state.get("auth_expires")
     if u and exp and datetime.datetime.now() < exp:
         return u
-    # Expired — clear silently
-    st.session_state.pop("auth_user", None)
-    st.session_state.pop("auth_expires", None)
+    if u:
+        st.session_state.pop("auth_user", None)
+        st.session_state.pop("auth_expires", None)
     return None
 
 
@@ -4347,19 +4352,8 @@ def _notif_counts(user_id: int) -> dict:
         return {"overdue_ar": 0, "overdue_ap": 0, "low_stock": 0, "backup": 0, "total": 0}
 
 
-def _login(session, username: str, password: str) -> str | None:
-    """Attempt login. Returns None on success or an error string."""
-    user = session.query(User).filter_by(username=username.strip(), is_active=True).first()
-    if not user or not _verify_password(password, user.password_hash):
-        return _t("login.bad_credentials")
-    # Record this login timestamp
-    try:
-        user.last_login = datetime.datetime.now()
-        session.commit()
-    except Exception:
-        session.rollback()
-    # Phase 14B: load active company memberships before writing auth state.
-    # If the user has no active company, block login entirely.
+def _establish_auth_session(session, user) -> None:
+    """Write auth + company context after a user identity is confirmed."""
     _memberships = (
         session.query(CompanyUser)
         .join(Company, CompanyUser.company_id == Company.id)
@@ -4391,9 +4385,7 @@ def _login(session, username: str, password: str) -> str | None:
         )
     else:
         _try_restore_last_active_company(session, user.id)
-    # Multi-company without saved pref: active_company_id stays absent → company picker
 
-    # Load persisted theme preference (light | dark | system)
     _theme_row = session.get(AppSetting, f"user_pref_{user.id}_theme")
     if _theme_row and _theme_row.value:
         _tv = _theme_row.value.strip().lower()
@@ -4404,12 +4396,39 @@ def _login(session, username: str, password: str) -> str | None:
             st.session_state["dark_mode"] = False
         else:
             st.session_state["dark_mode"] = False
-    # Load persisted landing page preference
     _landing_row = session.get(AppSetting, f"user_pref_{user.id}_landing_page")
     if _landing_row and _landing_row.value:
         st.session_state["preferred_landing"] = _landing_row.value
     _sync_ui_locale_from_user(user.id)
     st.session_state.pop(_SESSION_LOGGED_OUT, None)
+
+
+def _dev_auto_login(session) -> str | None:
+    """DEV-AUTH-01: establish a normal auth session without the login UI."""
+    if not DEV_MODE:
+        return None
+    if st.session_state.get(_SESSION_LOGGED_OUT):
+        return None
+    if st.session_state.get("auth_user"):
+        return None
+    user = session.query(User).filter_by(username=_DEV_USERNAME, is_active=True).first()
+    if not user:
+        return f"Dev mode: user {_DEV_USERNAME!r} not found"
+    _establish_auth_session(session, user)
+    return None
+
+
+def _login(session, username: str, password: str) -> str | None:
+    """Attempt login. Returns None on success or an error string."""
+    user = session.query(User).filter_by(username=username.strip(), is_active=True).first()
+    if not user or not _verify_password(password, user.password_hash):
+        return _t("login.bad_credentials")
+    try:
+        user.last_login = datetime.datetime.now()
+        session.commit()
+    except Exception:
+        session.rollback()
+    _establish_auth_session(session, user)
     return None
 
 
@@ -4723,7 +4742,7 @@ def render_login(session):
                 st.rerun()
 
             st.markdown(
-                '<div style="font-size:11px;color:#9ca3af;text-align:center;margin-top:10px;">'
+                '<div style="font-size:11px;color:var(--theme-muted);text-align:center;margin-top:10px;">'
                 f'{_t("login.default_creds")}</div>',
                 unsafe_allow_html=True,
             )
@@ -10598,11 +10617,11 @@ def render_dashboard(session):
             "Net":      [round(_trend_sales[d] - _trend_exp[d], 2) for d in _trend_days],
         }
         import pandas as _pd_trend
-        _df_trend = _pd_trend.DataFrame(_trend_data).set_index("Date")
+        _df_trend = _pd_trend.DataFrame(_trend_data)
         try:
-            st.bar_chart(_df_trend[["Sales", "Expenses"]])
+            render_themed_grouped_bar(_df_trend, "Date", ["Sales", "Expenses"])
         except Exception:
-            _render_readable_df(_df_trend)
+            _render_readable_df(_df_trend.set_index("Date"))
 
     # ── This Month ────────────────────────────────────────────────────────────
     with st.container(border=True):
@@ -10915,6 +10934,43 @@ class _MobAtChipOption:
 def _mob_at_close_picker() -> None:
     st.session_state.pop("mob_at_picker", None)
     st.session_state.pop("mob_at_picker_search", None)
+    st.session_state.pop("mob_at_date_custom", None)
+
+
+def _mob_at_parse_date_text(raw: str) -> datetime.date | None:
+    """Parse YYYY-MM-DD for mobile custom date entry (no calendar popup)."""
+    s = (raw or "").strip()
+    if not s:
+        return None
+    try:
+        return datetime.date.fromisoformat(s)
+    except ValueError:
+        return None
+
+
+def _mob_at_render_picker_hdr(title: str) -> bool:
+    """Picker sheet header — Back returns to AT panel; × also closes."""
+    with st.container(border=False, key="mob_at_picker_hdr"):
+        bc, tc, xc = st.columns([1.3, 4, 0.7], gap="small")
+        with bc:
+            if st.button(
+                f"← {_t('common.back')}",
+                key="mob_at_picker_back",
+                use_container_width=True,
+                type="secondary",
+            ):
+                _mob_at_close_picker()
+                return True
+        with tc:
+            st.markdown(
+                f'<div class="erp-mob-at-picker-title">{html.escape(title)}</div>',
+                unsafe_allow_html=True,
+            )
+        with xc:
+            if st.button("×", key="mob_at_picker_close", help=_t("common.cancel")):
+                _mob_at_close_picker()
+                return True
+    return False
 
 
 def _mob_at_open_picker(picker_kind: str) -> None:
@@ -11206,17 +11262,8 @@ def _mob_at_render_grid_picker_sheet(
             '<div class="erp-mob-at-picker-grab"></div>',
             unsafe_allow_html=True,
         )
-        with st.container(border=False, key="mob_at_picker_hdr"):
-            hc, xc = st.columns([6, 1], gap="small")
-            with hc:
-                st.markdown(
-                    f'<div class="erp-mob-at-picker-title">{html.escape(title)}</div>',
-                    unsafe_allow_html=True,
-                )
-            with xc:
-                if st.button("×", key="mob_at_picker_close", help=_t("common.cancel")):
-                    _mob_at_close_picker()
-                    return True
+        if _mob_at_render_picker_hdr(title):
+            return True
 
         display_options = options
         if searchable:
@@ -11270,17 +11317,8 @@ def _mob_at_render_list_picker_sheet(
             '<div class="erp-mob-at-picker-grab"></div>',
             unsafe_allow_html=True,
         )
-        with st.container(border=False, key="mob_at_picker_hdr"):
-            hc, xc = st.columns([6, 1], gap="small")
-            with hc:
-                st.markdown(
-                    f'<div class="erp-mob-at-picker-title">{html.escape(title)}</div>',
-                    unsafe_allow_html=True,
-                )
-            with xc:
-                if st.button("×", key="mob_at_picker_close", help=_t("common.cancel")):
-                    _mob_at_close_picker()
-                    return True
+        if _mob_at_render_picker_hdr(title):
+            return True
 
         display_options = options
         if searchable:
@@ -11608,17 +11646,8 @@ def _mob_at_render_txn_type_picker_sheet() -> bool:
     """Concept C — bottom sheet to pick transaction type."""
     with st.container(border=False, key="erp_mob_at_picker_sheet"):
         st.markdown('<div class="erp-mob-at-picker-grab"></div>', unsafe_allow_html=True)
-        with st.container(border=False, key="mob_at_picker_hdr"):
-            hc, xc = st.columns([6, 1], gap="small")
-            with hc:
-                st.markdown(
-                    '<div class="erp-mob-at-picker-title">Transaction Type</div>',
-                    unsafe_allow_html=True,
-                )
-            with xc:
-                if st.button("×", key="mob_at_picker_close", help=_t("common.cancel")):
-                    _mob_at_close_picker()
-                    return True
+        if _mob_at_render_picker_hdr(_tf("txn.mob.pick_type", "Transaction Type")):
+            return True
 
         current_key = _mob_at_c_current_type_key()
         with st.container(border=False, key="mob_at_picker_grid"):
@@ -11671,17 +11700,8 @@ def _mob_at_render_payment_picker_sheet(session) -> bool:
     current_pm = st.session_state.get("at_pm", "Cash")
     with st.container(border=False, key="erp_mob_at_picker_sheet"):
         st.markdown('<div class="erp-mob-at-picker-grab"></div>', unsafe_allow_html=True)
-        with st.container(border=False, key="mob_at_picker_hdr"):
-            hc, xc = st.columns([6, 1], gap="small")
-            with hc:
-                st.markdown(
-                    '<div class="erp-mob-at-picker-title">Payment Method</div>',
-                    unsafe_allow_html=True,
-                )
-            with xc:
-                if st.button("×", key="mob_at_picker_close", help=_t("common.cancel")):
-                    _mob_at_close_picker()
-                    return True
+        if _mob_at_render_picker_hdr(_tf("txn.mob.pick_payment", "Payment Method")):
+            return True
 
         with st.container(border=False, key="mob_at_picker_grid"):
             for pm_val, pm_label in methods:
@@ -11699,37 +11719,77 @@ def _mob_at_render_payment_picker_sheet(session) -> bool:
 
 
 def _mob_at_render_date_picker_sheet() -> bool:
-    """Concept C — bottom sheet with a date_input for at_date."""
+    """Mobile date picker — Today / Yesterday / Custom (no Streamlit calendar popup)."""
+    today = datetime.date.today()
+    yesterday = today - datetime.timedelta(days=1)
+    current = st.session_state.get("at_date", today)
+    if not isinstance(current, datetime.date):
+        current = today
+    custom_open = bool(st.session_state.get("mob_at_date_custom")) or (
+        current not in (today, yesterday)
+    )
+
     with st.container(border=False, key="erp_mob_at_picker_sheet"):
         st.markdown('<div class="erp-mob-at-picker-grab"></div>', unsafe_allow_html=True)
-        with st.container(border=False, key="mob_at_picker_hdr"):
-            hc, xc = st.columns([6, 1], gap="small")
-            with hc:
-                st.markdown(
-                    '<div class="erp-mob-at-picker-title">Date</div>',
-                    unsafe_allow_html=True,
-                )
-            with xc:
-                if st.button("×", key="mob_at_picker_close", help=_t("common.cancel")):
-                    _mob_at_close_picker()
-                    return True
-
-        new_date = st.date_input(
-            "Date",
-            value=st.session_state.get("at_date", datetime.date.today()),
-            key="mob_at_c_date_input",
-            label_visibility="collapsed",
-        )
-        if new_date != st.session_state.get("at_date"):
-            st.session_state["at_date"] = new_date
-        if st.button(
-            "✓ Confirm Date",
-            key="mob_at_c_date_confirm",
-            use_container_width=True,
-            type="primary",
-        ):
-            _mob_at_close_picker()
+        if _mob_at_render_picker_hdr(_tf("txn.mob.pick_date", "Date")):
             return True
+
+        with st.container(border=False, key="mob_at_picker_grid"):
+            if st.button(
+                _tf("txn.mob.today", "Today"),
+                key="mob_at_pick_date_today",
+                use_container_width=True,
+                type="primary" if current == today and not custom_open else "secondary",
+            ):
+                st.session_state["at_date"] = today
+                st.session_state.pop("mob_at_date_custom", None)
+                _mob_at_close_picker()
+                return True
+            if st.button(
+                _tf("txn.mob.date_yesterday", "Yesterday"),
+                key="mob_at_pick_date_yesterday",
+                use_container_width=True,
+                type="primary" if current == yesterday and not custom_open else "secondary",
+            ):
+                st.session_state["at_date"] = yesterday
+                st.session_state.pop("mob_at_date_custom", None)
+                _mob_at_close_picker()
+                return True
+            if st.button(
+                _tf("txn.mob.date_custom", "Custom date"),
+                key="mob_at_pick_date_custom",
+                use_container_width=True,
+                type="primary" if custom_open else "secondary",
+            ):
+                st.session_state["mob_at_date_custom"] = True
+                st.session_state["mob_at_date_custom_str"] = current.isoformat()
+                st.rerun()
+
+        if custom_open:
+            if "mob_at_date_custom_str" not in st.session_state:
+                st.session_state["mob_at_date_custom_str"] = current.isoformat()
+            st.text_input(
+                _tf("txn.mob.date_custom_label", "Date (YYYY-MM-DD)"),
+                key="mob_at_date_custom_str",
+                label_visibility="collapsed",
+                placeholder=_tf("txn.mob.date_custom_ph", "YYYY-MM-DD"),
+            )
+            if st.button(
+                _tf("txn.mob.date_confirm", "✓ Confirm Date"),
+                key="mob_at_c_date_confirm",
+                use_container_width=True,
+                type="primary",
+            ):
+                parsed = _mob_at_parse_date_text(
+                    st.session_state.get("mob_at_date_custom_str", "")
+                )
+                if parsed is None:
+                    st.warning(_tf("txn.mob.date_invalid", "Enter a valid date (YYYY-MM-DD)."))
+                    return False
+                st.session_state["at_date"] = parsed
+                st.session_state.pop("mob_at_date_custom", None)
+                _mob_at_close_picker()
+                return True
     return False
 
 
@@ -11739,17 +11799,8 @@ def _mob_at_render_currency_picker_sheet(currency_default: str) -> bool:
     current = st.session_state.get("at_currency", currency_default)
     with st.container(border=False, key="erp_mob_at_picker_sheet"):
         st.markdown('<div class="erp-mob-at-picker-grab"></div>', unsafe_allow_html=True)
-        with st.container(border=False, key="mob_at_picker_hdr"):
-            hc, xc = st.columns([6, 1], gap="small")
-            with hc:
-                st.markdown(
-                    '<div class="erp-mob-at-picker-title">Currency</div>',
-                    unsafe_allow_html=True,
-                )
-            with xc:
-                if st.button("×", key="mob_at_picker_close", help=_t("common.cancel")):
-                    _mob_at_close_picker()
-                    return True
+        if _mob_at_render_picker_hdr(_tf("txn.mob.pick_currency", "Currency")):
+            return True
 
         with st.container(border=False, key="mob_at_picker_grid"):
             ccols = st.columns(len(currencies), gap="small")
@@ -11781,7 +11832,7 @@ def _mob_at_render_picker_sheet(
     bank_accounts: list,
     currency_default: str,
 ) -> bool:
-    """Scrollable picker above the blue entry panel. Returns True if rerun needed."""
+    """In-panel picker content (replaces AT controls while open). Returns True if rerun needed."""
     # Concept C new picker modes
     if picker_kind == "txn_type":
         return _mob_at_render_txn_type_picker_sheet()
@@ -11909,6 +11960,7 @@ def _mob_at_render_c_row1(currency_default: str) -> None:
                 type="secondary",
             ):
                 _mob_at_open_picker("txn_type")
+                st.rerun()
         with rc[1]:
             # Hide PM button for types that have no payment choice
             has_pm = idx not in (5,) and not _mob_at_is_salary_mode() or _mob_at_is_salary_mode()
@@ -11921,6 +11973,7 @@ def _mob_at_render_c_row1(currency_default: str) -> None:
             ):
                 if idx != 5:
                     _mob_at_open_picker("payment")
+                    st.rerun()
         with rc[2]:
             if st.button(
                 date_label,
@@ -11929,6 +11982,7 @@ def _mob_at_render_c_row1(currency_default: str) -> None:
                 type="secondary",
             ):
                 _mob_at_open_picker("date")
+                st.rerun()
         with rc[3]:
             if st.button(
                 currency_label,
@@ -11937,6 +11991,7 @@ def _mob_at_render_c_row1(currency_default: str) -> None:
                 type="secondary",
             ):
                 _mob_at_open_picker("currency")
+                st.rerun()
 
 
 def _mob_at_render_c_cat_row(session, txn_type: str, *, picker_kind: str) -> bool:
@@ -12803,169 +12858,171 @@ def _render_add_transaction_mobile(
         st.caption(_t("txn.pending_attachment_hint", filename=_pending_att.get("name", "")))
 
     with st.container(border=False, key="erp_mob_at_panel"):
-        st.markdown(
-            '<div class="erp-mob-at-panel-top"><div class="erp-mob-at-panel-caret"></div></div>',
-            unsafe_allow_html=True,
-        )
-
-        # ── Concept C: compact Row 1 (type | payment | date | currency) ──
-        _mob_at_render_c_row1(currency_default)
-
-        # Re-derive type after any picker selection in this render pass
-        at_idx = st.session_state.get("at_type_idx", 0)
-        if _mob_at_is_salary_mode():
-            at_idx = _MOB_AT_SALARY_IDX
-        txn_type = (
-            type_names[at_idx]
-            if 0 <= at_idx < len(type_names)
-            else "Expense"
-        )
-        _mob_at_ensure_defaults(session, txn_type, currency_default, vendors)
-
-        # ── Context-specific fields (no PM chips / currency chips — those are in Row 1) ──
-        if _mob_at_is_salary_mode():
-            workers = (
-                cq(session, Worker)
-                .filter_by(is_active=True)
-                .order_by(Worker.name)
-                .all()
+        _picker = st.session_state.get("mob_at_picker")
+        if _picker:
+            st.markdown(
+                '<div class="erp-at-picker-open-host"></div>',
+                unsafe_allow_html=True,
             )
-            if workers:
-                w_labels = {w.id: w.name for w in workers}
-                st.selectbox(
-                    _t("worker.mv_worker_label"),
-                    options=list(w_labels.keys()),
-                    format_func=lambda i: w_labels[i],
-                    key="mob_at_worker_id",
-                    label_visibility="collapsed",
-                )
-            else:
-                st.caption(_t("worker.no_workers"))
-            if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
-                st.rerun()
-            _mob_at_render_salary_fields(session, currency_default)
-            _mob_at_render_fx_hook(currency_default)
-
-        elif at_idx == 0:  # Sale
-            if st.session_state.get("at_pm") == "Card" and not _card_settlement_on(session):
-                _at_clear_invalid_card_bank_selection(bank_accounts)
-                _deposit_accts = _at_sale_card_deposit_accounts(bank_accounts)
-                if _deposit_accts:
-                    if _mob_at_render_card_bank_trigger(bank_accounts):
-                        st.rerun()
-                else:
-                    st.caption(_t("txn.no_bank_add"))
-            if _mob_at_render_c_cat_row(session, "Sale", picker_kind="sale_cat"):
-                st.rerun()
-            if _mob_at_render_subcategory_trigger(session, "Sale", picker_kind="sale_subcat"):
-                st.rerun()
-            _mob_at_render_fx_hook(currency_default)
-
-        elif at_idx == 1:  # Expense
-            if _mob_at_render_c_cat_row(session, "Expense", picker_kind="expense_cat"):
-                st.rerun()
-            if _mob_at_render_subcategory_trigger(session, "Expense", picker_kind="expense_subcat"):
-                st.rerun()
-            if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
-                st.rerun()
-            _mob_at_render_company_cc_select(session, txn_type="Expense")
-            _mob_at_render_fx_hook(currency_default)
-
-        elif at_idx == 2:  # Purchase
-            if _mob_at_render_vendor_trigger(session, vendors):
-                st.rerun()
-            if _mob_at_render_c_cat_row(session, "Purchase", picker_kind="purchase_cat"):
-                st.rerun()
-            if _mob_at_render_subcategory_trigger(session, "Purchase", picker_kind="purchase_subcat"):
-                st.rerun()
-            if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
-                st.rerun()
-            _mob_at_render_company_cc_select(session, txn_type="Purchase")
-            _mob_at_render_fx_hook(currency_default)
-
-        elif txn_type == "Customer Payment":
-            if open_sales:
-                if _mob_at_render_invoice_trigger(open_sales):
-                    st.rerun()
-                _mob_inv = _at_sale_from_invoice_choice(
-                    open_sales, st.session_state.get("at_inv")
-                )
-                if _mob_inv:
-                    st.caption(
-                        _t(
-                            "txn.payable_outstanding",
-                            currency=currency_default,
-                            balance=_mob_inv.balance,
-                        )
-                    )
-            if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
-                st.rerun()
-            _mob_at_render_fx_hook(currency_default)
-
-        elif txn_type == "Supplier Payment":
-            _at_clear_category_session_state()
-            if _mob_at_render_vendor_trigger(session, vendors):
-                st.rerun()
-            if vendors and st.session_state.get("at_vendor"):
-                _mob_at_sync_select_widgets()
-                _sp_vendor = next(
-                    (v for v in vendors if v.name == st.session_state.get("at_vendor")),
-                    None,
-                )
-                _pay_opts = (
-                    _mob_at_payable_options(session, _sp_vendor.id, currency_default)
-                    if _sp_vendor
-                    else []
-                )
-                if _pay_opts:
-                    if _mob_at_render_payable_trigger(session, vendors, currency_default):
-                        st.rerun()
-                    if st.session_state.get("at_payable_id"):
-                        _mob_pay = session.get(Payable, st.session_state["at_payable_id"])
-                        if _mob_pay:
-                            st.caption(
-                                _t(
-                                    "txn.payable_outstanding",
-                                    currency=currency_default,
-                                    balance=_payable_balance(_mob_pay),
-                                )
-                            )
-                else:
-                    st.caption(_t("txn.no_open_payable"))
-            if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
-                st.rerun()
-            _mob_at_render_company_cc_select(session, txn_type="Supplier Payment")
-            _mob_at_render_fx_hook(currency_default)
-
-        elif txn_type == "Bank Transaction" and bank_accounts:
-            if _mob_at_render_bank_trigger(bank_accounts):
-                st.rerun()
-            if _mob_at_button_row(
-                [("Deposit", "Deposit"), ("Withdrawal", "Withdrawal")],
-                st.session_state.get("at_bank_sub", "Deposit"),
-                "mob_at_bank",
-                "at_bank_sub",
-                row_key="mob_at_pm2",
+            if _mob_at_render_picker_sheet(
+                session,
+                picker_kind=_picker,
+                vendors=vendors,
+                open_sales=open_sales,
+                bank_accounts=bank_accounts,
+                currency_default=currency_default,
             ):
                 st.rerun()
+        else:
+            st.markdown(
+                '<div class="erp-mob-at-panel-top"><div class="erp-mob-at-panel-caret"></div></div>',
+                unsafe_allow_html=True,
+            )
 
-        # When a picker sheet is open, suppress the amount/save/keypad so the
-        # picker floats above a clean panel instead of overlapping the keypad.
-        if not st.session_state.get("mob_at_picker"):
+            # ── Concept C: compact Row 1 (type | payment | date | currency) ──
+            _mob_at_render_c_row1(currency_default)
+
+            # Re-derive type after any picker selection in this render pass
+            at_idx = st.session_state.get("at_type_idx", 0)
+            if _mob_at_is_salary_mode():
+                at_idx = _MOB_AT_SALARY_IDX
+            txn_type = (
+                type_names[at_idx]
+                if 0 <= at_idx < len(type_names)
+                else "Expense"
+            )
+            _mob_at_ensure_defaults(session, txn_type, currency_default, vendors)
+
+            # ── Context-specific fields (no PM chips / currency chips — those are in Row 1) ──
+            if _mob_at_is_salary_mode():
+                workers = (
+                    cq(session, Worker)
+                    .filter_by(is_active=True)
+                    .order_by(Worker.name)
+                    .all()
+                )
+                if workers:
+                    w_labels = {w.id: w.name for w in workers}
+                    st.selectbox(
+                        _t("worker.mv_worker_label"),
+                        options=list(w_labels.keys()),
+                        format_func=lambda i: w_labels[i],
+                        key="mob_at_worker_id",
+                        label_visibility="collapsed",
+                    )
+                else:
+                    st.caption(_t("worker.no_workers"))
+                if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
+                    st.rerun()
+                _mob_at_render_salary_fields(session, currency_default)
+                _mob_at_render_fx_hook(currency_default)
+
+            elif at_idx == 0:  # Sale
+                if st.session_state.get("at_pm") == "Card" and not _card_settlement_on(session):
+                    _at_clear_invalid_card_bank_selection(bank_accounts)
+                    _deposit_accts = _at_sale_card_deposit_accounts(bank_accounts)
+                    if _deposit_accts:
+                        if _mob_at_render_card_bank_trigger(bank_accounts):
+                            st.rerun()
+                    else:
+                        st.caption(_t("txn.no_bank_add"))
+                if _mob_at_render_c_cat_row(session, "Sale", picker_kind="sale_cat"):
+                    st.rerun()
+                if _mob_at_render_subcategory_trigger(session, "Sale", picker_kind="sale_subcat"):
+                    st.rerun()
+                _mob_at_render_fx_hook(currency_default)
+
+            elif at_idx == 1:  # Expense
+                if _mob_at_render_c_cat_row(session, "Expense", picker_kind="expense_cat"):
+                    st.rerun()
+                if _mob_at_render_subcategory_trigger(session, "Expense", picker_kind="expense_subcat"):
+                    st.rerun()
+                if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
+                    st.rerun()
+                _mob_at_render_company_cc_select(session, txn_type="Expense")
+                _mob_at_render_fx_hook(currency_default)
+
+            elif at_idx == 2:  # Purchase
+                if _mob_at_render_vendor_trigger(session, vendors):
+                    st.rerun()
+                if _mob_at_render_c_cat_row(session, "Purchase", picker_kind="purchase_cat"):
+                    st.rerun()
+                if _mob_at_render_subcategory_trigger(session, "Purchase", picker_kind="purchase_subcat"):
+                    st.rerun()
+                if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
+                    st.rerun()
+                _mob_at_render_company_cc_select(session, txn_type="Purchase")
+                _mob_at_render_fx_hook(currency_default)
+
+            elif txn_type == "Customer Payment":
+                if open_sales:
+                    if _mob_at_render_invoice_trigger(open_sales):
+                        st.rerun()
+                    _mob_inv = _at_sale_from_invoice_choice(
+                        open_sales, st.session_state.get("at_inv")
+                    )
+                    if _mob_inv:
+                        st.caption(
+                            _t(
+                                "txn.payable_outstanding",
+                                currency=currency_default,
+                                balance=_mob_inv.balance,
+                            )
+                        )
+                if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
+                    st.rerun()
+                _mob_at_render_fx_hook(currency_default)
+
+            elif txn_type == "Supplier Payment":
+                _at_clear_category_session_state()
+                if _mob_at_render_vendor_trigger(session, vendors):
+                    st.rerun()
+                if vendors and st.session_state.get("at_vendor"):
+                    _mob_at_sync_select_widgets()
+                    _sp_vendor = next(
+                        (v for v in vendors if v.name == st.session_state.get("at_vendor")),
+                        None,
+                    )
+                    _pay_opts = (
+                        _mob_at_payable_options(session, _sp_vendor.id, currency_default)
+                        if _sp_vendor
+                        else []
+                    )
+                    if _pay_opts:
+                        if _mob_at_render_payable_trigger(session, vendors, currency_default):
+                            st.rerun()
+                        if st.session_state.get("at_payable_id"):
+                            _mob_pay = session.get(Payable, st.session_state["at_payable_id"])
+                            if _mob_pay:
+                                st.caption(
+                                    _t(
+                                        "txn.payable_outstanding",
+                                        currency=currency_default,
+                                        balance=_payable_balance(_mob_pay),
+                                    )
+                                )
+                    else:
+                        st.caption(_t("txn.no_open_payable"))
+                if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
+                    st.rerun()
+                _mob_at_render_company_cc_select(session, txn_type="Supplier Payment")
+                _mob_at_render_fx_hook(currency_default)
+
+            elif txn_type == "Bank Transaction" and bank_accounts:
+                if _mob_at_render_bank_trigger(bank_accounts):
+                    st.rerun()
+                if _mob_at_button_row(
+                    [("Deposit", "Deposit"), ("Withdrawal", "Withdrawal")],
+                    st.session_state.get("at_bank_sub", "Deposit"),
+                    "mob_at_bank",
+                    "at_bank_sub",
+                    row_key="mob_at_pm2",
+                ):
+                    st.rerun()
+
             _mob_at_render_amount_keypad_fragment(currency_default)
 
     submitted = bool(st.session_state.pop("mob_at_save_clicked", False))
-
-    _picker = st.session_state.get("mob_at_picker")
-    if _picker and _mob_at_render_picker_sheet(
-        session,
-        picker_kind=_picker,
-        vendors=vendors,
-        open_sales=open_sales,
-        bank_accounts=bank_accounts,
-        currency_default=currency_default,
-    ):
-        st.rerun()
 
     _mob_at_sync_select_widgets()
     return submitted
@@ -18456,29 +18513,28 @@ def render_cash_reconciliation(session):
             
             try:
                 import altair as alt
-                
-                # Trend chart
+
                 trend_chart = alt.Chart(df_trend).mark_line(point=True, color=chart_series_color()).encode(
                     x='Date:T',
                     y='Cumulative:Q',
                     tooltip=['Date:T', 'Difference:Q', 'Cumulative:Q']
                 ).properties(
-                    width=700,
                     height=300,
                     title=_t("recon.cumulative_trend")
                 )
-                
-                # Reference line at 0
+
                 reference_line = alt.Chart(pd.DataFrame({'Cumulative': [0]})).mark_rule(
                     color=chart_reference_color(), strokeDash=[5, 5],
                 ).encode(
                     y='Cumulative:Q'
                 )
-                
-                st.altair_chart(trend_chart + reference_line, use_container_width=True)
-            except ImportError:
-                # Fallback to line_chart if altair not available
-                st.line_chart(df_trend.set_index("Date")["Cumulative"])
+
+                st.altair_chart(
+                    apply_altair_theme(trend_chart + reference_line),
+                    use_container_width=True,
+                )
+            except Exception:
+                pass
             
             st.divider()
             
@@ -18515,20 +18571,18 @@ def render_cash_reconciliation(session):
             if df_trend is not None and len(df_trend) > 0:
                 try:
                     import altair as alt
-                    
-                    # Histogram of variance amounts
+
                     hist_chart = alt.Chart(df_trend).mark_bar(color=chart_series_color()).encode(
                         x=alt.X('Difference:Q', bin=alt.Bin(maxbins=10), title="Variance Amount"),
                         y='count()',
                         tooltip=['count()', alt.Tooltip('Difference:Q', format='.2f')]
                     ).properties(
-                        width=700,
                         height=300,
                     )
-                    
-                    st.altair_chart(hist_chart, use_container_width=True)
-                except ImportError:
-                    st.bar_chart(df_trend["Difference"])
+
+                    st.altair_chart(apply_altair_theme(hist_chart), use_container_width=True)
+                except Exception:
+                    pass
 
 
 def render_end_of_day_close(session):
@@ -20704,7 +20758,7 @@ def render_reports(session):
                         df["MoM %"] = df["Total"].pct_change(-1).mul(100).round(1).fillna(0).astype(str) + "%"
                         _render_readable_df(df)
                         try:
-                            st.bar_chart(df.set_index("Month")["Total"])
+                            render_themed_bar(df, "Month", "Total")
                         except Exception:
                             pass
                         render_export_buttons(df, "Monthly_Sales", pdf=False)
@@ -20866,7 +20920,7 @@ def render_reports(session):
                     df = pd.DataFrame(rows, columns=["Month", "Total", "Count"])
                     if not df.empty:
                         try:
-                            st.bar_chart(df.set_index("Month")["Total"])
+                            render_themed_bar(df, "Month", "Total")
                         except Exception:
                             pass
                         _render_readable_df(df)
@@ -21289,7 +21343,8 @@ def render_reports(session):
                             {"label": _t("rpt.kpi.reconciliations"), "value": str(len(df)),                          "color": "var(--theme-muted)"},
                         ])
                         try:
-                            st.bar_chart(df.set_index("Date")["Variance"])
+                            _df_chart = df.sort_values("Date")
+                            render_themed_bar(_df_chart, "Date", "Variance", x_type="T")
                         except Exception:
                             pass
                         _render_readable_df(df)
@@ -21519,7 +21574,11 @@ def render_reports(session):
                     df = pd.DataFrame(data)
                     if not df.empty:
                         try:
-                            st.line_chart(df.set_index("Date")[["Sales", "Expenses", "Net Cash"]])
+                            _df_chart = df.copy()
+                            _df_chart["Date"] = _df_chart["Date"].astype(str)
+                            render_themed_line(
+                                _df_chart, "Date", ["Sales", "Expenses", "Net Cash"]
+                            )
                         except Exception:
                             pass
                         _render_readable_df(df)
@@ -23818,40 +23877,17 @@ def main():
     # ── Auto-backup: runs silently if last backup is older than 24 hours ──────
     auto_backup_if_needed(hours=24)
 
-    # ── Dev-mode auto-login ───────────────────────────────────────────────────
-    # Skipped after explicit sign-out (session_logged_out). Otherwise auto-selects
-    # company_1 when no company context is set.
-    if DEVELOPMENT_MODE and not is_setup01_active():
+    # ── DEV-AUTH-01: dev bypass banner + auto-login ───────────────────────────
+    if DEV_MODE and not is_setup01_active():
         st.markdown(
             f'<div class="dev-mode-stripe">{html.escape(_t("dev.banner"))}</div>',
             unsafe_allow_html=True,
         )
-        if (
-            not st.session_state.get(_SESSION_LOGGED_OUT)
-            and _current_user() is not None
-            and not st.session_state.get("active_company_id")
-        ):
+        if not st.session_state.get(_SESSION_LOGGED_OUT) and not st.session_state.get("auth_user"):
             with get_session() as _dev_s:
-                _dev_uid = _current_user()["id"]
-                if not _try_restore_last_active_company(_dev_s, _dev_uid):
-                    _dev_co = _dev_s.query(Company).filter_by(
-                        slug="company_1", is_active=True
-                    ).first()
-                    if _dev_co:
-                        _dev_m = _dev_s.query(CompanyUser).filter_by(
-                            company_id=_dev_co.id,
-                            user_id=_dev_uid,
-                            is_active=True,
-                        ).first()
-                        if _dev_m:
-                            _activate_company_in_session(
-                                _dev_s, _dev_uid, _dev_co.id, membership_count=None
-                            )
-                        else:
-                            st.session_state["active_company_id"] = _dev_co.id
-                            st.session_state["active_company_role"] = "owner"
-                            st.session_state["active_company_name"] = _dev_co.name
-                    _refresh_user_company_memberships(_dev_s, _dev_uid)
+                _dev_err = _dev_auto_login(_dev_s)
+                if _dev_err:
+                    st.error(_dev_err)
 
     # ── Auth gate — show login page if no valid session ───────────────────────
     if _current_user() is None:
@@ -23901,16 +23937,14 @@ def main():
         return
 
     # ── Phase 14B: membership re-validation (Gate 3) ──────────────────────────
-    # Skipped in DEVELOPMENT_MODE — _DEV_USER has no real CompanyUser row.
-    if not DEVELOPMENT_MODE:
-        with get_session() as _val_session:
-            if not _validate_company_membership(_val_session):
-                st.session_state.pop("active_company_id", None)
-                st.session_state.pop("active_company_role", None)
-                st.session_state.pop("active_company_name", None)
-                with get_session() as _pick_session:
-                    _render_company_picker_shell(_pick_session)
-                return
+    with get_session() as _val_session:
+        if not _validate_company_membership(_val_session):
+            st.session_state.pop("active_company_id", None)
+            st.session_state.pop("active_company_role", None)
+            st.session_state.pop("active_company_name", None)
+            with get_session() as _pick_session:
+                _render_company_picker_shell(_pick_session)
+            return
 
     user = _current_user()
     if user:

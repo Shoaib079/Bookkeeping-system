@@ -368,7 +368,7 @@ def render_setup01_wizard(
         _render_summary(t, get_setup01_answers())
         err_key = st.session_state.pop(SETUP01_SESSION_CREATE_ERROR, None)
         if err_key:
-            st.error(_tw(t, str(err_key), str(err_key)) if "." in str(err_key) else str(err_key))
+            st.error(_tw(t, str(err_key), str(err_key)))
 
     st.markdown('<div class="setup01-footer is-sticky"><div class="setup01-footer-inner">', unsafe_allow_html=True)
     back_col, fwd_col = st.columns(2)

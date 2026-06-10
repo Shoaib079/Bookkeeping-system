@@ -160,7 +160,7 @@ def test_creation_failure_preserves_answers(db, monkeypatch):
     ok, err = erp._submit_setup01_create_company(db, user.id)
 
     assert ok is False
-    assert err == "database unavailable"
+    assert err == "picker.create_failed"
     assert is_setup01_active()
     assert st.session_state[SETUP01_SESSION_STEP] == "summary"
     assert get_setup01_answers()["company_name"] == "Fail Co"

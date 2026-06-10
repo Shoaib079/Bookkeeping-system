@@ -7,13 +7,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 # Exact Streamlit keys used with st.columns on mobile-critical surfaces.
+# Concept C (MOB-AT-C1): mob_at_tabs and mob_at_pm3 replaced by mob_at_row1;
+# mob_at_c_cat_row and mob_at_save_row added.
 _MOBILE_COLUMN_ROW_KEYS = frozenset({
     "erp_mob_bottom_bar",
     "erp_mob_quick_create",
     "mob_at_amount_row",
-    "mob_at_tabs",
-    "mob_at_pm3",
+    # Concept C Row 1 (replaces mob_at_tabs)
+    "mob_at_row1",
+    # Concept C category row (replaces inline mob_at_cat_trigger in main panel)
+    "mob_at_c_cat_row",
+    # Concept C full-width Save row (replaces side-column Save in fragment)
+    "mob_at_save_row",
+    # mob_at_pm2 still used for Bank Transaction subtype buttons
     "mob_at_pm2",
+    # mob_at_cat_trigger still defined in _mob_at_render_category_trigger (used by pickers)
     "mob_at_cat_trigger",
     "mob_at_subcat_trigger",
     "mob_at_vendor_trigger",
