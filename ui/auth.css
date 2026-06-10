@@ -1,0 +1,299 @@
+/* LOGIN-01 — Login + company picker auth surfaces (sole owner for erp-auth-*). */
+
+.erp-auth-shell {
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.erp-auth-top-spacer {
+  height: 12px;
+}
+
+/* Flat header card — no gradient banner */
+.erp-auth-header-card {
+  background: var(--theme-card);
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px var(--theme-shadow);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.erp-auth-header-title {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--theme-text);
+  letter-spacing: -0.01em;
+}
+
+.erp-auth-header-sub {
+  font-size: 12px;
+  color: var(--theme-muted);
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+.erp-auth-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-text);
+  margin: 0 0 10px;
+}
+
+.erp-auth-section-label.is-center {
+  text-align: center;
+}
+
+/* User avatar tiles */
+.erp-auth-user-grid {
+  margin-bottom: 8px;
+}
+
+.erp-auth-user-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 4px 4px 0;
+}
+
+.erp-auth-user-card .erp-mono-avatar {
+  width: 56px;
+  height: 56px;
+  font-size: 18px;
+  margin-bottom: 0;
+}
+
+.erp-auth-user-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--theme-text);
+  line-height: 1.25;
+}
+
+.erp-auth-role-chip {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 99px;
+  border: 1px solid var(--theme-border);
+  background: color-mix(in srgb, var(--theme-info) 8%, var(--theme-card) 92%);
+  color: var(--theme-muted);
+}
+
+.erp-auth-role-chip.erp-auth-role-owner {
+  border-color: color-mix(in srgb, var(--role-owner) 35%, var(--theme-border) 65%);
+  color: var(--role-owner);
+}
+
+.erp-auth-role-chip.erp-auth-role-manager {
+  border-color: color-mix(in srgb, var(--role-manager) 35%, var(--theme-border) 65%);
+  color: var(--role-manager);
+}
+
+.erp-auth-role-chip.erp-auth-role-cashier {
+  border-color: color-mix(in srgb, var(--role-cashier) 35%, var(--theme-border) 65%);
+  color: var(--role-cashier);
+}
+
+.erp-auth-role-chip.erp-auth-role-partner {
+  border-color: color-mix(in srgb, var(--role-partner) 35%, var(--theme-border) 65%);
+  color: var(--role-partner);
+}
+
+.erp-auth-role-chip.erp-auth-role-viewer {
+  border-color: color-mix(in srgb, var(--role-viewer) 35%, var(--theme-border) 65%);
+  color: var(--role-viewer);
+}
+
+[data-testid="stMain"] [class*="st-key-select_user_"] [data-testid="stButton"] {
+  margin-top: 6px !important;
+}
+
+[data-testid="stMain"] [class*="st-key-select_user_"] button {
+  min-height: 36px !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--theme-border) !important;
+  background: var(--theme-card) !important;
+  box-shadow: 0 1px 2px var(--theme-shadow) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+[data-testid="stMain"] [class*="st-key-select_user_"] button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--theme-info) 40%, var(--theme-border) 60%) !important;
+  background: color-mix(in srgb, var(--theme-info) 6%, var(--theme-card) 94%) !important;
+}
+
+/* Password card */
+.erp-auth-password-heading {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-text);
+  margin-bottom: 12px;
+  line-height: 1.35;
+}
+
+.erp-auth-password-user {
+  font-weight: 700;
+}
+
+.erp-auth-hint {
+  font-size: 11px;
+  color: var(--theme-muted);
+  text-align: center;
+  margin-top: 10px;
+  line-height: 1.35;
+}
+
+[data-testid="stMain"] [class*="st-key-login_password"] ~ [data-testid="stVerticalBlock"] [data-testid="stAlert"],
+[data-testid="stMain"] [class*="st-key-login_form"] [data-testid="stAlert"],
+[data-testid="stMain"] [class*="st-key-login_btn"] ~ [data-testid="stElementContainer"] [data-testid="stAlert"] {
+  background: color-mix(in srgb, var(--theme-danger) 10%, var(--theme-card) 90%) !important;
+  border: 1px solid color-mix(in srgb, var(--theme-danger) 35%, var(--theme-border) 65%) !important;
+  border-radius: 8px !important;
+  margin-top: 8px !important;
+}
+
+[data-testid="stMain"] [class*="st-key-login_"] [data-testid="stVerticalBlockBorderWrapper"] {
+  background: var(--theme-card) !important;
+  border-color: var(--theme-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 3px var(--theme-shadow) !important;
+  padding: 16px 18px !important;
+}
+
+[data-testid="stMain"] [class*="st-key-login_back"] button {
+  margin-top: 8px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--theme-muted) !important;
+  font-size: 12px !important;
+}
+
+/* Company picker rows */
+.erp-auth-co-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+[data-testid="stMain"] [class*="st-key-pick_co_"] [data-testid="stButton"] {
+  margin: 0 !important;
+}
+
+[data-testid="stMain"] [class*="st-key-pick_co_"] button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  min-height: 56px !important;
+  padding: 12px 14px !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--theme-border) !important;
+  background: var(--theme-card) !important;
+  box-shadow: 0 1px 2px var(--theme-shadow) !important;
+  text-align: left !important;
+}
+
+[data-testid="stMain"] [class*="st-key-pick_co_"] button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--theme-info) 35%, var(--theme-border) 65%) !important;
+  background: color-mix(in srgb, var(--theme-info) 5%, var(--theme-card) 95%) !important;
+}
+
+[data-testid="stMain"] [class*="st-key-pick_co_"] button {
+  position: relative !important;
+  padding-right: 36px !important;
+}
+
+[data-testid="stMain"] [class*="st-key-pick_co_"] button::after {
+  content: "›";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--theme-muted);
+  line-height: 1;
+  pointer-events: none;
+}
+
+[data-testid="stMain"] [class*="st-key-pick_co_"] button p {
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: var(--theme-muted) !important;
+}
+
+[data-testid="stMain"] [class*="st-key-pick_co_"] button p::first-line {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: var(--theme-text) !important;
+}
+
+/* Quiet secondary / text actions */
+[data-testid="stMain"] [class*="st-key-picker_start_setup01"] button {
+  min-height: 44px !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--theme-border) !important;
+  background: color-mix(in srgb, var(--theme-bg) 55%, var(--theme-card) 45%) !important;
+  color: var(--theme-text) !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+
+[data-testid="stMain"] [class*="st-key-picker_signout"] button {
+  min-height: 40px !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--theme-muted) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+[data-testid="stMain"] [class*="st-key-picker_signout"] button:hover:not(:disabled) {
+  color: var(--theme-text) !important;
+  background: transparent !important;
+}
+
+.erp-auth-divider {
+  border: none;
+  border-top: 1px solid var(--theme-border);
+  margin: 16px 0;
+}
+
+.erp-auth-create-note {
+  font-size: 12px;
+  color: var(--theme-muted);
+  margin: 0 0 10px;
+  line-height: 1.4;
+}
+
+@media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
+  .erp-auth-header-card {
+    padding: 14px 16px;
+  }
+
+  [data-testid="stMain"] [class*="st-key-pick_co_"] button {
+    min-height: 52px !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-select_user_"] button {
+    min-height: 34px !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-login_"] [data-testid="stVerticalBlockBorderWrapper"] {
+    padding: 14px 16px !important;
+  }
+}

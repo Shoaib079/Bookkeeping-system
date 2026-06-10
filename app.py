@@ -1,6 +1,7 @@
 import calendar
 import datetime
 import hashlib
+import hmac
 import html
 import json
 import logging
@@ -1457,6 +1458,39 @@ def log_audit(session, action, entity_type, entity_id, description):
     session.commit()
 
 
+def _entry_date_posting_blocked(
+    session, entry_date, *, reference_type: str = "Expense"
+) -> str | None:
+    """Return posting-block message for entry_date (same guards as create_journal_entry)."""
+    _cje_cid = _current_company_id()
+    if reference_type != "PeriodClose":
+        _fp_q = session.query(FiscalPeriod).filter(
+            FiscalPeriod.is_closed == True,
+            FiscalPeriod.start_date <= entry_date,
+            FiscalPeriod.end_date >= entry_date,
+        )
+        if _cje_cid is not None:
+            _fp_q = _fp_q.filter(FiscalPeriod.company_id == _cje_cid)
+        locked = _fp_q.first()
+        if locked:
+            return (
+                f"Period '{locked.name}' ({locked.start_date} – {locked.end_date}) is closed. "
+                f"Cannot post entries to {entry_date}."
+            )
+
+    _yec_q = session.query(YearEndClose).filter(
+        YearEndClose.is_void == False,
+        YearEndClose.start_date <= entry_date,
+        YearEndClose.end_date >= entry_date,
+    )
+    if _cje_cid is not None:
+        _yec_q = _yec_q.filter(YearEndClose.company_id == _cje_cid)
+    locked_year = _yec_q.first()
+    if locked_year:
+        return f"Year {locked_year.fiscal_year} is closed. Cannot post entries to {entry_date}."
+    return None
+
+
 def create_journal_entry(session, entry_date, description, reference_type, reference_id, lines,
                          currency: str = None, fx_rate: float = 1.0):
     """
@@ -1469,44 +1503,12 @@ def create_journal_entry(session, entry_date, description, reference_type, refer
 
     Raises ValueError if entry_date falls within a closed fiscal period.
     """
-    # Period lock: block posting to closed periods.
-    # PeriodClose entries are posted before the period is marked closed, so they pass naturally.
-    # Uses _current_company_id() directly (not cq()) because create_journal_entry is also
-    # called from startup migrations where no company context is set.
-    _cje_cid = _current_company_id()
-    if reference_type != "PeriodClose":
-        _fp_q = session.query(FiscalPeriod).filter(
-            FiscalPeriod.is_closed == True,
-            FiscalPeriod.start_date <= entry_date,
-            FiscalPeriod.end_date >= entry_date,
-        )
-        if _cje_cid is not None:
-            _fp_q = _fp_q.filter(FiscalPeriod.company_id == _cje_cid)
-        locked = _fp_q.first()
-        if locked:
-            session.rollback()
-            raise ValueError(
-                f"Period '{locked.name}' ({locked.start_date} – {locked.end_date}) is closed. "
-                f"Cannot post entries to {entry_date}."
-            )
-
-    # Guard 1 — Year-End Close lock: block posting into a year-end-closed year.
-    # ProfitAllocation JEs are dated to today() (outside the closed period), so they
-    # are not affected. No reference_type bypasses the year lock.
-    _yec_q = session.query(YearEndClose).filter(
-        YearEndClose.is_void == False,
-        YearEndClose.start_date <= entry_date,
-        YearEndClose.end_date >= entry_date,
-    )
-    if _cje_cid is not None:
-        _yec_q = _yec_q.filter(YearEndClose.company_id == _cje_cid)
-    locked_year = _yec_q.first()
-    if locked_year:
+    _block_msg = _entry_date_posting_blocked(session, entry_date, reference_type=reference_type)
+    if _block_msg:
         session.rollback()
-        raise ValueError(
-            f"Year {locked_year.fiscal_year} is closed. Cannot post entries to {entry_date}."
-        )
+        raise ValueError(_block_msg)
 
+    _cje_cid = _current_company_id()
     entry = JournalEntry(
         entry_date=entry_date,
         description=description,
@@ -2751,6 +2753,148 @@ def initialize_categories(session):
 # ─────────────────────────────────────────────────────────────────────────────
 
 _SESSION_TTL_HOURS = 8  # session expires after 8 hours of inactivity
+
+# UX-01 — narrow session restore (user identity + active company only)
+_RESTORE_COOKIE = "erp_session_restore"
+_RESTORE_SECRET_ENV = "ERP_SESSION_RESTORE_SECRET"
+_RESTORE_TOKEN_TTL_HOURS = 8
+
+
+def _restore_secret_configured() -> bool:
+    return bool(os.getenv(_RESTORE_SECRET_ENV, "").strip())
+
+
+def _restore_secret() -> bytes | None:
+    raw = os.getenv(_RESTORE_SECRET_ENV, "").strip()
+    return raw.encode("utf-8") if raw else None
+
+
+def _password_hash_fragment(password_hash: str) -> str:
+    """Short fragment of stored hash — invalidates restore token on password change."""
+    try:
+        _salt, key_hex = password_hash.split(":", 1)
+        return key_hex[:16]
+    except Exception:
+        return ""
+
+
+def _mint_restore_token(
+    user_id: int,
+    password_hash: str,
+    *,
+    active_company_id: int | None = None,
+) -> str | None:
+    """HMAC-signed restore token. Disabled when ERP_SESSION_RESTORE_SECRET is unset."""
+    secret = _restore_secret()
+    if not secret:
+        return None
+    now = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+    exp = now + _RESTORE_TOKEN_TTL_HOURS * 3600
+    ph_frag = _password_hash_fragment(password_hash)
+    if not ph_frag:
+        return None
+    parts = [str(user_id), str(now), str(exp), ph_frag]
+    if active_company_id is not None:
+        parts.append(str(active_company_id))
+    payload = ".".join(parts)
+    sig = hmac.new(secret, payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{payload}.{sig}"
+
+
+def _verify_restore_token(token: str) -> dict | None:
+    """Verify restore token signature and expiry. Returns claims or None."""
+    secret = _restore_secret()
+    if not secret or not token:
+        return None
+    try:
+        payload, sig = token.rsplit(".", 1)
+        expected = hmac.new(secret, payload.encode("utf-8"), hashlib.sha256).hexdigest()
+        if not secrets.compare_digest(expected, sig):
+            return None
+        parts = payload.split(".")
+        if len(parts) not in (4, 5):
+            return None
+        user_id = int(parts[0])
+        exp = int(parts[2])
+        ph_frag = parts[3]
+        company_id = int(parts[4]) if len(parts) == 5 else None
+        now = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+        if now > exp:
+            return None
+        return {
+            "user_id": user_id,
+            "iat": int(parts[1]),
+            "exp": exp,
+            "ph_frag": ph_frag,
+            "company_id": company_id,
+        }
+    except Exception:
+        return None
+
+
+def _render_session_restore_cookie(*, token: str | None = None, clear: bool = False) -> None:
+    """JS-set restore cookie (not HttpOnly — see UX-01 docs). DEV_MODE skips entirely."""
+    if DEV_MODE or not _restore_secret_configured():
+        return
+    max_age = _RESTORE_TOKEN_TTL_HOURS * 3600
+    if clear or not token:
+        js = (
+            "(function(){var d=window.parent.document||document;"
+            f'd.cookie="{_RESTORE_COOKIE}=;path=/;max-age=0;SameSite=Lax";'
+            "})();"
+        )
+    else:
+        tok_js = json.dumps(token)
+        js = (
+            "(function(){var d=window.parent.document||document;"
+            f"var t={tok_js};"
+            'var s=(location.protocol==="https:")?";Secure":"";'
+            f'd.cookie="{_RESTORE_COOKIE}="+encodeURIComponent(t)+'
+            f'";path=/;max-age={max_age};SameSite=Lax"+s;'
+            "})();"
+        )
+    st.html(f"<script>{js}</script>", height=0, width=0)
+
+
+def _mint_restore_token_for_user(session, user_id: int) -> str | None:
+    user = session.get(User, user_id)
+    if not user or not user.is_active:
+        return None
+    return _mint_restore_token(
+        user.id,
+        user.password_hash,
+        active_company_id=_current_company_id(),
+    )
+
+
+def _try_restore_session_from_cookie(session) -> bool:
+    """Restore auth (+ optional company) from signed cookie. Never raises."""
+    if DEV_MODE or not _restore_secret_configured():
+        return False
+    if st.session_state.get(_SESSION_LOGGED_OUT):
+        return False
+    if st.session_state.get("auth_user"):
+        return False
+    try:
+        raw = (st.context.cookies.get(_RESTORE_COOKIE) or "").strip()
+        if not raw:
+            return False
+        claims = _verify_restore_token(raw)
+        if not claims:
+            return False
+        user = session.get(User, claims["user_id"])
+        if not user or not user.is_active:
+            return False
+        if _password_hash_fragment(user.password_hash) != claims["ph_frag"]:
+            return False
+        _establish_auth_session(
+            session,
+            user,
+            preferred_company_id=claims.get("company_id"),
+        )
+        return True
+    except Exception:
+        return False
 
 
 def _hash_password(password: str) -> str:
@@ -4183,6 +4327,10 @@ _COMPANY_SCOPED_AT_KEYS = (
     "mob_at_last_cat_sale",
     "mob_at_last_cat_expense",
     "mob_at_last_cat_purchase",
+    "mob_at_last_pm_sale",
+    "mob_at_last_pm_expense",
+    "mob_at_last_pm_purchase",
+    "_mob_at_coerce_pm_type",
     "mob_at_cat_id",
     "mob_at_subcat_id",
     "mob_at_cat_name",
@@ -4199,6 +4347,7 @@ _COMPANY_SCOPED_AT_KEYS = (
     "mob_at_picker",
     "mob_at_picker_search",
     "at_date",
+    "at_date_follows_today",
     "at_type_idx",
     "at_expense_mode",
     "at_currency",
@@ -4356,7 +4505,12 @@ def _notif_counts(user_id: int) -> dict:
         return {"overdue_ar": 0, "overdue_ap": 0, "low_stock": 0, "backup": 0, "total": 0}
 
 
-def _establish_auth_session(session, user) -> None:
+def _establish_auth_session(
+    session,
+    user,
+    *,
+    preferred_company_id: int | None = None,
+) -> None:
     """Write auth + company context after a user identity is confirmed."""
     _memberships = (
         session.query(CompanyUser)
@@ -4383,6 +4537,14 @@ def _establish_auth_session(session, user) -> None:
 
     if len(_memberships) == 0:
         pass  # Company picker — create first company
+    elif preferred_company_id is not None:
+        # UX-01 restore: trust only after DB membership revalidation; no fallback.
+        _activate_company_in_session(
+            session,
+            user.id,
+            preferred_company_id,
+            membership_count=len(_memberships),
+        )
     elif len(_memberships) == 1:
         _activate_company_in_session(
             session, user.id, _memberships[0].company_id, membership_count=1
@@ -4446,6 +4608,7 @@ def _logout():
         "_user_company_memberships", "ui_locale",
     ):
         st.session_state.pop(_k, None)
+    _render_session_restore_cookie(clear=True)
 
 
 # ─── Company context — Phase 14B ─────────────────────────────────────────────
@@ -4594,14 +4757,14 @@ def render_company_picker(session) -> None:
 
     _left, mid, _right = st.columns([1, 2, 1])
     with mid:
+        st.markdown('<div class="erp-auth-shell">', unsafe_allow_html=True)
         st.markdown('<div class="erp-auth-top-spacer"></div>', unsafe_allow_html=True)
         st.markdown(
-            f'<div class="banner banner-primary erp-auth-banner">'
-            f'<div class="erp-auth-banner-icon">🏢</div>'
-            f'<div class="erp-auth-banner-title">{_t("picker.select_company")}</div>'
-            f'<div class="erp-auth-banner-sub">'
-            f'{_t("picker.signed_in_as", name=u.get("display_name") or u.get("username"))}</div>'
-            f'</div>',
+            f'<div class="erp-auth-header-card">'
+            f'<div class="erp-auth-header-title">{html.escape(_t("picker.select_company"))}</div>'
+            f'<div class="erp-auth-header-sub">'
+            f'{html.escape(_t("picker.signed_in_as", name=u.get("display_name") or u.get("username")))}'
+            f'</div></div>',
             unsafe_allow_html=True,
         )
 
@@ -4609,59 +4772,58 @@ def render_company_picker(session) -> None:
             st.info(_t("picker.no_membership"))
         else:
             st.markdown(
-                f'<div class="erp-auth-section-label">{_t("picker.choose_company")}</div>',
+                f'<div class="erp-auth-section-label">{html.escape(_t("picker.choose_company"))}</div>',
                 unsafe_allow_html=True,
             )
+            st.markdown('<div class="erp-auth-co-list">', unsafe_allow_html=True)
 
         for _m in memberships if memberships else []:
             _co = session.get(Company, _m.company_id)
             if not _co:
                 continue
-            with st.container(border=True):
-                _c1, _c2 = st.columns([4, 1])
-                with _c1:
-                    st.markdown(
-                        f'<div style="font-weight:700;font-size:14px;">{_co.name}</div>'
-                        f'<div style="font-size:11px;color:var(--theme-muted);">'
-                        f'{_m.role.title()}</div>',
-                        unsafe_allow_html=True,
-                    )
-                with _c2:
-                    if st.button(_t("picker.enter") + " →", key=f"pick_co_{_m.company_id}",
-                                 use_container_width=True, type="primary"):
-                        # Re-validate before accepting (security: never trust submitted ID alone)
-                        _valid_m = session.query(CompanyUser).filter(
-                            CompanyUser.user_id == u["id"],
-                            CompanyUser.company_id == _m.company_id,
-                            CompanyUser.is_active == True,
-                        ).first()
-                        _valid_co = session.get(Company, _m.company_id)
-                        if _valid_m and _valid_co and _valid_co.is_active:
-                            if _activate_company_in_session(
-                                session,
-                                u["id"],
-                                _m.company_id,
-                                membership_count=len(memberships),
-                            ):
-                                st.rerun()
-                        else:
-                            st.error(_t("picker.unavailable"))
-
-        st.markdown("---")
-        with st.expander("➕ " + _t("picker.create_expander"), expanded=not memberships):
-            st.caption(_t("picker.create_owner_note"))
             if st.button(
-                _t("setup01.start_btn"),
-                key="picker_start_setup01",
-                type="primary",
+                f"{_co.name}\n{_m.role.title()}",
+                key=f"pick_co_{_m.company_id}",
                 use_container_width=True,
+                type="secondary",
             ):
-                _start_create_company_wizard(return_to="picker")
+                # Re-validate before accepting (security: never trust submitted ID alone)
+                _valid_m = session.query(CompanyUser).filter(
+                    CompanyUser.user_id == u["id"],
+                    CompanyUser.company_id == _m.company_id,
+                    CompanyUser.is_active == True,
+                ).first()
+                _valid_co = session.get(Company, _m.company_id)
+                if _valid_m and _valid_co and _valid_co.is_active:
+                    if _activate_company_in_session(
+                        session,
+                        u["id"],
+                        _m.company_id,
+                        membership_count=len(memberships),
+                    ):
+                        st.rerun()
+                else:
+                    st.error(_t("picker.unavailable"))
 
-        st.markdown("---")
-        if st.button("⏻ " + _t("picker.sign_out"), use_container_width=True, key="picker_signout"):
+        if memberships:
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown('<hr class="erp-auth-divider">', unsafe_allow_html=True)
+        st.markdown('<div class="erp-auth-create-note">', unsafe_allow_html=True)
+        st.caption(_t("picker.create_owner_note"))
+        st.markdown("</div>", unsafe_allow_html=True)
+        if st.button(
+            _t("setup01.start_btn"),
+            key="picker_start_setup01",
+            type="secondary",
+            use_container_width=True,
+        ):
+            _start_create_company_wizard(return_to="picker")
+
+        if st.button(_t("picker.sign_out"), use_container_width=True, key="picker_signout"):
             _logout()
             st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ─── Login page ───────────────────────────────────────────────────────────────
@@ -4673,12 +4835,12 @@ def render_login(session):
 
     _left, mid, _right = st.columns([1, 2, 1])
     with mid:
+        st.markdown('<div class="erp-auth-shell">', unsafe_allow_html=True)
         st.markdown('<div class="erp-auth-top-spacer"></div>', unsafe_allow_html=True)
         st.markdown(
-            f'<div class="banner banner-primary erp-auth-banner">'
-            f'<div class="erp-auth-banner-icon">📊</div>'
-            f'<div class="erp-auth-banner-title">{html.escape(company)}</div>'
-            f'<div class="erp-auth-banner-sub">{_t("login.erp_title")}</div>'
+            f'<div class="erp-auth-header-card">'
+            f'<div class="erp-auth-header-title">{html.escape(company)}</div>'
+            f'<div class="erp-auth-header-sub">{html.escape(_t("login.erp_title"))}</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -4689,16 +4851,27 @@ def render_login(session):
         if users and not selected_user:
             # ── Step 1: user tile selection ───────────────────────────────────
             st.markdown(
-                f'<div class="erp-auth-section-label is-center">{_t("login.who_signs_in")}</div>',
+                f'<div class="erp-auth-section-label is-center">'
+                f'{html.escape(_t("login.who_signs_in"))}</div>',
                 unsafe_allow_html=True,
             )
+            st.markdown('<div class="erp-auth-user-grid">', unsafe_allow_html=True)
             cols = st.columns(min(len(users), 3))
             for i, u in enumerate(users):
                 with cols[i % 3]:
-                    initials = "".join(w[0].upper() for w in (u.display_name or u.username).split()[:2])
+                    initials = "".join(w[0].upper() for w in (u.display_name or u.username).split()[:2]) or "U"
                     _uname = u.display_name or u.username
+                    _role_cls = (u.role or "viewer").lower()
+                    st.markdown(
+                        f'<div class="erp-auth-user-card">'
+                        f'<div class="erp-mono-avatar">{html.escape(initials)}</div>'
+                        f'<div class="erp-auth-user-name">{html.escape(_uname)}</div>'
+                        f'<span class="erp-auth-role-chip erp-auth-role-{_role_cls}">'
+                        f'{html.escape(u.role.title())}</span></div>',
+                        unsafe_allow_html=True,
+                    )
                     if st.button(
-                        f"{initials}\n{_uname}\n{u.role.title()}",
+                        _t("login.select"),
                         key=f"select_user_{u.id}",
                         use_container_width=True,
                         help=_t("login.tap_to_sign_in", name=_uname),
@@ -4706,20 +4879,22 @@ def render_login(session):
                         st.session_state["login_selected_user"] = u.username
                         _sync_ui_locale_from_user(u.id)
                         st.rerun()
-            st.markdown("---")
+            st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown('<hr class="erp-auth-divider">', unsafe_allow_html=True)
 
         # ── Step 2: password entry ────────────────────────────────────────────
         with st.container(border=True):
             if selected_user:
                 st.markdown(
-                    f'<div style="font-size:13px;font-weight:600;color:var(--theme-text);margin-bottom:12px;">'
-                    f'👤 {_t('login.sign_in_as')} <b>{selected_user}</b></div>',
+                    f'<div class="erp-auth-password-heading">'
+                    f'{html.escape(_t("login.sign_in_as"))} '
+                    f'<span class="erp-auth-password-user">{html.escape(selected_user)}</span></div>',
                     unsafe_allow_html=True,
                 )
             else:
                 st.markdown(
-                    f'<div style="font-size:13px;font-weight:600;color:var(--theme-text);margin-bottom:12px;">'
-                    f'{_t("login.sign_in_heading")}</div>',
+                    f'<div class="erp-auth-password-heading">'
+                    f'{html.escape(_t("login.sign_in_heading"))}</div>',
                     unsafe_allow_html=True,
                 )
             with st.form("login_form"):
@@ -4746,10 +4921,10 @@ def render_login(session):
                 st.rerun()
 
             st.markdown(
-                '<div style="font-size:11px;color:var(--theme-muted);text-align:center;margin-top:10px;">'
-                f'{_t("login.default_creds")}</div>',
+                f'<div class="erp-auth-hint">{html.escape(_t("login.default_creds"))}</div>',
                 unsafe_allow_html=True,
             )
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 def _load_user_lookup(session) -> dict:
@@ -4908,6 +5083,11 @@ def _business_pay_methods(session) -> list[str]:
     return methods
 
 
+def _at_sale_pay_methods(session) -> list[str]:
+    """New Transaction — Sale payment methods."""
+    return ["Cash", "Card", "Credit"]
+
+
 def _at_expense_pay_methods(session) -> list[str]:
     """New Transaction — Expense payment chips (excludes customer Card sale type)."""
     methods = ["Cash", "Bank"]
@@ -4959,6 +5139,12 @@ _AT_DEFAULT_PM: dict[str, str] = {
     "Customer Payment": "Cash",
 }
 
+_MOB_AT_LAST_PM_BY_TYPE = {
+    "Sale": "mob_at_last_pm_sale",
+    "Expense": "mob_at_last_pm_expense",
+    "Purchase": "mob_at_last_pm_purchase",
+}
+
 _AT_TYPE_I18N: dict[str, str] = {
     "Sale": "txn.type.sale",
     "Expense": "txn.type.expense",
@@ -4996,7 +5182,7 @@ def _at_clear_invalid_card_bank_selection(bank_accounts: list) -> None:
 def _at_allowed_pay_methods(session, txn_type: str) -> list[str]:
     """Payment methods valid for an Add Transaction type."""
     if txn_type == "Sale":
-        return ["Cash", "Card", "Credit"]
+        return _at_sale_pay_methods(session)
     if txn_type == "Expense":
         if _mob_at_is_salary_mode():
             return ["Cash", "Bank"]
@@ -5010,15 +5196,39 @@ def _at_allowed_pay_methods(session, txn_type: str) -> list[str]:
     return []
 
 
+def _mob_at_recall_last_pm(txn_type: str) -> str | None:
+    key = _MOB_AT_LAST_PM_BY_TYPE.get(txn_type)
+    if not key:
+        return None
+    val = st.session_state.get(key)
+    return val if val else None
+
+
+def _mob_at_remember_last_pm(txn_type: str, pm: str | None) -> None:
+    """UX-04C — per-type last-used payment method (Sale/Expense/Purchase only)."""
+    key = _MOB_AT_LAST_PM_BY_TYPE.get(txn_type)
+    if not key:
+        return
+    if pm:
+        st.session_state[key] = pm
+    else:
+        st.session_state.pop(key, None)
+
+
 def _at_default_pay_method(session, txn_type: str) -> str:
-    """First-choice default payment method for a transaction type."""
+    """First-choice default payment method: memory → static → first allowed."""
     if txn_type == "Expense" and _mob_at_is_salary_mode():
         return "Cash"
     allowed = _at_allowed_pay_methods(session, txn_type)
+    if not allowed:
+        return "Cash"
+    remembered = _mob_at_recall_last_pm(txn_type)
+    if remembered and remembered in allowed:
+        return remembered
     preferred = _AT_DEFAULT_PM.get(txn_type, "Cash")
     if preferred in allowed:
         return preferred
-    return allowed[0] if allowed else "Cash"
+    return allowed[0]
 
 
 def _at_clear_stale_payment_account_keys(payment_method: str) -> None:
@@ -5039,6 +5249,14 @@ def _coerce_at_payment_method(session, txn_type: str) -> None:
         return
     allowed = _at_allowed_pay_methods(session, txn_type)
     if not allowed:
+        return
+    prev_type = st.session_state.get("_mob_at_coerce_pm_type")
+    type_changed = prev_type is not None and prev_type != txn_type
+    st.session_state["_mob_at_coerce_pm_type"] = txn_type
+    remembered = _mob_at_recall_last_pm(txn_type)
+    if type_changed and remembered and remembered in allowed:
+        st.session_state["at_pm"] = remembered
+        _at_clear_stale_payment_account_keys(remembered)
         return
     pm = st.session_state.get("at_pm")
     if pm in allowed:
@@ -5140,6 +5358,28 @@ def _mark_at_save_succeeded(message: str | None = None) -> None:
     st.session_state["_at_save_succeeded"] = True
     if message:
         _at_set_flash("success", message)
+
+
+_AT_POST_SAVE_CLEAR_KEYS = (
+    "at_amount_display",
+    "at_notes_field",
+    "at_cust",
+    "at_cust_sel",
+    "at_payable_id",
+    "at_last_vendor",
+    "at_worker_gross",
+    "mob_at_worker_gross",
+    "at_worker_ded",
+    "mob_at_worker_ded",
+    "at_worker_adv_rec",
+    "mob_at_worker_adv_rec",
+)
+
+
+def _at_clear_post_save_transient_fields() -> None:
+    """UX-04A — clear per-entry fields after save; retain type/payment/category/date."""
+    for _k in _AT_POST_SAVE_CLEAR_KEYS:
+        st.session_state.pop(_k, None)
 
 
 def _at_consume_mobile_save_pending() -> bool:
@@ -10924,7 +11164,6 @@ _MOB_AT_LAST_CAT_BY_TYPE = {
     "Purchase": "mob_at_last_cat_purchase",
 }
 
-
 def _at_clear_category_session_state() -> None:
     """Remove stale category keys when a txn type has no category fields."""
     for _k in (
@@ -11908,51 +12147,46 @@ def _mob_at_render_txn_type_picker_sheet() -> bool:
     return False
 
 
-def _mob_at_render_payment_picker_sheet(session) -> bool:
-    """Concept C — bottom sheet to pick payment method for current type."""
-    idx = st.session_state.get("at_type_idx", 0)
-    if _mob_at_is_salary_mode():
-        methods = [("Cash", "Cash"), ("Bank", "Bank")]
-    elif idx == 0:
-        methods = [("Cash", "Cash"), ("Card", "Card"), ("Credit", "On Account")]
-    elif idx == 1:
-        raw = _at_expense_pay_methods(session)
-        methods = [(m, _at_payment_method_label("Expense", m)) for m in raw]
-    elif idx == 2:
-        raw = _at_purchase_pay_methods(session)
-        methods = [(m, _at_payment_method_label("Purchase", m)) for m in raw]
-    elif idx == 3:
-        raw = _at_supplier_pay_methods(session)
-        methods = [(m, _at_payment_method_label("Supplier Payment", m)) for m in raw]
-    elif idx == 4:
-        methods = [("Cash", "Cash"), ("Bank", "Bank")]
-    else:
-        # Bank Transaction / Salary — no PM picker
-        _mob_at_close_picker()
-        return False
-
-    current_pm = st.session_state.get("at_pm", "Cash")
-    with st.container(border=False, key="erp_mob_at_picker_sheet"):
-        st.markdown('<div class="erp-mob-at-picker-grab"></div>', unsafe_allow_html=True)
-        if _mob_at_render_picker_hdr(_tf("txn.mob.pick_payment", "Payment Method")):
-            return True
-
-        with st.container(border=False, key="mob_at_picker_grid"):
-            for pm_val, pm_label in methods:
-                is_active = pm_val == current_pm
-                if st.button(
-                    pm_label,
-                    key=f"mob_at_pick_pm_{pm_val}",
-                    use_container_width=True,
-                    type="primary" if is_active else "secondary",
-                ):
-                    st.session_state["at_pm"] = pm_val
-                    _mob_at_close_picker()
-                    return True
-    return False
+def _mob_at_weekday_date_detail(d: datetime.date) -> str:
+    """Weekday + short date for date-sheet quick-choice labels (e.g. 'Mon 9 Jun')."""
+    try:
+        return f"{d.strftime('%a')} {d.strftime('%-d %b')}"
+    except ValueError:
+        return f"{d.strftime('%a')} {d.strftime('%d %b')}"
 
 
-def _mob_at_render_date_picker_sheet() -> bool:
+def _mob_at_date_quick_label(i18n_key: str, fallback: str, d: datetime.date) -> str:
+    detail = _mob_at_weekday_date_detail(d)
+    return _tf(i18n_key, fallback, detail=detail)
+
+
+def _mob_at_set_date_choice(
+    chosen: datetime.date, *, follows_today: bool
+) -> None:
+    st.session_state["at_date"] = chosen
+    st.session_state["at_date_follows_today"] = follows_today
+    st.session_state.pop("mob_at_date_custom", None)
+
+
+def _mob_at_apply_date_follow_today() -> None:
+    """DATE-01 — roll at_date forward when user left it pinned to Today."""
+    if st.session_state.get("at_date_follows_today"):
+        st.session_state["at_date"] = datetime.date.today()
+
+
+def _mob_at_date_is_backdated() -> bool:
+    d = st.session_state.get("at_date", datetime.date.today())
+    return isinstance(d, datetime.date) and d != datetime.date.today()
+
+
+def _mob_at_render_date_closed_period_notice(session, entry_date: datetime.date) -> None:
+    """Courtesy closed-period warning (posting engine remains final authority)."""
+    blocked = _entry_date_posting_blocked(session, entry_date)
+    if blocked:
+        st.caption(f"⚠️ {blocked}")
+
+
+def _mob_at_render_date_picker_sheet(session) -> bool:
     """Mobile date picker — Today / Yesterday / Custom (no Streamlit calendar popup)."""
     today = datetime.date.today()
     yesterday = today - datetime.timedelta(days=1)
@@ -11970,32 +12204,36 @@ def _mob_at_render_date_picker_sheet() -> bool:
 
         with st.container(border=False, key="mob_at_picker_grid"):
             if st.button(
-                _tf("txn.mob.today", "Today"),
+                _mob_at_date_quick_label(
+                    "txn.mob.date_today_choice", "Today · {detail}", today
+                ),
                 key="mob_at_pick_date_today",
                 use_container_width=True,
                 type="primary" if current == today and not custom_open else "secondary",
             ):
-                st.session_state["at_date"] = today
-                st.session_state.pop("mob_at_date_custom", None)
+                _mob_at_set_date_choice(today, follows_today=True)
                 _mob_at_close_picker()
                 return True
             if st.button(
-                _tf("txn.mob.date_yesterday", "Yesterday"),
+                _mob_at_date_quick_label(
+                    "txn.mob.date_yesterday_choice", "Yesterday · {detail}", yesterday
+                ),
                 key="mob_at_pick_date_yesterday",
                 use_container_width=True,
                 type="primary" if current == yesterday and not custom_open else "secondary",
             ):
-                st.session_state["at_date"] = yesterday
-                st.session_state.pop("mob_at_date_custom", None)
+                _mob_at_set_date_choice(yesterday, follows_today=False)
                 _mob_at_close_picker()
                 return True
+            _mob_at_render_date_closed_period_notice(session, yesterday)
             if st.button(
-                _tf("txn.mob.date_custom", "Custom date"),
+                _tf("txn.mob.date_custom_choice", "Custom date..."),
                 key="mob_at_pick_date_custom",
                 use_container_width=True,
                 type="primary" if custom_open else "secondary",
             ):
                 st.session_state["mob_at_date_custom"] = True
+                st.session_state["at_date_follows_today"] = False
                 st.session_state["mob_at_date_custom_str"] = current.isoformat()
                 st.rerun()
 
@@ -12020,8 +12258,8 @@ def _mob_at_render_date_picker_sheet() -> bool:
                 if parsed is None:
                     st.warning(_tf("txn.mob.date_invalid", "Enter a valid date (YYYY-MM-DD)."))
                     return False
-                st.session_state["at_date"] = parsed
-                st.session_state.pop("mob_at_date_custom", None)
+                _mob_at_render_date_closed_period_notice(session, parsed)
+                _mob_at_set_date_choice(parsed, follows_today=False)
                 _mob_at_close_picker()
                 return True
     return False
@@ -12070,10 +12308,8 @@ def _mob_at_render_picker_sheet(
     # Concept C new picker modes
     if picker_kind == "txn_type":
         return _mob_at_render_txn_type_picker_sheet()
-    if picker_kind == "payment":
-        return _mob_at_render_payment_picker_sheet(session)
     if picker_kind == "date":
-        return _mob_at_render_date_picker_sheet()
+        return _mob_at_render_date_picker_sheet(session)
     if picker_kind == "currency":
         return _mob_at_render_currency_picker_sheet(currency_default)
     # Existing picker modes
@@ -12164,28 +12400,67 @@ def _mob_at_c_row1_date_label() -> str:
         return d.strftime("%d %b")
 
 
+def _mob_at_pm_chip_methods(session, txn_type: str) -> list[str]:
+    """UX-04B — payment methods for inline mobile PM chip row."""
+    if txn_type == "Bank Transaction":
+        return []
+    if txn_type == "Sale":
+        return _at_sale_pay_methods(session)
+    if txn_type == "Expense":
+        if _mob_at_is_salary_mode():
+            return ["Cash", "Bank"]
+        return _at_expense_pay_methods(session)
+    if txn_type == "Purchase":
+        return _at_purchase_pay_methods(session)
+    if txn_type in _AT_PM_TXN_TYPES:
+        return _at_allowed_pay_methods(session, txn_type)
+    return []
+
+
+def _mob_at_pm_chip_display_label(txn_type: str, pm_val: str, full_label: str) -> str:
+    if pm_val == _COMPANY_CC_METHOD:
+        return _t("txn.pm.company_cc_short")
+    return full_label
+
+
+def _mob_at_render_pm_chip_row(session, txn_type: str) -> bool:
+    """UX-04B — inline payment method chips between Row 1 and category row."""
+    methods = _mob_at_pm_chip_methods(session, txn_type)
+    if not methods:
+        return False
+    current = st.session_state.get("at_pm", "Cash")
+    labels = _at_pm_chip_labels(txn_type, methods)
+    with st.container(border=False, key="mob_at_pm_row"):
+        cols = st.columns(len(labels), gap="small")
+        for col, (pm_val, pm_label) in zip(cols, labels):
+            if col.button(
+                _mob_at_pm_chip_display_label(txn_type, pm_val, pm_label),
+                key=f"mob_at_pm_{pm_val}",
+                use_container_width=True,
+                type="primary" if pm_val == current else "secondary",
+            ):
+                if pm_val != current:
+                    st.session_state["at_pm"] = pm_val
+                    _at_clear_stale_payment_account_keys(pm_val)
+                _mob_at_remember_last_pm(txn_type, pm_val)
+                return True
+    return False
+
+
 def _mob_at_render_c_row1(currency_default: str) -> None:
-    """Concept C — compact header row: [Type | Payment | Date | Currency]."""
+    """Concept C — compact header row: [Type | Date | Currency]."""
     type_label = _mob_at_c_type_label()
-    pm_raw = st.session_state.get("at_pm", "Cash")
-    idx = st.session_state.get("at_type_idx", 0)
-    if _mob_at_is_salary_mode():
-        pm_label = pm_raw
-    elif idx == 0:
-        pm_label = _at_payment_method_label("Sale", pm_raw)
-    elif idx == 1:
-        pm_label = _at_payment_method_label("Expense", pm_raw)
-    elif idx == 2:
-        pm_label = _at_payment_method_label("Purchase", pm_raw)
-    elif idx == 3:
-        pm_label = _at_payment_method_label("Supplier Payment", pm_raw)
-    else:
-        pm_label = pm_raw
     date_label = _mob_at_c_row1_date_label()
     currency_label = st.session_state.get("at_currency", currency_default)
+    backdated = _mob_at_date_is_backdated()
 
     with st.container(border=False, key="mob_at_row1"):
-        rc = st.columns([2.2, 2.0, 1.5, 0.9], gap="small")
+        if backdated:
+            st.markdown(
+                '<div class="erp-mob-at-date-backdated-marker" aria-hidden="true"></div>',
+                unsafe_allow_html=True,
+            )
+        rc = st.columns([2.5, 1.5, 1.0], gap="small")
         with rc[0]:
             if st.button(
                 type_label,
@@ -12196,19 +12471,6 @@ def _mob_at_render_c_row1(currency_default: str) -> None:
                 _mob_at_open_picker("txn_type")
                 st.rerun()
         with rc[1]:
-            # Hide PM button for types that have no payment choice
-            has_pm = idx not in (5,) and not _mob_at_is_salary_mode() or _mob_at_is_salary_mode()
-            if st.button(
-                pm_label,
-                key="mob_at_c_pm_btn",
-                use_container_width=True,
-                type="secondary",
-                disabled=(idx == 5),
-            ):
-                if idx != 5:
-                    _mob_at_open_picker("payment")
-                    st.rerun()
-        with rc[2]:
             if st.button(
                 date_label,
                 key="mob_at_c_date_btn",
@@ -12217,7 +12479,7 @@ def _mob_at_render_c_row1(currency_default: str) -> None:
             ):
                 _mob_at_open_picker("date")
                 st.rerun()
-        with rc[3]:
+        with rc[2]:
             if st.button(
                 currency_label,
                 key="mob_at_c_currency_btn",
@@ -12524,20 +12786,35 @@ def _at_clear_stale_mobile_overlay_state() -> None:
     st.session_state.pop("mob_at_picker_search", None)
 
 
+def _at_single_bank_account_name(bank_accounts: list) -> str | None:
+    """UX-04C — auto-pick only when exactly one active bank account exists."""
+    if len(bank_accounts) == 1:
+        return bank_accounts[0].name
+    return None
+
+
+def _at_apply_single_bank_auto_pick(bank_accounts: list) -> None:
+    """Set bank pay keys when PM requires Bank and only one account exists."""
+    single = _at_single_bank_account_name(bank_accounts)
+    if not single:
+        return
+    if not st.session_state.get("at_bank_pay_acct"):
+        st.session_state["at_bank_pay_acct"] = single
+    if not st.session_state.get("mob_at_bank_pay_sel"):
+        st.session_state["mob_at_bank_pay_sel"] = single
+
+
 def _mob_at_render_bank_pay_trigger(bank_accounts: list) -> bool:
     """Which named bank account receives/pays this Bank payment."""
     if not bank_accounts:
         return False
+    _at_apply_single_bank_auto_pick(bank_accounts)
     selected = (
         st.session_state.get("mob_at_bank_pay_sel")
         or st.session_state.get("at_bank_pay_acct")
-        or bank_accounts[0].name
     )
-    if (
-        not st.session_state.get("at_bank_pay_acct")
-        and st.session_state.get("_erp_mobile_ui")
-    ):
-        st.session_state["at_bank_pay_acct"] = selected
+    if not selected:
+        selected = _tf("txn.mob.pick_bank_pay", "Which bank account?")
     with st.container(border=False, key="mob_at_bank_pay_trigger"):
         if st.button(
             selected,
@@ -12674,24 +12951,20 @@ def _at_render_flash() -> None:
 
 
 def _mob_at_ensure_defaults(session, txn_type: str, currency_default: str, vendors: list) -> None:
-    st.session_state.setdefault("at_date", datetime.date.today())
+    if "at_date" not in st.session_state:
+        st.session_state["at_date"] = datetime.date.today()
+        st.session_state["at_date_follows_today"] = True
     st.session_state.setdefault("at_currency", currency_default)
     st.session_state.setdefault("at_notes_field", "")
     st.session_state.setdefault("at_expense_mode", "general")
     st.session_state.setdefault("at_picker_mode", "")
     if txn_type == "Sale":
-        st.session_state.setdefault("at_pm", "Cash")
         st.session_state.setdefault("at_cust", "Walk-in Customer")
-    elif txn_type == "Expense":
-        st.session_state.setdefault("at_pm", "Cash")
-    elif txn_type == "Purchase":
-        st.session_state.setdefault("at_pm", "Credit")
-    elif txn_type == "Supplier Payment":
-        st.session_state.setdefault("at_pm", "Cash")
+    if txn_type in _AT_PM_TXN_TYPES:
+        st.session_state.setdefault("at_pm", _at_default_pay_method(session, txn_type))
+    if txn_type == "Supplier Payment":
         _at_clear_category_session_state()
-    elif txn_type == "Customer Payment":
-        st.session_state.setdefault("at_pm", "Cash")
-    elif txn_type == "Bank Transaction":
+    if txn_type == "Bank Transaction":
         st.session_state.setdefault("at_bank_sub", "Deposit")
     _coerce_at_payment_method(session, txn_type)
 
@@ -12983,11 +13256,7 @@ def _at_process_submit(
                 credit_card_account_id=_submit_cc_card_id,
             )
             if st.session_state.pop("_at_save_succeeded", False):
-                for _k in [
-                    "at_amount_display", "at_notes_field", "at_cust",
-                    "at_last_cat_id", "at_payable_id", "at_last_vendor",
-                ]:
-                    st.session_state.pop(_k, None)
+                _at_clear_post_save_transient_fields()
                 st.rerun()
         except Exception as exc:
             st.error(_t("txn.save_failed", error=exc))
@@ -13030,6 +13299,7 @@ def _render_add_transaction_mobile(
     type_display_map: dict,
 ) -> bool:
     """Mobile entry screen: today summary + fixed bottom panel. Returns True if save clicked."""
+    _mob_at_apply_date_follow_today()
     today = datetime.date.today()
     if "mob_at_tab" not in st.session_state:
         idx = st.session_state.get("at_type_idx", 0)
@@ -13135,7 +13405,7 @@ def _render_add_transaction_mobile(
                 unsafe_allow_html=True,
             )
 
-            # ── Concept C: compact Row 1 (type | payment | date | currency) ──
+            # ── Concept C: Row 1 (type | date | currency) + PM chip row (UX-04B) ──
             _mob_at_render_c_row1(currency_default)
 
             # Re-derive type after any picker selection in this render pass
@@ -13149,7 +13419,10 @@ def _render_add_transaction_mobile(
             )
             _mob_at_ensure_defaults(session, txn_type, currency_default, vendors)
 
-            # ── Context-specific fields (no PM chips / currency chips — those are in Row 1) ──
+            if _mob_at_render_pm_chip_row(session, txn_type):
+                st.rerun()
+
+            # ── Context-specific fields ──
             if _mob_at_is_salary_mode():
                 workers = (
                     cq(session, Worker)
@@ -14556,6 +14829,172 @@ def _txh_row_icon_class(txn_type_key: str) -> str:
 
 _TXH_EDITABLE_TYPES = frozenset({"Sale", "ExpenseRecord", "Purchase"})
 
+_TXH_REPEAT_ELIGIBLE_ETYPES = frozenset({"ExpenseRecord", "Purchase"})
+_TXH_REPEAT_TYPE_IDX = {"ExpenseRecord": 1, "Purchase": 2}
+_TXH_REPEAT_TXN_TYPE = {"ExpenseRecord": "Expense", "Purchase": "Purchase"}
+
+
+def _txh_expense_is_repeat_ineligible(eobj) -> bool:
+    """Salary and worker-linked expense rows are out of scope for Repeat v1."""
+    if (getattr(eobj, "expense_type", None) or "").strip() == "Salary":
+        return True
+    if (getattr(eobj, "employee_name", None) or "").strip():
+        return True
+    return False
+
+
+def _txh_repeat_company_ok(eobj) -> bool:
+    active = _current_company_id()
+    if active is None:
+        return True
+    rec_co = getattr(eobj, "company_id", None)
+    return rec_co is None or rec_co == active
+
+
+def _txh_repeat_eligible(etype: str, eobj, *, is_void_row: bool) -> bool:
+    if is_void_row or getattr(eobj, "is_void", False):
+        return False
+    if not _txh_repeat_company_ok(eobj):
+        return False
+    if etype not in _TXH_REPEAT_ELIGIBLE_ETYPES:
+        return False
+    if etype == "ExpenseRecord" and _txh_expense_is_repeat_ineligible(eobj):
+        return False
+    return _can("edit_transaction")
+
+
+def _txh_resolve_active_category(session, cat_id: int | None, txn_type: str):
+    if not cat_id:
+        return None
+    cat = session.get(TransactionCategory, cat_id)
+    if not cat or not cat.is_active or cat.transaction_type != txn_type:
+        return None
+    return cat
+
+
+def _txh_resolve_active_subcategory(session, subcat_id: int | None, cat_id: int | None):
+    if not subcat_id or not cat_id:
+        return None
+    sub = session.get(TransactionSubcategory, subcat_id)
+    if not sub or not sub.is_active or sub.category_id != cat_id:
+        return None
+    return sub
+
+
+def _txh_resolve_active_vendor(session, vendor_id: int | None):
+    if not vendor_id:
+        return None
+    vendor = session.get(Vendor, vendor_id)
+    if not vendor or not vendor.is_active:
+        return None
+    return vendor
+
+
+def _txh_coerce_repeat_payment_method(session, txn_type: str, raw_pm: str | None) -> str:
+    allowed = _at_allowed_pay_methods(session, txn_type)
+    if raw_pm and raw_pm in allowed:
+        return raw_pm
+    return _at_default_pay_method(session, txn_type)
+
+
+def _txh_clear_repeat_forbidden_session_keys() -> None:
+    """Strip AT keys Repeat must never copy from a prior draft or source row."""
+    for _k in (
+        "at_cust",
+        "at_cust_sel",
+        "at_worker_id",
+        "at_payable_id",
+        "at_inv",
+        "at_bank_acct",
+        "at_bank_dest",
+        "at_bank_sub",
+        "at_fx_rate_val",
+        "mob_at_worker_gross",
+        "mob_at_worker_ded",
+        "mob_at_worker_adv_rec",
+        "at_worker_gross",
+        "at_worker_ded",
+        "at_worker_adv_rec",
+        "at_worker_mv_type",
+        "mob_at_inv_sel",
+        "mob_at_payable_sel",
+        "_at_save_succeeded",
+        "_at_submit_pending",
+        "mob_at_save_clicked",
+    ):
+        st.session_state.pop(_k, None)
+    st.session_state["at_expense_mode"] = "general"
+
+
+def _txh_apply_repeat_prefill(session, etype: str, eobj) -> bool:
+    """Prefill Add Transaction from an eligible history row. No save/posting."""
+    if not _txh_repeat_eligible(etype, eobj, is_void_row=getattr(eobj, "is_void", False)):
+        return False
+
+    txn_type = _TXH_REPEAT_TXN_TYPE[etype]
+    type_idx = _TXH_REPEAT_TYPE_IDX[etype]
+    settings = load_settings()
+    currency_default = settings.get("currency", "TRY")
+
+    _txh_clear_repeat_forbidden_session_keys()
+
+    cat = _txh_resolve_active_category(session, eobj.tx_category_id, txn_type)
+    sub = _txh_resolve_active_subcategory(
+        session, eobj.tx_subcategory_id, cat.id if cat else None
+    )
+
+    if etype == "ExpenseRecord":
+        raw_pm = eobj.payment_method
+    else:
+        raw_pm = eobj.purchase_type or "Credit"
+    coerced_pm = _txh_coerce_repeat_payment_method(session, txn_type, raw_pm)
+
+    amount = eobj.amount
+    notes = (eobj.description or "").strip()
+    currency = (getattr(eobj, "currency", None) or "").strip() or currency_default
+
+    st.session_state["at_type_idx"] = type_idx
+    st.session_state["mob_at_tab"] = type_idx
+    st.session_state.pop("mob_at_more_idx", None)
+    st.session_state["at_date"] = datetime.date.today()
+    st.session_state["at_date_follows_today"] = True
+    st.session_state["at_amount_display"] = str(amount) if amount is not None else ""
+    st.session_state["at_notes_field"] = notes
+    st.session_state["at_currency"] = currency
+    st.session_state["at_pm"] = coerced_pm
+    _at_clear_stale_payment_account_keys(coerced_pm)
+
+    if cat:
+        st.session_state["mob_at_cat_id"] = cat.id
+        st.session_state["at_cat"] = cat.name
+        st.session_state["at_last_cat_id"] = cat.id
+        st.session_state.pop("mob_at_cat_name", None)
+    else:
+        for _k in ("mob_at_cat_id", "at_cat", "at_last_cat_id", "mob_at_cat_name"):
+            st.session_state.pop(_k, None)
+
+    if sub:
+        st.session_state["mob_at_subcat_id"] = sub.id
+        st.session_state["at_subcat"] = sub.name
+    else:
+        st.session_state.pop("mob_at_subcat_id", None)
+        st.session_state.pop("at_subcat", None)
+
+    st.session_state.pop("at_vendor", None)
+    st.session_state.pop("mob_at_vendor_sel", None)
+    if etype == "Purchase":
+        vendor = _txh_resolve_active_vendor(session, eobj.vendor_id)
+        if vendor:
+            st.session_state["at_vendor"] = vendor.name
+            st.session_state["mob_at_vendor_sel"] = vendor.name
+
+    st.session_state.pop("mob_at_picker", None)
+    st.session_state.pop("mob_at_picker_search", None)
+    st.session_state["nav_selection"] = "➕ New Transaction"
+    _mobile_close_app_surfaces()
+    st.session_state["sidebar_group"] = None
+    return True
+
 
 def _txh_fetch_filtered_rows(
     session,
@@ -14760,27 +15199,30 @@ def _txh_status_pills_html(status: str, status_disp: str, *, is_corrected: bool,
     )
 
 
-def _txh_action_defs(etype: str) -> dict[str, bool]:
+def _txh_action_defs(etype: str, eobj, *, is_void_row: bool) -> dict[str, bool]:
     """Shared action permissions — no presentation."""
     can_write = _can("edit_transaction")
     editable = etype in _TXH_EDITABLE_TYPES
+    can_repeat = _txh_repeat_eligible(etype, eobj, is_void_row=is_void_row)
     return {
         "can_write": can_write,
         "can_edit": editable and can_write,
-        "can_duplicate": editable and can_write,
+        "can_repeat": can_repeat,
+        "can_duplicate": editable and can_write and etype == "Sale",
         "can_void": can_write,
     }
 
 
 def _txh_bind_action_buttons(
     action_cols,
+    session,
     *,
     row_key: str,
     etype: str,
     eobj,
     defs: dict[str, bool],
 ) -> None:
-    """Wire View / Edit / Duplicate / Void callbacks into pre-built columns."""
+    """Wire View / Edit / Repeat|Duplicate / Void callbacks into pre-built columns."""
     c_v, c_e, c_d, c_vd = action_cols
     if c_v.button("👁", key=f"txh_v_{row_key}", help=_t("txh.view_help")):
         st.session_state["txh_active_view"] = None if st.session_state.get("txh_active_view") == row_key else row_key
@@ -14795,7 +15237,13 @@ def _txh_bind_action_buttons(
             st.session_state["txh_active_edit"] = row_key
             st.session_state["txh_active_view"] = None
         st.rerun()
-    if c_d.button("📋", key=f"txh_d_{row_key}", help=_t("txh.duplicate_help"), disabled=not defs["can_duplicate"]):
+    if defs["can_repeat"]:
+        if c_d.button("🔁", key=f"txh_r_{row_key}", help=_t("txh.repeat_help")):
+            if _txh_apply_repeat_prefill(session, etype, eobj):
+                st.session_state["txh_active_view"] = None
+                st.session_state["txh_active_edit"] = None
+                st.rerun()
+    elif c_d.button("📋", key=f"txh_d_{row_key}", help=_t("txh.duplicate_help"), disabled=not defs["can_duplicate"]):
         _TYPE_IDX = {"Sale": 0, "ExpenseRecord": 1, "Purchase": 2}
         st.session_state["at_type_idx"] = _TYPE_IDX.get(etype, 0)
         st.session_state["at_amount_display"] = str(eobj.amount)
@@ -14814,16 +15262,21 @@ def _txh_bind_action_buttons(
         st.rerun()
 
 
-def _txh_render_mobile_actions(row_key: str, etype: str, eobj, *, is_void_row: bool) -> None:
+def _txh_render_mobile_actions(
+    session, row_key: str, etype: str, eobj, *, is_void_row: bool
+) -> None:
     """Mobile-only full-width action bar (txh_actions_* keys + mobile CSS)."""
     if is_void_row:
         return
-    defs = _txh_action_defs(etype)
+    defs = _txh_action_defs(etype, eobj, is_void_row=is_void_row)
     with st.container(border=False, key=f"txh_actions_{row_key}"):
-        _txh_bind_action_buttons(st.columns(4), row_key=row_key, etype=etype, eobj=eobj, defs=defs)
+        _txh_bind_action_buttons(
+            st.columns(4), session, row_key=row_key, etype=etype, eobj=eobj, defs=defs
+        )
 
 
 def _txh_render_desktop_actions(
+    session,
     action_parent,
     row_key: str,
     etype: str,
@@ -14834,10 +15287,12 @@ def _txh_render_desktop_actions(
     """Desktop-only compact action group in Actions column (txh_dt_actions_* keys)."""
     if is_void_row:
         return
-    defs = _txh_action_defs(etype)
+    defs = _txh_action_defs(etype, eobj, is_void_row=is_void_row)
     with action_parent:
         with st.container(border=False, key=f"txh_dt_actions_{row_key}"):
-            _txh_bind_action_buttons(st.columns(4), row_key=row_key, etype=etype, eobj=eobj, defs=defs)
+            _txh_bind_action_buttons(
+                st.columns(4), session, row_key=row_key, etype=etype, eobj=eobj, defs=defs
+            )
 
 
 def _txh_render_row_panels(
@@ -15264,6 +15719,7 @@ def _txh_render_desktop_table_header() -> None:
 
 
 def _txh_render_desktop_row(
+    session,
     row_dict: dict,
     etype: str,
     eobj,
@@ -15323,7 +15779,7 @@ def _txh_render_desktop_row(
         )
         if not is_void_row:
             _txh_render_desktop_actions(
-                c_act, row_key, etype, eobj, is_void_row=is_void_row,
+                session, c_act, row_key, etype, eobj, is_void_row=is_void_row,
             )
 
 
@@ -15355,7 +15811,9 @@ def _txh_render_transaction_list(
                     is_void_row=is_void_row,
                     is_corrected=is_corrected,
                 )
-                _txh_render_mobile_actions(row_key, etype, eobj, is_void_row=is_void_row)
+                _txh_render_mobile_actions(
+                    session, row_key, etype, eobj, is_void_row=is_void_row
+                )
                 _txh_render_row_panels(
                     session,
                     row_key=row_key,
@@ -15368,7 +15826,7 @@ def _txh_render_transaction_list(
                 )
         else:
             _txh_render_desktop_row(
-                row_dict, etype, eobj,
+                session, row_dict, etype, eobj,
                 row_key=row_key,
                 is_void_row=is_void_row,
                 is_corrected=is_corrected,
@@ -24164,11 +24622,27 @@ def main():
                 if _dev_err:
                     st.error(_dev_err)
 
+    # ── UX-01: clear restore cookie after explicit logout ─────────────────────
+    if st.session_state.get(_SESSION_LOGGED_OUT):
+        _render_session_restore_cookie(clear=True)
+
+    # ── UX-01: restore user (+ company) from signed cookie after refresh ──────
+    if _current_user() is None and not st.session_state.get(_SESSION_LOGGED_OUT):
+        with get_session() as _restore_s:
+            if _try_restore_session_from_cookie(_restore_s):
+                st.rerun()
+
     # ── Auth gate — show login page if no valid session ───────────────────────
     if _current_user() is None:
         with get_session() as _auth_session:
             render_login(_auth_session)
         return
+
+    # ── UX-01: refresh signed restore cookie while authenticated ──────────────
+    with get_session() as _cookie_s:
+        _tok = _mint_restore_token_for_user(_cookie_s, _current_user()["id"])
+        if _tok:
+            _render_session_restore_cookie(token=_tok)
 
     # ── SETUP-01: company creation wizard (Summary → create_company in B2) ─────
     if is_setup01_active():

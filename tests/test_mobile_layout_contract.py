@@ -15,6 +15,8 @@ _MOBILE_COLUMN_ROW_KEYS = frozenset({
     "mob_at_amount_row",
     # Concept C Row 1 (replaces mob_at_tabs)
     "mob_at_row1",
+    # UX-04B — payment method chip row
+    "mob_at_pm_row",
     # Concept C category row (replaces inline mob_at_cat_trigger in main panel)
     "mob_at_c_cat_row",
     # Concept C full-width Save row (replaces side-column Save in fragment)

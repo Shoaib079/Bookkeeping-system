@@ -16,20 +16,28 @@ def test_mobile_header_css_loaded():
     css = theme.load_theme_css()
     mobile_shell_marker = "/* Mobile shell — html.erp-mobile"
     mobile_header_marker = "/* Mobile header compact pass"
+    auth_marker = "/* LOGIN-01 — Login + company picker auth surfaces"
     mobile_txn_marker = "/* Mobile New Transaction — bottom entry panel"
     assert mobile_header_marker in css
-    assert css.index(mobile_shell_marker) < css.index(mobile_header_marker) < css.index(mobile_txn_marker)
-    assert ".erp-auth-banner" in css
+    assert auth_marker in css
+    assert (
+        css.index(mobile_shell_marker)
+        < css.index(mobile_header_marker)
+        < css.index(auth_marker)
+        < css.index(mobile_txn_marker)
+    )
+    assert ".erp-auth-header-card" in css
     assert "--hdr-h: 56px" in css
     assert "erp-hdr-co-pill" in css
 
 
-def test_login_and_picker_use_compact_auth_banner():
+def test_login_and_picker_use_flat_auth_header_card():
     login = inspect.getsource(erp.render_login)
     picker = inspect.getsource(erp.render_company_picker)
     for src in (login, picker):
-        assert "erp-auth-banner" in src
+        assert "erp-auth-header-card" in src
         assert "erp-auth-top-spacer" in src
+        assert "erp-auth-banner" not in src
         assert "height:40px" not in src
         assert "padding:24px 32px" not in src
 

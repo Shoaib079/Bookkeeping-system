@@ -2,9 +2,11 @@
  * Scope: header + login/picker only. Does not change bottom nav, hubs, or banking.
  * HDR-01: layout tokens (--hdr-toolbar-*) — do not add alternate --hdr-h definitions. */
 
-@media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
-  :root,
-  html.erp-mobile {
+/* Viewport gates mirror inject_mobile_viewport_detector() — narrow | touchTablet | phoneLandscape */
+@media (max-width: 968px),
+  ((max-width: 1366px) and (hover: none) and (pointer: coarse)),
+  ((max-height: 520px) and (hover: none) and (pointer: coarse)) {
+  :root {
     --hdr-h: 56px;
     --hdr-h-search: 86px;
     --hdr-toolbar-cluster-w: 72px;
@@ -13,7 +15,6 @@
     --hdr-title-side-reserve: calc(var(--hdr-toolbar-cluster-w) + var(--hdr-toolbar-edge));
   }
 
-  html.erp-mobile:has([class*="st-key-hdr_search_panel"] [data-testid="stTextInput"]),
   :root:has([class*="st-key-hdr_search_panel"] [data-testid="stTextInput"]) {
     --hdr-h: var(--hdr-h-search);
   }
@@ -128,7 +129,10 @@
     flex-wrap: nowrap !important;
   }
 
-  /* Standalone bell + profile icon buttons */
+  /* Standalone bell + profile icon buttons
+     M6 ownership: MOBILE header toolbar notification rules live here; widgets.css
+     owns the legacy desktop toolbar copies. Two-owner split is intentional —
+     do not delete either copy (contract: test_mobile14_notification_rule_liveness_pin). */
   [data-testid="stMain"] [class*="st-key-hdr_notif_pop"] [data-testid="stPopover"] > button {
     width: 32px !important;
     min-width: 32px !important;
@@ -160,98 +164,5 @@
   [data-testid="stMain"] .st-key-hdr_toolbar_row:has(.erp-hdr-notif-active) .st-key-hdr_notif_pop [data-testid="stPopover"] > button {
     background: color-mix(in srgb, var(--theme-warning) 12%, var(--theme-card) 88%) !important;
     border-color: color-mix(in srgb, var(--theme-warning) 40%, var(--theme-border) 60%) !important;
-  }
-}
-
-html.erp-mobile {
-  --hdr-h: 56px;
-  --hdr-h-search: 86px;
-  --hdr-toolbar-cluster-w: 72px;
-  --hdr-toolbar-edge: 12px;
-  --hdr-toolbar-gap: 8px;
-  --hdr-title-side-reserve: calc(var(--hdr-toolbar-cluster-w) + var(--hdr-toolbar-edge));
-}
-
-html.erp-mobile:has([class*="st-key-hdr_search_panel"] [data-testid="stTextInput"]) {
-  --hdr-h: var(--hdr-h-search);
-}
-
-html.erp-mobile section[data-testid="stMain"] .block-container {
-  padding-top: calc(var(--hdr-h) + 10px) !important;
-}
-
-/* Login + company picker — compact auth chrome */
-.erp-auth-top-spacer {
-  height: 12px;
-}
-
-.erp-auth-banner {
-  padding: 12px 16px 10px;
-  text-align: center;
-  margin-bottom: 12px;
-  border-radius: 12px;
-}
-
-.erp-auth-banner-icon {
-  font-size: 20px;
-  line-height: 1;
-  margin-bottom: 2px;
-}
-
-.erp-auth-banner-title {
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.25;
-  color: var(--theme-text);
-}
-
-.erp-auth-banner-sub {
-  font-size: 11px;
-  opacity: 0.72;
-  margin-top: 2px;
-  color: var(--theme-muted);
-}
-
-.erp-auth-section-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--theme-text);
-  margin-bottom: 8px;
-}
-
-.erp-auth-section-label.is-center {
-  text-align: center;
-}
-
-@media (max-width: 968px), ((max-width: 1024px) and (hover: none) and (pointer: coarse)) {
-  [data-testid="stMain"] [class*="st-key-pick_co_"] [data-testid="stVerticalBlockBorderWrapper"] {
-    padding: 8px 10px !important;
-    margin-bottom: 6px !important;
-  }
-
-  [data-testid="stMain"] [class*="st-key-pick_co_"] [data-testid="stMarkdown"] p,
-  [data-testid="stMain"] [class*="st-key-pick_co_"] [data-testid="stMarkdown"] div {
-    margin: 0 !important;
-    line-height: 1.25 !important;
-  }
-
-  [data-testid="stMain"] [class*="st-key-pick_co_"] button {
-    min-height: 34px !important;
-    height: 34px !important;
-    padding: 0 10px !important;
-    font-size: 12px !important;
-  }
-
-  [data-testid="stMain"] [class*="st-key-select_user_"] button {
-    min-height: 64px !important;
-    padding: 6px 4px !important;
-    font-size: 11px !important;
-    line-height: 1.2 !important;
-    white-space: pre-line !important;
-  }
-
-  [data-testid="stMain"] [class*="st-key-login_"] [data-testid="stVerticalBlockBorderWrapper"],
-  [data-testid="stMain"] [class*="st-key-picker_"] [data-testid="stVerticalBlockBorderWrapper"] {
-    padding: 10px 12px !important;
   }
 }
