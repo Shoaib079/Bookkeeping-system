@@ -19,6 +19,11 @@ _P1B_KEYS = (
     "banking.pos_entry.no_rows",
 )
 
+_EXPECTED_EN = {
+    "banking.pos_entry.title": "POS / Card Settlement",
+    "banking.pos_entry.open": "Open POS / Card Settlement",
+}
+
 
 class TestBankingEntryPoint:
     def test_render_banking_exposes_pos_settlement_entry(self):
@@ -28,29 +33,34 @@ class TestBankingEntryPoint:
             '_banking_section_select("banking_section"'
         )
 
-    def test_entry_uses_label_helper_not_raw_keys(self):
+    def test_entry_uses_t_helper_like_other_banking_labels(self):
         src = inspect.getsource(erp._render_banking_pos_settlement_entry)
-        assert "_banking_pos_entry_label" in src
-        assert 'st.caption(_t("banking.pos_entry' not in src
-        assert 'st.button(\n            _t("banking.pos_entry' not in src
-        for key in _P1B_KEYS:
-            assert f'_banking_pos_entry_label("{key}")' in src
+        assert '_t("banking.pos_entry.title")' in src
+        assert '_t("banking.pos_entry.hint")' in src
+        assert '_t("banking.pos_entry.open")' in src
+        assert '_t("banking.pos_entry.no_rows")' in src
+        assert "_banking_pos_entry_label" not in src
 
-    def test_entry_button_uses_on_click_route(self):
+    def test_entry_stays_visible_when_import_section_selected(self):
         src = inspect.getsource(erp._render_banking_pos_settlement_entry)
-        assert "on_click=_set_banking_pos_settlement_route" in src
-        assert "_apply_banking_pos_settlement_route()" not in src
+        assert 'banking_section") == "import"' not in src
 
-    def test_entry_hides_when_already_on_import_section(self):
+    def test_entry_button_calls_apply_route(self):
         src = inspect.getsource(erp._render_banking_pos_settlement_entry)
-        assert 'st.session_state.get("banking_section") == "import"' in src
+        assert "_apply_banking_pos_settlement_route()" in src
+        assert "on_click=" not in src
+
+    def test_entry_visible_under_feature_flags_only(self):
+        src = inspect.getsource(erp._render_banking_pos_settlement_entry)
+        assert "_card_settlement_on(session)" in src
+        assert "_banking_reconciliation_on(session)" in src
+        assert '_can("view_bank_statement_import")' in src
 
     def test_entry_does_not_duplicate_deposit_clearing_panel(self):
         entry_src = inspect.getsource(erp._render_banking_pos_settlement_entry)
         assert "_render_bsi_deposit_clearing" not in entry_src
         assert "post_deposit_clearing_match" not in entry_src
         assert "compute_pos_settlement_preview" not in entry_src
-        assert "_set_banking_pos_settlement_route" in entry_src
 
 
 class TestI18nNotRawKeys:
@@ -63,15 +73,17 @@ class TestI18nNotRawKeys:
                     f"{loc}: raw key rendered for {key!r}"
                 )
 
+    def test_app_t_resolves_pos_entry_labels(self):
+        for key, snippet in _EXPECTED_EN.items():
+            text = erp._t(key)
+            assert text == TRANSACTIONAL_EN[key]
+            assert snippet in text
+            assert not text.startswith("banking.pos_entry.")
+
     def test_pos_entry_keys_in_messages_catalog(self):
         for key in _P1B_KEYS:
             assert MESSAGES["en"][key] == TRANSACTIONAL_EN[key]
             assert MESSAGES["tr"][key] == TRANSACTIONAL_TR[key]
-
-    def test_banking_pos_entry_label_helper_fallback(self):
-        src = inspect.getsource(erp._banking_pos_entry_label)
-        assert "_t(key)" in src
-        assert "TRANSACTIONAL_EN" in src
 
 
 class TestRouteSessionKeys:
@@ -83,19 +95,17 @@ class TestRouteSessionKeys:
         assert keys["bsi_match_kind"] == "card_clearing"
         assert keys["bsi_pos_entry"] is True
 
-    def test_set_route_writes_all_session_keys(self, monkeypatch):
-        state: dict = {}
-        monkeypatch.setattr(erp.st, "session_state", state)
-        erp._set_banking_pos_settlement_route()
-        assert state == erp._banking_pos_settlement_route_keys()
-
-    def test_apply_route_sets_session_state_and_reruns(self, monkeypatch):
+    def test_apply_route_sets_explicit_session_keys_and_reruns(self, monkeypatch):
         state: dict = {}
         reruns: list[int] = []
         monkeypatch.setattr(erp.st, "session_state", state)
         monkeypatch.setattr(erp.st, "rerun", lambda: reruns.append(1))
         erp._apply_banking_pos_settlement_route()
-        assert state == erp._banking_pos_settlement_route_keys()
+        assert state["nav_selection"] == NAV_BANKING
+        assert state["banking_section"] == "import"
+        assert state["bsi_section"] == "match"
+        assert state["bsi_match_kind"] == "card_clearing"
+        assert state["bsi_pos_entry"] is True
         assert reruns == [1]
 
     def test_render_banking_routes_to_statement_import(self):
@@ -116,6 +126,13 @@ class TestRouteSessionKeys:
         assert match_block.index("bsi_pos_entry") < match_block.index(
             "bsi_match_kind_row"
         )
+
+    def test_no_rows_guidance_in_entry_and_match(self):
+        entry_src = inspect.getsource(erp._render_banking_pos_settlement_entry)
+        assert "get_postable_rows" in entry_src
+        assert '_t("banking.pos_entry.no_rows")' in entry_src
+        match_src = inspect.getsource(erp.render_bank_statement_import)
+        assert 'banking.import.match.no_rows' in match_src
 
 
 class TestPostingUnchanged:

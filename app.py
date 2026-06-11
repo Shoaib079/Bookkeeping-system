@@ -20711,27 +20711,13 @@ def _banking_pos_settlement_route_keys() -> dict:
     }
 
 
-def _set_banking_pos_settlement_route() -> None:
-    """Apply route keys (Streamlit on_click — rerun is automatic)."""
-    for k, v in _banking_pos_settlement_route_keys().items():
-        st.session_state[k] = v
-
-
 def _apply_banking_pos_settlement_route() -> None:
-    _set_banking_pos_settlement_route()
+    st.session_state["nav_selection"] = NAV_BANKING
+    st.session_state["banking_section"] = "import"
+    st.session_state["bsi_section"] = "match"
+    st.session_state["bsi_match_kind"] = "card_clearing"
+    st.session_state["bsi_pos_entry"] = True
     st.rerun()
-
-
-def _banking_pos_entry_label(key: str) -> str:
-    """Resolve POS entry copy; never leave raw banking.pos_entry.* keys visible."""
-    label = _t(key)
-    if label != key:
-        return label
-    from registry.locales.transactional import TRANSACTIONAL_EN, TRANSACTIONAL_TR
-
-    loc = _ui_locale()
-    cat = TRANSACTIONAL_TR if loc == "tr" else TRANSACTIONAL_EN
-    return cat.get(key) or TRANSACTIONAL_EN.get(key) or key
 
 
 def _render_banking_pos_settlement_entry(session) -> None:
@@ -20740,25 +20726,23 @@ def _render_banking_pos_settlement_entry(session) -> None:
         return
     if not _can("view_bank_statement_import"):
         return
-    if st.session_state.get("banking_section") == "import":
-        return
     cid = current_company_required()
     with st.container(border=True):
         st.markdown(
             financial_section_header_html(
-                _banking_pos_entry_label("banking.pos_entry.title"), accent="info"
+                _t("banking.pos_entry.title"), accent="info"
             ),
             unsafe_allow_html=True,
         )
-        st.caption(_banking_pos_entry_label("banking.pos_entry.hint"))
+        st.caption(_t("banking.pos_entry.hint"))
         if not get_postable_rows(session, cid):
-            st.info(_banking_pos_entry_label("banking.pos_entry.no_rows"))
-        st.button(
-            _banking_pos_entry_label("banking.pos_entry.open"),
+            st.info(_t("banking.pos_entry.no_rows"))
+        if st.button(
+            _t("banking.pos_entry.open"),
             type="primary",
             key="bank_pos_settlement_open",
-            on_click=_set_banking_pos_settlement_route,
-        )
+        ):
+            _apply_banking_pos_settlement_route()
 
 
 def _render_banking_statement_import(session):

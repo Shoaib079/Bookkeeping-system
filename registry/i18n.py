@@ -27,6 +27,8 @@ def translate(key: str, locale: str | None = None, **kwargs) -> str:
     if text is None:
         text = TRANSACTIONAL_EN.get(key)
     if text is None:
+        text = TRANSACTIONAL_TR.get(key)
+    if text is None:
         text = key
     if kwargs:
         try:
