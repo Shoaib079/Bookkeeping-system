@@ -355,6 +355,13 @@ _EN: dict[str, str] = {
     "ob.col.ob_cost": "OB Cost",
     "ob.col.current_qty": "Current Qty",
     "ob.col.sku": "SKU",
+    # Partner Summary plain labels (PARTNER-UX-01 — also in transactional; duplicated for reliable lookup)
+    "partner.summary_plain_capital": "Invested in business",
+    "partner.summary_plain_current": "Taken from business / profit share account",
+    "partner.summary_plain_advances": "Still owes company",
+    "partner.summary_plain_adv_owes": "Partner still owes company {currency} {amount:,.2f}",
+    "partner.summary_current_taken": "Partner has taken {currency} {amount:,.2f}",
+    "partner.summary_current_owed": "Company owes partner {currency} {amount:,.2f}",
 }
 _EN.update(TRANSACTIONAL_EN)
 
@@ -687,6 +694,13 @@ _TR: dict[str, str] = {
     "ob.col.ob_cost": "AB Maliyeti",
     "ob.col.current_qty": "Mevcut Miktar",
     "ob.col.sku": "SKU",
+    # Partner Summary plain labels (PARTNER-UX-01 — also in transactional; duplicated for reliable lookup)
+    "partner.summary_plain_capital": "İşletmeye yatırılan",
+    "partner.summary_plain_current": "İşletmeden alınan / kâr payı hesabı",
+    "partner.summary_plain_advances": "Şirkete borçlu",
+    "partner.summary_plain_adv_owes": "Ortak hâlâ şirkete {currency} {amount:,.2f} borçlu",
+    "partner.summary_current_taken": "Ortak {currency} {amount:,.2f} almış",
+    "partner.summary_current_owed": "Şirket ortağa {currency} {amount:,.2f} borçlu",
 }
 _TR.update(TRANSACTIONAL_TR)
 # fmt: on

@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-11 (DASHBOARD-01 D1 · flat welcome card)  
-**Full suite:** run `pytest tests/` — host count after D1 (see latest `pytest tests/ -q` tail).
+**Last updated:** 2026-06-05 (PARTNER-STATEMENT-01 P1)  
+**Full suite:** run `pytest tests/` — **1061 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -465,6 +465,87 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 | Notification rule liveness pins (3 files) | Pass | Permanent two-owner contract |
 
 Remaining xfails (M3/M4) are optional suppression relocations — not MOBILE-14 blockers.
+
+---
+
+### `tests/test_partner_statement_p3.py` (9 tests) — PARTNER-STATEMENT-01 P3
+
+| Contract | Protects |
+|---|---|
+| PDF payload summary totals match statement | Export parity |
+| PDF payload includes detail lines | P2 detail in PDF |
+| AdvanceOffset zero net effect in PDF detail | Settlement accounting |
+| Allocation detail date = fiscal period end | Period attribution |
+| Empty period PDF generates | Edge case |
+| Warnings included in PDF payload | Status export |
+| Excel export DataFrame unchanged from P2 | Regression |
+| Print UI uses banner/financial helpers | No fragile inline styles |
+| `post_partner_movement` unchanged | No posting drift |
+
+---
+
+### `tests/test_partner_statement_p2.py` (8 tests) — PARTNER-STATEMENT-01 P2
+
+| Contract | Protects |
+|---|---|
+| Detail running position reaches closing | Running balance math |
+| AdvanceOffset detail net effect zero | Settlement accounting |
+| Profit allocation detail uses period end-date | Period attribution |
+| Inactive partner detail lines | Partner filter |
+| Empty period opening = closing | Zero-activity reconcile |
+| Export summary totals match screen | Excel export parity |
+| Detail expander + export in UI | P2 wiring |
+| `post_partner_movement` unchanged | No posting drift |
+
+---
+
+### `tests/test_partner_statement_p1.py` (20 tests) — PARTNER-STATEMENT-01 P1
+
+| Contract | Protects |
+|---|---|
+| Position = capital + current − advances | Core formula |
+| Status phrasing (company owes / partner owes / settled) | Direction labels |
+| All six movement types bucketed correctly | Activity sections |
+| AdvanceOffset zero net position effect | Settlement accounting |
+| Profit allocation by fiscal period end-date (not JE date) | Period attribution |
+| Stored `PartnerProfitAllocationLine.amount` used | No % recompute |
+| Voided movements excluded | Statement integrity |
+| Outstanding advance warning | Status section |
+| Closed period without allocation warning | Compliance hint |
+| Reconciliation identity check | opening + activity = closing |
+| Inactive partner with balance renders | Partner filter |
+| `post_partner_movement` / `allocate_profit_to_partners` unchanged | No posting drift |
+| Statement tab on Partner Accounts page | UI placement |
+
+---
+
+### `tests/test_partner_ux_p1p2p3.py` (9 tests) — PARTNER-UX-01 P1–P3 + i18n fix
+
+| Contract | Protects |
+|---|---|
+| Movement explain + P2/P3 locale keys EN/TR | i18n parity |
+| Movement form renders type explanation | P1 captions |
+| `get_partner_advance_balance` uses 15XX GL | P2 advance source |
+| No-advance warning for Repayment/AdvanceOffset | P2 guardrail |
+| Exceeds-outstanding warning before submit | P2 guardrail |
+| Summary tab plain-language labels | P3 UX |
+| Summary labels translate (not raw `partner.summary_*` keys) | i18n regression |
+| Summary labels in MESSAGES + TRANSACTIONAL catalogs | Reliable lookup |
+| `post_partner_movement` unchanged | No posting drift |
+
+---
+
+### `tests/test_banking_pos_workflow_p1p2.py` (7 tests) — BANKING-POS-WORKFLOW-01 P1+P2
+
+| Contract | Protects |
+|---|---|
+| Sales Revenue not in main Other Income options | P1 demotion to advanced expander |
+| Sales Revenue selection shows double-count warning | P1 guardrail |
+| `card_deposit_style` + Sales Revenue shows POS warning | P1 escalated guardrail |
+| POS Settlement explainer in Card Sale Deposit panel | P2 workflow explanation |
+| Banking Settings caption includes POS Settlement line | P2 settings explanation |
+| EN/TR locale keys for P1+P2 | i18n parity |
+| `post_generic_deposit` / `post_deposit_clearing_match` unchanged | No posting drift |
 
 ---
 

@@ -634,6 +634,31 @@
   margin-top: 2px;
 }
 
+/* Partner Statement — print-friendly report shell (PARTNER-STATEMENT-01 P3) */
+.erp-partner-stmt-report {
+  margin-bottom: 8px;
+}
+.erp-partner-stmt-body {
+  margin-bottom: 12px;
+}
+.erp-partner-stmt-body .erp-fin-section-hdr {
+  margin-top: 10px;
+}
+.erp-partner-stmt-body .erp-fin-table-wrap {
+  margin-bottom: 8px;
+}
+@media print {
+  .erp-partner-stmt-no-print {
+    display: none !important;
+  }
+  .erp-partner-stmt-report {
+    break-inside: avoid;
+  }
+  .erp-fin-table-wrap {
+    overflow: visible !important;
+  }
+}
+
 /* Aging buckets — mono grid */
 .erp-aging-grid {
   display: flex;

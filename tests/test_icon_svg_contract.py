@@ -127,6 +127,7 @@ def test_partner_tab_labels_have_no_emoji():
         "partner.tab_movements",
         "partner.tab_allocations",
         "partner.tab_summary",
+        "partner.tab_statement",
     ):
         for catalog in (TRANSACTIONAL_EN, TRANSACTIONAL_TR):
             val = catalog[key]

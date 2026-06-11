@@ -1,7 +1,7 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** 2026-06-11 (DASHBOARD-01 closed · D2 class system)  
+**Last updated:** 2026-06-05 (PARTNER-STATEMENT-01 P1 shipped)  
 **Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
@@ -20,7 +20,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | Company creation (14D-D) | ✅ Complete |
 | Sidebar uses company role (nav fix) | ✅ Complete |
 | Simplified Company Setup UI | ✅ Complete (Expert policies stub) |
-| Automated tests | ✅ **918 passing, 2 xfailed** (run `pytest tests/` on host) |
+| Automated tests | ✅ **1061 passing, 2 xfailed** (run `pytest tests/` on host) |
 | Member management (14D-E) | ✅ Complete |
 | Member roster polish (14D-F) | ✅ Complete |
 | Setup wizard v1 (14D-G) | ✅ Complete — **superseded by SETUP-01** |
@@ -28,6 +28,13 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | SETUP-02 Setup Summary | 📋 Medium — planned |
 | SETUP-03 Configuration Health Check | 📋 Medium — planned |
 | BANK-03 POS Settlement wording | ✅ Shipped (BANKING-DESKTOP-01 B2 — Banking Settings + import match locales EN/TR) |
+| BANKING-POS-WORKFLOW-01 P1+P2 | ✅ Shipped — Other Income Sales Revenue guardrails + POS Settlement explainer (no posting changes) |
+| BANKING-UX-02 POS Settlement Transparency | 📋 **Proposed** — High priority; next approved Banking UX before any new Banking feature work |
+| PARTNER-UX-01 P1–P3 | ✅ Shipped — Partner movement explanations, advance warnings, Summary plain labels (no posting changes) |
+| PARTNER-STATEMENT-01 P1 | ✅ Shipped — read-only Partner Statement tab (month/quarter/year/custom); profit by fiscal period end-date; no posting changes |
+| PARTNER-STATEMENT-01 P2 | ✅ Shipped — detail lines, running position, Excel export |
+| PARTNER-STATEMENT-01 P3 | ✅ Shipped — PDF export + print-friendly report UI |
+| PARTNER-STATEMENT-01 P4 | 📋 Planned — all-partners settlement summary |
 | Localization EN/TR (15) | ✅ Complete |
 | DEVELOPMENT_MODE | ✅ **Resolved by DEV-AUTH-01** — env-gated dev mode: `DEV_MODE = os.getenv("ERP_DEV_MODE", "0") == "1"` (default off). **Production checklist: must not run with `ERP_DEV_MODE=1`** |
 | Shell / mobile chrome (Phase A) | ✅ Stabilized — fixed header, 968px breakpoint, People hub wired |
@@ -85,6 +92,8 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 **Deferred:** Inventory expansion, procurement, CRM, BI, PostgreSQL — until real usage demands them.
 
 **Do NOT start (future projects — see [FUTURE UX / NAVIGATION VISION](#future-ux--navigation-vision)):** Banking redesign · Reports redesign · Mobile shell redesign · Navigation redesign · More Hub redesign · Sidebar redesign.
+
+**Next approved Banking work (before Banking redesign or new Banking features):** [BANKING-UX-02](#banking-ux-02--pos-settlement-transparency) — POS Settlement Transparency (Proposed, High).
 
 **Current focus stays on:** (1) Accounting stability · (2) Daily-use workflow testing · (3) Banking observation · (4) UX cleanup · (5) Real-world usage feedback.
 
@@ -188,6 +197,109 @@ Keep **“Card Sales Clearing”** for COA / account names only.
 **Purpose:** Reduce confusion with Company Credit Card (KK).
 
 **Status:** Shipped in BANKING-DESKTOP-01 B2 (`bank.settings.card_settlement.section`, `settings.banking.card_settlement_enabled`, import match hint, backfill caption — EN/TR).
+
+---
+
+### BANKING-POS-WORKFLOW-01 — POS Settlement workflow UX ✅ **P1+P2 shipped**
+
+**P1:** Demote Sales Revenue in Other Income match path; double-count + POS-deposit warnings (no posting block).
+
+**P2:** Card Sale Deposit panel explainer + Banking Settings POS Settlement caption line.
+
+**Not in scope (P3+):** Auto-preselect clearing sales, dashboard clearing balance, posting/matching changes. Deferred to [BANKING-UX-02](#banking-ux-02--pos-settlement-transparency).
+
+---
+
+### BANKING-UX-02 — POS Settlement Transparency 📋 **Proposed** · **High**
+
+**Status:** Proposed  
+**Priority:** High
+
+**Reason:** User testing showed Card Sales Clearing works correctly in accounting, but users cannot easily locate or understand it during **Banking → Match & Post**. Workflow visibility is weak; the goal is transparency, not accounting redesign.
+
+**Current flow (correct, hard to see):**
+
+```text
+Sales Entry → Card Sales Clearing → Bank Deposit → POS Settlement Match → Bank
+```
+
+Users cannot easily see the middle stage (**Card Sales Clearing**): outstanding clearing balance, unsettled sales, or why a deposit can or cannot be matched.
+
+**Ordering:** After [BANKING-POS-WORKFLOW-01](#banking-pos-workflow-01--pos-settlement-workflow-ux--p1p2-shipped). Before any new Banking feature development or Banking redesign.
+
+---
+
+#### Phase P1 — Settlement Match Preview
+
+**Where:** Banking → Statement Import → Match & Post → Card Sale Deposit / POS Settlement
+
+**Show:**
+
+- Number of unsettled card sales
+- Gross sales waiting for settlement
+- Bank deposit amount
+- Estimated / actual POS fee
+- Clear explanation: *"This clears Card Sales Clearing and moves money into Bank. It does not create new Sales Revenue."*
+
+**Target outcome:** Users understand exactly what **Confirm & Post** will do before posting.
+
+---
+
+#### Phase P2 — Card Sales Clearing Visibility
+
+Add visible **Card Sales Clearing** balance.
+
+**Possible locations:** Dashboard **or** Banking → Accounts & Transactions
+
+**Show:**
+
+```text
+Card Sales Clearing
+TRY X waiting settlement
+```
+
+**Optional action:** View unsettled card sales
+
+---
+
+#### Phase P3 — Unsettled Card Sales List
+
+Drill-down list:
+
+| Column | |
+|--------|---|
+| Date | |
+| Reference | |
+| Amount | |
+| Settlement status | |
+
+**Totals:** Waiting Settlement = X
+
+**Purpose:** Users can identify what remains unmatched.
+
+---
+
+#### Phase P4 — Match Failure Explanation
+
+When **Confirm & Post** is unavailable, replace vague messaging with:
+
+- **"No unsettled card sales found."**
+- Explain: current Card Sales Clearing balance, candidate count, date-window mismatch if applicable
+
+**Purpose:** Help users understand why settlement matching is unavailable.
+
+---
+
+**Dependencies:** No accounting changes required.
+
+**Do not modify:**
+
+- `post_card_sale`
+- `post_deposit_clearing_match`
+- Matching algorithms
+- Database models
+
+**Scope:** UX and visibility only.
 
 ---
 
@@ -1816,6 +1928,7 @@ Restaurant (POS, recipes), retail (barcode), services (projects), tourism (booki
 | 2026-06 | 14D-B2a shipped read-only; enforcement in B2b / 14D-C |
 | 2026-06-06 | Phase 18-MUX approved in principle (mobile calculator New Transaction); backlog only — after mobile nav stabilization |
 | 2026-06-09 | **AD-UI-001** sidebar/navigation redesign approved (high priority); implementation gated on NAVIGATION_AUDIT.md |
+| 2026-06-11 | **ROADMAP-UPDATE-01** — **BANKING-UX-02** POS Settlement Transparency proposed (High). User testing: clearing logic correct but Card Sales Clearing / unsettled sales not visible in Match & Post. P1–P4 are UX-only; ordered after BANKING-POS-WORKFLOW-01, before new Banking features. |
 | 2026-06 | **SETUP-01** Company Creation Wizard design approved (8 steps + summary at create); SETUP-02/03 planned; BANK-03 POS Settlement wording |
 | 2026-06 | P0 complete: multi-company switch + persistence, mobile surfaces, AT safety, Transaction Ledger; daily-use priority over new features |
 | 2026-06 | **Future UX / Navigation vision** recorded (MOBILE-07–10, DESIGN-05, DESKTOP-04) — low priority, design direction only; explicit deferral of banking/reports/mobile shell/nav/More/sidebar redesigns |

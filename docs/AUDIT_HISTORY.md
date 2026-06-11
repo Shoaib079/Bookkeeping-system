@@ -8,6 +8,102 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-05 — PARTNER-STATEMENT-01 P3 (PDF + print polish)
+
+**Task:** PDF export and print-friendly Partner Statement presentation.
+
+**P3 deliverables:**
+- `partner_statement_pdf_payload()` + `generate_partner_statement_pdf()` (adapter on existing statement PDF patterns).
+- PDF includes summary, status, warnings, and P2 detail lines; totals match screen/Excel.
+- UI: `page_report_banner_html`, `financial_section_header_html`, `financial_statement_table_html` (no inline flex styles); print CSS hides filters/export.
+
+**Unchanged:** posting, allocation posting, models, JEs, P1/P2 formulas.
+
+**Files:** `exports.py`, `registry/partner_statement.py`, `app.py`, `ui/theme.css`, `registry/locales/transactional.py`, `tests/test_partner_statement_p3.py`.
+
+---
+
+## 2026-06-05 — PARTNER-STATEMENT-01 P2 (detail lines + Excel export)
+
+**Task:** Detail-line support, running position, and export polish for Partner Statement.
+
+**P2 deliverables:**
+- `build_partner_statement_detail_lines()` — date, section, type, description, reference, inflow/outflow, net effect, running position.
+- All movement types + profit/loss allocation lines (allocations still keyed to fiscal period `end_date`).
+- UI expander “Show detail lines” below summary; Excel export via `partner_statement_to_export_df()` (`pdf=False`).
+
+**Unchanged:** posting, allocation posting, models, JEs, Balance Sheet.
+
+**Files:** `registry/partner_statement.py`, `app.py`, `registry/locales/transactional.py`, `tests/test_partner_statement_p2.py`.
+
+---
+
+## 2026-06-05 — PARTNER-STATEMENT-01 P1 (read-only Partner Statement)
+
+**Task:** Monthly/quarterly/yearly/custom partner settlement review report.
+
+**Location:** Partner Accounts page — new tab **Partner Statement** (tab 5 when partnership mode active).
+
+**Formulas:**
+- Position = Capital + Current − Advances (Equity Cr−Dr; Advances Dr−Cr).
+- Profit/loss allocations included by **fiscal period `end_date`** in range; uses stored `PartnerProfitAllocationLine.amount`.
+- AdvanceOffset shown under Settlements (zero net position effect).
+
+**Warnings:** Outstanding advance; closed period without allocation; reconciliation mismatch (opening + activity ≠ closing within 0.01).
+
+**Unchanged:** `post_partner_movement`, `allocate_profit_to_partners`, year-end close, models, JEs, account structure, Balance Sheet logic.
+
+**Files:** `registry/partner_statement.py`, `app.py`, `registry/locales/transactional.py`, `tests/test_partner_statement_p1.py`, docs.
+
+**Tests:** 20 new in `test_partner_statement_p1.py`; full suite **1044 passed, 2 xfailed**.
+
+---
+
+## 2026-06-11 — PARTNER-UX-01 i18n fix (Summary plain labels)
+
+**Bug:** Partner Summary showed raw keys (`partner.summary_plain.capital`, etc.).
+
+**Root cause:** Keys used dotted form `partner.summary_plain.*` inconsistent with catalog convention (`partner.summary_plain_adv_owes`); entries were only in `transactional.py` working tree, not duplicated in `messages.py` for MESSAGES fallback.
+
+**Fix:** Renamed to `partner.summary_plain_capital|current|advances`; duplicated all six Summary keys in `messages.py` EN/TR; regression tests assert `t()` never returns raw keys.
+
+---
+
+## 2026-06-11 — PARTNER-UX-01 P1–P3 (Partner Accounts plain-language UX)
+
+**Task:** Make Partner Accounts understandable for non-accountants without changing posting logic.
+
+**P1:** Movement-type plain-language captions (EN/TR) on New Movement form.
+
+**P2:** Outstanding advance from partner 15XX GL via `get_partner_advance_balance()`; warnings for no advance / exceeds outstanding on Repayment & AdvanceOffset.
+
+**P3:** Summary tab plain-language labels (capital, current, advances) + direction captions for current account and advance owing.
+
+**Unchanged:** `post_partner_movement`, JE lines, models, allocation, year-end close.
+
+**Files:** `app.py`, `registry/locales/transactional.py`, `tests/test_partner_ux_p1p2p3.py`, docs.
+
+---
+
+## 2026-06-11 — BANKING-POS-WORKFLOW-01 P1+P2 (POS Settlement guardrails + explanation)
+
+**Task:** UX guardrails for Other Income double-count risk; explain POS Settlement / Card Sale Deposit workflow.
+
+**P1 — Guardrails:**
+- Sales Revenue removed from main Other Income selectbox; moved to **Advanced / unusual** expander.
+- Double-count warning when Sales Revenue selected; escalated POS warning when `card_deposit_style` matches.
+- Posting not blocked (warning only).
+
+**P2 — Explanation:**
+- `st.info` explainer at top of Card Sale Deposit (`_render_bsi_deposit_clearing`).
+- Banking Settings caption: **POS Settlement** = matching bank deposits to waiting card sales.
+
+**Unchanged:** `post_generic_deposit`, `post_deposit_clearing_match`, matching math, models, GL names.
+
+**Files:** `app.py`, `registry/locales/transactional.py`, `tests/test_banking_pos_workflow_p1p2.py`, docs.
+
+---
+
 ## 2026-06-11 — BANKING-DESKTOP-01 B1+B2 (chip switchers + POS Settlement wording)
 
 **Task:** Replace Banking desktop `st.radio` section switchers with chip grid; unify POS Settlement user-facing wording (BANK-03).

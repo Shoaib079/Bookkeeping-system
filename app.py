@@ -23,6 +23,7 @@ from exports import (
     generate_invoice_pdf,
     generate_receipt_pdf,
     generate_customer_statement_pdf,
+    generate_partner_statement_pdf,
     generate_vendor_statement_pdf,
 )
 from registry.icon_svg import (
@@ -97,6 +98,12 @@ from registry.member_roster import (
     filter_roster_entries,
     query_company_roster,
     roster_to_dataframe,
+)
+from registry.partner_statement import (
+    build_partner_statement,
+    partner_statement_pdf_payload,
+    partner_statement_preset_range,
+    partner_statement_to_export_df,
 )
 from registry.service import get_module_state
 from registry.setup01_wizard import (
@@ -6935,6 +6942,395 @@ _WORKER_MOVEMENT_TYPE_I18N: dict[str, str] = {
 }
 
 
+def get_partner_advance_balance(session, partner_id: int) -> float:
+    """Outstanding partner advance from the partner's 15XX Advances GL account."""
+    partner = session.get(Partner, partner_id)
+    if not partner or not partner.advance_account_id:
+        return 0.0
+    acct = session.get(ChartOfAccounts, partner.advance_account_id)
+    if not acct:
+        return 0.0
+    return round(max(0.0, calculate_account_balance(session, acct)), 2)
+
+
+def _partner_stmt_status_text(stmt, currency: str) -> str:
+    if stmt.status == "company_owes":
+        return _t(
+            "partner.stmt.status_company_owes",
+            currency=currency,
+            amount=stmt.status_amount,
+        )
+    if stmt.status == "partner_owes":
+        return _t(
+            "partner.stmt.status_partner_owes",
+            currency=currency,
+            amount=stmt.status_amount,
+        )
+    return _t("partner.stmt.status_settled")
+
+
+def _partner_stmt_summary_table_html(
+    currency: str, lines: list[tuple[str, float]]
+) -> str:
+    columns = [("Line", "line", "name"), (f"Amount ({currency})", "amount", "amount")]
+    rows = [{"line": label, "amount": amt} for label, amt in lines]
+    return financial_statement_table_html(columns, rows)
+
+
+def _partner_stmt_breakdown_caption(
+    currency: str, cap: float, cur: float, adv: float
+) -> str:
+    return _t(
+        "partner.stmt.breakdown_cap_cur_adv",
+        currency=currency,
+        cap=cap,
+        cur=cur,
+        adv=adv,
+    )
+
+
+def _render_partner_statement_exports(
+    stmt,
+    export_df: pd.DataFrame,
+    export_label: str,
+    currency: str,
+    company_name: str,
+) -> None:
+    """Excel/CSV (P2) + PDF (P3) export popover."""
+    if export_df.empty:
+        return
+    safe = export_label.replace(" ", "_").replace("/", "_").replace("—", "-")[:48]
+    stem = f"partner_statement_{stmt.partner_name.lower().replace(' ', '_')}"
+    sheet = "Partner Statement"[:31]
+    excel_data = df_to_excel_bytes(export_df, sheet_name=sheet)
+    csv_data = export_df.to_csv(index=False).encode("utf-8")
+    warning_texts = [
+        _t(w.key, currency=currency, **w.kwargs) for w in stmt.warnings
+    ]
+    pdf_payload = partner_statement_pdf_payload(
+        stmt,
+        company_name=company_name,
+        currency=currency,
+        status_text=_partner_stmt_status_text(stmt, currency),
+        warning_texts=warning_texts,
+    )
+    pdf_data = generate_partner_statement_pdf(pdf_payload)
+    with st.popover(f"⬇️ {_t('export.download')}", key="partner_stmt_export_pop"):
+        st.download_button(
+            label=f"📊 {_t('export.excel')}",
+            data=excel_data,
+            file_name=f"{stem}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key=f"dl_pstmt_xlsx_{safe}",
+        )
+        st.download_button(
+            label=f"🗒️ {_t('export.csv')}",
+            data=csv_data,
+            file_name=f"{stem}.csv",
+            mime="text/csv",
+            key=f"dl_pstmt_csv_{safe}",
+        )
+        st.download_button(
+            label=f"📄 {_t('partner.stmt.export_pdf')}",
+            data=pdf_data,
+            file_name=f"{stem}.pdf",
+            mime="application/pdf",
+            key=f"dl_pstmt_pdf_{safe}",
+        )
+
+
+def _partner_stmt_detail_display_df(stmt, currency: str) -> pd.DataFrame:
+    """Localized detail-line table for Partner Statement UI/export."""
+    section_i18n = {
+        "opening": "partner.stmt.section_opening",
+        "money_in": "partner.stmt.section_money_in",
+        "money_out": "partner.stmt.section_money_out",
+        "settlements": "partner.stmt.section_settlements",
+        "closing": "partner.stmt.section_closing",
+    }
+    type_i18n = {
+        "opening": "partner.stmt.detail_opening",
+        "closing": "partner.stmt.detail_closing",
+        "ProfitAllocated": "partner.stmt.detail_profit_allocated",
+        "LossAllocated": "partner.stmt.detail_loss_allocated",
+    }
+    rows = []
+    for ln in stmt.detail_lines:
+        type_key = ln.type_key
+        if type_key in PARTNER_MOVEMENT_TYPE_I18N:
+            type_label = _i18n_db(PARTNER_MOVEMENT_TYPE_I18N, type_key)
+        else:
+            type_label = _t(type_i18n.get(type_key, type_key))
+        desc = ln.description
+        if type_key in PARTNER_MOVEMENT_TYPE_I18N and desc == type_key:
+            desc = type_label
+        if type_key == "opening":
+            desc = _t("partner.stmt.detail_opening")
+        elif type_key == "closing":
+            desc = _t("partner.stmt.detail_closing")
+        rows.append(
+            {
+                _t("partner.stmt.detail_date"): (
+                    ln.line_date.strftime("%Y-%m-%d") if ln.line_date else "—"
+                ),
+                _t("partner.stmt.detail_section"): _t(
+                    section_i18n.get(ln.section_key, ln.section_key)
+                ),
+                _t("partner.stmt.detail_type"): type_label,
+                _t("partner.stmt.detail_description"): desc,
+                _t("partner.stmt.detail_reference"): ln.reference or "—",
+                _t("partner.stmt.detail_inflow"): (
+                    f"{currency} {ln.inflow:,.2f}" if ln.inflow else "—"
+                ),
+                _t("partner.stmt.detail_outflow"): (
+                    f"{currency} {ln.outflow:,.2f}" if ln.outflow else "—"
+                ),
+                _t("partner.stmt.detail_net_effect"): (
+                    f"{currency} {ln.net_effect:,.2f}"
+                    if ln.type_key not in ("opening", "closing")
+                    else "—"
+                ),
+                _t("partner.stmt.detail_running"): f"{currency} {ln.running_position:,.2f}",
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _render_partner_statement(session, currency: str, today: datetime.date) -> None:
+    """Read-only partner settlement statement (PARTNER-STATEMENT-01 P1–P3)."""
+    all_partners = cq(session, Partner).order_by(Partner.id).all()
+    if not all_partners:
+        st.info(_t("partner.stmt.no_partners"))
+        return
+
+    settings = load_settings()
+    company_name = settings.get("company_name", "My Company")
+
+    preset_options = ("month", "quarter", "year", "custom")
+    preset_labels = {
+        "month": _t("partner.stmt.preset_month"),
+        "quarter": _t("partner.stmt.preset_quarter"),
+        "year": _t("partner.stmt.preset_year"),
+        "custom": _t("partner.stmt.preset_custom"),
+    }
+    default_from, default_to = partner_statement_preset_range("month", today)
+    if default_from is None:
+        default_from, default_to = today.replace(day=1), today
+
+    st.markdown('<div class="erp-partner-stmt-report">', unsafe_allow_html=True)
+
+    fc1, fc2, fc3, fc4 = st.columns([2, 2, 2, 2])
+    st.markdown('<div class="erp-partner-stmt-no-print">', unsafe_allow_html=True)
+    with fc1:
+        preset = st.selectbox(
+            _t("partner.stmt.preset_label"),
+            preset_options,
+            format_func=lambda v: preset_labels[v],
+            key="partner_stmt_preset",
+        )
+    preset_from, preset_to = partner_statement_preset_range(preset, today)
+    with fc2:
+        stmt_partner = st.selectbox(
+            _t("partner.stmt.partner_label"),
+            all_partners,
+            format_func=lambda p: (
+                f"{p.name}"
+                + (f" ({_t('partner.inactive_tag')})" if not p.is_active else "")
+            ),
+            key="partner_stmt_partner",
+        )
+    with fc3:
+        from_date = st.date_input(
+            _t("partner.stmt.from_date"),
+            value=preset_from if preset_from else default_from,
+            key="partner_stmt_from",
+        )
+    with fc4:
+        to_date = st.date_input(
+            _t("partner.stmt.to_date"),
+            value=preset_to if preset_to else default_to,
+            key="partner_stmt_to",
+        )
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    if from_date > to_date:
+        st.error(_t("partner.stmt.invalid_range"))
+        st.markdown("</div>", unsafe_allow_html=True)
+        return
+
+    stmt = build_partner_statement(
+        session,
+        stmt_partner.id,
+        from_date,
+        to_date,
+        calculate_account_balance_for_period,
+    )
+    if not stmt:
+        st.error(_t("partner.stmt.no_partners"))
+        st.markdown("</div>", unsafe_allow_html=True)
+        return
+
+    period_label = _t(
+        "partner.stmt.period_range",
+        from_date=from_date.strftime("%Y-%m-%d"),
+        to_date=to_date.strftime("%Y-%m-%d"),
+    )
+    st.markdown(
+        page_report_banner_html(
+            _t("partner.stmt.report_title"),
+            subtitle=stmt.partner_name
+            + (f" ({_t('partner.inactive_tag')})" if not stmt.partner_is_active else ""),
+            meta=period_label,
+            meta_sub=_t(
+                "partner.stmt.generated_on",
+                date=today.strftime("%Y-%m-%d"),
+            ),
+        ),
+        unsafe_allow_html=True,
+    )
+
+    st.markdown('<div class="erp-partner-stmt-body">', unsafe_allow_html=True)
+
+    st.markdown(
+        financial_section_header_html(
+            _t("partner.stmt.section_opening"),
+            f"{currency} {stmt.opening_position:,.2f}",
+            subtitle=_partner_stmt_breakdown_caption(
+                currency, stmt.opening_capital, stmt.opening_current, stmt.opening_advances
+            ),
+        ),
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        financial_section_header_html(_t("partner.stmt.section_money_in"), accent="success"),
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        _partner_stmt_summary_table_html(
+            currency,
+            [
+                (_t("partner.stmt.line_capital_contributions"), stmt.capital_contributions),
+                (_t("partner.stmt.line_profit_allocated"), stmt.profit_allocated),
+                (_t("partner.stmt.line_repayments"), stmt.repayments),
+            ],
+        ),
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        financial_section_header_html(_t("partner.stmt.section_money_out"), accent="warning"),
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        _partner_stmt_summary_table_html(
+            currency,
+            [
+                (_t("partner.stmt.line_drawings"), stmt.drawings),
+                (_t("partner.stmt.line_salary"), stmt.salary),
+                (_t("partner.stmt.line_advances_taken"), stmt.advances_taken),
+                (_t("partner.stmt.line_loss_allocated"), stmt.loss_allocated),
+            ],
+        ),
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        financial_section_header_html(_t("partner.stmt.section_settlements"), accent="info"),
+        unsafe_allow_html=True,
+    )
+    st.caption(_t("partner.stmt.settlements_hint"))
+    st.markdown(
+        _partner_stmt_summary_table_html(
+            currency,
+            [(_t("partner.stmt.line_advance_offsets"), stmt.advance_offsets)],
+        ),
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        financial_section_header_html(
+            _t("partner.stmt.section_closing"),
+            f"{currency} {stmt.closing_position:,.2f}",
+            subtitle=_partner_stmt_breakdown_caption(
+                currency, stmt.closing_capital, stmt.closing_current, stmt.closing_advances
+            ),
+        ),
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        financial_section_header_html(_t("partner.stmt.section_status"), accent="info"),
+        unsafe_allow_html=True,
+    )
+    with st.container(border=True):
+        if stmt.status == "company_owes":
+            st.success(_partner_stmt_status_text(stmt, currency))
+        elif stmt.status == "partner_owes":
+            st.warning(_partner_stmt_status_text(stmt, currency))
+        else:
+            st.info(_partner_stmt_status_text(stmt, currency))
+        if stmt.closing_advances > 0.01:
+            st.caption(
+                _t(
+                    "partner.stmt.includes_outstanding_advance",
+                    currency=currency,
+                    amount=stmt.closing_advances,
+                )
+            )
+
+    if stmt.warnings:
+        st.markdown(
+            financial_section_header_html(
+                _t("partner.stmt.section_warnings"), accent="warning"
+            ),
+            unsafe_allow_html=True,
+        )
+        for warn in stmt.warnings:
+            msg = _t(warn.key, currency=currency, **warn.kwargs)
+            if warn.key == "partner.stmt.warn_reconciliation":
+                st.error(msg)
+            elif warn.key == "partner.stmt.warn_closed_period_no_alloc":
+                st.warning(msg)
+            else:
+                st.warning(msg)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    export_label = _t(
+        "partner.stmt.export_title",
+        partner=stmt.partner_name,
+        from_date=from_date.strftime("%Y-%m-%d"),
+        to_date=to_date.strftime("%Y-%m-%d"),
+    )
+    export_df = partner_statement_to_export_df(stmt)
+    st.markdown('<div class="erp-partner-stmt-no-print">', unsafe_allow_html=True)
+    _render_partner_statement_exports(
+        stmt, export_df, export_label, currency, company_name
+    )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    with st.expander(_t("partner.stmt.show_detail_lines"), expanded=False):
+        detail_df = _partner_stmt_detail_display_df(stmt, currency)
+        if detail_df.empty:
+            st.info(_t("partner.stmt.no_detail_lines"))
+        else:
+            _render_readable_df(detail_df)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+_PARTNER_MOVEMENT_EXPLAIN_I18N = {
+    "CapitalContribution": "partner.mv_explain.capital_contribution",
+    "Drawing": "partner.mv_explain.drawing",
+    "Salary": "partner.mv_explain.salary",
+    "Advance": "partner.mv_explain.advance",
+    "Repayment": "partner.mv_explain.repayment",
+    "AdvanceOffset": "partner.mv_explain.advance_offset",
+}
+
+
 def get_worker_advance_balance(session, worker_id: int) -> float:
     """Outstanding advance: advances given minus recoveries and cash repayments."""
     movements = (
@@ -9048,11 +9444,14 @@ def render_partner_accounts(session):
         f"3. {_t('partner.tab_allocations')}",
         f"4. {_t('partner.tab_summary')}",
     ]
+    if _uses_partners:
+        _partner_tab_labels.append(f"5. {_t('partner.tab_statement')}")
     if not _uses_partners:
         _partner_tab_labels.append(f"5. {_t('partner.tab_owner_equity')}")
     _partner_tabs = st.tabs(_partner_tab_labels)
     tab1, tab2, tab3, tab4 = _partner_tabs[:4]
-    tab5 = _partner_tabs[4] if len(_partner_tabs) > 4 else None
+    tab_statement = _partner_tabs[4] if _uses_partners and len(_partner_tabs) > 4 else None
+    tab_owner_equity = _partner_tabs[4] if not _uses_partners and len(_partner_tabs) > 4 else None
 
     # ════════════════════════════════════════════════════════════════════════
     # TAB 1 — PARTNERS
@@ -9159,37 +9558,95 @@ def render_partner_accounts(session):
 
         if _can("post_partner_movement") and active_p_list:
             with st.expander(_t("partner.new_movement_expander"), expanded=False):
-                with st.form("partner_movement_form"):
-                    c1, c2 = st.columns(2)
-                    pm_partner = c1.selectbox(_t("partner.mv_partner_label"), [p.name for p in active_p_list], key="pm_partner")
-                    pm_type    = c1.selectbox(
-                        _t("partner.mv_type_label"), _MOV_TYPES,
-                        format_func=lambda v: _i18n_db(PARTNER_MOVEMENT_TYPE_I18N, v),
-                        key="pm_type",
+                c1, c2 = st.columns(2)
+                pm_partner = c1.selectbox(
+                    _t("partner.mv_partner_label"),
+                    [p.name for p in active_p_list],
+                    key="pm_partner",
+                )
+                pm_type = c1.selectbox(
+                    _t("partner.mv_type_label"),
+                    _MOV_TYPES,
+                    format_func=lambda v: _i18n_db(PARTNER_MOVEMENT_TYPE_I18N, v),
+                    key="pm_type",
+                )
+                pm_date = c2.date_input(_t("col.date"), today, key="pm_date")
+                st.caption(_t(_PARTNER_MOVEMENT_EXPLAIN_I18N[pm_type]))
+                sel_partner = next(
+                    (p for p in active_p_list if p.name == pm_partner), None,
+                )
+                adv_bal = (
+                    get_partner_advance_balance(session, sel_partner.id)
+                    if sel_partner
+                    else 0.0
+                )
+                if adv_bal > 0.01:
+                    st.caption(
+                        _t(
+                            "partner.mv_outstanding_advance",
+                            currency=currency,
+                            amount=adv_bal,
+                        )
                     )
-                    pm_date    = c2.date_input(_t("col.date"), today, key="pm_date")
-                    pm_amt     = amount_input(_t("col.amount"), key="pm_amt", container=c2)
-                    pm_bank    = st.selectbox(
+                else:
+                    st.caption(_t("partner.mv_no_outstanding_advance"))
+                if pm_type in ("Repayment", "AdvanceOffset") and adv_bal <= 0.01:
+                    st.warning(_t("partner.mv_no_advance_to_settle"))
+                pm_amt = amount_input(_t("col.amount"), key="pm_amt")
+                if (
+                    pm_type in ("Repayment", "AdvanceOffset")
+                    and pm_amt
+                    and pm_amt > adv_bal + 0.01
+                ):
+                    st.warning(
+                        _t(
+                            "partner.mv_exceeds_outstanding_advance",
+                            currency=currency,
+                            max=f"{adv_bal:,.2f}",
+                        )
+                    )
+                with st.form("partner_movement_form"):
+                    pm_bank = st.selectbox(
                         _t("partner.bank_account_label"),
                         [b.name for b in bank_accts] if bank_accts else ["—"],
                         key="pm_bank",
                     )
-                    pm_notes = st.text_input(_t("partner.notes_optional"), key="pm_notes")
-                    if st.form_submit_button(_t("partner.post_movement_btn"), type="primary"):
+                    pm_notes = st.text_input(
+                        _t("partner.notes_optional"), key="pm_notes",
+                    )
+                    if st.form_submit_button(
+                        _t("partner.post_movement_btn"), type="primary",
+                    ):
                         if not pm_amt or pm_amt <= 0:
                             st.error(_t("form.amount_positive"))
                         else:
-                            sel_partner = next((p for p in active_p_list if p.name == pm_partner), None)
-                            pm_type_val = pm_type  # from selectbox
+                            pm_type_val = pm_type
                             bank_id = None
                             if pm_type_val != "AdvanceOffset":
                                 if not bank_accts:
                                     st.error(_t("form.no_bank_accounts"))
                                     st.stop()
-                                ba_sel = next((b for b in bank_accts if b.name == pm_bank), None)
+                                ba_sel = next(
+                                    (b for b in bank_accts if b.name == pm_bank), None,
+                                )
                                 bank_id = ba_sel.id if ba_sel else None
+                            if (
+                                pm_type_val in ("Repayment", "AdvanceOffset")
+                                and pm_amt > adv_bal + 0.01
+                            ):
+                                st.warning(
+                                    _t(
+                                        "partner.mv_exceeds_outstanding_advance",
+                                        currency=currency,
+                                        max=f"{adv_bal:,.2f}",
+                                    )
+                                )
                             mv_id, err = post_partner_movement(
-                                session, sel_partner.id, pm_type_val, pm_amt, pm_date,
+                                session,
+                                sel_partner.id,
+                                pm_type_val,
+                                pm_amt,
+                                pm_date,
                                 bank_account_id=bank_id,
                                 notes=pm_notes.strip() or None,
                                 created_by_id=user_id,
@@ -9197,7 +9654,13 @@ def render_partner_accounts(session):
                             if err:
                                 st.error(err)
                             else:
-                                st.success(_t("partner.mv_posted", type=pm_type_val, name=pm_partner))
+                                st.success(
+                                    _t(
+                                        "partner.mv_posted",
+                                        type=pm_type_val,
+                                        name=pm_partner,
+                                    )
+                                )
                                 st.rerun()
         elif not active_p_list:
             st.info(_t("partner.add_partners_first"))
@@ -9320,25 +9783,52 @@ def render_partner_accounts(session):
                     st.markdown(f"**{p.name}**{_inactive_tag} — {p.profit_share_pct:.1f}%")
                     sc1, sc2, sc3, sc4 = st.columns(4)
                     sc1.metric(_t("partner.capital_metric"), f"{currency} {cap_bal:,.2f}")
+                    sc1.caption(_t("partner.summary_plain_capital"))
                     sc2.markdown(
                         f'<div style="padding-top:4px;">'
                         f'<div style="font-size:12px;color:var(--theme-muted);">{_t("partner.current_account_label")}</div>'
+                        f'<div style="font-size:11px;color:var(--theme-caption);margin-bottom:2px;">'
+                        f'{_t("partner.summary_plain_current")}</div>'
                         f'<div style="font-size:20px;font-weight:700;color:{cur_color};">'
                         f'{currency} {cur_bal:,.2f}</div></div>',
                         unsafe_allow_html=True,
                     )
+                    if cur_bal < -0.01:
+                        sc2.caption(
+                            _t(
+                                "partner.summary_current_taken",
+                                currency=currency,
+                                amount=abs(cur_bal),
+                            )
+                        )
+                    elif cur_bal > 0.01:
+                        sc2.caption(
+                            _t(
+                                "partner.summary_current_owed",
+                                currency=currency,
+                                amount=cur_bal,
+                            )
+                        )
                     sc3.markdown(
                         f'<div style="padding-top:4px;">'
                         f'<div style="font-size:12px;color:var(--theme-muted);">{_t("partner.outstanding_advances_label")}</div>'
+                        f'<div style="font-size:11px;color:var(--theme-caption);margin-bottom:2px;">'
+                        f'{_t("partner.summary_plain_advances")}</div>'
                         f'<div style="font-size:20px;font-weight:700;color:{adv_color};">'
                         f'{currency} {adv_bal:,.2f}</div></div>',
                         unsafe_allow_html=True,
                     )
+                    if adv_bal > 0.01:
+                        sc3.caption(
+                            _t(
+                                "partner.summary_plain_adv_owes",
+                                currency=currency,
+                                amount=adv_bal,
+                            )
+                        )
                     sc4.metric(_t("partner.net_position"), f"{currency} {net_pos:,.2f}")
                     if cur_bal < -0.01:
                         st.warning(_t("partner.overdrawn_warning", currency=currency, amount=abs(cur_bal)))
-                    if adv_bal > 0.01:
-                        st.info(_t("partner.advance_pending_info", currency=currency, amount=adv_bal))
 
             st.markdown("---")
             tc1, tc2, tc3 = st.columns(3)
@@ -9356,8 +9846,13 @@ def render_partner_accounts(session):
                         "Allocate it from the Fiscal Periods page."
                     )
 
-    if tab5 is not None:
-        with tab5:
+    if tab_statement is not None:
+        with tab_statement:
+            _render_tab_intro("partner.tab_statement")
+            _render_partner_statement(session, currency, today)
+
+    if tab_owner_equity is not None:
+        with tab_owner_equity:
             _render_tab_intro("partner.tab_owner_equity")
             render_equity_movements(session, embedded=True)
 
@@ -16257,6 +16752,7 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
     if not _card_settlement_on(session):
         st.caption(_t("banking.import.match.needs_settlement"))
         return
+    st.info(_t("banking.import.match.pos_settlement_explainer"))
     st.caption(_t("banking.import.match.pos_bank_note"))
     _dep_style = card_deposit_style(sel_row.description or "")
     if _dep_style == "net":
@@ -16380,17 +16876,27 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
 
 
 def _render_bsi_other_deposit(session, sel_row, cid: int) -> None:
-    _credit_opts = [
-        "Sales Revenue",
+    _common_credit_opts = [
         "Other Income",
         "Accounts Receivable",
         "Office Expense",
     ]
     credit_acct = st.selectbox(
         _t("banking.import.match.credit_account"),
-        _credit_opts,
+        _common_credit_opts,
         key="bsi_match_credit_acct",
     )
+    with st.expander(_t("banking.import.match.other_income.advanced")):
+        st.caption(_t("banking.import.match.other_income.advanced_hint"))
+        use_sales_revenue = st.checkbox(
+            _t("banking.import.match.other_income.use_sales_revenue"),
+            key="bsi_other_income_use_sales_revenue",
+        )
+    if use_sales_revenue:
+        credit_acct = "Sales Revenue"
+        st.warning(_t("banking.import.match.other_income.sales_revenue_warning"))
+        if card_deposit_style(sel_row.description or ""):
+            st.warning(_t("banking.import.match.other_income.sales_revenue_pos_warning"))
     if st.button(
         _t("banking.import.match.post_deposit"),
         type="primary",
