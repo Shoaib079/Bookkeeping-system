@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
 **Last updated:** 2026-06-05 (PARTNER-STATEMENT-01 P1)  
-**Full suite:** run `pytest tests/` — **1061 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
+**Full suite:** run `pytest tests/` — **1074 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -532,6 +532,22 @@ Remaining xfails (M3/M4) are optional suppression relocations — not MOBILE-14 
 | Summary labels translate (not raw `partner.summary_*` keys) | i18n regression |
 | Summary labels in MESSAGES + TRANSACTIONAL catalogs | Reliable lookup |
 | `post_partner_movement` unchanged | No posting drift |
+
+---
+
+### `tests/test_banking_ux02_p1.py` (13 tests) — BANKING-UX-02 P1
+
+| Contract | Protects |
+|---|---|
+| Expected deposit = settlement − fee | Preview math |
+| Remaining clearing after settlement | Preview math |
+| Explicit settlement-batch fee | Fee source |
+| Warnings: exceeds clearing, fee > settlement, negative deposit, zero balance | Guardrails |
+| Preview renders before post button | UI placement |
+| Revenue note in preview | P1 explainer |
+| Sales Revenue still advanced-only | P1 regression |
+| Settlement JE lines unchanged | No posting drift |
+| EN/TR locale keys | i18n parity |
 
 ---
 

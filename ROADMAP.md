@@ -20,7 +20,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | Company creation (14D-D) | ✅ Complete |
 | Sidebar uses company role (nav fix) | ✅ Complete |
 | Simplified Company Setup UI | ✅ Complete (Expert policies stub) |
-| Automated tests | ✅ **1061 passing, 2 xfailed** (run `pytest tests/` on host) |
+| Automated tests | ✅ **1074 passing, 2 xfailed** (run `pytest tests/` on host) |
 | Member management (14D-E) | ✅ Complete |
 | Member roster polish (14D-F) | ✅ Complete |
 | Setup wizard v1 (14D-G) | ✅ Complete — **superseded by SETUP-01** |
@@ -29,7 +29,8 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | SETUP-03 Configuration Health Check | 📋 Medium — planned |
 | BANK-03 POS Settlement wording | ✅ Shipped (BANKING-DESKTOP-01 B2 — Banking Settings + import match locales EN/TR) |
 | BANKING-POS-WORKFLOW-01 P1+P2 | ✅ Shipped — Other Income Sales Revenue guardrails + POS Settlement explainer (no posting changes) |
-| BANKING-UX-02 POS Settlement Transparency | 📋 **Proposed** — High priority; next approved Banking UX before any new Banking feature work |
+| BANKING-UX-02 P1 POS Settlement Preview | ✅ Shipped — settlement preview before post (no posting changes) |
+| BANKING-UX-02 P2–P4 | 📋 Planned — clearing visibility, candidate list, match guidance |
 | PARTNER-UX-01 P1–P3 | ✅ Shipped — Partner movement explanations, advance warnings, Summary plain labels (no posting changes) |
 | PARTNER-STATEMENT-01 P1 | ✅ Shipped — read-only Partner Statement tab (month/quarter/year/custom); profit by fiscal period end-date; no posting changes |
 | PARTNER-STATEMENT-01 P2 | ✅ Shipped — detail lines, running position, Excel export |

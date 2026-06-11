@@ -8,6 +8,18 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-05 — BANKING-UX-02 P1 (POS Settlement preview)
+
+**Task:** Show settlement preview before posting POS settlement on Statement Import → Card Sale Deposit.
+
+**Preview shows:** Card Sales Clearing balance, settlement amount, bank charges, expected bank deposit, remaining clearing; warnings for exceed/fee/negative/zero balance.
+
+**Unchanged:** `post_deposit_clearing_match` JE (Dr Bank, Dr Bank Charges, Cr Clearing); sales revenue recognition; Sales Revenue in Advanced only.
+
+**Files:** `reconciliation/pos_settlement_preview.py`, `app.py`, `registry/locales/transactional.py`, `tests/test_banking_ux02_p1.py`.
+
+---
+
 ## 2026-06-05 — PARTNER-STATEMENT-01 P3 (PDF + print polish)
 
 **Task:** PDF export and print-friendly Partner Statement presentation.

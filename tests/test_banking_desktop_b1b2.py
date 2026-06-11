@@ -29,6 +29,7 @@ _GL_ACCOUNT_OK_PREFIXES = (
     "settings.banking.backfill_done",
     "bank.settings.card_settlement.caption",
     "banking.import.match.pos_settlement_explainer",
+    "banking.pos_preview.",
 )
 
 

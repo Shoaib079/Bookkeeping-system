@@ -224,6 +224,7 @@ from reconciliation.company_card import (
     void_credit_card_bill_payment,
 )
 # Import from match_post directly — avoids Streamlit stale `reconciliation` package cache.
+from reconciliation.pos_settlement_preview import compute_pos_settlement_preview
 from reconciliation.match_post import (
     looks_like_worker_payroll,
     post_worker_statement_match,
@@ -16748,6 +16749,45 @@ def _bsi_default_match_kind(session, sel_row, *, is_deposit: bool) -> str:
     return default if default in valid else "vendor"
 
 
+def _render_pos_settlement_preview_block(
+    preview,
+    currency: str,
+) -> None:
+    """Read-only POS settlement preview (BANKING-UX-02 P1)."""
+    st.markdown(
+        financial_section_header_html(
+            _t("banking.pos_preview.section_title"), accent="info"
+        ),
+        unsafe_allow_html=True,
+    )
+    st.caption(_t("banking.pos_preview.revenue_note"))
+    with st.container(border=True):
+        p1, p2, p3 = st.columns(3)
+        p1.metric(
+            _t("banking.pos_preview.available_clearing"),
+            f"{currency} {preview.available_clearing:,.2f}",
+        )
+        p2.metric(
+            _t("banking.pos_preview.settlement_amount"),
+            f"{currency} {preview.settlement_amount:,.2f}",
+        )
+        p3.metric(
+            _t("banking.pos_preview.bank_charges"),
+            f"{currency} {preview.bank_charges:,.2f}",
+        )
+        p4, p5 = st.columns(2)
+        p4.metric(
+            _t("banking.pos_preview.expected_deposit"),
+            f"{currency} {preview.expected_bank_deposit:,.2f}",
+        )
+        p5.metric(
+            _t("banking.pos_preview.remaining_clearing"),
+            f"{currency} {preview.remaining_clearing:,.2f}",
+        )
+    for warn in preview.warnings:
+        st.warning(_t(warn.key, currency=currency, **warn.kwargs))
+
+
 def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
     if not _card_settlement_on(session):
         st.caption(_t("banking.import.match.needs_settlement"))
@@ -16761,6 +16801,13 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
         st.caption(_t("banking.import.match.pesin_sales_deposit_hint"))
     elif _dep_style == "card":
         st.caption(_t("banking.import.match.card_deposit_generic_hint"))
+    settings = load_settings()
+    currency = settings.get("currency", "TRY")
+    clearing_acct = get_account_by_name(session, "Card Sales Clearing")
+    available_clearing = (
+        calculate_account_balance(session, clearing_acct) if clearing_acct else 0.0
+    )
+    deposit_amt = round(float(sel_row.amount), 2)
     win_start = (sel_row.date or datetime.date.today()) - datetime.timedelta(days=7)
     win_end = (sel_row.date or datetime.date.today()) + datetime.timedelta(days=7)
     clearing = get_unsettled_card_sales(
@@ -16770,77 +16817,94 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
         date_to=win_end,
         get_account_by_name=get_account_by_name,
     )
-    if not clearing:
-        st.caption(_t("banking.import.match.no_rows"))
-        return
-    sale_labels = {
-        c["sale_id"]: (
-            f"#{c['sale_id']} · {c['date']} · "
-            f"{c['amount']:,.2f} · {c['invoice']}"
-        )
-        for c in clearing
-    }
-    picked_sales = st.multiselect(
-        _t("banking.import.match.clearing_sales"),
-        options=list(sale_labels.keys()),
-        format_func=lambda i: sale_labels[i],
-        key="bsi_match_sales",
-    )
-    sel_total = sum(c["amount"] for c in clearing if c["sale_id"] in picked_sales)
-    deposit_amt = round(float(sel_row.amount), 2)
-    sel_total_r = round(sel_total, 2)
-    fee_gap = round(sel_total_r - deposit_amt, 2)
-    st.caption(
-        _t(
-            "banking.import.match.clearing_sum",
-            total=f"{sel_total_r:,.2f}",
-            deposit=f"{deposit_amt:,.2f}",
-        )
-    )
+    picked_sales: list = []
+    sel_total_r = 0.0
     settlement_row_id = None
     confirm_inferred_fee = False
-    if sel_row.date and abs(fee_gap) > 0.01 and fee_gap > 0:
-        if _bank_charges_on(session):
-            st.warning(
-                _t("banking.import.match.fee_gap", fee=f"{fee_gap:,.2f}")
+    preview_fee: float | None = None
+    if clearing:
+        sale_labels = {
+            c["sale_id"]: (
+                f"#{c['sale_id']} · {c['date']} · "
+                f"{c['amount']:,.2f} · {c['invoice']}"
             )
-            matching_stl = get_matching_settlement_rows(
-                session, cid, sel_row.date, deposit_amt,
+            for c in clearing
+        }
+        picked_sales = st.multiselect(
+            _t("banking.import.match.clearing_sales"),
+            options=list(sale_labels.keys()),
+            format_func=lambda i: sale_labels[i],
+            key="bsi_match_sales",
+        )
+        sel_total = sum(c["amount"] for c in clearing if c["sale_id"] in picked_sales)
+        sel_total_r = round(sel_total, 2)
+        fee_gap = round(sel_total_r - deposit_amt, 2)
+        st.caption(
+            _t(
+                "banking.import.match.clearing_sum",
+                total=f"{sel_total_r:,.2f}",
+                deposit=f"{deposit_amt:,.2f}",
             )
-            if matching_stl:
-                stl_labels = {
-                    r.id: (
-                        f"#{r.import_row_index} · {r.date} · "
-                        f"gross {r.gross_amount:,.2f} · "
-                        f"fee {r.fee_amount:,.2f} · "
-                        f"net {r.net_amount:,.2f}"
+        )
+        if sel_row.date and abs(fee_gap) > 0.01 and fee_gap > 0:
+            if _bank_charges_on(session):
+                st.warning(
+                    _t("banking.import.match.fee_gap", fee=f"{fee_gap:,.2f}")
+                )
+                matching_stl = get_matching_settlement_rows(
+                    session, cid, sel_row.date, deposit_amt,
+                )
+                if matching_stl:
+                    stl_labels = {
+                        r.id: (
+                            f"#{r.import_row_index} · {r.date} · "
+                            f"gross {r.gross_amount:,.2f} · "
+                            f"fee {r.fee_amount:,.2f} · "
+                            f"net {r.net_amount:,.2f}"
+                        )
+                        for r in matching_stl
+                    }
+                    settlement_row_id = st.selectbox(
+                        _t("banking.import.match.settlement_batch"),
+                        options=[None] + list(stl_labels.keys()),
+                        format_func=lambda i: (
+                            _t("banking.import.match.no_settlement_batch")
+                            if i is None
+                            else stl_labels[i]
+                        ),
+                        key="bsi_match_settlement",
                     )
-                    for r in matching_stl
-                }
-                settlement_row_id = st.selectbox(
-                    _t("banking.import.match.settlement_batch"),
-                    options=[None] + list(stl_labels.keys()),
-                    format_func=lambda i: (
-                        _t("banking.import.match.no_settlement_batch")
-                        if i is None
-                        else stl_labels[i]
-                    ),
-                    key="bsi_match_settlement",
-                )
-            if not settlement_row_id:
-                confirm_inferred_fee = st.checkbox(
-                    _t(
-                        "banking.import.match.confirm_fee",
-                        fee=f"{fee_gap:,.2f}",
-                    ),
-                    key="bsi_confirm_fee",
-                )
-        else:
-            st.caption(_t("banking.import.match.needs_bank_charges"))
-    elif fee_gap < -0.01:
-        st.warning(_t("banking.import.match.deposit_over_clearing"))
-    elif picked_sales and abs(fee_gap) <= 0.01 and sel_total_r > 0:
-        st.caption(_t("banking.import.match.gross_deposit_hint"))
+                    if settlement_row_id:
+                        stl_row = session.get(SettlementStatementRow, settlement_row_id)
+                        if stl_row:
+                            preview_fee = round(float(stl_row.fee_amount), 2)
+                if not settlement_row_id:
+                    confirm_inferred_fee = st.checkbox(
+                        _t(
+                            "banking.import.match.confirm_fee",
+                            fee=f"{fee_gap:,.2f}",
+                        ),
+                        key="bsi_confirm_fee",
+                    )
+            else:
+                st.caption(_t("banking.import.match.needs_bank_charges"))
+        elif fee_gap < -0.01:
+            st.warning(_t("banking.import.match.deposit_over_clearing"))
+        elif picked_sales and abs(fee_gap) <= 0.01 and sel_total_r > 0:
+            st.caption(_t("banking.import.match.gross_deposit_hint"))
+    else:
+        st.caption(_t("banking.import.match.no_rows"))
+
+    preview = compute_pos_settlement_preview(
+        available_clearing,
+        sel_total_r,
+        deposit_amt,
+        fee_amount=preview_fee,
+    )
+    _render_pos_settlement_preview_block(preview, currency)
+
+    if not clearing:
+        return
     if st.button(
         _t("banking.import.match.post_clearing"),
         type="primary",
