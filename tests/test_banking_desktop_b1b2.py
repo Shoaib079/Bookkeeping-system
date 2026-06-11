@@ -30,6 +30,7 @@ _GL_ACCOUNT_OK_PREFIXES = (
     "bank.settings.card_settlement.caption",
     "banking.import.match.pos_settlement_explainer",
     "banking.pos_preview.",
+    "banking.pos_entry.",
 )
 
 

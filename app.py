@@ -18114,7 +18114,11 @@ def render_bank_statement_import(session, *, embedded: bool = False):
                 if kind_options:
                     kind_ids = [k for k, _ in kind_options]
                     kind_labels = {k: _t(label_key) for k, label_key in kind_options}
-                    if st.session_state.get("bsi_match_kind_row") != sel_row_id:
+                    if st.session_state.pop("bsi_pos_entry", False):
+                        if "card_clearing" in kind_ids:
+                            st.session_state["bsi_match_kind"] = "card_clearing"
+                        st.session_state["bsi_match_kind_row"] = sel_row_id
+                    elif st.session_state.get("bsi_match_kind_row") != sel_row_id:
                         st.session_state["bsi_match_kind_row"] = sel_row_id
                         st.session_state["bsi_match_kind"] = _bsi_default_match_kind(
                             session,
@@ -20696,6 +20700,47 @@ def render_inventory(session):
         st.info(_t("inv.no_movements"))
 
 
+def _banking_pos_settlement_route_keys() -> dict:
+    """Session keys for BANKING-UX-02 P1B → existing statement import match workflow."""
+    return {
+        "banking_section": "import",
+        "bsi_section": "match",
+        "bsi_match_kind": "card_clearing",
+        "bsi_pos_entry": True,
+    }
+
+
+def _apply_banking_pos_settlement_route() -> None:
+    for k, v in _banking_pos_settlement_route_keys().items():
+        st.session_state[k] = v
+    st.rerun()
+
+
+def _render_banking_pos_settlement_entry(session) -> None:
+    """BANKING-UX-02 P1B — visible shortcut to card settlement match & post."""
+    if not _card_settlement_on(session) or not _banking_reconciliation_on(session):
+        return
+    if not _can("view_bank_statement_import"):
+        return
+    cid = current_company_required()
+    with st.container(border=True):
+        st.markdown(
+            financial_section_header_html(
+                _t("banking.pos_entry.title"), accent="info"
+            ),
+            unsafe_allow_html=True,
+        )
+        st.caption(_t("banking.pos_entry.hint"))
+        if not get_postable_rows(session, cid):
+            st.info(_t("banking.pos_entry.no_rows"))
+        if st.button(
+            _t("banking.pos_entry.open"),
+            type="primary",
+            key="bank_pos_settlement_open",
+        ):
+            _apply_banking_pos_settlement_route()
+
+
 def _render_banking_statement_import(session):
     """Statement import — Phase 18 Excel/CSV staging or legacy quick CSV."""
     active_accounts = (
@@ -20795,6 +20840,8 @@ def render_banking(session):
     from reconciliation.company_card import apply_account_balance_delta
 
     _st_page_title("Banking")
+
+    _render_banking_pos_settlement_entry(session)
 
     _bank_opts: list[tuple[str, str]] = [
         ("accounts", "bank.section.accounts"),
