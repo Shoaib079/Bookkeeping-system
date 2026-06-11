@@ -3771,6 +3771,32 @@ def _mobile_bottom_hub_active(
     return selection in (_mobile_hub_page_keys(hub_key, accordion_by_key) & allowed)
 
 
+def _mob_hub_icon_nav_row(
+    *,
+    hub_key: str,
+    item_idx: int,
+    page_key: str,
+    label: str,
+    active: bool,
+    group_key: str | None,
+) -> None:
+    """Mobile hub list row — SVG icon, label, and chevron on one horizontal line."""
+    with st.container(border=False, key=f"mob_hub_row_{hub_key}_{item_idx}"):
+        ic_col, btn_col, chev_col = st.columns([0.08, 0.84, 0.08], gap="small")
+        ic_col.markdown(nav_page_icon_html(page_key, title=label), unsafe_allow_html=True)
+        if btn_col.button(
+            label,
+            key=f"mob_hub_{hub_key}_{item_idx}",
+            use_container_width=True,
+            type="primary" if active else "secondary",
+        ):
+            _mobile_hub_nav(page_key, group_key=group_key)
+        chev_col.markdown(
+            '<span class="erp-mob-hub-chevron" aria-hidden="true">›</span>',
+            unsafe_allow_html=True,
+        )
+
+
 def _render_mobile_hub_sheet(
     selection: str,
     allowed: set[str],
@@ -3828,39 +3854,32 @@ def _render_mobile_hub_sheet(
                 for _lbl, page_key in gpages:
                     if page_key not in allowed:
                         continue
-                    _active = selection == page_key
-                    _lbl_text = _nav_display(page_key)
-                    _ic, _btn = st.columns([0.1, 0.9], gap="small")
-                    _ic.markdown(nav_page_icon_html(page_key, title=_lbl_text), unsafe_allow_html=True)
-                    if _btn.button(
-                        _lbl_text,
-                        key=f"mob_hub_{hub_key}_{_item_idx}",
-                        use_container_width=True,
-                        type="primary" if _active else "secondary",
-                    ):
-                        _grp = payload if payload else None
-                        _mobile_hub_nav(page_key, group_key=_grp)
+                    _mob_hub_icon_nav_row(
+                        hub_key=hub_key,
+                        item_idx=_item_idx,
+                        page_key=page_key,
+                        label=_nav_display(page_key),
+                        active=selection == page_key,
+                        group_key=payload if payload else None,
+                    )
                     _item_idx += 1
                 continue
 
             if kind == "page":
                 page_key = payload or ""
-                label = _t(label_key) if label_key else _nav_display(page_key)
-                _active = selection == page_key
-                _ic, _btn = st.columns([0.1, 0.9], gap="small")
-                _ic.markdown(nav_page_icon_html(page_key, title=label), unsafe_allow_html=True)
-                if _btn.button(
-                    label,
-                    key=f"mob_hub_{hub_key}_{_item_idx}",
-                    use_container_width=True,
-                    type="primary" if _active else "secondary",
-                ):
-                    _grp = None
-                    for gk, (_, pgs) in accordion_by_key.items():
-                        if any(k == page_key for _, k in pgs):
-                            _grp = gk
-                            break
-                    _mobile_hub_nav(page_key, group_key=_grp)
+                _grp = None
+                for gk, (_, pgs) in accordion_by_key.items():
+                    if any(k == page_key for _, k in pgs):
+                        _grp = gk
+                        break
+                _mob_hub_icon_nav_row(
+                    hub_key=hub_key,
+                    item_idx=_item_idx,
+                    page_key=page_key,
+                    label=_t(label_key) if label_key else _nav_display(page_key),
+                    active=selection == page_key,
+                    group_key=_grp,
+                )
                 _item_idx += 1
                 continue
 

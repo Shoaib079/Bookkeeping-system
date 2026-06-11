@@ -57,5 +57,7 @@ def test_render_txh_syncs_mobile_flag():
 def test_desktop_action_css_scoped_to_desktop_host():
     css = (ROOT / "ui" / "desktop_txn_history.css").read_text(encoding="utf-8")
     assert ":has(.erp-txh-desktop-host)" in css
-    assert "width: 22px" in css
     assert "st-key-txh_dt_actions_" in css
+    # Word labels (View/Edit/…) need auto width + nowrap, not fixed single-char width.
+    assert "st-key-txh_dt_actions_" in css and "width: auto" in css
+    assert "white-space: nowrap" in css

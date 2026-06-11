@@ -561,6 +561,110 @@ html.erp-mobile {
     color: var(--theme-muted) !important;
   }
 
+  /* MOBILE-HUB-ROW-ICON-ALIGN-01 / MOBILE-HUB-CHEVRON-ALIGN-01 — icon | label | chevron */
+  [data-testid="stMain"] [class*="st-key-mob_hub_row_"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    border-bottom: 1px solid var(--theme-border) !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_row_"] [data-testid="stVerticalBlockBorderWrapper"] {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_row_"] [data-testid="stHorizontalBlock"] {
+    display: grid !important;
+    grid-template-columns: 28px minmax(0, 1fr) 20px !important;
+    gap: 8px !important;
+    align-items: center !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 44px !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_row_"] [data-testid="stColumn"] {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: unset !important;
+    max-width: none !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_row_"] [data-testid="stColumn"]:first-child {
+    flex: 0 0 28px !important;
+    width: 28px !important;
+    max-width: 28px !important;
+    justify-content: center !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_row_"] [data-testid="stColumn"]:nth-child(2) {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_row_"] [data-testid="stColumn"]:nth-child(3) {
+    flex: 0 0 20px !important;
+    width: 20px !important;
+    max-width: 20px !important;
+    justify-content: flex-end !important;
+    justify-self: end !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_row_"] [data-testid="stColumn"]:first-child [data-testid="stMarkdownContainer"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_row_"] [data-testid="stColumn"]:nth-child(3) [data-testid="stMarkdownContainer"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    justify-self: end !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_row_"] .erp-mob-hub-chevron {
+    display: block !important;
+    width: 100% !important;
+    color: var(--theme-muted) !important;
+    font-size: 18px !important;
+    font-weight: 400 !important;
+    line-height: 1 !important;
+    text-align: right !important;
+    justify-self: end !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_row_"] .erp-nav-icon {
+    color: var(--theme-muted) !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_row_"]:has(button[kind="primary"]) .erp-nav-icon {
+    color: var(--erp-primary-fill, var(--theme-info)) !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_row_"] button {
+    width: 100% !important;
+    border-bottom: none !important;
+    justify-content: flex-start !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-mob_hub_row_"] button::after {
+    content: none !important;
+    display: none !important;
+  }
+
   [data-testid="stMain"] [class*="st-key-mob_hub_"]:not([class*="mob_hub_close"]) button {
     min-height: 44px !important;
     font-size: 14px !important;
@@ -757,6 +861,7 @@ html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_pm3"] [data-testid
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_pm2"] [data-testid="stHorizontalBlock"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_at_keypad"] [data-testid="stHorizontalBlock"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_hub_hdr"] [data-testid="stHorizontalBlock"],
+html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_hub_row_"] [data-testid="stHorizontalBlock"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_rpt_filters"] [data-testid="stHorizontalBlock"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_ar_ap"] [data-testid="stHorizontalBlock"] {
   display: grid !important;

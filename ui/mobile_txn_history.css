@@ -223,9 +223,10 @@ html.erp-mobile [data-testid="stMain"]:has(.erp-txh-mobile-host) [class*="st-key
   border-radius: 0 !important;
   border: none !important;
   background: transparent !important;
-  font-size: 18px !important;
-  line-height: 1 !important;
+  font-size: 11px !important;
+  line-height: 1.1 !important;
   box-shadow: none !important;
+  white-space: nowrap !important;
 }
 
 html.erp-mobile [data-testid="stMain"]:has(.erp-txh-mobile-host) [class*="st-key-txh_actions_"] button:active:not(:disabled) {

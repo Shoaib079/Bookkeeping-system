@@ -37,9 +37,9 @@
 
 /* Sidebar / mobile hub — icon column beside nav button */
 [data-testid="stSidebar"] [class*="st-key-nav_icon_"] [data-testid="stMarkdownContainer"],
-[data-testid="stSidebar"] [class*="st-key-mob_hub_icon_"] [data-testid="stMarkdownContainer"],
+[data-testid="stSidebar"] [class*="st-key-mob_hub_row_"] [data-testid="stMarkdownContainer"],
 [class*="st-key-nav_icon_"] [data-testid="stMarkdownContainer"],
-[class*="st-key-mob_hub_icon_"] [data-testid="stMarkdownContainer"] {
+[class*="st-key-mob_hub_row_"] [data-testid="stMarkdownContainer"] {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;

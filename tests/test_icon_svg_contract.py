@@ -61,7 +61,7 @@ def test_critical_nav_pages_have_svg_icon_mapping():
         assert "erp-nav-icon" in html_out
 
 
-def test_txh_actions_use_ascii_labels_not_emoji():
+def test_txh_actions_use_plain_text_labels_not_emoji():
     bind = _read(ROOT / "app.py")
     start = bind.index("def _txh_bind_action_buttons")
     end = bind.index("def _txh_render_mobile_actions")
@@ -74,9 +74,23 @@ def test_txh_actions_use_ascii_labels_not_emoji():
         "TXH_ACTION_VOID",
     ):
         assert const in block
+    assert TXH_ACTION_LABELS == {
+        "view": "View",
+        "edit": "Edit",
+        "repeat": "Repeat",
+        "duplicate": "Copy",
+        "void": "Void",
+    }
     for label in TXH_ACTION_LABELS.values():
         assert label.isascii()
         assert not EMOJI_IN_STRING.search(label)
+    # TXH-ACTION-LABEL-01 — keys and handlers unchanged
+    assert 'key=f"txh_v_{row_key}"' in block
+    assert 'key=f"txh_e_{row_key}"' in block
+    assert 'key=f"txh_r_{row_key}"' in block
+    assert 'key=f"txh_d_{row_key}"' in block
+    assert 'key=f"txh_vd_{row_key}"' in block
+    assert "_txh_apply_repeat_prefill" in block
 
 
 def test_modules_catalog_nav_pages_aligned_with_nav_keys():

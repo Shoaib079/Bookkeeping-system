@@ -127,12 +127,12 @@ PAGE_ICON: dict[str, str] = {
     NAV_MY_ACCOUNT: "user",
 }
 
-# TXH — compact ASCII action labels (st.button cannot safely embed SVG).
-TXH_ACTION_VIEW = "V"
-TXH_ACTION_EDIT = "E"
-TXH_ACTION_REPEAT = "R"
-TXH_ACTION_DUPLICATE = "D"
-TXH_ACTION_VOID = "X"
+# TXH — plain-text action labels (st.button cannot safely embed SVG).
+TXH_ACTION_VIEW = "View"
+TXH_ACTION_EDIT = "Edit"
+TXH_ACTION_REPEAT = "Repeat"
+TXH_ACTION_DUPLICATE = "Copy"
+TXH_ACTION_VOID = "Void"
 
 TXH_ACTION_LABELS: dict[str, str] = {
     "view": TXH_ACTION_VIEW,
