@@ -340,7 +340,7 @@ def test_forbidden_fields_never_copied(monkeypatch, db):
     assert "at_cust" not in state
     assert "at_worker_id" not in state
     assert "at_payable_id" not in state
-    assert state["nav_selection"] == "➕ New Transaction"
+    assert state["nav_selection"] == "New Transaction"
     assert state["at_type_idx"] == 1
 
 

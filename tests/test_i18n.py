@@ -27,14 +27,18 @@ def test_document_locale_independent():
     assert td("report.generated", "tr", date="01.06.2026").startswith("Oluşturulma")
 
 
-def test_nav_display_keeps_emoji_and_translates():
-    assert nav_display("🏠 Home", "en") == "🏠 Home"
-    assert nav_display("🏠 Home", "tr") == "🏠 Ana Sayfa"
+def test_nav_display_text_only_translates():
+    from registry.nav_keys import NAV_HOME, NAV_SALES
+
+    assert nav_display(NAV_HOME, "en") == "Home"
+    assert nav_display(NAV_HOME, "tr") == "Ana Sayfa"
 
 
-def test_page_title_without_emoji():
-    assert page_title("💼 Sales", "en") == "Sales"
-    assert page_title("💼 Sales", "tr") == "Satışlar"
+def test_page_title_from_nav_key():
+    from registry.nav_keys import NAV_SALES
+
+    assert page_title(NAV_SALES, "en") == "Sales"
+    assert page_title(NAV_SALES, "tr") == "Satışlar"
 
 
 def test_transactional_sales_tr():

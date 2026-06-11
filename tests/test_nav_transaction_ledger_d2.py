@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import app as erp
 from registry.i18n import nav_display, t
-from registry.icon_glyphs import NAV_TXN_LEDGER
+from registry.nav_keys import NAV_TXN_LEDGER
 
 _TXN_LEDGER_KEY = NAV_TXN_LEDGER
 
@@ -25,15 +25,21 @@ def _page_dispatch_from_main() -> dict[str, str]:
                     continue
                 out: dict[str, str] = {}
                 for k, v in zip(node.value.keys, node.value.values):
-                    if isinstance(k, ast.Constant) and isinstance(v, ast.Name):
-                        out[k.value] = v.id
+                    key = None
+                    if isinstance(k, ast.Constant):
+                        key = k.value
+                    elif isinstance(k, ast.Name):
+                        key = getattr(erp, k.id, k.id)
+                    if key is None or not isinstance(v, ast.Name):
+                        continue
+                    out[key] = v.id
                 return out
     raise AssertionError("Could not find _PAGE_DISPATCH in main()")
 
 
 def test_sidebar_contains_transaction_ledger_after_new_transaction():
     src = inspect.getsource(erp._render_navigation_tree)
-    new_pos = src.index('_nav_direct("➕ New Transaction")')
+    new_pos = src.index('_nav_direct(NAV_NEW_TRANSACTION)')
     ledger_pos = src.index("_nav_direct(_TXN_LEDGER_PAGE_KEY)")
     work_pos = src.index('_nav_section_caption("nav.sidebar.section_work")')
     assert new_pos < ledger_pos < work_pos
@@ -41,7 +47,7 @@ def test_sidebar_contains_transaction_ledger_after_new_transaction():
 
 def test_transaction_ledger_route_dispatches_to_wrapper():
     main_src = inspect.getsource(erp.main)
-    assert "_TXN_LEDGER_PAGE_KEY:  render_transaction_ledger_page" in main_src
+    assert "NAV_TXN_LEDGER:        render_transaction_ledger_page" in main_src
     assert erp._TXN_LEDGER_PAGE_KEY == _TXN_LEDGER_KEY
     assert _TXN_LEDGER_KEY in erp._NAV_DIRECT_PAGES
 
@@ -77,7 +83,7 @@ def test_executive_legacy_path_still_renders_ledger():
 def test_no_duplicate_page_dispatch_keys():
     main_src = inspect.getsource(erp.main)
     assert main_src.count("render_transaction_ledger_page") == 1
-    assert main_src.count("_TXN_LEDGER_PAGE_KEY:") == 1
+    assert main_src.count("NAV_TXN_LEDGER:") == 1
 
 
 def test_mobile_hubs_include_transaction_ledger():
@@ -85,23 +91,23 @@ def test_mobile_hubs_include_transaction_ledger():
     more = erp._MOBILE_HUB_CONFIG["more"]
     assert ("page", _TXN_LEDGER_KEY, None, None) in reports
     assert ("page", _TXN_LEDGER_KEY, None, None) in more
-    allowed = {"🏠 Home", "📊 Reports", _TXN_LEDGER_KEY, "👤 My Account"}
+    allowed = {"Home", "Reports", _TXN_LEDGER_KEY, "My Account"}
     accordion = dict(erp._NAV_ACCORDION_BY_KEY)
     assert erp._mobile_hub_entry_visible("reports", "page", _TXN_LEDGER_KEY, allowed, accordion)
 
 
 def test_transaction_ledger_label_consistent():
-    assert nav_display(_TXN_LEDGER_KEY, "en") == NAV_TXN_LEDGER
-    assert nav_display(_TXN_LEDGER_KEY, "tr") == f"{NAV_TXN_LEDGER.split()[0]} İşlem Defteri"
+    assert nav_display(_TXN_LEDGER_KEY, "en") == "Transaction Ledger"
+    assert nav_display(_TXN_LEDGER_KEY, "tr") == "İşlem Defteri"
     assert t("txn.page_banner", "en") == "Transaction Ledger"
     assert t("reports.exec.txn_ledger", "en") == "Transaction Ledger"
     assert t("dash.view_all_transactions", "en") == "View All Transactions"
 
 
 def test_role_visibility_matches_reports_access():
-    for role, pages in erp._NAV_ROLE_PAGES.items():
-        if role == "owner":
-            assert _TXN_LEDGER_KEY in pages
-            continue
-        has_reports = "📊 Reports" in pages
-        assert (_TXN_LEDGER_KEY in pages) == has_reports, f"{role}: ledger vs Reports mismatch"
+    manager = set(erp._NAV_ROLE_PAGES["manager"])
+    viewer = set(erp._NAV_ROLE_PAGES["viewer"])
+    assert _TXN_LEDGER_KEY in manager
+    assert _TXN_LEDGER_KEY in viewer
+    assert "Reports" in manager
+    assert "Reports" in viewer

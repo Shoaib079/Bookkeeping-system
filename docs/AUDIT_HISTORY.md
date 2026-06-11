@@ -1253,6 +1253,32 @@ Constants pinned in `ui/theme.py` (`MOBILE_VIEWPORT_*`). `mobile_header.css` alr
 
 ---
 
+## 2026-06-05 — ICON-MODERNIZE-01: emoji nav/actions replaced with inline SVG system
+
+**Root cause:** Emoji/VS16 was a mitigation, not a permanent fix — OS/browser font coverage still varies. `st.button` cannot safely embed SVG labels.
+
+**Fix:** New `registry/icon_svg.py` (inline SVG, `currentColor`, no CDN/fonts) + `registry/nav_keys.py` (text-only routing keys + `LEGACY_NAV_ALIASES` for session migration). Sidebar/mobile Books nav renders SVG via `_nav_page_button()` (icon column + text button). TXH actions use ASCII labels `V/E/R/D/X` with existing `help=` tooltips. Partner tab locale strings stripped of emoji. Removed `registry/icon_glyphs.py`.
+
+**Tests:** `tests/test_icon_svg_contract.py` (8); nav/i18n/registry tests updated. **971 passed**, 2 xfailed.
+
+**Intentional emoji remainder:** Mobile bottom-bar chrome (🏠🏦📊), header toolbar (🔔⚙️), TXH row-type mobile card icons, dashboard quick-create — decorative/non-critical; Streamlit `st.tabs` cannot take SVG labels.
+
+---
+
+## 2026-06-11 — MOBILE-NAV-ICON-01: bottom nav emoji → SVG icons
+
+**Scope:** Mobile bottom navigation only. No routing, accounting, desktop nav, hub, or notification changes. FAB untouched (plain "+" + existing blue circle styling).
+
+**Mapping:** 🏠→`home` · 🏦→`landmark` · 📊→`bar-chart` · ☰→`menu` (all from `registry/icon_svg.py`, inline SVG, currentColor, no CDN/fonts). New `menu` path added to the registry (Lucide three-line).
+
+**Mechanism:** Button labels swap the emoji first line for a zero-width space — the two-line button box (and therefore the touch target, 17px `::first-line` + 9px caption) is byte-identical. The SVG renders as a markdown element per tile, absolutely positioned over the blank first line with `pointer-events:none` (taps still hit the full button). Active tab: `:has(button[kind="primary"])` drives the icon to `--theme-info`, matching the label. All overlay CSS lives in `mobile_shell.css` (bottom-bar owner per MOBILE-14 contracts); icon idle color `--theme-muted`.
+
+**Files:** `app.py` (`_MOBILE_BOTTOM_NAV` icon names, `_mob_bar_btn_label`, overlay render in `_render_mobile_bottom_nav`, `icon_svg` import), `registry/icon_svg.py` (+`menu`), `ui/mobile_shell.css` (overlay + active rules), new `tests/test_mobile_nav_icons.py`.
+
+**Tests:** 5 new contracts (no emoji in nav definition, registry-backed icon names with render check, SVG-overlay-not-emoji in render fn + ZWSP touch-target guard, shell-owned CSS + active state, FAB-unchanged). 5/5 pass in sandbox harness; full static sweep 45 pass / 2 optional xfail / 0 unexpected. Host `pytest tests/` + phone visual check (light/dark × active/inactive tabs) required.
+
+---
+
 ## How to use this file
 
 1. Before a banking/CC task, read [BANKING_RECON_CC_STATUS.md](./BANKING_RECON_CC_STATUS.md) and the latest entry here.

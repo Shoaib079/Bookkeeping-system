@@ -468,16 +468,30 @@ Remaining xfails (M3/M4) are optional suppression relocations — not MOBILE-14 
 
 ---
 
-### `tests/test_icon_glyph_contract.py` (6 tests) — LOGO-BUG-01 / ICON-SWEEP-01
+### `tests/test_icon_svg_contract.py` (8 tests) — ICON-MODERNIZE-01
 
 | Contract | Protects |
 |---|---|
-| Fragile emoji always carry VS16 (U+FE0F) | No tofu squares on desktop (sidebar, tabs, action icons) |
-| Banned glyphs absent (⏻, ①–⑦) | No codepoints without cross-platform coverage |
-| Nav dispatch keys use icon_glyphs constants | Dispatch map ↔ nav tree ↔ registry integrity |
-| `icon_glyphs` nav constants carry VS16 | Canonical nav key definitions |
-| `modules_catalog` nav pages match `icon_glyphs` | Registry ↔ app routing alignment |
-| TXH action bar uses `icon_glyphs` TXH_* | No inline fragile emoji in action buttons |
+| Scoped nav keys are text-only (no emoji) | No fragile Unicode in routing keys |
+| Critical nav pages have SVG icon mapping | Inline SVG via `PAGE_ICON` / `nav_page_icon_html` |
+| TXH actions use ASCII labels | `st.button` safe compact labels (V/E/R/D/X) |
+| `modules_catalog` aligned with `nav_keys` | Registry ↔ dispatch integrity |
+| App wires `_nav_page_button` + `normalize_nav_key` | Runtime nav render path uses icon system |
+| `icons.css` injected in theme | Icon sizing / currentColor tokens |
+| Partner tab labels have no emoji | Owner Equity / partner tabs text-only |
+| `icon_svg` uses `currentColor` | Theme-aware SVG strokes |
+
+---
+
+### `tests/test_mobile_nav_icons.py` (5 tests) — MOBILE-NAV-ICON-01
+
+| Contract | Protects |
+|---|---|
+| No emoji in `_MOBILE_BOTTOM_NAV` | Bottom nav stays on the SVG system |
+| Icon names exist in `icon_svg` registry + render with currentColor | home/landmark/plus/bar-chart/menu wiring |
+| Render fn uses SVG overlay + ZWSP first line | Touch target geometry unchanged |
+| Shell CSS owns overlay + `:has(primary)` active state | Active tab icon turns theme-info |
+| FAB unchanged ("+" label, circle styling) | Blue floating Add button preserved |
 
 ---
 

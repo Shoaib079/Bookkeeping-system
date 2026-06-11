@@ -12,10 +12,12 @@ from registry.i18n import t
 from registry.locales.transactional import TRANSACTIONAL_EN, TRANSACTIONAL_TR
 
 
+from registry.nav_keys import NAV_BALANCE_SHEET, NAV_CASH_FLOW, NAV_PROFIT_LOSS, NAV_REPORTS
+
 _STATEMENT_KEYS = (
-    "💰 Profit & Loss",
-    "🏛️ Balance Sheet",
-    "💸 Cash Flow",
+    NAV_PROFIT_LOSS,
+    NAV_BALANCE_SHEET,
+    NAV_CASH_FLOW,
 )
 
 _EXEC_REMOVED = frozenset({"pnl", "balance_sheet", "cash_flow"})
@@ -68,10 +70,17 @@ def _page_dispatch_from_main() -> dict[str, str]:
                     continue
                 out: dict[str, str] = {}
                 for k, v in zip(node.value.keys, node.value.values):
-                    if isinstance(k, ast.Constant) and isinstance(v, ast.Name):
-                        out[k.value] = v.id
-                    elif isinstance(k, ast.Constant) and isinstance(v, ast.Attribute):
-                        out[k.value] = v.attr
+                    key = None
+                    if isinstance(k, ast.Constant):
+                        key = k.value
+                    elif isinstance(k, ast.Name):
+                        key = getattr(erp, k.id, k.id)
+                    if key is None:
+                        continue
+                    if isinstance(v, ast.Name):
+                        out[key] = v.id
+                    elif isinstance(v, ast.Attribute):
+                        out[key] = v.attr
                 return out
     raise AssertionError("Could not find _PAGE_DISPATCH in main()")
 
@@ -84,9 +93,9 @@ def test_statement_routes_exist_in_page_dispatch():
 
 def test_statement_pages_dispatch_to_wrappers():
     dispatch = _page_dispatch_from_main()
-    assert dispatch["💰 Profit & Loss"] == "render_profit_loss_page"
-    assert dispatch["🏛️ Balance Sheet"] == "render_balance_sheet_page"
-    assert dispatch["💸 Cash Flow"] == "render_cash_flow_page"
+    assert dispatch[NAV_PROFIT_LOSS] == "render_profit_loss_page"
+    assert dispatch[NAV_BALANCE_SHEET] == "render_balance_sheet_page"
+    assert dispatch[NAV_CASH_FLOW] == "render_cash_flow_page"
 
 
 def test_accounting_tools_picker_excludes_statements_and_books_dupes():
@@ -126,12 +135,12 @@ def test_nav_group_statements_i18n_not_raw_key():
 
 def test_mobile_statement_entries_visible_with_reports_access():
     allowed = {
-        "🏠 Home",
-        "📊 Reports",
-        "💰 Profit & Loss",
-        "🏛️ Balance Sheet",
-        "💸 Cash Flow",
-        "👤 My Account",
+        "Home",
+        NAV_REPORTS,
+        NAV_PROFIT_LOSS,
+        NAV_BALANCE_SHEET,
+        NAV_CASH_FLOW,
+        "My Account",
     }
     accordion = {k: v for k, v in erp._NAV_ACCORDION_BY_KEY.items()}
     for key in _STATEMENT_KEYS:
@@ -139,7 +148,7 @@ def test_mobile_statement_entries_visible_with_reports_access():
 
 
 def test_date_filter_pages_include_statements():
-    assert erp._DATE_FILTER_PAGE_KEYS == frozenset({"📊 Reports"}) | erp._STATEMENT_PAGE_KEYS
+    assert erp._DATE_FILTER_PAGE_KEYS == frozenset({NAV_REPORTS}) | erp._STATEMENT_PAGE_KEYS
     for key in _STATEMENT_KEYS:
         assert key in erp._DATE_FILTER_PAGE_KEYS
 
@@ -148,7 +157,7 @@ def test_role_visibility_matches_reports_access():
     for role, pages in erp._NAV_ROLE_PAGES.items():
         if role == "owner":
             continue
-        has_reports = "📊 Reports" in pages
+        has_reports = NAV_REPORTS in pages
         for key in _STATEMENT_KEYS:
             assert (key in pages) == has_reports, f"{role}: {key} vs Reports mismatch"
 
@@ -176,7 +185,7 @@ def test_legacy_exec_sel_redirect_map():
 def test_desktop_nav_statements_group_before_reports():
     tree_source = inspect.getsource(erp._render_navigation_tree)
     stmt_pos = tree_source.index('_nav_group("statements"')
-    reports_pos = tree_source.index('_nav_direct("📊 Reports")')
+    reports_pos = tree_source.index('_nav_direct(NAV_REPORTS)')
     assert stmt_pos < reports_pos
 
 

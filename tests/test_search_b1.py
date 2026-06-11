@@ -18,12 +18,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_header_search_only_on_table_pages():
-    assert erp._header_search_active("💳 Expenses")
-    assert erp._header_search_active("💼 Sales")
-    assert erp._header_search_active("📄 Receivables")
-    assert not erp._header_search_active("🏠 Home")
-    assert not erp._header_search_active("📊 Reports")
-    assert not erp._header_search_active("🏢 Vendors")
+    assert erp._header_search_active("Expenses")
+    assert erp._header_search_active("Sales")
+    assert erp._header_search_active("Receivables")
+    assert not erp._header_search_active("Home")
+    assert not erp._header_search_active("Reports")
+    assert not erp._header_search_active("Vendors")
 
 
 def test_header_search_conditionally_rendered():

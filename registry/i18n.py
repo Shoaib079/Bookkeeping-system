@@ -62,12 +62,8 @@ def page_title(nav_page_key: str, locale: str | None = None) -> str:
 
 
 def nav_display(page_key: str, locale: str | None = None) -> str:
-    """Localized sidebar label for a canonical nav page key (keeps leading emoji)."""
+    """Localized sidebar label for a canonical text-only nav page key."""
     msg_key = NAV_PAGE_I18N.get(page_key)
-    if not msg_key:
-        return page_key
-    label = translate(msg_key, locale)
-    parts = page_key.split(" ", 1)
-    if len(parts) == 2 and parts[0] and not parts[0][0].isalnum():
-        return f"{parts[0]} {label}"
-    return label
+    if msg_key:
+        return translate(msg_key, locale)
+    return page_key

@@ -267,4 +267,4 @@ class TestRegistryIntegration:
     def test_get_module_def_sales(self):
         mod = get_module_def("sales")
         assert mod is not None
-        assert mod.nav_page == "💼 Sales"
+        assert mod.nav_page == "Sales"

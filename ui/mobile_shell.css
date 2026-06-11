@@ -444,6 +444,50 @@ html.erp-mobile {
     color: var(--theme-info) !important;
   }
 
+  /* MOBILE-NAV-ICON-01 — SVG icon overlay on bottom-nav tiles.
+     Icon markdown renders before the button; positioned absolutely over the
+     button's blank first line (zero-width space keeps the two-line box).
+     pointer-events:none keeps the full button as the touch target —
+     geometry is unchanged from the emoji version. */
+  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] [data-testid="stColumn"] {
+    position: relative !important;
+  }
+
+  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] [data-testid="stElementContainer"]:has(.erp-mob-bar-ico),
+  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"] [data-testid="stMarkdown"]:has(.erp-mob-bar-ico) {
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 17px !important;
+    height: 18px !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+  }
+
+  .erp-mob-bar-ico {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 18px !important;
+    color: var(--theme-muted) !important;
+  }
+
+  .erp-mob-bar-ico svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  /* Active tab — icon follows the label into theme-info */
+  [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"]
+    [data-testid="stColumn"]:has(button[kind="primary"]:not([class*="mob_bar_new"]))
+    .erp-mob-bar-ico {
+    color: var(--theme-info) !important;
+  }
+
   [data-testid="stMain"] [class*="st-key-erp_mob_hub_sheet"] {
     position: fixed !important;
     left: 0 !important;

@@ -5,40 +5,37 @@ import pytest
 
 # Import after pytest collection path is set (project root)
 import app as erp
-from registry.icon_glyphs import NAV_GENERAL_LEDGER, NAV_RECURRING_EXPENSES
-
+from registry.nav_keys import NAV_GENERAL_LEDGER, NAV_RECURRING_EXPENSES
 
 _ACCORDION_BY_KEY = {
     "transactions": ("Record transactions", [
-        ("💼  Sales", "💼 Sales"),
-        ("💳  Expenses", "💳 Expenses"),
-        ("🛒  Purchases", "🛒 Purchases"),
-        (NAV_RECURRING_EXPENSES.replace(" ", "  ", 1), NAV_RECURRING_EXPENSES),
+        (None, "Sales"),
+        (None, "Expenses"),
     ]),
     "people": ("Customers & suppliers", [
-        ("👥  Customers", "👥 Customers"),
-        ("🏢  Vendors", "🏢 Vendors"),
+        (None, "Customers"),
+        (None, "Vendors"),
     ]),
     "statements": ("Financial Statements", [
-        ("💰  Profit & Loss", "💰 Profit & Loss"),
-        ("🏛️  Balance Sheet", "🏛️ Balance Sheet"),
-        ("💸  Cash Flow", "💸 Cash Flow"),
+        (None, "Profit & Loss"),
+        (None, "Balance Sheet"),
+        (None, "Cash Flow"),
     ]),
     "accounting": ("Books", [
-        (NAV_GENERAL_LEDGER.replace(" ", "  ", 1), NAV_GENERAL_LEDGER),
-        ("💰  Budget", "💰 Budget"),
+        (None, NAV_GENERAL_LEDGER),
+        (None, "Budget"),
     ]),
 }
 
 
 def test_viewer_only_reports_hub_has_entries():
     allowed = {
-        "🏠 Home",
-        "📊 Reports",
-        "💰 Profit & Loss",
-        "🏛️ Balance Sheet",
-        "💸 Cash Flow",
-        "👤 My Account",
+        "Home",
+        "Reports",
+        "Profit & Loss",
+        "Balance Sheet",
+        "Cash Flow",
+        "My Account",
     }
     assert erp._mobile_hub_has_entries("reports", allowed, _ACCORDION_BY_KEY)
     assert not erp._mobile_hub_has_entries("banking", allowed, _ACCORDION_BY_KEY)
@@ -51,15 +48,15 @@ def test_viewer_only_reports_hub_has_entries():
 
 def test_owner_all_hubs_have_entries():
     allowed = {
-        "🏠 Home",
-        "➕ New Transaction",
-        "🏦 Banking",
-        "📊 Reports",
-        "👥 Customers",
-        "💼 Sales",
+        "Home",
+        "New Transaction",
+        "Banking",
+        "Reports",
+        "Customers",
+        "Sales",
         NAV_GENERAL_LEDGER,
-        "📦 Inventory",
-        "🏢 Company Settings",
+        "Inventory",
+        "Company Settings",
     }
     for hub in ("banking", "reports", "more"):
         assert erp._mobile_hub_has_entries(hub, allowed, _ACCORDION_BY_KEY)
@@ -67,13 +64,13 @@ def test_owner_all_hubs_have_entries():
 
 def test_module_hidden_inventory_removed_from_more():
     allowed = {
-        "🏠 Home",
-        "💼 Sales",
+        "Home",
+        "Sales",
         NAV_GENERAL_LEDGER,
-        "🏢 Company Settings",
+        "Company Settings",
     }
     assert erp._mobile_hub_entry_visible(
-        "more", "page", "📦 Inventory", allowed, _ACCORDION_BY_KEY
+        "more", "page", "Inventory", allowed, _ACCORDION_BY_KEY
     ) is False
     assert erp._mobile_hub_entry_visible(
         "more", "accordion", "transactions", allowed, _ACCORDION_BY_KEY
@@ -82,7 +79,7 @@ def test_module_hidden_inventory_removed_from_more():
 
 def test_sales_only_in_more_transactions_not_bottom_direct():
     bottom_pages = {payload for kind, payload, _, _, _, _ in erp._MOBILE_BOTTOM_NAV if kind in ("home", "new")}
-    assert "💼 Sales" not in bottom_pages
+    assert "Sales" not in bottom_pages
     more_pages = [
         p for k, p, _, _ in erp._MOBILE_HUB_CONFIG["more"] if k == "accordion" and p == "transactions"
     ]
@@ -97,13 +94,13 @@ def test_people_hub_open_from_more_not_duplicated():
     more = erp._MOBILE_HUB_CONFIG["more"]
     assert ("open_hub", "people", None, "nav.mobile.hub.people") in more
     page_keys = [p for k, p, *_ in more if k == "page"]
-    assert "👥 Customers" not in page_keys
-    assert "👤 Members" not in page_keys
+    assert "Customers" not in page_keys
+    assert "Members" not in page_keys
 
 
 def test_partner_cashier_hub_visibility():
-    partner_allowed = {"🏠 Home", "📊 Reports", "🏦 Partner Accounts", "👤 My Account"}
+    partner_allowed = {"Home", "Reports", "Partner Accounts", "My Account"}
     assert erp._mobile_hub_has_entries("reports", partner_allowed, _ACCORDION_BY_KEY)
     assert erp._mobile_hub_has_entries("more", partner_allowed, _ACCORDION_BY_KEY)
     assert not erp._mobile_hub_has_entries("banking", partner_allowed, _ACCORDION_BY_KEY)
-    assert "➕ New Transaction" not in partner_allowed
+    assert "New Transaction" not in partner_allowed

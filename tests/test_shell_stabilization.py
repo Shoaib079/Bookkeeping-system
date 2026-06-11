@@ -148,7 +148,7 @@ def test_render_top_header_marker_inside_shell_row():
 
 
 def test_mobile_hub_open_hub_visibility():
-    allowed = {"🏠 Home", "👥 Customers", "🏢 Vendors", "👤 Members"}
+    allowed = {"Home", "Customers", "Vendors", "Members"}
     assert erp._mobile_hub_entry_visible(
         "more", "open_hub", "people", allowed, erp._NAV_ACCORDION_BY_KEY
     )

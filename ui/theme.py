@@ -16,6 +16,7 @@ _DESKTOP_TXN_HISTORY_CSS_PATH = Path(__file__).with_name("desktop_txn_history.cs
 _SETUP01_WIZARD_CSS_PATH = Path(__file__).with_name("setup01_wizard.css")
 _MOBILE_HEADER_CSS_PATH = Path(__file__).with_name("mobile_header.css")
 _AUTH_CSS_PATH = Path(__file__).with_name("auth.css")
+_ICONS_CSS_PATH = Path(__file__).with_name("icons.css")
 _CSS_CACHE: str | None = None
 _CSS_MTIME: float | None = None
 
@@ -112,6 +113,7 @@ def load_theme_css() -> str:
         _SETUP01_WIZARD_CSS_PATH.stat().st_mtime,
         _MOBILE_HEADER_CSS_PATH.stat().st_mtime,
         _AUTH_CSS_PATH.stat().st_mtime,
+        _ICONS_CSS_PATH.stat().st_mtime,
     )
     if _CSS_CACHE is None or _CSS_MTIME != mtime:
         base = _THEME_CSS_PATH.read_text(encoding="utf-8")
@@ -124,10 +126,11 @@ def load_theme_css() -> str:
         mobile_txn_history = _MOBILE_TXN_HISTORY_CSS_PATH.read_text(encoding="utf-8")
         desktop_txn_history = _DESKTOP_TXN_HISTORY_CSS_PATH.read_text(encoding="utf-8")
         setup01_wizard = _SETUP01_WIZARD_CSS_PATH.read_text(encoding="utf-8")
+        icons = _ICONS_CSS_PATH.read_text(encoding="utf-8")
         _CSS_CACHE = (
             f"{base}\n\n{widgets}\n\n{mobile}\n\n{mobile_header}\n\n{auth}\n\n{mobile_txn}\n\n"
             f"{mobile_reports}\n\n{mobile_txn_history}\n\n{desktop_txn_history}\n\n"
-            f"{setup01_wizard}"
+            f"{setup01_wizard}\n\n{icons}"
         )
         _CSS_MTIME = mtime
     return _CSS_CACHE

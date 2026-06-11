@@ -25,18 +25,53 @@ from exports import (
     generate_customer_statement_pdf,
     generate_vendor_statement_pdf,
 )
-from registry.icon_glyphs import (
+from registry.icon_svg import (
+    TXH_ACTION_DUPLICATE,
+    TXH_ACTION_EDIT,
+    TXH_ACTION_REPEAT,
+    TXH_ACTION_VIEW,
+    TXH_ACTION_VOID,
+    icon_svg,
+    nav_page_icon_html,
+)
+from registry.nav_keys import (
+    NAV_AUDIT_LOG,
+    NAV_BACKUP_RESTORE,
+    NAV_BALANCE_SHEET,
+    NAV_BANKING,
+    NAV_BUDGET,
+    NAV_CASH_FLOW,
+    NAV_CASH_RECONCILIATION,
     NAV_CHART_OF_ACCOUNTS,
+    NAV_COMPANY_SETTINGS,
+    NAV_CUSTOMERS,
+    NAV_END_OF_DAY_CLOSE,
+    NAV_EXPENSES,
     NAV_FISCAL_PERIODS,
     NAV_GENERAL_LEDGER,
+    NAV_HOME,
+    NAV_INVENTORY,
     NAV_JOURNAL_ENTRIES,
+    NAV_MEMBERS,
+    NAV_MY_ACCOUNT,
+    NAV_NEW_TRANSACTION,
+    NAV_OPENING_BALANCES,
+    NAV_PARTNER_ACCOUNTS,
+    NAV_PAYABLES,
+    NAV_PROFIT_LOSS,
+    NAV_PURCHASES,
+    NAV_RECEIVABLES,
+    NAV_RECON_HEALTH,
     NAV_RECURRING_EXPENSES,
+    NAV_REPORTS,
+    NAV_SALES,
+    NAV_TODAY_SUMMARY,
+    NAV_TRIAL_BALANCE,
     NAV_TXN_LEDGER,
-    TXH_DUPLICATE,
-    TXH_EDIT,
-    TXH_REPEAT,
-    TXH_VIEW,
-    TXH_VOID,
+    NAV_VENDORS,
+    NAV_WORKERS,
+    NAV_YEAR_END_CLOSE,
+    normalize_nav_key,
 )
 from registry.loader import validate_on_load as _validate_settings_registry
 from registry.categories_seed import (
@@ -712,7 +747,7 @@ def _global_search_keyword() -> str:
 
 
 # Pages whose list table is filtered by the header search bar (WO-C B1).
-_HEADER_SEARCH_PAGE_KEYS = frozenset({"💳 Expenses", "💼 Sales", "📄 Receivables"})
+_HEADER_SEARCH_PAGE_KEYS = frozenset({NAV_EXPENSES, NAV_SALES, NAV_RECEIVABLES})
 
 def _header_search_active(page_key: str | None) -> bool:
     """True when the current page consumes the header search input."""
@@ -720,21 +755,21 @@ def _header_search_active(page_key: str | None) -> bool:
 
 
 def _header_search_placeholder_key(page_key: str | None) -> str:
-    if page_key == "💳 Expenses":
+    if page_key == NAV_EXPENSES:
         return "search.ph.expenses"
-    if page_key == "💼 Sales":
+    if page_key == NAV_SALES:
         return "search.ph.sales"
-    if page_key == "📄 Receivables":
+    if page_key == NAV_RECEIVABLES:
         return "search.ph.receivables"
     return "search.table_ph"
 
 
 def _header_search_scope_key(page_key: str | None) -> str:
-    if page_key == "💳 Expenses":
+    if page_key == NAV_EXPENSES:
         return "search.scope.expenses_table"
-    if page_key == "💼 Sales":
+    if page_key == NAV_SALES:
         return "search.scope.sales_table"
-    if page_key == "📄 Receivables":
+    if page_key == NAV_RECEIVABLES:
         return "search.scope.receivables_table"
     return "search.scope.table"
 
@@ -975,7 +1010,7 @@ def _render_hdr_profile_panel_content(
     if st.button("⚙️  " + _t("header.my_account"), key=acct_key, use_container_width=True):
         _mobile_close_app_surfaces()
         st.session_state.pop("mob_profile_open", None)
-        st.session_state["nav_selection"] = "👤 My Account"
+        st.session_state["nav_selection"] = NAV_MY_ACCOUNT
         st.session_state.pop("my_account_tab", None)
         st.rerun()
     if st.button("➕  " + _t("header.create_company"), key=newco_key, use_container_width=True):
@@ -1167,7 +1202,7 @@ def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
                     _ar_key = "notif_ar_btn" if _legacy_desktop else _k("notif_ar")
                     if _c2.button(_t("notif.view"), key=_ar_key):
                         _mobile_close_app_surfaces()
-                        st.session_state["nav_selection"] = "📄 Receivables"
+                        st.session_state["nav_selection"] = NAV_RECEIVABLES
                         st.rerun()
                 if notif["overdue_ap"] > 0:
                     _c1, _c2 = st.columns([5, 2])
@@ -1177,7 +1212,7 @@ def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
                     _ap_key = "notif_ap_btn" if _legacy_desktop else _k("notif_ap")
                     if _c2.button(_t("notif.view"), key=_ap_key):
                         _mobile_close_app_surfaces()
-                        st.session_state["nav_selection"] = "📌 Payables"
+                        st.session_state["nav_selection"] = NAV_PAYABLES
                         st.rerun()
                 if notif["low_stock"] > 0:
                     _c1, _c2 = st.columns([5, 2])
@@ -1187,7 +1222,7 @@ def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
                     _ls_key = "notif_ls_btn" if _legacy_desktop else _k("notif_ls")
                     if _c2.button(_t("notif.view"), key=_ls_key):
                         _mobile_close_app_surfaces()
-                        st.session_state["nav_selection"] = "📦 Inventory"
+                        st.session_state["nav_selection"] = NAV_INVENTORY
                         st.rerun()
                 if notif["backup"] > 0:
                     st.warning(_t("backup.reminder_48h"), icon="⚠️")
@@ -1195,7 +1230,7 @@ def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
             _notif_all_key = "notif_view_all" if _legacy_desktop else _k("notif_all")
             if st.button(_t("notif.view_all"), key=_notif_all_key, use_container_width=True):
                 _mobile_close_app_surfaces()
-                st.session_state["nav_selection"] = "👤 My Account"
+                st.session_state["nav_selection"] = NAV_MY_ACCOUNT
                 st.session_state["my_account_tab"] = 3
                 st.rerun()
 
@@ -2378,7 +2413,7 @@ def _create_purchase_payable(session, purchase: Purchase) -> Payable:
         paid=False,
         paid_amount=0.0,
         description=f"From Purchase #{purchase.id}: {(purchase.description or '').strip()}",
-        expense_category=purchase.gl_debit or "Inventory",
+        expense_category=purchase.gl_debit or NAV_INVENTORY,
         purchase_id=purchase.id,
         company_id=purchase.company_id,
     )
@@ -3187,20 +3222,20 @@ _TXN_LEDGER_PAGE_KEY = NAV_TXN_LEDGER
 
 # AD-UI-001 D1 — financial statement top-level routes (routing only; render_* unchanged).
 _STATEMENT_PAGE_KEYS = frozenset({
-    "💰 Profit & Loss",
-    "🏛️ Balance Sheet",
-    "💸 Cash Flow",
+    NAV_PROFIT_LOSS,
+    NAV_BALANCE_SHEET,
+    NAV_CASH_FLOW,
 })
-_DATE_FILTER_PAGE_KEYS = frozenset({"📊 Reports"}) | _STATEMENT_PAGE_KEYS
+_DATE_FILTER_PAGE_KEYS = frozenset({NAV_REPORTS}) | _STATEMENT_PAGE_KEYS
 _LEGACY_RPT_EXEC_TO_STATEMENT = {
-    "pnl": "💰 Profit & Loss",
-    "balance_sheet": "🏛️ Balance Sheet",
-    "cash_flow": "💸 Cash Flow",
+    "pnl": NAV_PROFIT_LOSS,
+    "balance_sheet": NAV_BALANCE_SHEET,
+    "cash_flow": NAV_CASH_FLOW,
 }
 # D2-P1 — old Accounting Tools picker ids → Books sidebar routes (TB/GL/Budget deduped).
 _LEGACY_RPT_EXEC_TO_BOOKS = {
-    "budget": "💰 Budget",
-    "trial_balance": "⚖️ Trial Balance",
+    "budget": NAV_BUDGET,
+    "trial_balance": NAV_TRIAL_BALANCE,
     "general_ledger": NAV_GENERAL_LEDGER,
 }
 
@@ -3221,9 +3256,9 @@ _NAV_GROUP_HINTS = {
 
 # Optional modules: hide nav when company wizard disabled them (posting unchanged).
 _MODULE_NAV_PAGES: dict[str, str] = {
-    "inventory": "📦 Inventory",
-    "partner_accounts": "🏦 Partner Accounts",
-    "budget": "💰 Budget",
+    "inventory": NAV_INVENTORY,
+    "partner_accounts": NAV_PARTNER_ACCOUNTS,
+    "budget": NAV_BUDGET,
 }
 
 _MEMBER_STATUS_CODES = ("all", "active_only", "inactive_only")
@@ -3289,15 +3324,44 @@ def _nav_display(page_key: str) -> str:
     return nav_display(page_key, _ui_locale())
 
 
+def _nav_page_button(
+    container,
+    *,
+    page_key: str,
+    key_prefix: str,
+    selection: str,
+    allowed: set[str],
+    after_nav,
+    group_key: str | None = None,
+    item_mark: str | None = None,
+) -> None:
+    """Nav row with inline SVG icon + text button (ICON-MODERNIZE-01)."""
+    if page_key not in allowed:
+        return
+    label = _nav_display(page_key)
+    if item_mark:
+        container.markdown(f'<div class="{item_mark}"></div>', unsafe_allow_html=True)
+    ic_col, btn_col = container.columns([0.12, 0.88], gap="small")
+    ic_col.markdown(nav_page_icon_html(page_key, title=label), unsafe_allow_html=True)
+    if btn_col.button(
+        label,
+        key=f"{key_prefix}nav_btn_{page_key}",
+        use_container_width=True,
+        type="primary" if selection == page_key else "secondary",
+    ):
+        after_nav(page_key, group_key)
+
+
 # Mobile-only presentation (desktop sidebar unchanged). Canonical page keys only.
 # Bottom bar: Home | Banking | New (FAB, center) | Reports | More
 # (kind, page_or_hub_key, i18n_key, slug, label_fallback, tab_icon)
+# MOBILE-NAV-ICON-01 — last field is the icon_svg registry name (was emoji).
 _MOBILE_BOTTOM_NAV = (
-    ("home", "🏠 Home", "nav.bottom.home", "home", "Home", "🏠"),
-    ("hub", "banking", "nav.bottom.banking", "banking", "Banking", "🏦"),
-    ("new", "➕ New Transaction", "nav.bottom.new", "new", "New", "+"),
-    ("hub", "reports", "nav.bottom.reports", "reports", "Reports", "📊"),
-    ("hub", "more", "nav.bottom.more", "more", "More", "☰"),
+    ("home", NAV_HOME, "nav.bottom.home", "home", NAV_HOME, "home"),
+    ("hub", "banking", "nav.bottom.banking", "banking", NAV_BANKING, "landmark"),
+    ("new", NAV_NEW_TRANSACTION, "nav.bottom.new", "new", "New", "plus"),
+    ("hub", "reports", "nav.bottom.reports", "reports", NAV_REPORTS, "bar-chart"),
+    ("hub", "more", "nav.bottom.more", "more", "More", "menu"),
 )
 _MOBILE_HUB_KEYS = frozenset(
     payload for kind, payload, _, _, _, _ in _MOBILE_BOTTOM_NAV if kind == "hub"
@@ -3307,28 +3371,28 @@ _MOBILE_HUB_KEYS = frozenset(
 # entry_kind: page | banking_import | report_sales | report_expenses | section
 _MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
     "banking": [
-        ("page", "🏦 Banking", None, None),
-        ("page", "💸 Cash Reconciliation", None, None),
-        ("page", "🌙 End-of-Day Close", None, None),
+        ("page", NAV_BANKING, None, None),
+        ("page", NAV_CASH_RECONCILIATION, None, None),
+        ("page", NAV_END_OF_DAY_CLOSE, None, None),
         ("banking_import", "import", None, "nav.mobile.banking_import"),
     ],
     "reports": [
         ("page", _TXN_LEDGER_PAGE_KEY, None, None),
         ("section", "statements", None, "nav.mobile.section.statements"),
-        ("page", "💰 Profit & Loss", None, None),
-        ("page", "🏛️ Balance Sheet", None, None),
-        ("page", "💸 Cash Flow", None, None),
+        ("page", NAV_PROFIT_LOSS, None, None),
+        ("page", NAV_BALANCE_SHEET, None, None),
+        ("page", NAV_CASH_FLOW, None, None),
         ("report_sales", "sales", None, "nav.mobile.reports_sales"),
         ("report_expenses", "expenses", None, "nav.mobile.reports_expenses"),
     ],
     "people": [
-        ("page", "👥 Customers", None, None),
-        ("page", "🏢 Vendors", None, "nav.mobile.suppliers"),
-        ("page", "📄 Receivables", None, None),
-        ("page", "📌 Payables", None, None),
-        ("page", "👷 Workers", None, None),
-        ("page", "🏦 Partner Accounts", None, None),
-        ("page", "👤 Members", None, None),
+        ("page", NAV_CUSTOMERS, None, None),
+        ("page", NAV_VENDORS, None, "nav.mobile.suppliers"),
+        ("page", NAV_RECEIVABLES, None, None),
+        ("page", NAV_PAYABLES, None, None),
+        ("page", NAV_WORKERS, None, None),
+        ("page", NAV_PARTNER_ACCOUNTS, None, None),
+        ("page", NAV_MEMBERS, None, None),
     ],
     "more": [
         ("open_hub", "people", None, "nav.mobile.hub.people"),
@@ -3339,113 +3403,113 @@ _MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
         ("section", "history", None, "nav.mobile.section.history"),
         ("page", _TXN_LEDGER_PAGE_KEY, None, None),
         ("accordion", "transactions", None, None),
-        ("page", "📦 Inventory", None, None),
+        ("page", NAV_INVENTORY, None, None),
         ("section", "admin", None, "nav.mobile.section.admin"),
-        ("page", "🏢 Company Settings", None, None),
-        ("page", "💾 Backup & Restore", None, None),
-        ("page", "🕵️ Audit Log", None, None),
+        ("page", NAV_COMPANY_SETTINGS, None, None),
+        ("page", NAV_BACKUP_RESTORE, None, None),
+        ("page", NAV_AUDIT_LOG, None, None),
     ],
 }
 
 # Sidebar / mobile hub accordion — static; shared by main() and company-picker chrome.
 _NAV_ACCORDION = [
     ("transactions", "Record transactions", [
-        ("💼  Sales",              "💼 Sales"),
-        ("💳  Expenses",           "💳 Expenses"),
-        ("🛒  Purchases",          "🛒 Purchases"),
-        (NAV_RECURRING_EXPENSES.replace(" ", "  ", 1), NAV_RECURRING_EXPENSES),
+        (None, NAV_SALES),
+        (None, NAV_EXPENSES),
+        (None, NAV_PURCHASES),
+        (None, NAV_RECURRING_EXPENSES),
     ]),
     ("people", "Customers & suppliers", [
-        ("👥  Customers",          "👥 Customers"),
-        ("🏢  Vendors",            "🏢 Vendors"),
-        ("📄  Receivables",        "📄 Receivables"),
-        ("📌  Payables",           "📌 Payables"),
+        (None, NAV_CUSTOMERS),
+        (None, NAV_VENDORS),
+        (None, NAV_RECEIVABLES),
+        (None, NAV_PAYABLES),
     ]),
     ("close_day", "Closings", [
-        ("💸  Cash Reconciliation", "💸 Cash Reconciliation"),
-        ("🌙  End-of-Day Close",   "🌙 End-of-Day Close"),
+        (None, NAV_CASH_RECONCILIATION),
+        (None, NAV_END_OF_DAY_CLOSE),
     ]),
     ("statements", "Financial Statements", [
-        ("💰  Profit & Loss",     "💰 Profit & Loss"),
-        ("🏛️  Balance Sheet",     "🏛️ Balance Sheet"),
-        ("💸  Cash Flow",         "💸 Cash Flow"),
+        (None, NAV_PROFIT_LOSS),
+        (None, NAV_BALANCE_SHEET),
+        (None, NAV_CASH_FLOW),
     ]),
     ("accounting", "Books", [
-        (NAV_GENERAL_LEDGER.replace(" ", "  ", 1), NAV_GENERAL_LEDGER),
-        (NAV_CHART_OF_ACCOUNTS.replace(" ", "  ", 1), NAV_CHART_OF_ACCOUNTS),
-        (NAV_JOURNAL_ENTRIES.replace(" ", "  ", 1), NAV_JOURNAL_ENTRIES),
-        ("⚖️  Trial Balance",      "⚖️ Trial Balance"),
-        (NAV_FISCAL_PERIODS.replace(" ", "  ", 1), NAV_FISCAL_PERIODS),
-        ("📆  Year-End Close",     "📆 Year-End Close"),
-        ("💰  Budget",             "💰 Budget"),
-        ("🩺  Recon Health",       "🩺 Recon Health"),
-        ("⚡  Opening Balances",   "⚡ Opening Balances"),
+        (None, NAV_GENERAL_LEDGER),
+        (None, NAV_CHART_OF_ACCOUNTS),
+        (None, NAV_JOURNAL_ENTRIES),
+        (None, NAV_TRIAL_BALANCE),
+        (None, NAV_FISCAL_PERIODS),
+        (None, NAV_YEAR_END_CLOSE),
+        (None, NAV_BUDGET),
+        (None, NAV_RECON_HEALTH),
+        (None, NAV_OPENING_BALANCES),
     ]),
     ("team", "Team & partners", [
-        ("🏦  Partner Accounts",    "🏦 Partner Accounts"),
-        ("👷  Workers",            "👷 Workers"),
+        (None, NAV_PARTNER_ACCOUNTS),
+        (None, NAV_WORKERS),
     ]),
     ("settings", "Settings", [
-        ("🏢  Company Settings",   "🏢 Company Settings"),
-        ("👤  Members",            "👤 Members"),
-        ("🕵️  Audit Log",          "🕵️ Audit Log"),
-        ("💾  Backup & Restore",   "💾 Backup & Restore"),
+        (None, NAV_COMPANY_SETTINGS),
+        (None, NAV_MEMBERS),
+        (None, NAV_AUDIT_LOG),
+        (None, NAV_BACKUP_RESTORE),
     ]),
 ]
 _NAV_ACCORDION_BY_KEY = {gk: (glabel, gpages) for gk, glabel, gpages in _NAV_ACCORDION}
 _NAV_DIRECT_PAGES = [
-    "🏠 Home",
-    "➕ New Transaction",
+    NAV_HOME,
+    NAV_NEW_TRANSACTION,
     _TXN_LEDGER_PAGE_KEY,
-    "📦 Inventory",
-    "🏦 Banking",
-    "📊 Reports",
+    NAV_INVENTORY,
+    NAV_BANKING,
+    NAV_REPORTS,
 ]
 _NAV_ALL_PAGES = _NAV_DIRECT_PAGES + [key for _, _, pages in _NAV_ACCORDION for _, key in pages]
-_NAV_MY_ACCOUNT = "👤 My Account"
+_NAV_MY_ACCOUNT = NAV_MY_ACCOUNT
 _NAV_ROLE_PAGES = {
     "owner": _NAV_ALL_PAGES + [_NAV_MY_ACCOUNT],
     "manager": [
-        "🏠 Home",
-        "➕ New Transaction", _TXN_LEDGER_PAGE_KEY, "💼 Sales", "💳 Expenses", NAV_RECURRING_EXPENSES, "🛒 Purchases",
-        "💸 Cash Reconciliation", "🌙 End-of-Day Close",
-        "👥 Customers", "🏢 Vendors", "📄 Receivables", "📌 Payables",
-        "📦 Inventory", "🏦 Banking",
-        "📊 Reports",
-        "💰 Profit & Loss", "🏛️ Balance Sheet", "💸 Cash Flow",
-        NAV_GENERAL_LEDGER, "⚖️ Trial Balance", NAV_JOURNAL_ENTRIES,
-        NAV_FISCAL_PERIODS, "📆 Year-End Close", "💰 Budget", NAV_CHART_OF_ACCOUNTS,
-        "🩺 Recon Health",
-        "🏦 Partner Accounts",
-        "👷 Workers",
-        "🕵️ Audit Log",
-        "⚡ Opening Balances",
+        NAV_HOME,
+        NAV_NEW_TRANSACTION, _TXN_LEDGER_PAGE_KEY, NAV_SALES, NAV_EXPENSES, NAV_RECURRING_EXPENSES, NAV_PURCHASES,
+        NAV_CASH_RECONCILIATION, NAV_END_OF_DAY_CLOSE,
+        NAV_CUSTOMERS, NAV_VENDORS, NAV_RECEIVABLES, NAV_PAYABLES,
+        NAV_INVENTORY, NAV_BANKING,
+        NAV_REPORTS,
+        NAV_PROFIT_LOSS, NAV_BALANCE_SHEET, NAV_CASH_FLOW,
+        NAV_GENERAL_LEDGER, NAV_TRIAL_BALANCE, NAV_JOURNAL_ENTRIES,
+        NAV_FISCAL_PERIODS, NAV_YEAR_END_CLOSE, NAV_BUDGET, NAV_CHART_OF_ACCOUNTS,
+        NAV_RECON_HEALTH,
+        NAV_PARTNER_ACCOUNTS,
+        NAV_WORKERS,
+        NAV_AUDIT_LOG,
+        NAV_OPENING_BALANCES,
         _NAV_MY_ACCOUNT,
     ],
     "cashier": [
-        "🏠 Home",
-        "➕ New Transaction", _TXN_LEDGER_PAGE_KEY, "💼 Sales", "💳 Expenses", NAV_RECURRING_EXPENSES, "🛒 Purchases",
-        "💸 Cash Reconciliation", "🌙 End-of-Day Close",
-        "📄 Receivables", "📌 Payables",
-        "🏦 Banking",
-        "📊 Reports",
-        "💰 Profit & Loss", "🏛️ Balance Sheet", "💸 Cash Flow",
+        NAV_HOME,
+        NAV_NEW_TRANSACTION, _TXN_LEDGER_PAGE_KEY, NAV_SALES, NAV_EXPENSES, NAV_RECURRING_EXPENSES, NAV_PURCHASES,
+        NAV_CASH_RECONCILIATION, NAV_END_OF_DAY_CLOSE,
+        NAV_RECEIVABLES, NAV_PAYABLES,
+        NAV_BANKING,
+        NAV_REPORTS,
+        NAV_PROFIT_LOSS, NAV_BALANCE_SHEET, NAV_CASH_FLOW,
         _NAV_MY_ACCOUNT,
     ],
     "partner": [
-        "🏠 Home",
-        "💼 Sales", "📄 Receivables",
+        NAV_HOME,
+        NAV_SALES, NAV_RECEIVABLES,
         _TXN_LEDGER_PAGE_KEY,
-        "📊 Reports",
-        "💰 Profit & Loss", "🏛️ Balance Sheet", "💸 Cash Flow",
-        "🏦 Partner Accounts",
+        NAV_REPORTS,
+        NAV_PROFIT_LOSS, NAV_BALANCE_SHEET, NAV_CASH_FLOW,
+        NAV_PARTNER_ACCOUNTS,
         _NAV_MY_ACCOUNT,
     ],
     "viewer": [
-        "🏠 Home",
+        NAV_HOME,
         _TXN_LEDGER_PAGE_KEY,
-        "📊 Reports",
-        "💰 Profit & Loss", "🏛️ Balance Sheet", "💸 Cash Flow",
+        NAV_REPORTS,
+        NAV_PROFIT_LOSS, NAV_BALANCE_SHEET, NAV_CASH_FLOW,
         _NAV_MY_ACCOUNT,
     ],
 }
@@ -3472,23 +3536,22 @@ def _render_navigation_tree(
         st.rerun()
 
     def _nav_direct(page_key: str) -> None:
-        if page_key not in allowed:
-            return
-        if container.button(
-            _nav_display(page_key),
-            key=f"{_pfx}nav_btn_{page_key}",
-            use_container_width=True,
-            type="primary" if selection == page_key else "secondary",
-        ):
-            _after_nav(page_key)
+        _nav_page_button(
+            container,
+            page_key=page_key,
+            key_prefix=_pfx,
+            selection=selection,
+            allowed=allowed,
+            after_nav=lambda pk, _gk=None: _after_nav(pk),
+        )
 
     def _nav_group(gkey: str, gpages: list, *, hint_key: str | None = None) -> None:
         glabel = _t(_NAV_GROUP_KEYS[gkey])
-        gvisible = [(_nav_display(key), key) for _lbl, key in gpages if key in allowed]
+        gvisible = [key for _lbl, key in gpages if key in allowed]
         if not gvisible:
             return
         is_open = _active_grp == gkey
-        has_active = any(key == selection for _, key in gvisible)
+        has_active = any(key == selection for key in gvisible)
         chevron = "▾" if is_open else "▸"
         mark_cls = "nav-grp-hdr-mark"
         if has_active:
@@ -3509,37 +3572,36 @@ def _render_navigation_tree(
             if hint:
                 container.caption(_t(hint))
             container.markdown('<div class="nav-ch-open"></div>', unsafe_allow_html=True)
-            for lbl, page_key in gvisible:
+            for page_key in gvisible:
                 is_active = selection == page_key
                 item_mark = "nav-item-active-mark" if is_active else "nav-item-mark"
-                container.markdown(
-                    f'<div class="{item_mark}"></div>',
-                    unsafe_allow_html=True,
+                _nav_page_button(
+                    container,
+                    page_key=page_key,
+                    key_prefix=_pfx,
+                    selection=selection,
+                    allowed=allowed,
+                    after_nav=_after_nav,
+                    group_key=gkey,
+                    item_mark=item_mark,
                 )
-                if container.button(
-                    lbl,
-                    key=f"{_pfx}nav_btn_{page_key}",
-                    use_container_width=True,
-                    type="primary" if is_active else "secondary",
-                ):
-                    _after_nav(page_key, gkey)
             container.markdown('<div class="nav-ch-close"></div>', unsafe_allow_html=True)
 
     def _nav_section_caption(i18n_key: str) -> None:
         container.markdown("---")
         container.caption(_t(i18n_key))
 
-    _nav_direct("🏠 Home")
-    _nav_direct("➕ New Transaction")
+    _nav_direct(NAV_HOME)
+    _nav_direct(NAV_NEW_TRANSACTION)
     _nav_direct(_TXN_LEDGER_PAGE_KEY)
     _nav_section_caption("nav.sidebar.section_work")
     _nav_group("transactions", accordion_by_key["transactions"][1])
-    _nav_direct("🏦 Banking")
+    _nav_direct(NAV_BANKING)
     _nav_group("people", accordion_by_key["people"][1])
-    _nav_direct("📦 Inventory")
+    _nav_direct(NAV_INVENTORY)
     _nav_section_caption("nav.sidebar.section_reports")
     _nav_group("statements", accordion_by_key["statements"][1])
-    _nav_direct("📊 Reports")
+    _nav_direct(NAV_REPORTS)
     _nav_group("close_day", accordion_by_key["close_day"][1])
     _nav_section_caption("nav.sidebar.section_advanced")
     _nav_group("accounting", accordion_by_key["accounting"][1])
@@ -3555,7 +3617,7 @@ def _navigate_new_transaction(type_idx: int = 0) -> None:
     else:
         st.session_state["mob_at_tab"] = 3
         st.session_state["mob_at_more_idx"] = type_idx
-    st.session_state["nav_selection"] = "➕ New Transaction"
+    st.session_state["nav_selection"] = NAV_NEW_TRANSACTION
     _mobile_close_app_surfaces()
     st.session_state["sidebar_group"] = None
     st.rerun()
@@ -3664,9 +3726,9 @@ def _mobile_hub_entry_visible(
     if kind == "page":
         return payload in allowed
     if kind == "banking_import":
-        return "🏦 Banking" in allowed and _can("import_bank_statement")
+        return "Banking" in allowed and _can("import_bank_statement")
     if kind in ("report_sales", "report_expenses"):
-        return "📊 Reports" in allowed
+        return "Reports" in allowed
     return False
 
 
@@ -3692,9 +3754,9 @@ def _mobile_hub_page_keys(hub_key: str, accordion_by_key: dict) -> set[str]:
             _, gpages = accordion_by_key.get(payload, (None, []))
             keys.update(key for _, key in gpages)
         elif kind in ("report_sales", "report_expenses"):
-            keys.add("📊 Reports")
+            keys.add("Reports")
         elif kind == "banking_import":
-            keys.add("🏦 Banking")
+            keys.add("Banking")
     return keys
 
 
@@ -3767,8 +3829,11 @@ def _render_mobile_hub_sheet(
                     if page_key not in allowed:
                         continue
                     _active = selection == page_key
-                    if st.button(
-                        _nav_display(page_key),
+                    _lbl_text = _nav_display(page_key)
+                    _ic, _btn = st.columns([0.1, 0.9], gap="small")
+                    _ic.markdown(nav_page_icon_html(page_key, title=_lbl_text), unsafe_allow_html=True)
+                    if _btn.button(
+                        _lbl_text,
                         key=f"mob_hub_{hub_key}_{_item_idx}",
                         use_container_width=True,
                         type="primary" if _active else "secondary",
@@ -3782,7 +3847,9 @@ def _render_mobile_hub_sheet(
                 page_key = payload or ""
                 label = _t(label_key) if label_key else _nav_display(page_key)
                 _active = selection == page_key
-                if st.button(
+                _ic, _btn = st.columns([0.1, 0.9], gap="small")
+                _ic.markdown(nav_page_icon_html(page_key, title=label), unsafe_allow_html=True)
+                if _btn.button(
                     label,
                     key=f"mob_hub_{hub_key}_{_item_idx}",
                     use_container_width=True,
@@ -3805,7 +3872,7 @@ def _render_mobile_hub_sheet(
                     type="secondary",
                 ):
                     _mobile_hub_nav(
-                        "🏦 Banking",
+                        NAV_BANKING,
                         presets={"banking_section": "import"},
                     )
                 _item_idx += 1
@@ -3819,7 +3886,7 @@ def _render_mobile_hub_sheet(
                     type="secondary",
                 ):
                     _mobile_hub_nav(
-                        "📊 Reports",
+                        NAV_REPORTS,
                         presets={"mob_reports_tab": "sales"},
                     )
                 _item_idx += 1
@@ -3833,7 +3900,7 @@ def _render_mobile_hub_sheet(
                     type="secondary",
                 ):
                     _mobile_hub_nav(
-                        "📊 Reports",
+                        NAV_REPORTS,
                         presets={"mob_reports_tab": "expenses"},
                     )
                 _item_idx += 1
@@ -3919,10 +3986,12 @@ def _mobile_bottom_item_active(
 
 
 def _mob_bar_btn_label(kind: str, icon: str, label_key: str, fb: str) -> str:
-    """Icon on first line, caption below — centered via mobile_shell.css."""
+    """MOBILE-NAV-ICON-01 — blank first line (zero-width space) preserves the
+    two-line button box; the SVG icon overlays that line via mobile_shell.css.
+    Touch target and caption position are byte-identical to the emoji version."""
     if kind == "new":
         return "+"
-    return f"{icon}\n{_tf(label_key, fb)}"
+    return f"​\n{_tf(label_key, fb)}"
 
 
 def _render_mobile_bottom_nav(
@@ -3950,6 +4019,14 @@ def _render_mobile_bottom_nav(
             ):
                 _disabled = True
             with _col:
+                # MOBILE-NAV-ICON-01 — SVG icon overlay (registry/icon_svg.py,
+                # currentColor; positioned over the button's blank first line by
+                # mobile_shell.css; pointer-events none so taps hit the button).
+                if kind != "new":
+                    st.markdown(
+                        f'<div class="erp-mob-bar-ico">{icon_svg(icon, size="nav")}</div>',
+                        unsafe_allow_html=True,
+                    )
                 if kind == "new":
                     _cap = html.escape(_tf(label_key, fb))
                     if _disabled:
@@ -4735,7 +4812,7 @@ def _submit_setup01_create_company(session, user_id: int) -> tuple[bool, str | N
             return False, "picker.create_failed"
         _refresh_user_company_memberships(session, user_id)
         discard_setup01_wizard()
-        st.session_state["nav_selection"] = "🏠 Home"
+        st.session_state["nav_selection"] = NAV_HOME
         return True, created.name
     except ValueError as exc:
         st.session_state.pop(SETUP01_SESSION_CREATING, None)
@@ -5815,7 +5892,7 @@ def _purchase_ref_type(purchase_type: str | None) -> str:
 
 
 def post_purchase(session, purchase_id, amount, purchase_date, purchase_type="Credit",
-                  gl_debit="Inventory", currency=None, fx_rate=1.0,
+                  gl_debit=NAV_INVENTORY, currency=None, fx_rate=1.0,
                   credit_card_account_id=None):
     """Post purchase journal entry.
     Credit:  Dr <gl_debit>  /  Cr Accounts Payable    ref_type = "Purchase"
@@ -8018,7 +8095,7 @@ def render_year_end_close(session):
         st.warning(_t("yec.no_permission"))
         return
 
-    _st_page_title("📆 Year-End Close")
+    _st_page_title("Year-End Close")
     st.markdown(
         "Formally lock a fiscal year after all periods are closed and profits are allocated. "
         "This is a validation and lock record — no journal entry is posted."
@@ -10820,7 +10897,7 @@ def render_dashboard(session):
                 key="mob_dash_ar",
                 use_container_width=True,
             ):
-                st.session_state["nav_selection"] = "📄 Receivables"
+                st.session_state["nav_selection"] = NAV_RECEIVABLES
                 st.rerun()
         with _mar2:
             if st.button(
@@ -10828,7 +10905,7 @@ def render_dashboard(session):
                 key="mob_dash_ap",
                 use_container_width=True,
             ):
-                st.session_state["nav_selection"] = "📌 Payables"
+                st.session_state["nav_selection"] = NAV_PAYABLES
                 st.rerun()
 
     _render_mobile_quick_create()
@@ -10922,7 +10999,7 @@ def render_dashboard(session):
         import pandas as _pd_trend
         _df_trend = _pd_trend.DataFrame(_trend_data)
         try:
-            render_themed_grouped_bar(_df_trend, "Date", ["Sales", "Expenses"])
+            render_themed_grouped_bar(_df_trend, "Date", [NAV_SALES, "Expenses"])
         except Exception:
             _render_readable_df(_df_trend.set_index("Date"))
 
@@ -13334,7 +13411,7 @@ def _render_add_transaction_mobile(
                 key="mob_at_back_home",
                 use_container_width=True,
             ):
-                st.session_state["nav_selection"] = "🏠 Home"
+                st.session_state["nav_selection"] = NAV_HOME
                 st.rerun()
         with tc:
             st.markdown(
@@ -14787,7 +14864,7 @@ def edit_purchase(session, purchase_id, fields: dict):
         session.flush()
         post_purchase(
             session, purchase_id, purchase.amount, purchase.date,
-            purchase.purchase_type or "Credit", purchase.gl_debit or "Inventory",
+            purchase.purchase_type or "Credit", purchase.gl_debit or NAV_INVENTORY,
             credit_card_account_id=purchase.credit_card_account_id,
         )
     _sync_purchase_payable_lifecycle(session, purchase, orig_pt)
@@ -15003,7 +15080,7 @@ def _txh_apply_repeat_prefill(session, etype: str, eobj) -> bool:
 
     st.session_state.pop("mob_at_picker", None)
     st.session_state.pop("mob_at_picker_search", None)
-    st.session_state["nav_selection"] = "➕ New Transaction"
+    st.session_state["nav_selection"] = NAV_NEW_TRANSACTION
     _mobile_close_app_surfaces()
     st.session_state["sidebar_group"] = None
     return True
@@ -15237,11 +15314,11 @@ def _txh_bind_action_buttons(
 ) -> None:
     """Wire View / Edit / Repeat|Duplicate / Void callbacks into pre-built columns."""
     c_v, c_e, c_d, c_vd = action_cols
-    if c_v.button(TXH_VIEW, key=f"txh_v_{row_key}", help=_t("txh.view_help")):
+    if c_v.button(TXH_ACTION_VIEW, key=f"txh_v_{row_key}", help=_t("txh.view_help")):
         st.session_state["txh_active_view"] = None if st.session_state.get("txh_active_view") == row_key else row_key
         st.session_state["txh_active_edit"] = None
         st.rerun()
-    if c_e.button(TXH_EDIT, key=f"txh_e_{row_key}", help=_t("txh.edit_help"), disabled=not defs["can_edit"]):
+    if c_e.button(TXH_ACTION_EDIT, key=f"txh_e_{row_key}", help=_t("txh.edit_help"), disabled=not defs["can_edit"]):
         if st.session_state.get("txh_active_edit") == row_key:
             st.session_state["txh_active_edit"] = None
         else:
@@ -15251,12 +15328,12 @@ def _txh_bind_action_buttons(
             st.session_state["txh_active_view"] = None
         st.rerun()
     if defs["can_repeat"]:
-        if c_d.button(TXH_REPEAT, key=f"txh_r_{row_key}", help=_t("txh.repeat_help")):
+        if c_d.button(TXH_ACTION_REPEAT, key=f"txh_r_{row_key}", help=_t("txh.repeat_help")):
             if _txh_apply_repeat_prefill(session, etype, eobj):
                 st.session_state["txh_active_view"] = None
                 st.session_state["txh_active_edit"] = None
                 st.rerun()
-    elif c_d.button(TXH_DUPLICATE, key=f"txh_d_{row_key}", help=_t("txh.duplicate_help"), disabled=not defs["can_duplicate"]):
+    elif c_d.button(TXH_ACTION_DUPLICATE, key=f"txh_d_{row_key}", help=_t("txh.duplicate_help"), disabled=not defs["can_duplicate"]):
         _TYPE_IDX = {"Sale": 0, "ExpenseRecord": 1, "Purchase": 2}
         st.session_state["at_type_idx"] = _TYPE_IDX.get(etype, 0)
         st.session_state["at_amount_display"] = str(eobj.amount)
@@ -15268,9 +15345,9 @@ def _txh_bind_action_buttons(
             st.session_state["at_pm"] = eobj.payment_method or "Cash"
         elif etype == "Purchase":
             st.session_state["at_pm"] = eobj.purchase_type or "Credit"
-        st.session_state["nav_selection"] = "➕ New Transaction"
+        st.session_state["nav_selection"] = NAV_NEW_TRANSACTION
         st.rerun()
-    if c_vd.button(TXH_VOID, key=f"txh_vd_{row_key}", help=_t("txh.void_help"), disabled=not defs["can_void"]):
+    if c_vd.button(TXH_ACTION_VOID, key=f"txh_vd_{row_key}", help=_t("txh.void_help"), disabled=not defs["can_void"]):
         st.session_state[f"txh_void_confirm_{row_key}"] = True
         st.rerun()
 
@@ -15924,7 +16001,7 @@ def render_transaction_history(session):
             keyword = _txh_search_keyword()
             type_filter = fc1.selectbox(
                 _t("col.type"),
-                [_txh_all, "Sale", "Expense", "Purchase", "Banking", "Payable"],
+                [_txh_all, "Sale", "Expense", "Purchase", NAV_BANKING, "Payable"],
                 format_func=lambda v: v if v == _txh_all else _i18n_db(_TXH_TYPE_FILTER_I18N, v),
                 key="txh_type",
             )
@@ -17554,7 +17631,7 @@ def render_bank_statement_import(session, *, embedded: bool = False):
 
 
 def render_vendors(session):
-    _st_page_title("🏢 Vendors")
+    _st_page_title("Vendors")
 
     # ── Add vendor ────────────────────────────────────────────────────────────
     with st.expander("➕ " + _t("vendor.add_expander"), expanded=False):
@@ -17748,7 +17825,7 @@ def render_vendors(session):
 
 
 _PURCHASE_GL_DEBITS = [
-    "Inventory",
+    NAV_INVENTORY,
     "Rent",
     "Salary",
     "Electricity",
@@ -17762,7 +17839,7 @@ _PURCHASE_GL_DEBITS = [
 
 
 def render_purchases(session):
-    _st_page_title("🛒 Purchases")
+    _st_page_title("Purchases")
     currency = load_settings().get("currency", "TRY")
     vendors = cq(session, Vendor).filter_by(is_active=True).order_by(Vendor.name).all()
     vendor_map = {v.name: v.id for v in vendors}
@@ -17863,7 +17940,7 @@ def render_purchases(session):
                 "Vendor": vendor.name if vendor else _t("form.unknown"),
                 "Purchase #": f"PUR#{r.id}",
                 "Type": r.purchase_type or "Credit",
-                "Debit Account": r.gl_debit or "Inventory",
+                "Debit Account": r.gl_debit or NAV_INVENTORY,
                 "Amount": r.amount,
                 "Description": r.description,
                 "Status": _t("purchase.status.void") if r.is_void else _t("purchase.status.active"),
@@ -17963,7 +18040,7 @@ def _apply_payable_payment_state(payable, payment_amount: float) -> None:
 
 
 def render_payables(session):
-    _st_page_title("📌 Payables")
+    _st_page_title("Payables")
     settings = load_settings()
     currency = settings.get("currency", "TRY")
     vendors = cq(session, Vendor).filter_by(is_active=True).order_by(Vendor.name).all()
@@ -18245,7 +18322,7 @@ def render_payables(session):
 
 
 def render_expenses(session):
-    _st_page_title("💳 Expenses")
+    _st_page_title("Expenses")
     currency = load_settings().get("currency", "TRY")
     st.caption(_t("expense.page_hint"))
     expense_types = list(EXPENSE_TYPE_I18N.keys())
@@ -19604,7 +19681,7 @@ def render_end_of_day_close(session):
 
 
 def render_customers(session):
-    _st_page_title("👥 Customers")
+    _st_page_title("Customers")
     with st.form(key="customer_form"):
         name = st.text_input(_t("customer.name"))
         contact = st.text_input(_t("form.contact"))
@@ -20145,7 +20222,7 @@ def _render_banking_statement_import(session):
 def render_banking(session):
     from reconciliation.company_card import apply_account_balance_delta
 
-    _st_page_title("🏦 Banking")
+    _st_page_title("Banking")
 
     _bank_sections = {
         "accounts": _t("bank.section.accounts"),
@@ -20622,7 +20699,7 @@ def render_general_ledger(session):
 
 
 def render_trial_balance(session):
-    _st_page_title("⚖️ Trial Balance")
+    _st_page_title("Trial Balance")
 
     accounts = cq(session, ChartOfAccounts).filter_by(is_active=True).order_by(ChartOfAccounts.account_code).all()
 
@@ -20804,7 +20881,7 @@ def render_chart_of_accounts(session):
 
 
 def render_sales(session):
-    _st_page_title("💼 Sales")
+    _st_page_title("Sales")
     currency = load_settings().get("currency", "TRY")
     st.markdown(_t("sales.caption"))
 
@@ -20953,7 +21030,7 @@ def render_sales(session):
 def render_receivables(session):
     settings  = load_settings()
     currency  = settings.get("currency", "TRY")
-    _st_page_title("📄 Receivables")
+    _st_page_title("Receivables")
 
     credit_sales = (
         cq(session, Sale)
@@ -21027,7 +21104,7 @@ def render_receivables(session):
     for sale in filtered:
         pill_bg, pill_fg = _STATUS_STYLE.get(sale.status, ("#f3f4f6","#374151"))
         is_open  = st.session_state.get("rec_active_inv") == sale.id
-        btn_lbl  = "✕ " + _t("receivable.details_close") if is_open else TXH_VIEW + " " + _t("receivable.details_open")
+        btn_lbl  = "✕ " + _t("receivable.details_close") if is_open else _t("receivable.details_open")
         with st.container(border=True):
             c1, c2, c3, c4, c5 = st.columns([2, 2, 1, 1, 1])
             c1.markdown(f"**{sale.invoice_number}**")
@@ -22332,7 +22409,7 @@ def render_reports(session):
                             _df_chart = df.copy()
                             _df_chart["Date"] = _df_chart["Date"].astype(str)
                             render_themed_line(
-                                _df_chart, "Date", ["Sales", "Expenses", "Net Cash"]
+                                _df_chart, "Date", [NAV_SALES, NAV_EXPENSES, "Net Cash"]
                             )
                         except Exception:
                             pass
@@ -24550,10 +24627,10 @@ def render_my_account(session):
             st.divider()
 
             st.markdown(f"**{_t('account.application')}**")
-            _cur_landing = _get_user_pref(user_id, "landing_page", "🏠 Home")
-            _landing_choices = ["🏠 Home", "📊 Reports", "➕ New Transaction",
-                                 "💼 Sales", "💳 Expenses", "🛒 Purchases",
-                                 "📄 Receivables", "📌 Payables"]
+            _cur_landing = _get_user_pref(user_id, "landing_page", "Home")
+            _landing_choices = [NAV_HOME, NAV_REPORTS, NAV_NEW_TRANSACTION,
+                                 NAV_SALES, NAV_EXPENSES, NAV_PURCHASES,
+                                 NAV_RECEIVABLES, "Payables"]
             _land_idx = _landing_choices.index(_cur_landing) if _cur_landing in _landing_choices else 0
             new_landing = st.selectbox(
                 _t("account.landing_page"),
@@ -24746,14 +24823,18 @@ def main():
 
     # ── Role-based access (before header so page title matches allowed nav) ─
     _nav_role = _current_company_role() or user.get("role", "viewer")
-    _allowed = set(_NAV_ROLE_PAGES.get(_nav_role, ["🏠 Home"]))
+    _allowed = set(_NAV_ROLE_PAGES.get(_nav_role, [NAV_HOME]))
 
     with get_session() as _nav_session:
         _allowed -= _module_hidden_nav_pages(_nav_session)
 
-    if st.session_state.get("nav_selection", "🏠 Home") not in _allowed:
-        st.session_state["nav_selection"] = "🏠 Home"
-    selection = st.session_state.get("nav_selection", "🏠 Home")
+    _raw_nav = st.session_state.get("nav_selection", NAV_HOME)
+    selection = normalize_nav_key(_raw_nav)
+    if selection != _raw_nav:
+        st.session_state["nav_selection"] = selection
+    if selection not in _allowed:
+        st.session_state["nav_selection"] = NAV_HOME
+        selection = NAV_HOME
 
     _sync_mobile_ui_flag_from_cookie()
 
@@ -24762,10 +24843,10 @@ def main():
     _render_company_switch_confirm(key_prefix="main_co_sw")
 
     # Legacy nav key — statement import now lives on Banking → Statement import tab.
-    _LEGACY_BSI = "📥 Bank Statement Import"
-    if st.session_state.get("nav_selection") == _LEGACY_BSI:
-        st.session_state["nav_selection"] = "🏦 Banking"
+    if st.session_state.get("nav_selection") == "Bank Statement Import":
+        st.session_state["nav_selection"] = NAV_BANKING
         st.session_state["banking_section"] = "import"
+        selection = NAV_BANKING
 
     # Legacy Accounting Tools picker → statement or Books routes (AD-UI-001 D1 / D2-P1).
     _legacy_exec = st.session_state.get("rpt_exec_sel")
@@ -24824,7 +24905,7 @@ def main():
         st.session_state.pop("mob_co_switch_open", None)
         st.session_state.pop("mob_profile_open", None)
         _mobile_clear_company_switch_confirm()
-        if selection != "📊 Reports":
+        if selection != NAV_REPORTS:
             st.session_state.pop("mob_reports_tab", None)
         # Auto-open the group when navigating programmatically
         _pg = _page_group(selection)
@@ -24833,43 +24914,42 @@ def main():
 
     # ── Page dispatch ─────────────────────────────────────────────────────────
     _PAGE_DISPATCH = {
-        "🏠 Home":              render_dashboard,
-        "📅 Today's Summary":   render_today_summary,
-        "➕ New Transaction":    render_add_transaction,
-        _TXN_LEDGER_PAGE_KEY:  render_transaction_ledger_page,
-        "💼 Sales":             render_sales,
-        "💳 Expenses":              render_expenses,
-        NAV_RECURRING_EXPENSES:    render_recurring_expenses,
-        "🛒 Purchases":             render_purchases,
-        "💸 Cash Reconciliation":   render_cash_reconciliation,
-        "🌙 End-of-Day Close":      render_end_of_day_close,
-        "👥 Customers":             render_customers,
-        "🏢 Vendors":           render_vendors,
-        "📄 Receivables":       render_receivables,
-        "📌 Payables":          render_payables,
-        "📦 Inventory":         render_inventory,
-        "🏦 Banking":           render_banking,
-        "📊 Reports":           render_reports,
-        "💰 Profit & Loss":     render_profit_loss_page,
-        "🏛️ Balance Sheet":     render_balance_sheet_page,
-        "💸 Cash Flow":         render_cash_flow_page,
+        NAV_HOME:              render_dashboard,
+        NAV_TODAY_SUMMARY:     render_today_summary,
+        NAV_NEW_TRANSACTION:   render_add_transaction,
+        NAV_TXN_LEDGER:        render_transaction_ledger_page,
+        NAV_SALES:             render_sales,
+        NAV_EXPENSES:          render_expenses,
+        NAV_RECURRING_EXPENSES: render_recurring_expenses,
+        NAV_PURCHASES:         render_purchases,
+        NAV_CASH_RECONCILIATION: render_cash_reconciliation,
+        NAV_END_OF_DAY_CLOSE:  render_end_of_day_close,
+        NAV_CUSTOMERS:         render_customers,
+        NAV_VENDORS:           render_vendors,
+        NAV_RECEIVABLES:       render_receivables,
+        NAV_PAYABLES:          render_payables,
+        NAV_INVENTORY:         render_inventory,
+        NAV_BANKING:           render_banking,
+        NAV_REPORTS:           render_reports,
+        NAV_PROFIT_LOSS:       render_profit_loss_page,
+        NAV_BALANCE_SHEET:     render_balance_sheet_page,
+        NAV_CASH_FLOW:         render_cash_flow_page,
         NAV_GENERAL_LEDGER:    render_general_ledger,
-        "⚖️ Trial Balance":     render_trial_balance,
+        NAV_TRIAL_BALANCE:     render_trial_balance,
         NAV_JOURNAL_ENTRIES:   render_journal_entries,
         NAV_FISCAL_PERIODS:    render_fiscal_periods,
-        "📆 Year-End Close":    render_year_end_close,
-        "💰 Budget":            render_budget,
+        NAV_YEAR_END_CLOSE:    render_year_end_close,
+        NAV_BUDGET:            render_budget,
         NAV_CHART_OF_ACCOUNTS: render_chart_of_accounts,
-        "🩺 Recon Health":      render_reconciliation_health,
-        "🏦 Partner Accounts":  render_partner_accounts,
-        "👷 Workers":           render_workers,
-        "🏢 Company Settings":  render_company_settings,
-        "👤 Members":           render_user_management,
-        "🕵️ Audit Log":         render_audit_log,
-        "💾 Backup & Restore":  lambda s: render_backup_restore(),
-        "⚡ Opening Balances":  render_opening_balances,
-        "👤 My Account":        render_my_account,
-        # render_manage_categories is accessible via the ⚙️ dialogs on the transaction form
+        NAV_RECON_HEALTH:      render_reconciliation_health,
+        NAV_PARTNER_ACCOUNTS:  render_partner_accounts,
+        NAV_WORKERS:           render_workers,
+        NAV_COMPANY_SETTINGS:  render_company_settings,
+        NAV_MEMBERS:           render_user_management,
+        NAV_AUDIT_LOG:         render_audit_log,
+        NAV_BACKUP_RESTORE:    lambda s: render_backup_restore(),
+        NAV_OPENING_BALANCES:  render_opening_balances,
+        NAV_MY_ACCOUNT:        render_my_account,
     }
 
     with get_session() as session:
@@ -24887,13 +24967,13 @@ def _render_company_picker_shell(session) -> None:
     settings = load_settings()
     if user:
         _refresh_user_company_memberships(session, user["id"])
-        render_top_header(user, settings, page_key="🏠 Home")
+        render_top_header(user, settings, page_key=NAV_HOME)
         _render_company_switch_confirm(key_prefix="picker_co_sw")
     render_company_picker(session)
     if user:
         _render_mobile_chrome(
-            "🏠 Home",
-            {"🏠 Home", _NAV_MY_ACCOUNT},
+            NAV_HOME,
+            {NAV_HOME, _NAV_MY_ACCOUNT},
             _NAV_ACCORDION_BY_KEY,
         )
 

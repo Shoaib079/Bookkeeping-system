@@ -144,7 +144,7 @@ def test_wizard_state_cleared_and_navigates_home(db):
 
     assert not is_setup01_active()
     assert SETUP01_SESSION_ANSWERS not in st.session_state
-    assert st.session_state["nav_selection"] == "🏠 Home"
+    assert st.session_state["nav_selection"] == "Home"
 
 
 def test_creation_failure_preserves_answers(db, monkeypatch):

@@ -1,0 +1,59 @@
+/* ICON-MODERNIZE-01 — inline SVG icon sizing (currentColor inherits theme text) */
+
+.erp-icon {
+  display: inline-block;
+  vertical-align: -0.15em;
+  flex-shrink: 0;
+  color: currentColor;
+}
+
+.erp-icon--nav {
+  width: 16px;
+  height: 16px;
+}
+
+.erp-icon--action {
+  width: 12px;
+  height: 12px;
+}
+
+.erp-icon--tab {
+  width: 15px;
+  height: 15px;
+}
+
+.erp-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 100%;
+  color: var(--theme-muted);
+}
+
+.erp-nav-icon .erp-icon {
+  color: inherit;
+}
+
+/* Sidebar / mobile hub — icon column beside nav button */
+[data-testid="stSidebar"] [class*="st-key-nav_icon_"] [data-testid="stMarkdownContainer"],
+[data-testid="stSidebar"] [class*="st-key-mob_hub_icon_"] [data-testid="stMarkdownContainer"],
+[class*="st-key-nav_icon_"] [data-testid="stMarkdownContainer"],
+[class*="st-key-mob_hub_icon_"] [data-testid="stMarkdownContainer"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: 38px;
+}
+
+[data-testid="stSidebar"] div:has(.nav-item-active-mark) + div:has([class*="st-key-nav_icon_"]) .erp-nav-icon,
+[data-testid="stSidebar"] div:has(.nav-item-active-mark) + div + div [class*="st-key-nav_icon_"] .erp-nav-icon {
+  color: var(--erp-primary-fill, var(--theme-info));
+}
+
+[data-testid="stSidebar"] div:has(.nav-item-active-mark) + div + div [data-testid="baseButton-primary"] ~ *,
+[data-testid="stSidebar"] [data-testid="baseButton-primary"]:has(+ *) .erp-nav-icon {
+  color: var(--erp-on-primary, #fff);
+}
