@@ -355,6 +355,11 @@ _EN: dict[str, str] = {
     "ob.col.ob_cost": "OB Cost",
     "ob.col.current_qty": "Current Qty",
     "ob.col.sku": "SKU",
+    # POS Settlement entry (BANKING-UX-02 P1B — also in transactional; duplicated for reliable lookup)
+    "banking.pos_entry.title": "POS / Card Settlement",
+    "banking.pos_entry.hint": "Use this when the bank deposits money from card/POS sales. Sales revenue is already recorded; this only clears Card Sales Clearing to Bank.",
+    "banking.pos_entry.open": "Open POS / Card Settlement",
+    "banking.pos_entry.no_rows": "Import your bank statement first, then match the deposit as a Card sales deposit.",
     # Partner Summary plain labels (PARTNER-UX-01 — also in transactional; duplicated for reliable lookup)
     "partner.summary_plain_capital": "Invested in business",
     "partner.summary_plain_current": "Taken from business / profit share account",
@@ -694,6 +699,11 @@ _TR: dict[str, str] = {
     "ob.col.ob_cost": "AB Maliyeti",
     "ob.col.current_qty": "Mevcut Miktar",
     "ob.col.sku": "SKU",
+    # POS Settlement entry (BANKING-UX-02 P1B — also in transactional; duplicated for reliable lookup)
+    "banking.pos_entry.title": "POS / Kart Tahsilatı",
+    "banking.pos_entry.hint": "Banka POS/kart satışlarını hesabınıza yatırdığında bunu kullanın. Satış geliri zaten kayıtlıdır; bu işlem yalnızca Kart Satış Takas'tan Banka'ya aktarır.",
+    "banking.pos_entry.open": "POS / Kart Tahsilatını Aç",
+    "banking.pos_entry.no_rows": "Önce banka ekstrenizi içe aktarın, ardından yatırmayı Kart satış yatırması olarak eşleştirin.",
     # Partner Summary plain labels (PARTNER-UX-01 — also in transactional; duplicated for reliable lookup)
     "partner.summary_plain_capital": "İşletmeye yatırılan",
     "partner.summary_plain_current": "İşletmeden alınan / kâr payı hesabı",
