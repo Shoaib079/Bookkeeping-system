@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any
+from typing import Any, Callable
 
 from models import BankStatementImport, BankStatementRow, JournalEntry, Sale
+
+UNSETTLED_DATE_MIN = datetime.date(2000, 1, 1)
+_UNSETTLED_DATE_MAX = datetime.date(2100, 12, 31)
 
 
 def _settled_sale_ids(session, company_id: int) -> set[int]:
@@ -89,3 +92,20 @@ def get_unsettled_card_sales(
             }
         )
     return out
+
+
+def fetch_unsettled_card_sales_for_visibility(
+    session,
+    company_id: int,
+    *,
+    get_unsettled_card_sales: Callable[..., list[dict[str, Any]]],
+    get_account_by_name: Callable[..., Any],
+) -> list[dict[str, Any]]:
+    """Wide-date unsettled card sales — shared by P2 visibility and P3 list."""
+    return get_unsettled_card_sales(
+        session,
+        company_id,
+        date_from=UNSETTLED_DATE_MIN,
+        date_to=_UNSETTLED_DATE_MAX,
+        get_account_by_name=get_account_by_name,
+    )

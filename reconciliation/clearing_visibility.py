@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
-import datetime
 from dataclasses import dataclass
 from typing import Any, Callable
 
 from models import JournalEntry, JournalEntryLine, Sale
+from reconciliation.clearing import fetch_unsettled_card_sales_for_visibility
 
 _TOLERANCE = 0.01
-_UNSETTLED_DATE_MIN = datetime.date(2000, 1, 1)
-_UNSETTLED_DATE_MAX = datetime.date(2100, 12, 31)
 
+__all__ = [
+    "ClearingVisibilitySnapshot",
+    "compute_clearing_visibility",
+    "fetch_unsettled_card_sales_for_visibility",
+]
 
 @dataclass
 class ClearingVisibilitySnapshot:
@@ -72,11 +75,10 @@ def compute_clearing_visibility(
     get_account_by_name: Callable[..., Any],
 ) -> ClearingVisibilitySnapshot:
     """Read-only clearing visibility for account 1150."""
-    unsettled = get_unsettled_card_sales(
+    unsettled = fetch_unsettled_card_sales_for_visibility(
         session,
         company_id,
-        date_from=_UNSETTLED_DATE_MIN,
-        date_to=_UNSETTLED_DATE_MAX,
+        get_unsettled_card_sales=get_unsettled_card_sales,
         get_account_by_name=get_account_by_name,
     )
     unsettled_total = round(sum(c["amount"] for c in unsettled), 2)

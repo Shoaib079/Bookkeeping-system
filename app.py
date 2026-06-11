@@ -223,8 +223,20 @@ from reconciliation.company_card import (
     reverse_cc_subledgers_for_gl_reference,
     void_credit_card_bill_payment,
 )
-# Import from match_post directly — avoids Streamlit stale `reconciliation` package cache.
-from reconciliation.clearing_visibility import compute_clearing_visibility
+# Import from submodule directly — avoids Streamlit stale `reconciliation` package cache.
+from reconciliation.clearing import fetch_unsettled_card_sales_for_visibility
+from reconciliation.clearing_visibility import (
+    ClearingVisibilitySnapshot,
+    compute_clearing_visibility,
+)
+from reconciliation.unsettled_card_sales_list import (
+    DEFAULT_LIST_LIMIT,
+    apply_list_limit,
+    enrich_unsettled_sale_row,
+    filter_unsettled_by_date,
+    list_total_mismatch,
+    sum_unsettled_card_sales,
+)
 from reconciliation.pos_settlement_preview import compute_pos_settlement_preview
 from reconciliation.match_post import (
     looks_like_worker_payroll,
@@ -16810,10 +16822,10 @@ def _render_card_sales_clearing_visibility_block(
     *,
     clearing_acct,
     currency: str,
-) -> None:
+) -> ClearingVisibilitySnapshot | None:
     """Read-only Card Sales Clearing visibility (BANKING-UX-02 P2)."""
     if not clearing_acct:
-        return
+        return None
     available_clearing = calculate_account_balance(session, clearing_acct)
     snapshot = compute_clearing_visibility(
         session,
@@ -16858,6 +16870,103 @@ def _render_card_sales_clearing_visibility_block(
                 currency=currency,
             )
         )
+    return snapshot
+
+
+def _render_unsettled_card_sales_list_block(
+    session,
+    cid: int,
+    *,
+    currency: str,
+    visibility_unsettled_total: float,
+) -> None:
+    """Read-only unsettled card sales table (BANKING-UX-02 P3)."""
+    rows = fetch_unsettled_card_sales_for_visibility(
+        session,
+        cid,
+        get_unsettled_card_sales=get_unsettled_card_sales,
+        get_account_by_name=get_account_by_name,
+    )
+    st.markdown(
+        financial_section_header_html(
+            _t("banking.unsettled_card_sales.section_title"), accent="info"
+        ),
+        unsafe_allow_html=True,
+    )
+    if not rows:
+        st.info(_t("banking.unsettled_card_sales.empty"))
+        return
+
+    f1, f2, f3 = st.columns([1, 1, 1])
+    with f1:
+        date_from = st.date_input(
+            _t("banking.unsettled_card_sales.filter_from"),
+            value=min(r["date"] for r in rows if r.get("date")),
+            key="bank_unsettled_from",
+        )
+    with f2:
+        date_to = st.date_input(
+            _t("banking.unsettled_card_sales.filter_to"),
+            value=max(r["date"] for r in rows if r.get("date")),
+            key="bank_unsettled_to",
+        )
+    with f3:
+        show_all = st.checkbox(
+            _t("banking.unsettled_card_sales.show_all"),
+            value=False,
+            key="bank_unsettled_show_all",
+        )
+
+    list_total = sum_unsettled_card_sales(rows)
+    filtered = filter_unsettled_by_date(
+        rows, date_from=date_from, date_to=date_to
+    )
+    visible, truncated = apply_list_limit(
+        filtered, show_all=show_all, limit=DEFAULT_LIST_LIMIT
+    )
+    if list_total_mismatch(list_total, visibility_unsettled_total):
+        st.warning(
+            _t(
+                "banking.unsettled_card_sales.warn_total_mismatch",
+                list_total=f"{list_total:,.2f}",
+                visibility_total=f"{visibility_unsettled_total:,.2f}",
+                currency=currency,
+            )
+        )
+    if truncated:
+        st.caption(
+            _t(
+                "banking.unsettled_card_sales.latest_limit",
+                limit=DEFAULT_LIST_LIMIT,
+                total=len(filtered),
+            )
+        )
+
+    table_rows = []
+    for row in visible:
+        enriched = enrich_unsettled_sale_row(
+            session, row, default_currency=currency
+        )
+        table_rows.append(
+            {
+                _t("banking.unsettled_card_sales.col.date"): enriched["date"],
+                _t("banking.unsettled_card_sales.col.reference"): enriched[
+                    "reference"
+                ],
+                _t("banking.unsettled_card_sales.col.amount"): enriched["amount"],
+                _t("banking.unsettled_card_sales.col.currency"): enriched[
+                    "currency"
+                ],
+                _t("banking.unsettled_card_sales.col.payment_method"): _i18n_db(
+                    SALE_TYPE_I18N, enriched["payment_method"]
+                ),
+                _t("banking.unsettled_card_sales.col.notes"): enriched["notes"],
+                _t("banking.unsettled_card_sales.col.status"): _t(
+                    "banking.unsettled_card_sales.status.unsettled"
+                ),
+            }
+        )
+    _render_readable_df(pd.DataFrame(table_rows))
 
 
 def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
@@ -16974,12 +17083,19 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
         fee_amount=preview_fee,
     )
     _render_pos_settlement_preview_block(preview, currency)
-    _render_card_sales_clearing_visibility_block(
+    visibility = _render_card_sales_clearing_visibility_block(
         session,
         cid,
         clearing_acct=clearing_acct,
         currency=currency,
     )
+    if visibility is not None:
+        _render_unsettled_card_sales_list_block(
+            session,
+            cid,
+            currency=currency,
+            visibility_unsettled_total=visibility.unsettled_card_sales_total,
+        )
 
     if not clearing:
         return
