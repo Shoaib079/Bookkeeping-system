@@ -16676,6 +16676,21 @@ def _bsi_render_delete_import(session, imp: BankStatementImport, company_id: int
         st.rerun()
 
 
+def _postable_deposit_rows(session, cid: int) -> list:
+    """Staging bank statement credits ready for card-clearing match."""
+    return [
+        r
+        for r in get_postable_rows(session, cid)
+        if r.credit_amount and not r.debit_amount
+    ]
+
+
+def _render_bsi_deposit_clearing_panel(session, sel_row, cid: int) -> None:
+    """Line summary + card clearing match panel (single posting UI)."""
+    _render_bsi_match_line_summary(sel_row)
+    _render_bsi_deposit_clearing(session, sel_row, cid)
+
+
 def _render_bsi_match_line_summary(sel_row) -> None:
     """Pinned summary for the selected statement line."""
     sign = "+" if sel_row.credit_amount else "-"
@@ -20700,11 +20715,19 @@ def render_inventory(session):
         st.info(_t("inv.no_movements"))
 
 
+def _banking_pos_settlement_enabled(session) -> bool:
+    return (
+        _card_settlement_on(session)
+        and _banking_reconciliation_on(session)
+        and _can("view_bank_statement_import")
+    )
+
+
 def _banking_pos_settlement_route_keys() -> dict:
-    """Session keys for BANKING-UX-02 P1B → existing statement import match workflow."""
+    """Session keys for BANKING-UX-02 P1B → focused POS settlement section."""
     return {
         "nav_selection": NAV_BANKING,
-        "banking_section": "import",
+        "banking_section": "pos_settlement",
         "bsi_section": "match",
         "bsi_match_kind": "card_clearing",
         "bsi_pos_entry": True,
@@ -20712,19 +20735,16 @@ def _banking_pos_settlement_route_keys() -> dict:
 
 
 def _apply_banking_pos_settlement_route() -> None:
-    st.session_state["nav_selection"] = NAV_BANKING
-    st.session_state["banking_section"] = "import"
-    st.session_state["bsi_section"] = "match"
-    st.session_state["bsi_match_kind"] = "card_clearing"
-    st.session_state["bsi_pos_entry"] = True
+    for k, v in _banking_pos_settlement_route_keys().items():
+        st.session_state[k] = v
     st.rerun()
 
 
 def _render_banking_pos_settlement_entry(session) -> None:
-    """BANKING-UX-02 P1B — visible shortcut to card settlement match & post."""
-    if not _card_settlement_on(session) or not _banking_reconciliation_on(session):
+    """BANKING-UX-02 P1B — visible shortcut to focused POS settlement section."""
+    if not _banking_pos_settlement_enabled(session):
         return
-    if not _can("view_bank_statement_import"):
+    if st.session_state.get("banking_section") == "pos_settlement":
         return
     cid = current_company_required()
     with st.container(border=True):
@@ -20735,7 +20755,7 @@ def _render_banking_pos_settlement_entry(session) -> None:
             unsafe_allow_html=True,
         )
         st.caption(_t("banking.pos_entry.hint"))
-        if not get_postable_rows(session, cid):
+        if not _postable_deposit_rows(session, cid):
             st.info(_t("banking.pos_entry.no_rows"))
         if st.button(
             _t("banking.pos_entry.open"),
@@ -20743,6 +20763,51 @@ def _render_banking_pos_settlement_entry(session) -> None:
             key="bank_pos_settlement_open",
         ):
             _apply_banking_pos_settlement_route()
+
+
+def _render_banking_pos_settlement_section(session) -> None:
+    """BANKING-UX-02 P1B — focused POS / Card Settlement (no import chrome)."""
+    if not _banking_pos_settlement_enabled(session):
+        st.caption(_t("form.access_denied"))
+        return
+    cid = current_company_required()
+    st.markdown(
+        financial_section_header_html(
+            _t("banking.pos_entry.title"), accent="info"
+        ),
+        unsafe_allow_html=True,
+    )
+    st.caption(_t("banking.pos_entry.hint"))
+    deposit_rows = _postable_deposit_rows(session, cid)
+    if not deposit_rows:
+        st.info(_t("banking.pos_entry.no_rows_focused"))
+        if st.button(
+            _t("banking.pos_entry.go_import"),
+            type="primary",
+            key="bank_pos_go_import",
+        ):
+            st.session_state["banking_section"] = "import"
+            st.rerun()
+        return
+    row_labels = {
+        r.id: (
+            f"#{r.import_row_index} · {r.date} · "
+            f"+{r.amount:,.2f} · {(r.description or '')[:40]}"
+        )
+        for r in deposit_rows
+    }
+    if st.session_state.pop("bsi_pos_entry", False):
+        st.session_state["bsi_match_kind"] = "card_clearing"
+    sel_row_id = st.selectbox(
+        _t("banking.import.match.select_row"),
+        options=list(row_labels.keys()),
+        format_func=lambda i: row_labels[i],
+        key="bsi_match_row",
+    )
+    sel_row = session.get(BankStatementRow, sel_row_id)
+    if sel_row:
+        st.session_state["bsi_match_kind_row"] = sel_row_id
+        _render_bsi_deposit_clearing_panel(session, sel_row, cid)
 
 
 def _render_banking_statement_import(session):
@@ -20849,12 +20914,17 @@ def render_banking(session):
 
     _bank_opts: list[tuple[str, str]] = [
         ("accounts", "bank.section.accounts"),
-        ("import", "bank.section.import"),
     ]
+    if _banking_pos_settlement_enabled(session):
+        _bank_opts.append(("pos_settlement", "banking.pos_entry.title"))
+    _bank_opts.append(("import", "bank.section.import"))
     if _can("manage_banking"):
         _bank_opts.append(("settings", "bank.section.settings"))
     section = _banking_section_select("banking_section", _bank_opts)
     st.divider()
+    if section == "pos_settlement":
+        _render_banking_pos_settlement_section(session)
+        return
     if section == "import":
         _render_banking_statement_import(session)
         return

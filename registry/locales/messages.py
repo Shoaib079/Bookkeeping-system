@@ -360,6 +360,8 @@ _EN: dict[str, str] = {
     "banking.pos_entry.hint": "Use this when the bank deposits money from card/POS sales. Sales revenue is already recorded; this only clears Card Sales Clearing to Bank.",
     "banking.pos_entry.open": "Open POS / Card Settlement",
     "banking.pos_entry.no_rows": "Import your bank statement first, then match the deposit as a Card sales deposit.",
+    "banking.pos_entry.no_rows_focused": "Import your bank statement first, then return here to match the deposit.",
+    "banking.pos_entry.go_import": "Import bank statement",
     # Partner Summary plain labels (PARTNER-UX-01 — also in transactional; duplicated for reliable lookup)
     "partner.summary_plain_capital": "Invested in business",
     "partner.summary_plain_current": "Taken from business / profit share account",
@@ -704,6 +706,8 @@ _TR: dict[str, str] = {
     "banking.pos_entry.hint": "Banka POS/kart satışlarını hesabınıza yatırdığında bunu kullanın. Satış geliri zaten kayıtlıdır; bu işlem yalnızca Kart Satış Takas'tan Banka'ya aktarır.",
     "banking.pos_entry.open": "POS / Kart Tahsilatını Aç",
     "banking.pos_entry.no_rows": "Önce banka ekstrenizi içe aktarın, ardından yatırmayı Kart satış yatırması olarak eşleştirin.",
+    "banking.pos_entry.no_rows_focused": "Önce banka ekstrenizi içe aktarın, ardından yatırmayı buradan eşleştirin.",
+    "banking.pos_entry.go_import": "Banka ekstresi içe aktar",
     # Partner Summary plain labels (PARTNER-UX-01 — also in transactional; duplicated for reliable lookup)
     "partner.summary_plain_capital": "İşletmeye yatırılan",
     "partner.summary_plain_current": "İşletmeden alınan / kâr payı hesabı",
