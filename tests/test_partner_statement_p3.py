@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from db import Base
 import models
 import app
-from exports import generate_partner_statement_pdf
+from registry.partner_statement_pdf import generate_partner_statement_pdf
 from registry.partner_statement import (
     partner_statement_pdf_payload,
     partner_statement_summary_export_rows,
@@ -303,6 +303,7 @@ class TestPrintUi:
         assert "financial_section_header_html" in src
         assert "erp-partner-stmt-report" in src
         assert "def _stmt_line" not in src
+        assert "registry.partner_statement_pdf" in inspect.getsource(app)
         assert "generate_partner_statement_pdf" in inspect.getsource(
             app._render_partner_statement_exports
         )

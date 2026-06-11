@@ -23,9 +23,9 @@ from exports import (
     generate_invoice_pdf,
     generate_receipt_pdf,
     generate_customer_statement_pdf,
-    generate_partner_statement_pdf,
     generate_vendor_statement_pdf,
 )
+from registry.partner_statement_pdf import generate_partner_statement_pdf
 from registry.icon_svg import (
     TXH_ACTION_DUPLICATE,
     TXH_ACTION_EDIT,
