@@ -202,6 +202,31 @@ def test_portal_primary_button_contrast_both_modes(css_root_tokens: dict[str, st
         )
 
 
+def test_status_text_no_raw_tokens_as_text_in_app():
+    """STATUS-TEXT-01 — raw status tokens may fill/tint but never colour text.
+
+    Text usages must take the -text variants (light-mode AA: success 5.02,
+    warning 5.02, danger 6.47 on card). The closing paren in the pattern means
+    --theme-success-text etc. never match.
+    """
+    src = (ROOT / "app.py").read_text(encoding="utf-8")
+    inline = re.findall(r'color:\s*var\(--theme-(?:success|danger|warning)\)', src)
+    assert not inline, f"raw status token as inline text colour: {len(inline)} hits"
+    quoted = re.findall(r'"var\(--theme-(?:success|danger|warning)\)"', src)
+    assert not quoted, (
+        f"raw status token as quoted colour variable: {len(quoted)} hits — "
+        "use the -text variant"
+    )
+
+
+def test_status_text_variants_meet_aa_on_light_card():
+    """STATUS-TEXT-01 — the swapped-to variants must stay AA on light surfaces."""
+    card = _resolve_hex(LIGHT_ROOT_VARS, "--theme-card")
+    for token in ("--theme-success-text", "--theme-warning-text", "--theme-danger-text"):
+        ratio = wcag_contrast(_resolve_hex(LIGHT_ROOT_VARS, token), card)
+        assert ratio >= WCAG_AA_NORMAL, f"light: {token} on card = {ratio:.2f}:1"
+
+
 def test_contrast_ratios_report(capsys):
     """Emit resolved ratios for audit trail (always passes)."""
     light_card = _resolve_hex(LIGHT_ROOT_VARS, "--theme-card")

@@ -8,6 +8,93 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-11 — BANKING-DESKTOP-01 B1+B2 (chip switchers + POS Settlement wording)
+
+**Task:** Replace Banking desktop `st.radio` section switchers with chip grid; unify POS Settlement user-facing wording (BANK-03).
+
+**B1 — Chip switchers:**
+- Added `_banking_section_select()` — mirrors Reports chip grammar (`bank_sec_sel_*`, `erp-bank-sel-chip-host`).
+- `render_banking`: Accounts / Import / Settings chips; state key `banking_section` unchanged.
+- `render_bank_statement_import`: Upload / Review / Match / History chips; state key `bsi_section` unchanged.
+- New `ui/banking.css` (chip grid layout); registered in `load_theme_css()`.
+
+**B2 — Wording:**
+- User-facing workflow labels → **POS Settlement** (EN) / **POS Mutabakatı** (TR).
+- GL account name **Card Sales Clearing** retained in captions/help where referring to the 1150 account.
+
+**Risks:** None for accounting/recon — UI-only. Staged import session keys (`bsi_file_bytes`, etc.) not touched by chip navigation.
+
+**Files:** `app.py`, `ui/banking.css`, `ui/theme.py`, `registry/locales/transactional.py`, `registry/locales/messages.py`, `tests/test_banking_desktop_b1b2.py`, docs.
+
+---
+
+## 2026-06-11 — REPORTS-DESKTOP-02 (chips-only report selector)
+
+**Task:** Remove redundant desktop report selectbox; chips canonical on desktop + mobile.
+
+**Audit:** `erp_rpt_sel_desktop_*` only referenced in `_mgmt_report_select`, CSS hide rules, and R1 tests. Session state already keyed via chip clicks (`widget_key`). No accounting/chart dependencies.
+
+**Removed:**
+- `st.selectbox` + `erp_rpt_sel_desktop_*` container from `_mgmt_report_select`.
+- Dual-host CSS: hide desktop select on mobile, hide chips on desktop.
+
+**Kept:** Chip grid (`mob_rpt_sel_*`), routing via `st.session_state[widget_key]`, active styling in `widgets.css`.
+
+**Chip layout:** Moved from `mobile_reports.css` @media block → `desktop_reports.css` (all viewports).
+
+**Files:** `app.py`, `ui/desktop_reports.css`, `ui/mobile_reports.css`, `tests/test_desktop_reports_r1.py`, docs.
+
+---
+
+## 2026-06-11 — REPORTS-DESKTOP-01 R1 (desktop Reports CSS ownership)
+
+**Task:** Create `ui/desktop_reports.css`; move desktop dual-host visibility rules out of `mobile_reports.css`.
+
+**Moved to `desktop_reports.css`:**
+- `@media (min-width: 969px)` — hide `st-key-mob_rpt_sel_*` (mobile chip selectors on desktop).
+
+**Remains in `mobile_reports.css`:**
+- `@media (max-width: 968px)` (+ touch arms) — hide `st-key-erp_rpt_sel_desktop_*`.
+- `html.erp-mobile` — hide desktop selectbox (JS viewport fallback).
+- All mobile chip layout, tabs, filters, CF KPI grids.
+
+**Registered:** `load_theme_css()` via `_DESKTOP_REPORTS_CSS_PATH`.
+
+**Files:** `ui/desktop_reports.css`, `ui/mobile_reports.css`, `ui/theme.py`, `tests/test_desktop_reports_r1.py`, docs.
+
+---
+
+## 2026-06-11 — DASHBOARD-01 D2 (class system + KPI variant-only)
+
+**Task:** Structural cleanup — `render_dashboard()` first fully standardized desktop surface.
+
+**Delivered:**
+- Removed all inline `style=` from `render_dashboard()` (~35 replacements) → semantic `erp-dash-*` classes in `ui/theme.css`.
+- Alert strip: `erp-dash-alert-card` (+ count/text/separator modifiers); no bare `.card` + inline `border-left`.
+- Recent activity, insights, cash rows, status badges, expense bars — class-based layout.
+- `render_kpi_grid`: removed `color=` / hex escape hatch; `variant` only (`muted` added for report secondary KPIs).
+- Migrated 10 report `color: var(--theme-muted)` callers → `variant: "muted"`.
+
+**Files:** `app.py`, `ui/theme.css`, `tests/test_dashboard01_d1.py`, docs.
+
+---
+
+## 2026-06-11 — DASHBOARD-01 D1 (flat welcome card + micro-text)
+
+**Task:** Dashboard visible pass — replace legacy gradient welcome banner with flat card; bump dashboard micro-text from 10px to 11px.
+
+**Delivered:**
+- `render_dashboard` welcome: `banner banner-primary` → `erp-dash-welcome-card` (greeting, company overview, date, FY unchanged).
+- `theme.css`: flat card uses `--theme-card`, `--theme-border`, `--theme-text`, `--theme-muted`, info left accent — no gradient.
+- Micro-text: KPI `%` deltas, alert strip (already 11/12px), insight `_irow` captions, cash account lines, recent-activity meta — all `font-size:10px` → `11px` in `render_dashboard` only.
+- D2 deferred: inline-style removal, KPI builder API, desktop quick actions unchanged.
+
+**Files:** `app.py`, `ui/theme.css`, `tests/test_dashboard01_d1.py`, docs.
+
+**Tests:** `test_dashboard01_d1.py` (5 contracts) + full `pytest tests/`.
+
+---
+
 ## 2026-06-09 — MOB-AT-C1 Concept C minimal repair (HTML fix + picker overlay)
 
 **Task:** Fix four bugs discovered from real phone screenshots after Concept C implementation.
@@ -1276,6 +1363,18 @@ Constants pinned in `ui/theme.py` (`MOBILE_VIEWPORT_*`). `mobile_header.css` alr
 **Files:** `app.py` (`_MOBILE_BOTTOM_NAV` icon names, `_mob_bar_btn_label`, overlay render in `_render_mobile_bottom_nav`, `icon_svg` import), `registry/icon_svg.py` (+`menu`), `ui/mobile_shell.css` (overlay + active rules), new `tests/test_mobile_nav_icons.py`.
 
 **Tests:** 5 new contracts (no emoji in nav definition, registry-backed icon names with render check, SVG-overlay-not-emoji in render fn + ZWSP touch-target guard, shell-owned CSS + active state, FAB-unchanged). 5/5 pass in sandbox harness; full static sweep 45 pass / 2 optional xfail / 0 unexpected. Host `pytest tests/` + phone visual check (light/dark × active/inactive tabs) required.
+
+---
+
+## 2026-06-11 — STATUS-TEXT-01 (Desktop Unification #1): raw status tokens off text
+
+**Scope:** app.py markup + tests. UI only — no accounting, DB, or routing changes. Fill/tint usages (`color-mix` backgrounds, borders) deliberately keep raw tokens.
+
+**Change:** 50 swaps in app.py — 12 inline `color:var(--theme-X)` → `color:var(--theme-X-text)` and 38 quoted colour-variable strings `"var(--theme-X)"` → `"var(--theme-X-text)"` (X ∈ success/danger/warning). Surfaces fixed: dashboard KPI deltas (▲/▼) and today-net, recon/EOD status lines, AR/AP overdue badges and warnings, partner balances, OB balanced/exceed states, recent-transaction amounts, payable/receivable status pill text, P&L net banners, year-end close banners. 26 raw lines remain — all fills/borders (verified non-text; the one `border-left: var(--theme-danger)` passes the 3:1 UI threshold at 4.83/6.17).
+
+**Contrast (light, on card):** success 3.30 → **5.02** · warning 3.19 → **5.02** · danger 4.83 → **6.47** — all WCAG AA. Dark unchanged (dark `-text` tokens equal the already-passing raw values).
+
+**Tests:** +2 in `test_theme_contrast.py` — raw-token-as-text ban (inline + quoted patterns; `-text` forms can't match) and light-mode AA pin for all three `-text` variants. Theme-contrast suite 18/18 in harness; full static sweep 50 pass / 2 optional xfail / 0 unexpected. Host `pytest tests/` + a light-mode dashboard glance to confirm the deltas/badges read clearly.
 
 ---
 

@@ -1373,35 +1373,28 @@ def render_top_header(
                 with st.container(key="hdr_col_right"):
                     _render_hdr_toolbar(user, slot="desktop_right")
 
+_KPI_VARIANTS = frozenset(
+    {"success", "danger", "info", "purple", "teal", "warning", "text", "muted"}
+)
+
+
 def render_kpi_grid(items):
     """Render a responsive grid of KPI cards.
 
-    items: list of dicts with keys: label, value, sub (optional), color (optional)
+    items: list of dicts with keys: label, value, sub (optional), variant (optional)
     """
     parts = []
-    # color can be a semantic variant (success, danger, info, purple, teal, warning)
-    hex_to_variant = {
-        "#2563eb": "info", "#111827": "text", "#ef4444": "danger",
-        "#b45309": "warning", "#6d28d9": "purple", "#16a34a": "success",
-        "#dc2626": "danger", "#10b981": "success",
-    }
     for it in items:
-        label   = it.get("label",   "")
-        value   = it.get("value",   "")
-        sub     = it.get("sub",     "")
-        color   = it.get("color",   None)
-        variant = it.get("variant", None)
-        if not variant and isinstance(color, str) and color.lower() in hex_to_variant:
-            variant = hex_to_variant[color.lower()]
-        # build value HTML with semantic class when possible
-        if variant and variant != "text":
-            value_html = f'<div class="kpi-value kpi-{variant}">{value}</div>'
-        elif variant == "text":
+        label = it.get("label", "")
+        value = it.get("value", "")
+        sub = it.get("sub", "")
+        variant = it.get("variant") or "text"
+        if variant not in _KPI_VARIANTS:
+            variant = "text"
+        if variant == "text":
             value_html = f'<div class="kpi-value">{value}</div>'
-        elif isinstance(color, str) and color.startswith("#"):
-            value_html = f'<div class="kpi-value" style="color:{color};">{value}</div>'
         else:
-            value_html = f'<div class="kpi-value">{value}</div>'
+            value_html = f'<div class="kpi-value kpi-{variant}">{value}</div>'
         sub_html = f'<div class="kpi-sub">{sub}</div>' if sub else ""
         parts.append(
             f'<div class="kpi-card">'
@@ -4391,15 +4384,14 @@ def _reports_date_bar(
 
 
 def _mgmt_report_select(widget_key: str, options: list[tuple[str, str]]) -> str:
-    """Desktop selectbox + mobile chip grid (dual host)."""
-    by_id = {opt_id: msg_key for opt_id, msg_key in options}
+    """Report chip grid — canonical selector on desktop and mobile (REPORTS-DESKTOP-02)."""
     ids = [opt_id for opt_id, _ in options]
     if widget_key not in st.session_state or st.session_state[widget_key] not in ids:
         st.session_state[widget_key] = ids[0]
     cur = st.session_state[widget_key]
 
     with st.container(border=False, key=f"mob_rpt_sel_{widget_key}"):
-        st.markdown('<div class="erp-rpt-sel-mobile-host"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="erp-rpt-sel-chip-host"></div>', unsafe_allow_html=True)
         for i in range(0, len(options), 2):
             chunk = options[i : i + 2]
             cols = st.columns(len(chunk), gap="small")
@@ -4413,14 +4405,32 @@ def _mgmt_report_select(widget_key: str, options: list[tuple[str, str]]) -> str:
                     st.session_state[widget_key] = opt_id
                     st.rerun()
 
-    with st.container(border=False, key=f"erp_rpt_sel_desktop_{widget_key}"):
-        st.markdown('<div class="erp-rpt-sel-desktop-host"></div>', unsafe_allow_html=True)
-        return st.selectbox(
-            _t("reports.select_report"),
-            ids,
-            format_func=lambda i: _t(by_id[i]),
-            key=widget_key,
-        )
+    return st.session_state[widget_key]
+
+
+def _banking_section_select(widget_key: str, options: list[tuple[str, str]]) -> str:
+    """Banking chip grid — canonical section selector (BANKING-DESKTOP-01 B1)."""
+    ids = [opt_id for opt_id, _ in options]
+    if widget_key not in st.session_state or st.session_state[widget_key] not in ids:
+        st.session_state[widget_key] = ids[0]
+    cur = st.session_state[widget_key]
+
+    with st.container(border=False, key=f"bank_sec_sel_{widget_key}"):
+        st.markdown('<div class="erp-bank-sel-chip-host"></div>', unsafe_allow_html=True)
+        for i in range(0, len(options), 2):
+            chunk = options[i : i + 2]
+            cols = st.columns(len(chunk), gap="small")
+            for col, (opt_id, msg_key) in zip(cols, chunk):
+                if col.button(
+                    _t(msg_key),
+                    key=f"bank_sec_pick_{widget_key}_{opt_id}",
+                    use_container_width=True,
+                    type="primary" if cur == opt_id else "secondary",
+                ):
+                    st.session_state[widget_key] = opt_id
+                    st.rerun()
+
+    return st.session_state[widget_key]
 
 
 _COMPANY_SCOPED_AT_KEYS = (
@@ -9303,8 +9313,8 @@ def render_partner_accounts(session):
                 total_cur += cur_bal
                 total_adv += adv_bal
 
-                cur_color  = "var(--theme-text)" if cur_bal >= 0 else "var(--theme-danger)"
-                adv_color  = "var(--theme-warning)" if adv_bal > 0.01 else "var(--theme-muted)"
+                cur_color  = "var(--theme-text)" if cur_bal >= 0 else "var(--theme-danger-text)"
+                adv_color  = "var(--theme-warning-text)" if adv_bal > 0.01 else "var(--theme-muted)"
                 with st.container(border=True):
                     _inactive_tag = f"  *{_t('partner.inactive_tag')}*" if not p.is_active else ''
                     st.markdown(f"**{p.name}**{_inactive_tag} — {p.profit_share_pct:.1f}%")
@@ -9799,7 +9809,7 @@ def render_equity_movements(session, *, embedded: bool = False):
         m1, m2, m3 = st.columns(3)
         m1.metric(_t("partner.total_capital_added"), f"{currency} {total_cap:,.2f}")
         m2.metric(_t("partner.total_drawings"),      f"{currency} {total_draw:,.2f}")
-        net_color = "var(--theme-success)" if net_movement >= 0 else "var(--theme-danger)"
+        net_color = "var(--theme-success-text)" if net_movement >= 0 else "var(--theme-danger-text)"
         m3.markdown(
             f'<div style="padding-top:4px;">'
             f'<div style="font-size:12px;color:var(--theme-muted);">{_t("partner.net_owner_equity_movement")}</div>'
@@ -10099,19 +10109,19 @@ def render_opening_balances(session):
         c1.metric(_t("ob.metric_obe"), f"{currency} {obe_bal:,.2f}")
         if abs(obe_bal) < 0.01:
             c2.markdown(
-                f'<div style="padding-top:20px;font-weight:700;color:var(--theme-success);">{_t("ob.balanced")}</div>',
+                f'<div style="padding-top:20px;font-weight:700;color:var(--theme-success-text);">{_t("ob.balanced")}</div>',
                 unsafe_allow_html=True,
             )
             c3.caption(_t("ob.balanced_caption"))
         elif obe_bal > 0:
             c2.markdown(
-                f'<div style="padding-top:20px;font-weight:700;color:var(--theme-warning);">{_t("ob.assets_exceed")}</div>',
+                f'<div style="padding-top:20px;font-weight:700;color:var(--theme-warning-text);">{_t("ob.assets_exceed")}</div>',
                 unsafe_allow_html=True,
             )
             c3.caption(_t("ob.assets_exceed_caption"))
         else:
             c2.markdown(
-                f'<div style="padding-top:20px;font-weight:700;color:var(--theme-warning);">{_t("ob.le_exceed")}</div>',
+                f'<div style="padding-top:20px;font-weight:700;color:var(--theme-warning-text);">{_t("ob.le_exceed")}</div>',
                 unsafe_allow_html=True,
             )
             c3.caption(_t("ob.le_exceed_caption"))
@@ -10830,9 +10840,9 @@ def render_dashboard(session):
         if not prev:
             return ""
         p = (cur - prev) / abs(prev) * 100
-        arrow, col = ("▲", "var(--theme-success)") if p >= 0 else ("▼", "var(--theme-danger)")
+        arrow, tone = ("▲", "up") if p >= 0 else ("▼", "down")
         _lbl = lbl if lbl is not None else _t("form.vs_yesterday")
-        return f'<span style="font-size:10px;color:{col};">{arrow} {abs(p):.0f}% {_lbl}</span>'
+        return f'<span class="erp-dash-pct erp-dash-pct--{tone}">{arrow} {abs(p):.0f}% {_lbl}</span>'
 
     def _sec(label):
         """Mono section heading used throughout the dashboard."""
@@ -10846,7 +10856,7 @@ def render_dashboard(session):
     _me   = _current_user()
     _disp = company if company and company != "My Company" else _t("nav.home")
     _hi = _t("dash.hi", name=_me["display_name"]) if _me else _t("dash.hi_guest")
-    _net_col = "var(--theme-success)" if today_net >= 0 else "var(--theme-danger)"
+    _net_tone = "success" if today_net >= 0 else "danger"
     _net_sign = "+" if today_net >= 0 else "−"
     st.markdown(
         f'<div class="erp-dash-mobile-greeting">'
@@ -10854,13 +10864,14 @@ def render_dashboard(session):
         f'<span class="erp-dash-mobile-greeting-sep">·</span>'
         f'<span class="erp-dash-mobile-greeting-net">'
         f'{_tf("dash.mobile.net_today", "Net today")} '
-        f'<strong style="color:{_net_col};">{_net_sign}{currency} {abs(today_net):,.2f}</strong>'
+        f'<strong class="erp-dash-mobile-net-val erp-dash-mobile-net-val--{_net_tone}">'
+        f'{_net_sign}{currency} {abs(today_net):,.2f}</strong>'
         f'</span></div>',
         unsafe_allow_html=True,
     )
     st.markdown(
         f'<div class="erp-dash-desktop-welcome">'
-        f'<div class="banner banner-primary erp-dash-welcome" style="margin-bottom:14px;">'
+        f'<div class="erp-dash-welcome-card">'
         f'<div class="erp-dash-welcome-main">'
         f'<div class="erp-dash-welcome-hi">{_hi}</div>'
         f'<div class="erp-dash-welcome-sub">{_disp} · {_t("dash.overview")}</div>'
@@ -10933,33 +10944,29 @@ def render_dashboard(session):
     _alert_parts = []
     if overdue_count:
         _alert_parts.append(
-            f'<span style="background:color-mix(in srgb,var(--theme-danger)18%,var(--theme-card)82%);'
-            f'color:var(--theme-danger);border-radius:99px;padding:1px 9px;font-size:11px;'
-            f'font-weight:700;margin-right:5px;">{overdue_count}</span>'
-            f'<span style="color:var(--theme-danger);font-size:12px;">'
-            f'{_t("dash.alert.overdue", count=overdue_count)}</span>'
+            f'<span class="erp-dash-alert-item">'
+            f'<span class="erp-dash-alert-count erp-dash-alert-count--danger">{overdue_count}</span>'
+            f'<span class="erp-dash-alert-text erp-dash-alert-text--danger">'
+            f'{_t("dash.alert.overdue", count=overdue_count)}</span></span>'
         )
     if payables_due_soon:
         _alert_parts.append(
-            f'<span style="background:color-mix(in srgb,var(--theme-warning)18%,var(--theme-card)82%);'
-            f'color:var(--theme-warning);border-radius:99px;padding:1px 9px;font-size:11px;'
-            f'font-weight:700;margin-right:5px;">{payables_due_soon}</span>'
-            f'<span style="color:var(--theme-warning);font-size:12px;">'
-            f'{_t("dash.alert.payables_due", count=payables_due_soon)}</span>'
+            f'<span class="erp-dash-alert-item">'
+            f'<span class="erp-dash-alert-count erp-dash-alert-count--warning">{payables_due_soon}</span>'
+            f'<span class="erp-dash-alert-text erp-dash-alert-text--warning">'
+            f'{_t("dash.alert.payables_due", count=payables_due_soon)}</span></span>'
         )
     if recurring_pending:
         _alert_parts.append(
-            f'<span style="background:color-mix(in srgb,var(--theme-info)18%,var(--theme-card)82%);'
-            f'color:var(--theme-info);border-radius:99px;padding:1px 9px;font-size:11px;'
-            f'font-weight:700;margin-right:5px;">{recurring_pending}</span>'
-            f'<span style="color:var(--theme-info);font-size:12px;">'
-            f'{_t("dash.alert.recurring", count=recurring_pending)}</span>'
+            f'<span class="erp-dash-alert-item">'
+            f'<span class="erp-dash-alert-count erp-dash-alert-count--info">{recurring_pending}</span>'
+            f'<span class="erp-dash-alert-text erp-dash-alert-text--info">'
+            f'{_t("dash.alert.recurring", count=recurring_pending)}</span></span>'
         )
     if _alert_parts:
-        _asep = '<span style="display:inline-block;width:1px;height:14px;background:var(--theme-border);margin:0 14px;vertical-align:middle;"></span>'
+        _asep = '<span class="erp-dash-alert-sep"></span>'
         st.markdown(
-            f'<div class="card" style="border-left:3px solid var(--theme-danger);padding:10px 16px;'
-            f'margin-bottom:14px;display:flex;align-items:center;">{_asep.join(_alert_parts)}</div>',
+            f'<div class="erp-dash-alert-card">{_asep.join(_alert_parts)}</div>',
             unsafe_allow_html=True,
         )
 
@@ -10980,27 +10987,26 @@ def render_dashboard(session):
              "sub": _pct(today_net, yest_net)},
         ])
         # ── Phase 10: operational status badges ───────────────────────────────
-        _recon_label, _recon_col = {
-            "reconciled":       ("🟢 Cash Reconciled",             "var(--theme-success)"),
-            "pending_approval": ("🟡 Recon Awaiting Approval",     "var(--theme-warning)"),
-            "rejected":         ("🔴 Recon Rejected",              "var(--theme-danger)"),
+        _recon_label, _recon_tone = {
+            "reconciled":       ("🟢 Cash Reconciled",         "success"),
+            "pending_approval": ("🟡 Recon Awaiting Approval", "warning"),
+            "rejected":         ("🔴 Recon Rejected",          "danger"),
         }.get(
             _today_recon.status if _today_recon else "none",
-            ("⚪ Cash Not Reconciled", "var(--theme-muted)"),
+            ("⚪ Cash Not Reconciled", "muted"),
         )
         _eod_stale = _today_eod and _eod_is_stale(session, _today_eod)
         if _today_eod and not _eod_stale:
-            _eod_label, _eod_col = "🟢 Day Closed", "var(--theme-success)"
+            _eod_label, _eod_tone = "🟢 Day Closed", "success"
         elif _today_eod and _eod_stale:
-            _eod_label, _eod_col = "🟠 Day Closed (Stale)", "var(--theme-warning)"
+            _eod_label, _eod_tone = "🟠 Day Closed (Stale)", "warning"
         else:
-            _eod_label, _eod_col = "⚪ Day Not Closed", "var(--theme-muted)"
-        _sep = '<span style="display:inline-block;width:1px;height:13px;background:var(--theme-border);margin:0 14px;vertical-align:middle;"></span>'
+            _eod_label, _eod_tone = "⚪ Day Not Closed", "muted"
         st.markdown(
-            f'<div style="display:flex;align-items:center;gap:4px;margin-top:8px;padding:6px 2px;">'
-            f'<span style="font-size:12px;font-weight:600;color:{_recon_col};">{_recon_label}</span>'
-            f'{_sep}'
-            f'<span style="font-size:12px;font-weight:600;color:{_eod_col};">{_eod_label}</span>'
+            f'<div class="erp-dash-status-row">'
+            f'<span class="erp-dash-status-badge erp-dash-status-badge--{_recon_tone}">{_recon_label}</span>'
+            f'<span class="erp-dash-status-sep"></span>'
+            f'<span class="erp-dash-status-badge erp-dash-status-badge--{_eod_tone}">{_eod_label}</span>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -11048,7 +11054,7 @@ def render_dashboard(session):
         with _c1:
             st.markdown(_sec(_t("dash.receivables")), unsafe_allow_html=True)
             _ar_sub = (
-                f'<span style="color:var(--theme-danger);">⚠️ {currency} {overdue_rec_amount:,.2f} overdue</span>'
+                f'<span class="erp-dash-kpi-sub-warn">⚠️ {currency} {overdue_rec_amount:,.2f} overdue</span>'
                 if overdue_count else "All current"
             )
             render_kpi_grid([{"label": _t("dash.kpi.outstanding_ar"), "value": _fmt(outstanding_rec, currency),
@@ -11063,7 +11069,7 @@ def render_dashboard(session):
         with _c2:
             st.markdown(_sec(_t("dash.payables")), unsafe_allow_html=True)
             _ap_sub = (
-                f'<span style="color:var(--theme-danger);">⚠️ {overdue_pay_count} overdue · '
+                f'<span class="erp-dash-kpi-sub-warn">⚠️ {overdue_pay_count} overdue · '
                 f'{currency} {overdue_pay_amount:,.2f}</span>'
                 if overdue_pay_count else f"{open_payables_count} open"
             )
@@ -11075,17 +11081,16 @@ def render_dashboard(session):
             if _cash_positions:
                 for _ccy, _pos in sorted(_cash_positions.items()):
                     _bal = _pos["total"]
-                    _bcol = "var(--theme-success)" if _bal >= 0 else "var(--theme-danger)"
+                    _bal_tone = "positive" if _bal >= 0 else "negative"
                     _acct_line = "  ·  ".join(f"{n}: {_ccy} {b:,.2f}" for n, b in _pos["accounts"])
                     st.markdown(
-                        f'<div style="padding:8px 10px;background:color-mix(in srgb,var(--theme-border)25%,var(--theme-card)75%);'
-                        f'border-radius:8px;margin-bottom:6px;">'
-                        f'<div style="display:flex;justify-content:space-between;align-items:center;">'
-                        f'<span style="font-size:12px;font-weight:700;color:var(--theme-text);">'
+                        f'<div class="erp-dash-cash-row">'
+                        f'<div class="erp-dash-cash-head">'
+                        f'<span class="erp-dash-cash-currency">'
                         f'{_flag.get(_ccy,"🏦")} {_ccy}</span>'
-                        f'<span style="font-size:14px;font-weight:800;color:{_bcol};">'
+                        f'<span class="erp-dash-cash-balance erp-dash-cash-balance--{_bal_tone}">'
                         f'{_fmt(_bal, _ccy)}</span></div>'
-                        f'<div style="font-size:10px;color:var(--theme-muted);margin-top:3px;">{_acct_line}</div>'
+                        f'<div class="erp-dash-cash-accounts">{_acct_line}</div>'
                         f'</div>',
                         unsafe_allow_html=True,
                     )
@@ -11104,62 +11109,58 @@ def render_dashboard(session):
                                  "ref": s.invoice_number or f"INV#{s.id}",
                                  "party": s.customer_name or "—", "amount": s.amount,
                                  "dir": "in", "status": s.status or "Open",
-                                 "icon": "🧾", "color": "var(--theme-success)"})
+                                 "icon": "🧾", "icon_mod": "sale", "amt_mod": "in"})
             for e in _recent_exp:
                 _recent.append({"date": e.date, "type": e.expense_type or "Expense",
                                  "ref": e.category or f"EXP#{e.id}",
                                  "party": e.employee_name or "—", "amount": e.amount,
                                  "dir": "out", "status": "Recorded",
-                                 "icon": "💳", "color": "var(--theme-danger)"})
+                                 "icon": "💳", "icon_mod": "expense", "amt_mod": "out"})
             for p in _recent_pur:
                 _pv = session.get(Vendor, p.vendor_id)
                 _recent.append({"date": p.date, "type": "Purchase", "ref": f"PUR#{p.id}",
                                  "party": _pv.name if _pv else "—", "amount": p.amount,
                                  "dir": "out", "status": "Active",
-                                 "icon": "🛒", "color": "var(--theme-text)"})
+                                 "icon": "🛒", "icon_mod": "purchase", "amt_mod": "out"})
             for _bt, _ba in _recent_bank:
+                _amt_dir = "in" if (_bt.amount or 0) >= 0 else "out"
                 _recent.append({"date": _bt.date, "type": f"Bank · {_bt.type or 'Transfer'}",
                                  "ref": _ba.name, "party": _bt.description or _ba.name or "—",
                                  "amount": abs(_bt.amount or 0),
-                                 "dir": "in" if (_bt.amount or 0) >= 0 else "out",
-                                 "status": "Posted", "icon": "🏦", "color": "var(--theme-text)"})
+                                 "dir": _amt_dir, "status": "Posted",
+                                 "icon": "🏦", "icon_mod": "bank", "amt_mod": _amt_dir})
             _recent = sorted(_recent, key=lambda x: x["date"], reverse=True)[:15]
 
             if _recent:
-                _PILL = {
-                    "Paid":     ("color-mix(in srgb,var(--theme-success)15%,var(--theme-card)85%)", "var(--theme-success)"),
-                    "Open":     ("color-mix(in srgb,var(--theme-warning)15%,var(--theme-card)85%)", "var(--theme-warning)"),
-                    "Overdue":  ("color-mix(in srgb,var(--theme-danger)15%,var(--theme-card)85%)",  "var(--theme-danger)"),
-                    "Partial":  ("color-mix(in srgb,var(--theme-info)15%,var(--theme-card)85%)",    "var(--theme-info)"),
-                    "Recorded": ("color-mix(in srgb,var(--theme-info)12%,var(--theme-card)88%)",    "var(--theme-text)"),
-                    "Active":   ("color-mix(in srgb,var(--theme-muted)12%,var(--theme-card)88%)",   "var(--theme-text)"),
-                    "Posted":   ("color-mix(in srgb,var(--theme-muted)12%,var(--theme-card)88%)",   "var(--theme-text)"),
+                _PILL_CLASS = {
+                    "Paid": "erp-dash-activity-pill--paid",
+                    "Open": "erp-dash-activity-pill--open",
+                    "Overdue": "erp-dash-activity-pill--overdue",
+                    "Partial": "erp-dash-activity-pill--partial",
+                    "Recorded": "erp-dash-activity-pill--recorded",
+                    "Active": "erp-dash-activity-pill--active",
+                    "Posted": "erp-dash-activity-pill--posted",
                 }
                 _rows_html = ""
                 for r in _recent:
-                    _pb, _pc   = _PILL.get(r["status"], _PILL["Active"])
-                    _sign      = "+" if r["dir"] == "in" else "−"
-                    _ds        = r["date"].strftime("%d %b") if hasattr(r["date"], "strftime") else str(r["date"])
-                    _icon_bg   = f"color-mix(in srgb,{r['color']} 15%,var(--theme-card) 85%)"
+                    _pill_cls = _PILL_CLASS.get(r["status"], _PILL_CLASS["Active"])
+                    _sign = "+" if r["dir"] == "in" else "−"
+                    _ds = r["date"].strftime("%d %b") if hasattr(r["date"], "strftime") else str(r["date"])
+                    _amt_mod = r.get("amt_mod", "neutral")
                     _rows_html += (
-                        f'<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;'
-                        f'border-radius:8px;border:1px solid var(--theme-border);margin-bottom:6px;'
-                        f'background:var(--theme-card);">'
-                        f'<div style="width:34px;height:34px;border-radius:8px;background:{_icon_bg};'
-                        f'display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">'
+                        f'<div class="erp-dash-activity-row">'
+                        f'<div class="erp-dash-activity-icon erp-dash-activity-icon--{r["icon_mod"]}">'
                         f'{r["icon"]}</div>'
-                        f'<div style="flex:1;min-width:0;">'
-                        f'<div style="font-size:12px;font-weight:600;color:var(--theme-text);'
-                        f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
+                        f'<div class="erp-dash-activity-body">'
+                        f'<div class="erp-dash-activity-party">'
                         f'{r["party"]}'
-                        f'<span style="background:{_pb};color:{_pc};font-size:9px;font-weight:700;'
-                        f'padding:1px 7px;border-radius:99px;margin-left:7px;">{r["status"]}</span></div>'
-                        f'<div style="font-size:10px;color:var(--theme-muted);margin-top:2px;">'
+                        f'<span class="erp-dash-activity-pill {_pill_cls}">{r["status"]}</span></div>'
+                        f'<div class="erp-dash-activity-meta">'
                         f'{r["type"]}&nbsp;·&nbsp;{r["ref"]}</div></div>'
-                        f'<div style="text-align:right;flex-shrink:0;">'
-                        f'<div style="font-size:13px;font-weight:700;color:{r["color"]};">'
+                        f'<div class="erp-dash-activity-side">'
+                        f'<div class="erp-dash-activity-amt erp-dash-activity-amt--{_amt_mod}">'
                         f'{_sign}{currency} {r["amount"]:,.2f}</div>'
-                        f'<div style="font-size:10px;color:var(--theme-muted);margin-top:2px;">{_ds}</div>'
+                        f'<div class="erp-dash-activity-date">{_ds}</div>'
                         f'</div></div>'
                     )
                 st.markdown(_rows_html, unsafe_allow_html=True)
@@ -11182,19 +11183,14 @@ def render_dashboard(session):
                 _max  = max(r[1] for r in cat_rows) or 1
                 _bars = ""
                 for i, (cat, val) in enumerate(cat_rows):
-                    _pw   = max(int(val / _max * 100), 5)
-                    _clr  = "var(--theme-info)"
-                    _lbl  = (cat or "Other")[:13]
+                    _pw = max(int(val / _max * 100), 5)
+                    _lbl = (cat or "Other")[:13]
                     _bars += (
-                        f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">'
-                        f'<span style="font-size:11px;color:var(--theme-muted);width:84px;'
-                        f'text-align:right;flex-shrink:0;">{_lbl}</span>'
-                        f'<div style="flex:1;height:13px;'
-                        f'background:color-mix(in srgb,var(--theme-border)60%,var(--theme-bg)40%);'
-                        f'border-radius:6px;overflow:hidden;">'
-                        f'<div style="width:{_pw}%;height:100%;background:{_clr};border-radius:6px;'
-                        f'display:flex;align-items:center;justify-content:flex-end;padding-right:5px;">'
-                        f'<span style="font-size:9px;color:#fff;font-weight:700;white-space:nowrap;">'
+                        f'<div class="erp-dash-expense-bar-row">'
+                        f'<span class="erp-dash-expense-bar-label">{_lbl}</span>'
+                        f'<div class="erp-dash-expense-bar-track">'
+                        f'<div class="erp-dash-expense-bar-fill" data-pct="{_pw}">'
+                        f'<span class="erp-dash-expense-bar-val">'
                         f'{currency} {val:,.0f}</span></div></div></div>'
                     )
                 st.markdown(_bars, unsafe_allow_html=True)
@@ -11206,18 +11202,13 @@ def render_dashboard(session):
             st.markdown(_sec("Quick Insights"), unsafe_allow_html=True)
 
             def _irow(icon, lbl, val, sub=""):
-                _sub_h = (
-                    f'<div style="font-size:10px;color:var(--theme-muted);margin-top:1px;">{sub}</div>'
-                    if sub else ""
-                )
+                _sub_h = f'<div class="erp-dash-insight-sub">{sub}</div>' if sub else ""
                 st.markdown(
-                    f'<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;'
-                    f'border-bottom:1px solid var(--theme-border);">'
-                    f'<span style="font-size:17px;flex-shrink:0;line-height:1.4;">{icon}</span>'
-                    f'<div style="flex:1;min-width:0;">'
-                    f'<div style="font-size:10px;color:var(--theme-muted);">{lbl}</div>'
-                    f'<div style="font-size:12px;font-weight:600;color:var(--theme-text);'
-                    f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{val}</div>'
+                    f'<div class="erp-dash-insight-row">'
+                    f'<span class="erp-dash-insight-icon">{icon}</span>'
+                    f'<div class="erp-dash-insight-body">'
+                    f'<div class="erp-dash-insight-label">{lbl}</div>'
+                    f'<div class="erp-dash-insight-value">{val}</div>'
                     f'{_sub_h}</div></div>',
                     unsafe_allow_html=True,
                 )
@@ -13466,7 +13457,7 @@ def _render_add_transaction_mobile(
         _rows_html = ""
         for r in rows:
             sign = "+" if r["direction"] == "in" else "−"
-            col = "var(--theme-success)" if r["direction"] == "in" else "var(--theme-danger)"
+            col = "var(--theme-success-text)" if r["direction"] == "in" else "var(--theme-danger-text)"
             icon_bg = (
                 "color-mix(in srgb,var(--theme-success)12%,var(--theme-card)88%)"
                 if r["direction"] == "in"
@@ -14088,7 +14079,7 @@ def render_add_transaction(session):
                                             f'<div class="card" style="padding:9px 14px;margin-top:4px;font-size:11px;">'
                                             f'Original: <b>{currency_default} {_sel_p.amount:,.2f}</b>'
                                             f'&nbsp;·&nbsp;Paid: <b>{currency_default} {_sel_p.paid_amount or 0:,.2f}</b>'
-                                            f'&nbsp;·&nbsp;Balance: <span style="font-weight:700;color:var(--theme-warning);">'
+                                            f'&nbsp;·&nbsp;Balance: <span style="font-weight:700;color:var(--theme-warning-text);">'
                                             f'{currency_default} {_pbal:,.2f}</span>'
                                             f'{"<br><span style=\'color:var(--theme-muted);\'>" + _pdesc + "</span>" if _pdesc else ""}'
                                             f'</div>',
@@ -14691,9 +14682,9 @@ def _at_render_recent(session, currency):
             unsafe_allow_html=True,
         )
         _PILL = {
-            "Paid":     ("color-mix(in srgb,var(--theme-success)12%,var(--theme-card)88%)", "var(--theme-success)"),
-            "Open":     ("color-mix(in srgb,var(--theme-warning)12%,var(--theme-card)88%)", "var(--theme-warning)"),
-            "Overdue":  ("color-mix(in srgb,var(--theme-danger)12%,var(--theme-card)88%)", "var(--theme-danger)"),
+            "Paid":     ("color-mix(in srgb,var(--theme-success)12%,var(--theme-card)88%)", "var(--theme-success-text)"),
+            "Open":     ("color-mix(in srgb,var(--theme-warning)12%,var(--theme-card)88%)", "var(--theme-warning-text)"),
+            "Overdue":  ("color-mix(in srgb,var(--theme-danger)12%,var(--theme-card)88%)", "var(--theme-danger-text)"),
             "Partial":  ("color-mix(in srgb,var(--theme-info)12%,var(--theme-card)88%)", "var(--theme-info)"),
             "Recorded": ("color-mix(in srgb,var(--theme-info)12%,var(--theme-card)88%)", "var(--theme-text)"),
             "Active":   ("color-mix(in srgb,var(--theme-card)8%,var(--theme-bg)92%)", "var(--theme-muted)"),
@@ -14705,7 +14696,7 @@ def _at_render_recent(session, currency):
                        ("color-mix(in srgb,var(--theme-info)12%,var(--theme-card)88%)" if "Purchase" in r["Type"] else
                         "color-mix(in srgb,var(--theme-danger)12%,var(--theme-card)88%)"))
             pill_bg, pill_fg = _PILL.get(r["Status"], ("color-mix(in srgb,var(--theme-card)8%,var(--theme-bg)92%)", "var(--theme-muted)"))
-            amt_color = "var(--theme-success)" if r["Direction"] == "in" else "var(--theme-danger)"
+            amt_color = "var(--theme-success-text)" if r["Direction"] == "in" else "var(--theme-danger-text)"
             amt_sign  = "+" if r["Direction"] == "in" else "−"
             date_str  = r["Date"].strftime("%d %b") if hasattr(r["Date"], "strftime") else str(r["Date"])
             _rows_html += (
@@ -16963,20 +16954,12 @@ def render_bank_statement_import(session, *, embedded: bool = False):
     }
 
     st.caption(_t("banking.import.tab_hint"))
-    _bsi_nav = {
-        "upload": _t("banking.import.nav.upload"),
-        "review": _t("banking.import.nav.review"),
-        "match": _t("banking.import.nav.match"),
-        "history": _t("banking.import.nav.history"),
-    }
-    section = st.radio(
-        "bsi_nav",
-        options=list(_bsi_nav.keys()),
-        format_func=lambda k: _bsi_nav[k],
-        horizontal=True,
-        key="bsi_section",
-        label_visibility="collapsed",
-    )
+    section = _banking_section_select("bsi_section", [
+        ("upload", "banking.import.nav.upload"),
+        ("review", "banking.import.nav.review"),
+        ("match", "banking.import.nav.match"),
+        ("history", "banking.import.nav.history"),
+    ])
     st.divider()
 
     bank_accounts = (
@@ -20243,22 +20226,13 @@ def render_banking(session):
 
     _st_page_title("Banking")
 
-    _bank_sections = {
-        "accounts": _t("bank.section.accounts"),
-        "import": _t("bank.section.import"),
-    }
+    _bank_opts: list[tuple[str, str]] = [
+        ("accounts", "bank.section.accounts"),
+        ("import", "bank.section.import"),
+    ]
     if _can("manage_banking"):
-        _bank_sections["settings"] = _t("bank.section.settings")
-    if st.session_state.get("banking_section") not in _bank_sections:
-        st.session_state["banking_section"] = "accounts"
-    section = st.radio(
-        "banking_section",
-        options=list(_bank_sections.keys()),
-        format_func=lambda k: _bank_sections[k],
-        horizontal=True,
-        key="banking_section",
-        label_visibility="collapsed",
-    )
+        _bank_opts.append(("settings", "bank.section.settings"))
+    section = _banking_section_select("banking_section", _bank_opts)
     st.divider()
     if section == "import":
         _render_banking_statement_import(session)
@@ -21097,7 +21071,7 @@ def render_receivables(session):
     k1.markdown(f'<div style="background:color-mix(in srgb,var(--theme-info) 8%,var(--theme-card) 92%);border:1px solid color-mix(in srgb,var(--theme-info) 24%,var(--theme-card) 76%);border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:var(--theme-muted);">{_t("receivable.metric.outstanding")}</div><div style="font-size:20px;font-weight:800;color:var(--theme-info);">{currency} {_outstanding:,.2f}</div></div>', unsafe_allow_html=True)
     _overdue_bg = "color-mix(in srgb,var(--theme-danger) 8%,var(--theme-card) 92%)" if _overdue else "color-mix(in srgb,var(--theme-success) 8%,var(--theme-card) 92%)"
     _overdue_border = "color-mix(in srgb,var(--theme-danger) 24%,var(--theme-card) 76%)" if _overdue else "color-mix(in srgb,var(--theme-success) 24%,var(--theme-card) 76%)"
-    _overdue_color = "var(--theme-danger)" if _overdue else "var(--theme-success)"
+    _overdue_color = "var(--theme-danger-text)" if _overdue else "var(--theme-success-text)"
     k2.markdown(f'<div style="background:{_overdue_bg};border:1px solid {_overdue_border};border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:var(--theme-muted);">{_t("receivable.metric.overdue")}</div><div style="font-size:20px;font-weight:800;color:{_overdue_color};">{currency} {_overdue:,.2f}</div></div>', unsafe_allow_html=True)
     k3.markdown(f'<div style="background:var(--theme-card);border:1px solid var(--theme-border);border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:var(--theme-muted);">{_t("receivable.metric.open_invoices")}</div><div style="font-size:20px;font-weight:800;color:var(--theme-text);">{_count}</div></div>', unsafe_allow_html=True)
     st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
@@ -21113,9 +21087,9 @@ def render_receivables(session):
 
     # ── Invoice list ──────────────────────────────────────────────────────────
     _STATUS_STYLE = {
-        "Paid":    ("color-mix(in srgb,var(--theme-success)12%,var(--theme-card)88%)","var(--theme-success)"),
-        "Open":    ("color-mix(in srgb,var(--theme-warning)12%,var(--theme-card)88%)","var(--theme-warning)"),
-        "Overdue": ("color-mix(in srgb,var(--theme-danger)12%,var(--theme-card)88%)","var(--theme-danger)"),
+        "Paid":    ("color-mix(in srgb,var(--theme-success)12%,var(--theme-card)88%)","var(--theme-success-text)"),
+        "Open":    ("color-mix(in srgb,var(--theme-warning)12%,var(--theme-card)88%)","var(--theme-warning-text)"),
+        "Overdue": ("color-mix(in srgb,var(--theme-danger)12%,var(--theme-card)88%)","var(--theme-danger-text)"),
         "Partial": ("color-mix(in srgb,var(--theme-info)12%,var(--theme-card)88%)","var(--theme-info)"),
     }
     _active_inv = st.session_state.get("rec_active_inv")
@@ -21129,7 +21103,7 @@ def render_receivables(session):
             c1.markdown(f"**{sale.invoice_number}**")
             c2.write(sale.customer_name)
             c3.write(str(sale.due_date or "—"))
-            amt_color = "var(--theme-success)" if (sale.balance or 0) >= 0 else "var(--theme-danger)"
+            amt_color = "var(--theme-success-text)" if (sale.balance or 0) >= 0 else "var(--theme-danger-text)"
             c4.markdown(f'<div style="font-size:14px;font-weight:700;color:{amt_color};">{currency} {sale.balance:,.2f}</div>', unsafe_allow_html=True)
             if c5.button(btn_lbl, key=f"rec_detail_{sale.id}", use_container_width=True):
                 st.session_state["rec_active_inv"] = None if is_open else sale.id
@@ -21682,7 +21656,7 @@ def render_reports(session):
                         overall_avg = df["Total"].sum() / max(df["Transactions"].sum(), 1)
                         render_kpi_grid([
                             {"label": _t("rpt.kpi.overall_avg"), "value": f"{currency} {overall_avg:,.2f}", "variant": "success"},
-                            {"label": _t("rpt.kpi.total_transactions"), "value": str(int(df["Transactions"].sum())), "color": "var(--theme-muted)"},
+                            {"label": _t("rpt.kpi.total_transactions"), "value": str(int(df["Transactions"].sum())), "variant": "muted"},
                         ])
                         _render_readable_df(df)
                         render_export_buttons(df, "Avg_Sale_Value", pdf=False)
@@ -21700,7 +21674,7 @@ def render_reports(session):
                     pct         = (change / prior_total * 100) if prior_total else 0.0
                     render_kpi_grid([
                         {"label": _t("rpt.kpi.current_period", frm=d_from, to=d_to),    "value": f"{currency} {cur_total:,.2f}",  "variant": "success"},
-                        {"label": _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), "value": f"{currency} {prior_total:,.2f}", "color": "var(--theme-muted)"},
+                        {"label": _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), "value": f"{currency} {prior_total:,.2f}", "variant": "muted"},
                         {"label": _t("rpt.kpi.change"),  "value": f"{currency} {change:+,.2f}", "variant": "success" if change >= 0 else "danger"},
                         {"label": _t("rpt.kpi.growth_pct"), "value": f"{pct:+.1f}%",              "variant": "success" if pct >= 0 else "danger"},
                     ])
@@ -21749,7 +21723,7 @@ def render_reports(session):
                         df["Share %"] = (df["Total"] / grand * 100).round(1).astype(str) + "%"
                         render_kpi_grid([
                             {"label": _t("rpt.kpi.total_expenses"), "value": f"{currency} {grand:,.2f}", "variant": "danger"},
-                            {"label": _t("rpt.kpi.categories"),     "value": str(len(df)),                "color": "var(--theme-muted)"},
+                            {"label": _t("rpt.kpi.categories"),     "value": str(len(df)),                "variant": "muted"},
                         ])
                         _render_readable_df(df)
                         render_export_buttons(df, "Expenses_By_Category", pdf=False)
@@ -21809,7 +21783,7 @@ def render_reports(session):
                     pct         = (change / prior_total * 100) if prior_total else 0.0
                     render_kpi_grid([
                         {"label": _t("rpt.kpi.current_period", frm=d_from, to=d_to),       "value": f"{currency} {cur_total:,.2f}",   "variant": "danger"},
-                        {"label": _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), "value": f"{currency} {prior_total:,.2f}", "color": "var(--theme-muted)"},
+                        {"label": _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), "value": f"{currency} {prior_total:,.2f}", "variant": "muted"},
                         {"label": _t("rpt.kpi.change"),    "value": f"{currency} {change:+,.2f}", "variant": "danger" if change > 0 else "success"},
                         {"label": _t("rpt.kpi.growth_pct"),  "value": f"{pct:+.1f}%",               "variant": "danger" if pct > 0 else "success"},
                     ])
@@ -21935,7 +21909,7 @@ def render_reports(session):
                         total_ar = df["Outstanding"].sum()
                         render_kpi_grid([
                             {"label": _t("rpt.kpi.total_outstanding_ar"), "value": f"{currency} {total_ar:,.2f}", "variant": "warning"},
-                            {"label": _t("rpt.kpi.customers_balance"), "value": str(len(df)), "color": "var(--theme-muted)"},
+                            {"label": _t("rpt.kpi.customers_balance"), "value": str(len(df)), "variant": "muted"},
                         ])
                         _render_readable_df(df)
                         render_export_buttons(df, "Outstanding_Receivables", pdf=False)
@@ -21986,7 +21960,7 @@ def render_reports(session):
                     if not df.empty:
                         render_kpi_grid([
                             {"label": _t("rpt.kpi.total_received"), "value": f"{currency} {df['Payment'].sum():,.2f}", "variant": "success"},
-                            {"label": _t("rpt.kpi.payments"), "value": str(len(df)), "color": "var(--theme-muted)"},
+                            {"label": _t("rpt.kpi.payments"), "value": str(len(df)), "variant": "muted"},
                         ])
                         _render_readable_df(df)
                         render_export_buttons(df, "Customer_Payment_History", pdf=False)
@@ -22054,7 +22028,7 @@ def render_reports(session):
                     if not df.empty:
                         render_kpi_grid([
                             {"label": _t("rpt.kpi.total_paid"), "value": f"{currency} {df['Payment'].sum():,.2f}", "variant": "warning"},
-                            {"label": _t("rpt.kpi.payments"), "value": str(len(df)), "color": "var(--theme-muted)"},
+                            {"label": _t("rpt.kpi.payments"), "value": str(len(df)), "variant": "muted"},
                         ])
                         _render_readable_df(df)
                         render_export_buttons(df, "Vendor_Payment_History", pdf=False)
@@ -22106,7 +22080,7 @@ def render_reports(session):
                         total = df["Balance"].sum()
                         render_kpi_grid([
                             {"label": _t("rpt.kpi.total_overdue_ap"), "value": f"{currency} {total:,.2f}", "variant": "danger"},
-                            {"label": _t("rpt.kpi.overdue_items"), "value": str(len(df)), "color": "var(--theme-muted)"},
+                            {"label": _t("rpt.kpi.overdue_items"), "value": str(len(df)), "variant": "muted"},
                         ])
                         _render_readable_df(df)
                         render_export_buttons(df, "Overdue_Payables", pdf=False)
@@ -22191,7 +22165,7 @@ def render_reports(session):
                         render_kpi_grid([
                             {"label": _t("rpt.kpi.total_shortages"), "value": f"{currency} {abs(shortages):,.2f}", "variant": "danger"},
                             {"label": _t("rpt.kpi.total_overages"),  "value": f"{currency} {overages:,.2f}",        "variant": "warning"},
-                            {"label": _t("rpt.kpi.reconciliations"), "value": str(len(df)),                          "color": "var(--theme-muted)"},
+                            {"label": _t("rpt.kpi.reconciliations"), "value": str(len(df)),                          "variant": "muted"},
                         ])
                         try:
                             _df_chart = df.sort_values("Date")
@@ -22341,7 +22315,7 @@ def render_reports(session):
                         w_warns = sum(1 for c in all_closes if c.had_warnings and not c.is_void)
                         render_kpi_grid([
                             {"label": _t("rpt.kpi.days_closed"), "value": str(closed),  "variant": "success"},
-                            {"label": _t("rpt.kpi.voided"),       "value": str(voided),  "color": "var(--theme-muted)"},
+                            {"label": _t("rpt.kpi.voided"),       "value": str(voided),  "variant": "muted"},
                             {"label": _t("rpt.kpi.with_warnings"),"value": str(w_warns), "variant": "warning"},
                         ])
                         _render_readable_df(df)
@@ -24137,7 +24111,7 @@ def render_profit_loss(session, start_date=None, end_date=None):
     net_label         = _t("pnl.net_profit") if net > 0 else (_t("pnl.net_loss") if net < 0 else _t("pnl.break_even"))
     net_banner_bg     = ("color-mix(in srgb,var(--theme-success)12%,var(--theme-card)88%)" if is_profit else "color-mix(in srgb,var(--theme-danger)12%,var(--theme-card)88%)")
     net_banner_border = ("color-mix(in srgb,var(--theme-success)24%,var(--theme-card)76%)" if is_profit else "color-mix(in srgb,var(--theme-danger)24%,var(--theme-card)76%)")
-    net_banner_color  = ("var(--theme-success)" if is_profit else "var(--theme-danger)")
+    net_banner_color  = ("var(--theme-success-text)" if is_profit else "var(--theme-danger-text)")
     st.markdown(
         f'<div style="background:{net_banner_bg};border:1px solid {net_banner_border};'
         f'border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;'
@@ -24239,9 +24213,9 @@ def render_balance_sheet(session, end_date=None):
     # ── Balanced badge ────────────────────────────────────────────────────────
     balanced = diff < 0.01
     badge_style = (
-        "background:color-mix(in srgb,var(--theme-success) 16%,var(--theme-card) 84%);color:var(--theme-success);"
+        "background:color-mix(in srgb,var(--theme-success) 16%,var(--theme-card) 84%);color:var(--theme-success-text);"
         if balanced else
-        "background:color-mix(in srgb,var(--theme-danger) 16%,var(--theme-card) 84%);color:var(--theme-danger);"
+        "background:color-mix(in srgb,var(--theme-danger) 16%,var(--theme-card) 84%);color:var(--theme-danger-text);"
     )
     badge_text  = (
         f"✅ {_t('bs.balanced')}" if balanced
@@ -24410,7 +24384,7 @@ def render_cash_flow(session, start_date=None, end_date=None):
     # ── Net change banner ─────────────────────────────────────────────────────
     nc_bg     = ("color-mix(in srgb,var(--theme-success)12%,var(--theme-card)88%)" if net_total >= 0 else "color-mix(in srgb,var(--theme-danger)12%,var(--theme-card)88%)")
     nc_border = ("color-mix(in srgb,var(--theme-success)24%,var(--theme-card)76%)" if net_total >= 0 else "color-mix(in srgb,var(--theme-danger)24%,var(--theme-card)76%)")
-    nc_color  = ("var(--theme-success)" if net_total >= 0 else "var(--theme-danger)")
+    nc_color  = ("var(--theme-success-text)" if net_total >= 0 else "var(--theme-danger-text)")
     nc_sign   = "+" if net_total >= 0 else "−"
     st.markdown(
         f'<div style="background:{nc_bg};border:1px solid {nc_border};border-radius:10px;'

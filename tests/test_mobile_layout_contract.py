@@ -51,6 +51,7 @@ _CSS_FILES = (
     ROOT / "ui" / "mobile_txn.css",
     ROOT / "ui" / "mobile_txn_history.css",
     ROOT / "ui" / "mobile_reports.css",
+    ROOT / "ui" / "desktop_reports.css",
     ROOT / "ui" / "widgets.css",
     ROOT / "ui" / "theme.css",
 )

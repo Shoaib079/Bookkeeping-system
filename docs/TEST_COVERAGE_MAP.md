@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-05 (TXH-DETAIL-01 closed · expanded row JE/Edit History)  
-**Full suite:** run `pytest tests/` — **963 passed, 2 xfailed** (16 ownership-contract tests: **14 pass, 2 xfail**).
+**Last updated:** 2026-06-11 (DASHBOARD-01 D1 · flat welcome card)  
+**Full suite:** run `pytest tests/` — host count after D1 (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -465,6 +465,48 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 | Notification rule liveness pins (3 files) | Pass | Permanent two-owner contract |
 
 Remaining xfails (M3/M4) are optional suppression relocations — not MOBILE-14 blockers.
+
+---
+
+### `tests/test_banking_desktop_b1b2.py` (11 tests) — BANKING-DESKTOP-01 B1+B2
+
+| Contract | Protects |
+|---|---|
+| `banking.css` registered in `load_theme_css()` | Banking chip CSS bundled |
+| Chip grid layout in `banking.css` | `bank_sec_sel_*` 2-column grid |
+| `banking.css` not in `MOBILE_VIEWPORT_CSS_OWNER_FILES` | Desktop banking CSS excluded from mobile list |
+| `_banking_section_select` chips-only (no `st.radio`) | Canonical Banking chip helper |
+| `render_banking` uses chips + `banking_section` key | Banking top-level nav |
+| `render_bank_statement_import` uses chips + `bsi_section` key | BSI wizard nav |
+| BSI staged upload keys not cleared on section switch | Upload → Review/Match/History survives |
+| No stale Card settlement workflow wording (EN/TR) | BANK-03 closure |
+| POS Settlement wording present (EN/TR) | BANK-03 positive contract |
+
+---
+
+### `tests/test_desktop_reports_r1.py` (6 tests) — REPORTS-DESKTOP-01 R1 + REPORTS-DESKTOP-02
+
+| Contract | Protects |
+|---|---|
+| `desktop_reports.css` registered in `load_theme_css()` | Desktop Reports CSS bundled |
+| `_mgmt_report_select` chips-only (no `st.selectbox`) | Canonical chip selector |
+| No `erp_rpt_sel_desktop_*` in app or mobile CSS | Desktop selectbox retired |
+| Chip grid layout in `desktop_reports.css` | Desktop + mobile chip rows |
+| `desktop_reports.css` not in `MOBILE_VIEWPORT_CSS_OWNER_FILES` | Desktop file excluded from mobile list |
+
+---
+
+### `tests/test_dashboard01_d1.py` (7 tests) — DASHBOARD-01 D1 + D2
+
+| Contract | Protects |
+|---|---|
+| No `banner banner-primary` in `render_dashboard` | Legacy gradient welcome retired |
+| `erp-dash-welcome-card` in app + theme.css | Flat dashboard welcome owner |
+| No inline `style=` in `render_dashboard` | D2 class-system ownership |
+| `erp-dash-alert-card` — no inline border-left | Named overdue alert surface |
+| `erp-dash-*` classes in `theme.css` | Dashboard CSS sole owner |
+| `render_kpi_grid` variant-only (no `color=` escape) | KPI grammar standardized |
+| Theme contrast module importable | Existing contrast suite unaffected |
 
 ---
 

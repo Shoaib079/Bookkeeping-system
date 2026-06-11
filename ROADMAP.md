@@ -1,7 +1,7 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** 2026-06-10 (MOBILE-14 closed · TXH micro-step complete)  
+**Last updated:** 2026-06-11 (DASHBOARD-01 closed · D2 class system)  
 **Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
@@ -27,7 +27,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | SETUP-01 Company Creation Wizard | ✅ **Built and tested** (reconciled 2026-06-10) — `registry/setup01_wizard.py` + `ui/setup01_wizard.py` (`render_setup01_wizard`) + wizard CSS/locales; tests: `setup01_wizard_b1/b2/b3`, `setup01_i18n`, `setup01_error_messages`, `setup01_entry_regression` |
 | SETUP-02 Setup Summary | 📋 Medium — planned |
 | SETUP-03 Configuration Health Check | 📋 Medium — planned |
-| BANK-03 POS Settlement wording | ⚠️ **Needs short verification pass** — wording already live in SETUP-01 locales; Banking-page rename unverified (mixed evidence, reconciled 2026-06-10) |
+| BANK-03 POS Settlement wording | ✅ Shipped (BANKING-DESKTOP-01 B2 — Banking Settings + import match locales EN/TR) |
 | Localization EN/TR (15) | ✅ Complete |
 | DEVELOPMENT_MODE | ✅ **Resolved by DEV-AUTH-01** — env-gated dev mode: `DEV_MODE = os.getenv("ERP_DEV_MODE", "0") == "1"` (default off). **Production checklist: must not run with `ERP_DEV_MODE=1`** |
 | Shell / mobile chrome (Phase A) | ✅ Stabilized — fixed header, 968px breakpoint, People hub wired |
@@ -41,6 +41,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | **MOBILE-14** — Mobile Theme Ownership Cleanup | ✅ **Closed** (M1+M2+M5+M6+TXH) · M3/M4 optional xfails remain |
 | **THEME-CONTRAST-01** — Desktop/Theme Contrast (P0+P1) | ✅ **Closed** — primary fill + success/warning text tokens (2026-06-05) |
 | **LOGIN-01** — Login / Company Picker Modernization | ✅ **Closed** — flat auth cards; `ui/auth.css` sole owner (2026-06-05) |
+| **DASHBOARD-01** — Dashboard Visual Refresh | ✅ **Closed** — D1 flat welcome + micro-text; D2 class system + KPI variant-only API |
 | **QUICK-ENTRY-01** — Context-Aware Mobile Category Selection | ✅ **DONE** — implemented; 14/14 tests passing (2026-06-10) |
 | **ADD-TXN-BR-01** — Sale validation vs bookkeeping rules | ✅ **Closed** — manual + pytest verified (2026-06-10) |
 | **AT-LIGHT-01** — Mobile AT Light-Mode Polish (P1–P6) | ✅ **Closed** — manual phone/POS verification complete (2026-06-10) |
@@ -178,7 +179,7 @@ Advisory warnings only (no forced changes). Examples:
 
 ---
 
-### BANK-03 — Wording update 📋 **Low**
+### BANK-03 — Wording update ✅ **Shipped**
 
 Rename user-facing **“Card Settlement”** → **“POS Settlement”**.
 
@@ -186,7 +187,7 @@ Keep **“Card Sales Clearing”** for COA / account names only.
 
 **Purpose:** Reduce confusion with Company Credit Card (KK).
 
-**Status:** Copy spec ready (Banking → Settings + wizard); not shipped.
+**Status:** Shipped in BANKING-DESKTOP-01 B2 (`bank.settings.card_settlement.section`, `settings.banking.card_settlement_enabled`, import match hint, backfill caption — EN/TR).
 
 ---
 
@@ -950,6 +951,7 @@ Current placement and labels are unchanged until resolved.
 | `mobile_reports.css` | Mobile reports only — report layout grids, spacing, density, scroll behaviour; chip colour grammar owned by `widgets.css` |
 | `mobile_txn_history.css` | Mobile transaction history only |
 | `desktop_txn_history.css` | Desktop transaction history only |
+| `desktop_reports.css` | Desktop reports — canonical chip selector layout (`mob_rpt_sel_*`; REPORTS-DESKTOP-02) |
 | `setup01_wizard.css` | Setup wizard only |
 | `mobile_banking.css` | Mobile banking only — **does not exist yet; create when banking redesign begins** |
 
@@ -1656,7 +1658,7 @@ Conflicts shared with CSS-01 are referenced rather than restated — see CSS-01 
 | Mobile Reports | Ownership mostly clean — `mobile_reports.css` is isolated. Desktop reports have no dedicated ownership surface. |
 | Company Picker | Almost no styling ownership — emits no `erp-*` classes; tiles are plain `st.button`. This is intentional pending LOGIN-01. |
 | Mobile Banking | No dedicated CSS owner. If mobile banking is added, create `ui/mobile_banking.css` scoped to an `erp-banking-mobile-host` sentinel class, following `mobile_reports.css` as a template. |
-| Desktop Reports | No dedicated ownership surface. `erp-rpt-sel-desktop-host` class is emitted in `app.py` but has no CSS targeting it. Reserved for a future `ui/desktop_reports.css` (mirrors `desktop_txn_history.css` pattern). |
+| Desktop Reports | ✅ **R2 shipped** — chips-only selector desktop + mobile; `desktop_reports.css` chip layout; selectbox removed |
 
 ### Chart Findings
 
@@ -1680,7 +1682,7 @@ Conflicts shared with CSS-01 are referenced rather than restated — see CSS-01 
 These three items are not tracked in MOBILE-14 and can be executed at any time with minimal risk:
 
 1. **Reports duplicate rule** — remove `theme.css` line 1107 (`.erp-mobile-report-filters` visibility). Line 1354 is the live rule.
-2. **Dead desktop report host** — remove or activate `erp-rpt-sel-desktop-host` wrapper in `app.py` line 4158. Either delete the `st.markdown` wrapper or create `ui/desktop_reports.css` to use it as a scoping host (mirrors `desktop_txn_history.css` pattern).
+2. ~~**Dead desktop report host**~~ — **R2 closed:** desktop selectbox removed; chips canonical. Spacing polish deferred.
 3. **Sidebar ownership decision** — document whether `mobile_shell.css html.erp-mobile` sidebar hide is intentional (JS-cookie guard) or redundant. Either add a comment or remove it.
 
 The following are tracked inside MOBILE-14 — do not execute as independent tasks outside that plan:
