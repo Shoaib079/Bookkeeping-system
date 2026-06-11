@@ -224,6 +224,7 @@ from reconciliation.company_card import (
     void_credit_card_bill_payment,
 )
 # Import from match_post directly — avoids Streamlit stale `reconciliation` package cache.
+from reconciliation.clearing_visibility import compute_clearing_visibility
 from reconciliation.pos_settlement_preview import compute_pos_settlement_preview
 from reconciliation.match_post import (
     looks_like_worker_payroll,
@@ -16803,6 +16804,62 @@ def _render_pos_settlement_preview_block(
         st.warning(_t(warn.key, currency=currency, **warn.kwargs))
 
 
+def _render_card_sales_clearing_visibility_block(
+    session,
+    cid: int,
+    *,
+    clearing_acct,
+    currency: str,
+) -> None:
+    """Read-only Card Sales Clearing visibility (BANKING-UX-02 P2)."""
+    if not clearing_acct:
+        return
+    available_clearing = calculate_account_balance(session, clearing_acct)
+    snapshot = compute_clearing_visibility(
+        session,
+        cid,
+        clearing_account_id=clearing_acct.id,
+        current_clearing_balance=available_clearing,
+        get_unsettled_card_sales=get_unsettled_card_sales,
+        get_account_by_name=get_account_by_name,
+    )
+    st.markdown(
+        financial_section_header_html(
+            _t("banking.clearing_visibility.section_title"), accent="info"
+        ),
+        unsafe_allow_html=True,
+    )
+    st.caption(_t("banking.clearing_visibility.explainer"))
+    with st.container(border=True):
+        v1, v2 = st.columns(2)
+        v1.metric(
+            _t("banking.clearing_visibility.current_balance"),
+            f"{currency} {snapshot.current_clearing_balance:,.2f}",
+        )
+        v2.metric(
+            _t("banking.clearing_visibility.unsettled_sales"),
+            f"{currency} {snapshot.unsettled_card_sales_total:,.2f}",
+        )
+        v3, v4 = st.columns(2)
+        v3.metric(
+            _t("banking.clearing_visibility.settlements_posted"),
+            f"{currency} {snapshot.settlements_posted_total:,.2f}",
+        )
+        v4.metric(
+            _t("banking.clearing_visibility.remaining_clearing"),
+            f"{currency} {snapshot.remaining_clearing:,.2f}",
+        )
+    if snapshot.reconciliation_mismatch:
+        st.warning(
+            _t(
+                "banking.clearing_visibility.warn_reconciliation",
+                remaining=f"{snapshot.remaining_clearing:,.2f}",
+                current=f"{snapshot.current_clearing_balance:,.2f}",
+                currency=currency,
+            )
+        )
+
+
 def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
     if not _card_settlement_on(session):
         st.caption(_t("banking.import.match.needs_settlement"))
@@ -16917,6 +16974,12 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
         fee_amount=preview_fee,
     )
     _render_pos_settlement_preview_block(preview, currency)
+    _render_card_sales_clearing_visibility_block(
+        session,
+        cid,
+        clearing_acct=clearing_acct,
+        currency=currency,
+    )
 
     if not clearing:
         return

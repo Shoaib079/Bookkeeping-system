@@ -31,6 +31,7 @@ _GL_ACCOUNT_OK_PREFIXES = (
     "banking.import.match.pos_settlement_explainer",
     "banking.pos_preview.",
     "banking.pos_entry.",
+    "banking.clearing_visibility.",
 )
 
 

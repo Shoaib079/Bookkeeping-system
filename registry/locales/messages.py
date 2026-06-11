@@ -362,6 +362,14 @@ _EN: dict[str, str] = {
     "banking.pos_entry.no_rows": "Import your bank statement first, then match the deposit as a Card sales deposit.",
     "banking.pos_entry.no_rows_focused": "Import your bank statement first, then return here to match the deposit.",
     "banking.pos_entry.go_import": "Import bank statement",
+    # Card Sales Clearing visibility (BANKING-UX-02 P2 — also in transactional; duplicated for reliable lookup)
+    "banking.clearing_visibility.section_title": "Card Sales Clearing (1150)",
+    "banking.clearing_visibility.explainer": "Card sales revenue was already recognized when the sale was recorded. This balance represents card sales that have not yet been deposited into a bank account.",
+    "banking.clearing_visibility.current_balance": "Current clearing balance",
+    "banking.clearing_visibility.unsettled_sales": "Unsettled card sales",
+    "banking.clearing_visibility.settlements_posted": "Settlements posted",
+    "banking.clearing_visibility.remaining_clearing": "Remaining clearing",
+    "banking.clearing_visibility.warn_reconciliation": "Clearing balance does not reconcile: card sales in clearing minus settlements posted ({currency} {remaining}) does not match the current clearing balance ({currency} {current}).",
     # Partner Summary plain labels (PARTNER-UX-01 — also in transactional; duplicated for reliable lookup)
     "partner.summary_plain_capital": "Invested in business",
     "partner.summary_plain_current": "Taken from business / profit share account",
@@ -708,6 +716,14 @@ _TR: dict[str, str] = {
     "banking.pos_entry.no_rows": "Önce banka ekstrenizi içe aktarın, ardından yatırmayı Kart satış yatırması olarak eşleştirin.",
     "banking.pos_entry.no_rows_focused": "Önce banka ekstrenizi içe aktarın, ardından yatırmayı buradan eşleştirin.",
     "banking.pos_entry.go_import": "Banka ekstresi içe aktar",
+    # Card Sales Clearing visibility (BANKING-UX-02 P2 — also in transactional; duplicated for reliable lookup)
+    "banking.clearing_visibility.section_title": "Kart Satışları Bekleyen Tahsilatlar (1150)",
+    "banking.clearing_visibility.explainer": "Kart satış geliri satış kaydedildiğinde zaten muhasebeleştirilmiştir. Bu bakiye henüz banka hesabına aktarılmamış kart satışlarını temsil eder.",
+    "banking.clearing_visibility.current_balance": "Güncel takas bakiyesi",
+    "banking.clearing_visibility.unsettled_sales": "Mutabakatı yapılmamış kart satışları",
+    "banking.clearing_visibility.settlements_posted": "Kaydedilen mutabakatlar",
+    "banking.clearing_visibility.remaining_clearing": "Kalan takas",
+    "banking.clearing_visibility.warn_reconciliation": "Takas bakiyesi mutabık değil: takastaki kart satışları eksi kaydedilen mutabakatlar ({currency} {remaining}), güncel takas bakiyesi ({currency} {current}) ile uyuşmuyor.",
     # Partner Summary plain labels (PARTNER-UX-01 — also in transactional; duplicated for reliable lookup)
     "partner.summary_plain_capital": "İşletmeye yatırılan",
     "partner.summary_plain_current": "İşletmeden alınan / kâr payı hesabı",
