@@ -74,6 +74,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | UI architecture stability (UI-STAB) | 📋 **Planned** — header CSS consolidation remainder; avatar + banking presentation shipped |
 | Operational friction log (OBS-01) | 🟡 **Active** — record real-world UX friction; 3+ occurrences → roadmap candidate |
 | **ARCHITECTURE-PROTECTION-01** | 🟢 **Active immediately** — service-first, migration-safe development rule |
+| **DAILY-SALES-CLOSE-01** | 📋 **Design approved** — source-neutral external sales verification (no posting); see [docs/DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md); OBS-gated |
 
 ---
 
