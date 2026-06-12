@@ -16817,6 +16817,23 @@ def _render_pos_settlement_preview_block(
         st.warning(_t(warn.key, currency=currency, **warn.kwargs))
 
 
+def _banking_match_failure_label(key: str, **kwargs) -> str:
+    """Resolve banking.match_failure.* — same catalogs as P1–P3 (_t + transactional fallback)."""
+    text = _t(key, **kwargs)
+    if text != key:
+        return text
+    from registry.locales.transactional import TRANSACTIONAL_EN, TRANSACTIONAL_TR
+
+    cat = TRANSACTIONAL_TR if _ui_locale() == "tr" else TRANSACTIONAL_EN
+    raw = cat.get(key) or TRANSACTIONAL_EN.get(key) or key
+    if kwargs and raw != key:
+        try:
+            return raw.format(**kwargs)
+        except KeyError:
+            return raw
+    return raw
+
+
 def _render_pos_match_failure_block(
     check,
     currency: str,
@@ -16824,7 +16841,8 @@ def _render_pos_match_failure_block(
     """Read-only match guidance before post (BANKING-UX-02 P4)."""
     st.markdown(
         financial_section_header_html(
-            _t("banking.match_failure.section_title"), accent="info"
+            _banking_match_failure_label("banking.match_failure.section_title"),
+            accent="info",
         ),
         unsafe_allow_html=True,
     )
@@ -16835,16 +16853,18 @@ def _render_pos_match_failure_block(
     }
     status_key = status_keys[check.status]
     if check.status == "ready":
-        st.success(_t(status_key))
+        st.success(_banking_match_failure_label(status_key))
     elif check.status == "attention":
-        st.warning(_t(status_key))
+        st.warning(_banking_match_failure_label(status_key))
     else:
-        st.error(_t(status_key))
+        st.error(_banking_match_failure_label(status_key))
     if not check.items:
         return
     with st.container(border=True):
         for item in check.items:
-            text = _t(item.key, currency=currency, **item.kwargs)
+            text = _banking_match_failure_label(
+                item.key, currency=currency, **item.kwargs
+            )
             if item.blocking:
                 st.error(f"• {text}")
             else:
@@ -17024,6 +17044,12 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
         calculate_account_balance(session, clearing_acct) if clearing_acct else 0.0
     )
     deposit_amt = round(float(sel_row.amount), 2)
+    unsettled_all = fetch_unsettled_card_sales_for_visibility(
+        session,
+        cid,
+        get_unsettled_card_sales=get_unsettled_card_sales,
+        get_account_by_name=get_account_by_name,
+    )
     win_start = (sel_row.date or datetime.date.today()) - datetime.timedelta(days=7)
     win_end = (sel_row.date or datetime.date.today()) + datetime.timedelta(days=7)
     clearing = get_unsettled_card_sales(
@@ -17132,7 +17158,8 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
         preview=preview,
         deposit_amount=deposit_amt,
         picked_sale_count=len(picked_sales),
-        unsettled_sales_available=bool(clearing),
+        unsettled_sales_available=bool(unsettled_all),
+        window_sales_available=bool(clearing),
         bank_charges_enabled=_bank_charges_on(session),
         bank_charges_account_exists=_charges_acct is not None,
         confirm_inferred_fee=confirm_inferred_fee,

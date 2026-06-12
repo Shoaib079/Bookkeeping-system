@@ -24,6 +24,7 @@ _P4_KEYS = (
     "banking.match_failure.not_deposit",
     "banking.match_failure.row_already_posted",
     "banking.match_failure.no_unsettled_sales",
+    "banking.match_failure.no_sales_in_window",
     "banking.match_failure.no_sales_selected",
     "banking.match_failure.no_clearing_balance",
     "banking.match_failure.settlement_exceeds_clearing",
@@ -56,17 +57,30 @@ def _evaluate(
     fee_amount=None,
     picked=1,
     clearing_available=True,
+    unsettled_sales_available=None,
+    window_sales_available=None,
     **kwargs,
 ):
     preview = compute_pos_settlement_preview(
         available, settlement, deposit, fee_amount=fee_amount
+    )
+    unsettled = (
+        clearing_available
+        if unsettled_sales_available is None
+        else unsettled_sales_available
+    )
+    in_window = (
+        clearing_available
+        if window_sales_available is None
+        else window_sales_available
     )
     defaults = dict(
         sel_row=_row(amount=deposit),
         preview=preview,
         deposit_amount=deposit,
         picked_sale_count=picked,
-        unsettled_sales_available=clearing_available,
+        unsettled_sales_available=unsettled,
+        window_sales_available=in_window,
         bank_charges_enabled=True,
         bank_charges_account_exists=True,
         confirm_inferred_fee=False,
@@ -101,6 +115,18 @@ class TestMatchFailureLogic:
         assert check.status == "cannot_post"
         keys = [i.key for i in check.items]
         assert "banking.match_failure.no_unsettled_sales" in keys
+
+    def test_no_contradiction_when_p2_has_unsettled_but_window_empty(self):
+        """P2/P3 use wide-date fetch; P4 must not claim zero unsettled when total > 0."""
+        check = _evaluate(
+            picked=0,
+            unsettled_sales_available=True,
+            window_sales_available=False,
+        )
+        keys = [i.key for i in check.items]
+        assert "banking.match_failure.no_unsettled_sales" not in keys
+        assert "banking.match_failure.no_sales_in_window" in keys
+        assert check.status == "attention"
 
     def test_fee_exceeds_settlement_warning(self):
         preview = compute_pos_settlement_preview(1000.0, 100.0, 50.0, fee_amount=150.0)
@@ -155,6 +181,12 @@ class TestMatchFailureLogic:
 
 
 class TestUiWiring:
+    def test_unsettled_source_matches_p2_p3(self):
+        src = inspect.getsource(erp._render_bsi_deposit_clearing)
+        assert "fetch_unsettled_card_sales_for_visibility" in src
+        assert "unsettled_sales_available=bool(unsettled_all)" in src
+        assert "unsettled_sales_available=bool(clearing)" not in src
+
     def test_match_check_after_preview_before_post(self):
         src = inspect.getsource(erp._render_bsi_deposit_clearing)
         assert "evaluate_pos_match_failure" in src
@@ -170,6 +202,19 @@ class TestUiWiring:
         src = inspect.getsource(erp._render_pos_match_failure_block)
         assert "st.button" not in src
         assert "post_deposit_clearing_match" not in src
+
+    def test_match_panel_uses_banking_label_helper(self):
+        src = inspect.getsource(erp._render_pos_match_failure_block)
+        assert "_banking_match_failure_label" in src
+        assert '_t("banking.match_failure' not in src
+
+    def test_app_banking_label_resolves_not_raw(self):
+        erp.st.session_state["ui_locale"] = "en"
+        label = erp._banking_match_failure_label(
+            "banking.match_failure.section_title"
+        )
+        assert label == "Match check"
+        assert not label.startswith("banking.match_failure")
 
     def test_focused_pos_section_uses_match_check(self):
         src = inspect.getsource(erp._render_banking_pos_settlement_section)

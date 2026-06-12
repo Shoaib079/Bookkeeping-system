@@ -49,6 +49,7 @@ def evaluate_pos_match_failure(
     deposit_amount: float,
     picked_sale_count: int,
     unsettled_sales_available: bool,
+    window_sales_available: bool = True,
     bank_charges_enabled: bool,
     bank_charges_account_exists: bool,
     confirm_inferred_fee: bool,
@@ -80,6 +81,10 @@ def evaluate_pos_match_failure(
     if not unsettled_sales_available:
         items.append(
             MatchFailureItem("banking.match_failure.no_unsettled_sales", blocking=True)
+        )
+    elif not window_sales_available:
+        items.append(
+            MatchFailureItem("banking.match_failure.no_sales_in_window", blocking=False)
         )
 
     if unsettled_sales_available and picked_sale_count == 0:
