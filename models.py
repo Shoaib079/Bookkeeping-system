@@ -1174,3 +1174,52 @@ class UserPermissionOverride(Base):
 
     user = relationship("User", foreign_keys=[user_id])
     created_by = relationship("User", foreign_keys=[created_by_id])
+
+
+# ── STAFF-CAPTURE-01 SC-P1 — Expense drafts + attachments ────────────────────
+
+
+class ExpenseDraft(Base):
+    """Cash expense capture draft — spine + typed payload; posts via approve + post_fn."""
+    __tablename__ = "expense_drafts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, nullable=False, index=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    status = Column(String(20), nullable=False, default="draft", index=True)
+    created_at = Column(DateTime, nullable=False)
+    submitted_at = Column(DateTime, nullable=True)
+    submitted_note = Column(Text, nullable=True)
+    reviewed_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    review_note = Column(Text, nullable=True)
+    expense_record_id = Column(Integer, nullable=True, index=True)
+    date = Column(Date, nullable=False)
+    amount = Column(Float, nullable=False)
+    currency = Column(String(10), nullable=False)
+    payment_method = Column(String(20), nullable=False, default="Cash")
+    tx_category_id = Column(Integer, nullable=True)
+    tx_subcategory_id = Column(Integer, nullable=True)
+    description = Column(Text, default="")
+
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    reviewed_by = relationship("User", foreign_keys=[reviewed_by_id])
+
+
+class DraftAttachment(Base):
+    """Receipt/file attached to a typed draft before approval."""
+    __tablename__ = "draft_attachments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, nullable=False, index=True)
+    uploaded_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, nullable=False)
+    draft_type = Column(String(20), nullable=False, index=True)
+    draft_id = Column(Integer, nullable=False, index=True)
+    file_path = Column(String(1000), nullable=False)
+    original_name = Column(String(500), nullable=False)
+    mime = Column(String(100), nullable=False)
+    size_bytes = Column(Integer, nullable=False)
+    sha256 = Column(String(64), nullable=False)
+
+    uploaded_by = relationship("User", foreign_keys=[uploaded_by_id])

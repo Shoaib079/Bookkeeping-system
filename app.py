@@ -2073,6 +2073,13 @@ def migrate_schema(session):
         "CREATE INDEX IF NOT EXISTS ix_upo_company_id        ON user_permission_overrides        (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_upo_user_id           ON user_permission_overrides        (user_id)",
         "CREATE INDEX IF NOT EXISTS ix_upo_permission_key    ON user_permission_overrides        (permission_key)",
+        # SC-P1 — Staff Capture expense drafts
+        "CREATE INDEX IF NOT EXISTS ix_expdraft_company_id     ON expense_drafts                   (company_id)",
+        "CREATE INDEX IF NOT EXISTS ix_expdraft_created_by     ON expense_drafts                   (created_by_id)",
+        "CREATE INDEX IF NOT EXISTS ix_expdraft_status         ON expense_drafts                   (status)",
+        "CREATE INDEX IF NOT EXISTS ix_expdraft_expense_ref    ON expense_drafts                   (expense_record_id)",
+        "CREATE INDEX IF NOT EXISTS ix_draftatt_company_id     ON draft_attachments                (company_id)",
+        "CREATE INDEX IF NOT EXISTS ix_draftatt_draft          ON draft_attachments                (draft_type, draft_id)",
         "CREATE INDEX IF NOT EXISTS ix_txcat_company_id        ON transaction_categories         (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_txsub_company_id        ON transaction_subcategories      (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_retmpl_company_id       ON recurring_expense_templates    (company_id)",

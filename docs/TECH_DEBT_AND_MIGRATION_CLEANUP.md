@@ -139,6 +139,45 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 
 ---
 
+## STAFF-CAPTURE-01 (TD-SC)
+
+| ID | Item | Priority | Status | When / trigger |
+|----|------|----------|--------|----------------|
+| **TD-SC-01** | **Injected posting seam** — `approve_expense_draft(..., post_fn=...)`; Streamlit wires `app.py` posting callables; replace with shared posting service | High | Open | FastAPI Phase B |
+| **TD-SC-02** | **Posting function commit semantics** — injected `post_fn` may commit internally (legacy `app.py`); document transaction boundaries and test double-commit safety | Medium | Open | SC-P2 / FastAPI Phase B |
+| **TD-SC-03** | **Streamlit attachment serving** — draft files on disk under `uploads/{company_id}/drafts/`; replace with FastAPI authenticated download endpoint | Medium | Open | SC-P1b UI / FastAPI Phase D |
+| **TD-SC-04** | **Portal session routing** — capture-only allowlist dispatch in `main()` deferred to SC-P1 portal; replace with React route guards + API middleware | Medium | Open | SC-P1 portal / FastAPI Phase D |
+| **TD-SC-05** | **Service commits internally** — draft mutations call `session.commit()`; refactor to `flush()` + caller-owned transaction for FastAPI | Medium | Open | FastAPI Phase B |
+
+### SC-P1 Migration Cleanup (2026-06-13)
+
+#### 1. Code to keep during FastAPI/React migration
+- `models.ExpenseDraft`, `models.DraftAttachment` — spine + expense payload + posted-ref idempotency anchor
+- `services/staff_capture.py` — lifecycle, attachment validation, permission checks, separation of duties, `approve_expense_draft` + `ExpensePostFn` injection
+- Frozen DTOs: `ExpenseDraftInput`, `ExpenseDraftView`, `DraftAttachmentView`, `ExpensePostResult`, `MutationResult`
+- SC permission keys in `services/user_access.py` (`STAFF_CAPTURE_PERMISSION_MATRIX` — SC-P1 subset)
+- Tests: `test_staff_capture01_models.py`, `test_staff_capture01_drafts.py`, `test_staff_capture01_approval.py`
+- `migrate_schema()` indexes for `expense_drafts`, `draft_attachments`
+
+#### 2. Code likely to replace during FastAPI/React migration
+- Injected `post_fn` from Streamlit — posting service extraction (TD-SC-01)
+- Internal `session.commit()` in draft mutations (TD-SC-05)
+- Disk path helper writing under `uploads_root` — object storage or signed URLs (TD-SC-03)
+- `session.query()` ORM access — SQLAlchemy 2.0 `select()` (TD-MIG-05)
+
+#### 3. Dead code found
+- None in SC-P1 scope
+
+#### 4. Temporary Streamlit-only code
+- None in SC-P1 (service-only phase; no UI, portal, or inbox)
+- Attachment warning on submit without receipt — policy only, not schema block
+- `approve_expense_drafts` / `submit_expense_drafts` / `upload_receipts` registered in templates ahead of portal UI
+
+#### 5. Future cleanup items (registered above)
+- TD-SC-01 through TD-SC-05 added this session
+
+---
+
 ## RC-P1 / Recipe Costing (TD-RC)
 
 | ID | Item | Priority | Status | When / trigger |

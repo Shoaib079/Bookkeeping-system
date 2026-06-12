@@ -73,6 +73,13 @@ LEGACY_PERMISSION_MATRIX: dict[str, frozenset[str]] = {
     "view_year_end_close": frozenset({"owner", "manager", "partner"}),
 }
 
+# SC-P1 — Staff Capture permission keys (merged into registry/templates; not in legacy _PERMISSIONS).
+STAFF_CAPTURE_PERMISSION_MATRIX: dict[str, frozenset[str]] = {
+    "upload_receipts": frozenset({"owner", "manager", "cashier", "staff"}),
+    "submit_expense_drafts": frozenset({"owner", "manager", "cashier"}),
+    "approve_expense_drafts": frozenset({"owner", "manager"}),
+}
+
 OWNER_LOCKED_KEYS: frozenset[str] = frozenset(
     {
         MANAGE_PERMISSIONS_KEY,
@@ -106,6 +113,10 @@ TEMPLATE_ROLES: tuple[str, ...] = (
 def _build_permission_templates() -> dict[str, frozenset[str]]:
     buckets: dict[str, set[str]] = {role: set() for role in TEMPLATE_ROLES}
     for key, roles in LEGACY_PERMISSION_MATRIX.items():
+        for role in roles:
+            if role in buckets:
+                buckets[role].add(key)
+    for key, roles in STAFF_CAPTURE_PERMISSION_MATRIX.items():
         for role in roles:
             if role in buckets:
                 buckets[role].add(key)
@@ -147,7 +158,11 @@ def _registry_category(key: str) -> str:
 
 
 def _build_permission_registry() -> dict[str, PermissionRegistryEntry]:
-    keys = set(LEGACY_PERMISSION_MATRIX) | {MANAGE_PERMISSIONS_KEY}
+    keys = (
+        set(LEGACY_PERMISSION_MATRIX)
+        | set(STAFF_CAPTURE_PERMISSION_MATRIX)
+        | {MANAGE_PERMISSIONS_KEY}
+    )
     registry: dict[str, PermissionRegistryEntry] = {}
     for key in sorted(keys):
         registry[key] = PermissionRegistryEntry(
