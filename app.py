@@ -15886,6 +15886,12 @@ def _txh_apply_repeat_prefill(session, etype: str, eobj) -> bool:
     return True
 
 
+def _txh_created_by_display(user_lkp: dict, source) -> str:
+    """Resolve Created By from the row source object; safe when id is missing."""
+    created_by_id = getattr(source, "created_by_id", None)
+    return user_lkp.get(created_by_id, "—")
+
+
 def _txh_fetch_filtered_rows(
     session,
     *,
@@ -15934,7 +15940,7 @@ def _txh_fetch_filtered_rows(
                 "Amount": s.amount, "Currency": currency,
                 "Method": s.sale_type, "Description": s.description or "",
                 "Status": "VOID" if s.is_void else s.status,
-                "Created By": user_lkp.get(s.created_by_id, "—"),
+                "Created By": _txh_created_by_display(user_lkp, s),
             }, "Sale", s))
 
     if type_filter in (txh_all, "Expense"):
@@ -15967,7 +15973,7 @@ def _txh_fetch_filtered_rows(
                 "Amount": e.amount, "Currency": currency,
                 "Method": e.payment_method or "", "Description": e.description or "",
                 "Status": "VOID" if e.is_void else "Recorded",
-                "Created By": user_lkp.get(s.created_by_id, "—"),
+                "Created By": _txh_created_by_display(user_lkp, e),
             }, "ExpenseRecord", e))
 
     if type_filter in (txh_all, "Purchase"):
@@ -16000,7 +16006,7 @@ def _txh_fetch_filtered_rows(
                 "Amount": p.amount, "Currency": currency,
                 "Method": p.purchase_type or "Credit", "Description": p.description or "",
                 "Status": "VOID" if p.is_void else "Active",
-                "Created By": user_lkp.get(p.created_by_id, "—"),
+                "Created By": _txh_created_by_display(user_lkp, p),
             }, "Purchase", p))
 
     if type_filter in (txh_all, "Banking"):
