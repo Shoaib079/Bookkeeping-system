@@ -1935,6 +1935,91 @@ Restaurant (POS, recipes), retail (barcode), services (projects), tourism (booki
 
 ---
 
+## Future Architecture / Long-Term Roadmap
+
+Design direction and future-state targets only. **Does not change current development priorities.** Streamlit remains the primary application until migration readiness is achieved.
+
+### FUTURE-MIGRATION-01
+
+**Status:** Approved Long-Term Direction
+
+**Target Architecture:**
+
+```
+React Frontend
+↓
+FastAPI Backend
+↓
+Service Layer (business/accounting logic)
+↓
+SQLAlchemy
+↓
+PostgreSQL
+```
+
+**Rationale:**
+
+- Preserve existing accounting engine.
+- Preserve SQLAlchemy models.
+- Preserve reporting logic.
+- Preserve automated test suite.
+- Support future mobile applications.
+- Support staff portal.
+- Support API integrations.
+- Support multi-user deployment.
+- Provide enterprise-grade UI/UX.
+
+**Migration Principles:**
+
+1. No rewrite while Streamlit ERP is under active feature development.
+2. Streamlit remains the primary application until migration readiness is achieved.
+3. Accounting logic must be extracted into reusable service modules.
+4. Business rules must never depend on UI implementation.
+5. Existing tests must remain authoritative.
+6. Migration will be incremental, not big-bang.
+7. PostgreSQL becomes the target production database.
+8. Streamlit and FastAPI may coexist during transition.
+
+**Pre-Migration Requirements:**
+
+- Daily Sales Close complete
+- Recipe Costing complete
+- User Access complete
+- Staff Capture complete
+- Date System stabilization complete
+- Service-layer extraction roadmap approved
+
+**Architecture Preparation Phase:**
+
+| Phase | Scope |
+|-------|--------|
+| **A** | Move business logic from `app.py` into `services/` |
+| **B** | Introduce FastAPI alongside Streamlit |
+| **C** | Expose accounting services through API endpoints |
+| **D** | Build React frontend module-by-module |
+| **E** | Retire Streamlit UI only after feature parity |
+
+**Decision Gate:**
+
+Before starting implementation of FastAPI + React migration:
+
+- Obtain independent architectural review from Claude.
+- Compare FastAPI + React versus any alternative architecture at that time.
+- Reconfirm migration strategy against current project size and requirements.
+
+**Notes:**
+
+Current platform remains:
+
+- Python
+- Streamlit
+- SQLite
+- SQLAlchemy
+
+Migration target is future-state only and does not change current development priorities.
+
+---
+
 ## Module state vocabulary (frozen)
 
 | State | Meaning |
@@ -2019,6 +2104,7 @@ Restaurant (POS, recipes), retail (barcode), services (projects), tourism (booki
 | 2026-06-10 | **MOBILE-14 M5 closed.** KPI/dashboard spacing rules moved `widgets.css` → `theme.css`. Suite: **916 passed, 4 xfailed**. |
 | 2026-06-10 | **MOBILE-14 TXH micro-step closed.** Duplicate `txh_actions_` grid removed from `widgets.css`; canonical owner `mobile_txn_history.css`. **MOBILE-14 closed.** Suite: **918 passed, 2 xfailed** (M3/M4 optional xfails only). |
 | 2026-06-09 | **ERP Ownership Audit** complete (**AUDIT-01**). Critical conflicts identified: `--hdr-h` 4-way token split, `widgets.css` KPI catch-all, mobile ownership drift, sidebar triple-hide, notification active state duplication, reports internal duplicate. Architectural finding: Dashboard, Banking, and Mobile Reports are mostly clean; Company Picker and Desktop Reports have no CSS surface (future work). Five quick wins identified that can be executed before MOBILE-14. Decision: all future UI work must follow ownership-first planning; new features must not introduce additional ownership conflicts. |
+| 2026-06-05 | **FUTURE-MIGRATION-01** approved as long-term direction only — React + FastAPI + service layer + PostgreSQL target stack. Streamlit remains primary until pre-migration requirements and decision gate are met. No change to active module priorities. |
 
 ---
 

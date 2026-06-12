@@ -355,6 +355,10 @@ Registry is **validated at app startup** (`validate_on_load()` in `app.py`).
 
 15 Localization · 16 UI audit · 17 Foreign currency · 18 Bank/CC import · 19 VAT · 20 Inventory depth · 21 PostgreSQL/SaaS · 22 Billing · 23 Email invites · 24 Industry modules
 
+### Future Architecture (long-term — not active)
+
+**FUTURE-MIGRATION-01** — Approved long-term direction: React frontend → FastAPI → service layer → SQLAlchemy → PostgreSQL. Streamlit + SQLite remain the current platform; migration is incremental and gated on pre-migration requirements (Daily Sales Close, Recipe Costing, User Access, Staff Capture, date system stabilization, service-layer extraction). Full detail: [ROADMAP.md § Future Architecture / Long-Term Roadmap](./ROADMAP.md#future-architecture--long-term-roadmap).
+
 ### Order (frozen)
 
 ```
