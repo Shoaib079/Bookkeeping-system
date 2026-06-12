@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-13 (USER-ACCESS-01 UA-P1)  
-**Full suite:** run `pytest tests/` — **1502 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
+**Last updated:** 2026-06-13 (STAFF-CAPTURE-01 SC-P1)  
+**Full suite:** run `pytest tests/` — **1540 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -278,6 +278,38 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 - 0 hidden page regressions
 - 0 access regressions
 - `manage_permissions` is an intentional owner-only addition (not a regression)
+
+---
+
+### `tests/test_staff_capture01_drafts.py` (15 tests) — SC-P1
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Create / update expense draft | Editable only in `draft` / `returned`; Cash-only v1 | **Critical** |
+| Submit / return / reject lifecycle | State machine; permission gates | **Critical** |
+| Attachment validation | MIME sniff, 10MB cap, max 5 per draft | **High** |
+| Separation of duties prep | Own-draft filters; reviewer ≠ creator on approve path | **Critical** |
+| Service migration contract | No Streamlit/app imports; explicit `company_id`/`user_id`; DTO `to_dict()` JSON-safe | **High** |
+
+---
+
+### `tests/test_staff_capture01_approval.py` (7 tests) — SC-P1
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Injected `post_fn` approval | No `app.py` import in service; posting seam outside core | **Critical** |
+| Idempotent approve | `expense_record_id` set → no re-post | **High** |
+| Self-approval block | Reviewer cannot approve own draft | **Critical** |
+| Permission gates | `approve_expense_drafts` required | **High** |
+
+---
+
+### `tests/test_staff_capture01_models.py` (2 tests) — SC-P1
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| `ExpenseDraft` spine + expense fields | Draft status workflow anchor + posted-ref idempotency | **High** |
+| `DraftAttachment` polymorphic link | `draft_type` + `draft_id` attachment spine | **High** |
 
 ---
 

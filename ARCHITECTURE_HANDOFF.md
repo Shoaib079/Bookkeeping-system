@@ -390,7 +390,7 @@ Full detail: [ROADMAP.md § VENDOR-NEUTRAL-01](./ROADMAP.md#vendor-neutral-01--v
 - Tests without Streamlit; contract scans for posting and vendor neutrality
 - Log known debt in [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md)
 
-**Exemplar:** DSC-P1 — `services/daily_sales_close.py`; DSC-P2 — `ui/external_sales_verification.py`; RC-P1 — `services/recipe_costing.py`; RC-P1b — `ui/recipe_costing.py`; RC-P2A — menu profitability in `services/recipe_costing.py` + `render_recipe_menu_items`; UA-P1 — `services/user_access.py`. Full detail: [ROADMAP.md § MIGRATION-READINESS-01](./ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist).
+**Exemplar:** DSC-P1 — `services/daily_sales_close.py`; DSC-P2 — `ui/external_sales_verification.py`; RC-P1 — `services/recipe_costing.py`; RC-P1b — `ui/recipe_costing.py`; RC-P2A — menu profitability in `services/recipe_costing.py` + `render_recipe_menu_items`; UA-P1 — `services/user_access.py`; SC-P1 — `services/staff_capture.py`. Full detail: [ROADMAP.md § MIGRATION-READINESS-01](./ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist).
 
 ### DAILY-SALES-CLOSE-01 (implementation status)
 
@@ -424,7 +424,6 @@ Tech debt: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_C
 |-------|--------|
 | UA-P1 | ✅ Complete — `UserPermissionOverride` · `services/user_access.py` · `_can()` resolver swap · tests |
 | UA-P1b | 📋 Pending — owner permission management UI |
-| UA-P2 | 📋 Pending — Staff Capture foundation (SC-P1) |
 
 **UA-P1 smoke audit (2026-06-13):**
 - Owner compatibility passed
@@ -435,9 +434,20 @@ Tech debt: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_C
 - 0 access regressions
 - `manage_permissions` is an intentional owner-only addition (not a regression)
 
-Host `pytest tests/` — **1502 passed, 2 xfailed**.
-
 Spec: [USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md). Tech debt: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-UA-*).
+
+### STAFF-CAPTURE-01 (implementation status)
+
+| Phase | Status |
+|-------|--------|
+| SC-P1 | ✅ Complete — `ExpenseDraft` · `DraftAttachment` · `services/staff_capture.py` · injected `post_fn` approval · tests. No UI/portal/inbox. |
+| SC-P1b | 📋 Pending — capture portal · expense draft UI · receipt upload · approval inbox · attachment serving |
+| SC-P2 | 📋 Pending — `sales_total_drafts` · `salary_drafts` · `cash_count_drafts` |
+| SC-P3 | 📋 Pending — returned-flow polish · submission feed · retention/archive · OBS-01 review |
+
+Host `pytest tests/` — **1540 passed, 2 xfailed**.
+
+Spec: [USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md). Tech debt: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-SC-*).
 
 ### Future Architecture (long-term — not active)
 

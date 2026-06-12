@@ -8,6 +8,26 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-13 — STAFF-CAPTURE-01 SC-P1 (Expense Draft Service)
+
+**Task:** Service-first staff expense capture — draft spine, attachments, lifecycle, approval via injected `post_fn`. No UI, portal, inbox, or mobile capture (SC-P1b deferred).
+
+**SC-P1 delivered:**
+- Models: `ExpenseDraft` (spine + expense payload + `expense_record_id`), `DraftAttachment`
+- Service: `services/staff_capture.py` — create/update/submit/return/reject/approve, attachment validation, DTOs, separation of duties, idempotent approve
+- Permissions: `STAFF_CAPTURE_PERMISSION_MATRIX` keys (`upload_receipts`, `submit_expense_drafts`, `approve_expense_drafts`) in `services/user_access.py`
+- Schema: `migrate_schema()` indexes for `expense_drafts`, `draft_attachments`
+- Docs: SC-P1 migration cleanup in `TECH_DEBT_AND_MIGRATION_CLEANUP.md` (TD-SC-01–05)
+- Tests: `test_staff_capture01_models.py` (2), `test_staff_capture01_drafts.py` (15), `test_staff_capture01_approval.py` (7)
+
+**Pending:** SC-P1b (portal + expense UI + inbox) · SC-P2 (sales/salary/cash-count drafts) · SC-P3 (polish + retention).
+
+**Tests:** Full suite **1540 passed, 2 xfailed**.
+
+**Files changed:** `models.py`, `services/staff_capture.py`, `services/user_access.py`, `app.py`, `docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md`, `tests/test_staff_capture01_models.py`, `tests/test_staff_capture01_drafts.py`, `tests/test_staff_capture01_approval.py`.
+
+---
+
 ## 2026-06-13 — USER-ACCESS-01 UA-P1 (Permission Override Service)
 
 **Task:** Service-first effective permissions — `user_permission_overrides` model, registry/templates, override CRUD, owner lockout guard, `_can()` resolver swap. No permission management UI (UA-P1b deferred).
@@ -28,7 +48,7 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 - 0 access regressions
 - `manage_permissions` is an intentional owner-only addition (not a regression)
 
-**Pending:** UA-P1b (permission UI) · UA-P2 (Staff Capture SC-P1).
+**Pending:** UA-P1b (permission UI) · STAFF-CAPTURE-01 SC-P1b (portal + inbox).
 
 **Tests:** Full suite **1502 passed, 2 xfailed**.
 
