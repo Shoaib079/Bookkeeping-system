@@ -150,12 +150,14 @@ def test_ui_theme_exports_sync_derived_dark_mode():
 
 
 def test_sync_derived_dark_mode_import_and_call_no_crash(theme_module):
-    from ui.theme import sync_derived_dark_mode
+    from ui.theme import sync_derived_dark_mode as imported_fn
 
     theme, st = theme_module
     st.session_state["theme_mode"] = "light"
     st.context = types.SimpleNamespace(cookies={}, headers={})
-    assert sync_derived_dark_mode() is False
+    assert callable(imported_fn)
+    # Call through fixture-loaded module: ui.theme may already be bound to real st.
+    assert theme.sync_derived_dark_mode() is False
 
 
 def test_sync_derived_dark_mode_explicit_light(theme_module):

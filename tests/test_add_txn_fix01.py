@@ -120,16 +120,73 @@ def test_at_parse_date_text_formats(raw, expected):
     assert erp._at_parse_date_text(raw) == expected
 
 
-def test_at_entry_date_error_invalid(monkeypatch):
+def test_at_entry_date_error_invalid_only_in_manual_mode(monkeypatch):
     monkeypatch.setattr(erp.st, "session_state", {"at_date_text": "bad"})
+    assert erp._at_entry_date_error() is None
+    monkeypatch.setattr(
+        erp.st,
+        "session_state",
+        {"at_date_text": "bad", "at_date_manual_entry": True},
+    )
     assert erp._at_entry_date_error() is not None
 
 
-def test_at_resolve_entry_date_prefers_manual_text(monkeypatch):
-    state = {"at_date_text": "05.06.2026", "at_date": datetime.date(2020, 1, 1)}
+def test_at_resolve_entry_date_prefers_manual_text_when_enabled(monkeypatch):
+    state = {
+        "at_date_manual_entry": True,
+        "at_date_text": "05.06.2026",
+        "at_date": datetime.date(2020, 1, 1),
+        "at_date_picker": datetime.date(2020, 1, 2),
+    }
     monkeypatch.setattr(erp.st, "session_state", state)
     assert erp._at_resolve_entry_date() == datetime.date(2026, 6, 5)
     assert state["at_date"] == datetime.date(2026, 6, 5)
+
+
+def test_at_resolve_entry_date_uses_picker_when_not_manual(monkeypatch):
+    state = {
+        "at_date_manual_entry": False,
+        "at_date_text": "05.06.2026",
+        "at_date_picker": datetime.date(2026, 3, 10),
+    }
+    monkeypatch.setattr(erp.st, "session_state", state)
+    assert erp._at_resolve_entry_date() == datetime.date(2026, 3, 10)
+    assert state["at_date"] == datetime.date(2026, 3, 10)
+
+
+def test_at_manual_date_toggle_syncs_picker_to_text(monkeypatch):
+    state = {
+        "at_date_manual_entry": True,
+        "at_date_picker": datetime.date(2026, 4, 1),
+        "at_date": datetime.date(2026, 4, 1),
+    }
+    monkeypatch.setattr(erp.st, "session_state", state)
+    erp._at_on_manual_date_toggle()
+    assert state["at_date_text"] == "2026-04-01"
+    assert state["at_date"] == datetime.date(2026, 4, 1)
+
+
+def test_at_manual_date_toggle_syncs_text_to_picker(monkeypatch):
+    state = {
+        "at_date_manual_entry": False,
+        "at_date_text": "15.05.2026",
+    }
+    monkeypatch.setattr(erp.st, "session_state", state)
+    erp._at_on_manual_date_toggle()
+    assert state["at_date_picker"] == datetime.date(2026, 5, 15)
+    assert state["at_date"] == datetime.date(2026, 5, 15)
+
+
+def test_desktop_date_field_single_visible_control():
+    src = inspect.getsource(erp._at_render_desktop_date_field)
+    assert 'key="at_date_manual_entry"' in src
+    assert "if st.session_state.get(\"at_date_manual_entry\"):" in src
+    text_block = src.split('if st.session_state.get("at_date_manual_entry"):', 1)[1]
+    calendar_block = src.split("else:", 1)[1]
+    assert 'st.text_input' in text_block
+    assert 'st.date_input' not in text_block.split("else:")[0]
+    assert 'st.date_input' in calendar_block
+    assert 'st.text_input' not in calendar_block
 
 
 # ── No remembered transaction ─────────────────────────────────────────────────

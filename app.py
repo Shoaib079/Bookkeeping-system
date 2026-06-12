@@ -12171,7 +12171,9 @@ def _mob_at_parse_date_text(raw: str) -> datetime.date | None:
 
 
 def _at_entry_date_error() -> str | None:
-    """Return localized error when at_date_text is present but invalid."""
+    """Return localized error when manual date text is present but invalid."""
+    if not st.session_state.get("at_date_manual_entry"):
+        return None
     raw = st.session_state.get("at_date_text")
     if raw is None or not str(raw).strip():
         return None
@@ -12181,17 +12183,17 @@ def _at_entry_date_error() -> str | None:
 
 
 def _at_resolve_entry_date() -> datetime.date:
-    """Resolve entry date from manual text, calendar picker, else session at_date, else today."""
-    raw = st.session_state.get("at_date_text")
-    if raw is not None and str(raw).strip():
-        parsed = _at_parse_date_text(str(raw))
-        if parsed:
-            st.session_state["at_date"] = parsed
-            return parsed
+    """Resolve entry date from manual text (when enabled), calendar, else at_date, else today."""
+    if st.session_state.get("at_date_manual_entry"):
+        raw = st.session_state.get("at_date_text")
+        if raw is not None and str(raw).strip():
+            parsed = _at_parse_date_text(str(raw))
+            if parsed:
+                st.session_state["at_date"] = parsed
+                return parsed
     picked = st.session_state.get("at_date_picker")
     if isinstance(picked, datetime.date):
         st.session_state["at_date"] = picked
-        st.session_state["at_date_text"] = picked.isoformat()
         return picked
     d = st.session_state.get("at_date")
     if isinstance(d, datetime.date):
@@ -12204,37 +12206,60 @@ def _at_resolve_entry_date() -> datetime.date:
 def _at_sync_date_from_picker() -> None:
     picked = st.session_state.get("at_date_picker")
     if isinstance(picked, datetime.date):
-        st.session_state["at_date_text"] = picked.isoformat()
         st.session_state["at_date"] = picked
 
 
+def _at_on_manual_date_toggle() -> None:
+    """Keep calendar and manual values in sync when the user switches entry mode."""
+    if st.session_state.get("at_date_manual_entry"):
+        picked = st.session_state.get("at_date_picker")
+        d = picked if isinstance(picked, datetime.date) else st.session_state.get("at_date")
+        if not isinstance(d, datetime.date):
+            d = datetime.date.today()
+        st.session_state["at_date_text"] = d.isoformat()
+        st.session_state["at_date"] = d
+        return
+    parsed = _at_parse_date_text(st.session_state.get("at_date_text", ""))
+    d = parsed if parsed else st.session_state.get("at_date")
+    if not isinstance(d, datetime.date):
+        d = datetime.date.today()
+    st.session_state["at_date_picker"] = d
+    st.session_state["at_date"] = d
+
+
 def _at_render_desktop_date_field() -> None:
-    """Manual date text + optional calendar helper (dark-theme calendar via PORTAL-THEME-01)."""
+    """Calendar by default; reveal manual text field only when requested (OBS-01)."""
     today = datetime.date.today()
-    if "at_date_text" not in st.session_state:
-        d = st.session_state.get("at_date", today)
-        st.session_state["at_date_text"] = (
-            d.isoformat() if isinstance(d, datetime.date) else today.isoformat()
-        )
-    dc1, dc2 = st.columns([3, 2])
-    with dc1:
+    d = st.session_state.get("at_date", today)
+    if not isinstance(d, datetime.date):
+        d = today
+        st.session_state["at_date"] = d
+
+    st.checkbox(
+        _t("txn.date_enter_manually"),
+        key="at_date_manual_entry",
+        on_change=_at_on_manual_date_toggle,
+    )
+
+    if st.session_state.get("at_date_manual_entry"):
+        if "at_date_text" not in st.session_state:
+            st.session_state["at_date_text"] = d.isoformat()
         st.text_input(
             "📅 " + _t("col.date"),
             key="at_date_text",
-            placeholder="YYYY-MM-DD",
+            placeholder="YYYY-MM-DD, DD.MM.YYYY, DD/MM/YYYY",
         )
-    with dc2:
-        parsed = _at_parse_date_text(st.session_state.get("at_date_text", ""))
+        err = _at_entry_date_error()
+        if err:
+            st.caption(f"⚠️ {err}")
+    else:
+        if not isinstance(st.session_state.get("at_date_picker"), datetime.date):
+            st.session_state["at_date_picker"] = d
         st.date_input(
-            _t("txn.date_calendar"),
-            value=parsed or today,
+            "📅 " + _t("col.date"),
             key="at_date_picker",
-            label_visibility="collapsed",
             on_change=_at_sync_date_from_picker,
         )
-    err = _at_entry_date_error()
-    if err:
-        st.caption(f"⚠️ {err}")
 
 
 def _mob_at_render_picker_hdr(title: str) -> bool:
