@@ -8,6 +8,24 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-05 — RECIPE-COSTING-01 RC-P1b (Recipe Costing UI)
+
+**Task:** Daily-use Streamlit UI for recipe costing — Ingredients, Recipes (tree editor), Cost Breakdown. Service-only writes; no costing math in UI.
+
+**RC-P1b delivered:**
+- `ui/recipe_costing.py` — `render_recipe_ingredients`, `render_recipe_recipes`, `render_recipe_cost_breakdown`
+- Recipe Costing nav accordion (Ingredients · Recipes · Cost Breakdown)
+- Service read APIs: `list_ingredients`, `get_ingredient`, `update_ingredient`, `activate_ingredient`, `list_recipes`, `get_recipe`
+- Permissions: `view_recipe_costing`, `manage_recipe_costing` (owner + manager)
+- Locales: `rc.*`, `nav.rc_*`, `nav.group.recipe_costing` EN/TR
+- Tests: `test_recipe_costing_ui_contract.py` (9); service read API tests (+3)
+
+**Deferred (RC-P2–P3):** Menu linkage · food cost % · profitability · markup · dashboard · charts · export · purchase integration · design spec.
+
+**Unchanged:** Inventory · posting paths · menu modules · mobile-specific UI.
+
+**Tests:** Full suite **1447 passed, 2 xfailed**.
+
 ---
 
 ## 2026-06-05 — RECIPE-COSTING-01 RC-P1 (Ingredient & Recipe Costing)
@@ -20,7 +38,7 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 - Schema indexes in `migrate_schema()`
 - Tests: `test_recipe_costing_service.py` (29), `test_recipe_costing_models.py` (3)
 
-**Deferred (RC-P1b–P3):** Design spec · list/read APIs · Streamlit UI · export · menu linkage · profitability views.
+**Deferred (RC-P1b–P3 at time of P1):** Streamlit UI · analytics · export — see RC-P1b entry for UI completion.
 
 **Unchanged:** Inventory tables · product stock · `create_journal_entry` / posting paths · menu modules.
 

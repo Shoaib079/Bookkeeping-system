@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-05 (RECIPE-COSTING-01 RC-P1)  
-**Full suite:** run `pytest tests/` — **1435 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
+**Last updated:** 2026-06-05 (RECIPE-COSTING-01 RC-P1–P1b)  
+**Full suite:** run `pytest tests/` — **1447 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -150,7 +150,7 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 
 ---
 
-### `tests/test_recipe_costing_service.py` (29 tests) — RC-P1
+### `tests/test_recipe_costing_service.py` (32 tests) — RC-P1 / RC-P1b
 
 | Feature covered | Business rule protected | Risk if untested |
 |-----------------|-------------------------|------------------|
@@ -162,7 +162,20 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 | `bulk_update_costs` atomicity | All-or-nothing cost batch | **High** |
 | Deactivated ingredient warning | Breakdown continues with warning | **Medium** |
 | Explicit `company_id` API | No Streamlit in service | **High** |
+| `list_ingredients` / `get_recipe` / `update_ingredient` | Read APIs for RC-P1b UI | **High** |
 | Posting/inventory guard contract scan | No JE/inventory/menu imports in `services/` | **Critical** |
+
+---
+
+### `tests/test_recipe_costing_ui_contract.py` (9 tests) — RC-P1b
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Renderer calls `services.recipe_costing` only | No business logic in UI | **High** |
+| No costing math in UI source | No duplicate rollup in Streamlit | **Critical** |
+| Restaurant-friendly tree (`_recipe_tree_markdown`) | Names not raw IDs in forms | **Medium** |
+| Recipe Costing nav + permissions wired | Owner/manager access | **Medium** |
+| No inventory/posting imports in UI | Scope guard | **High** |
 
 ---
 
