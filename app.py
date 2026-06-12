@@ -225,18 +225,6 @@ from reconciliation.company_card import (
 )
 # Import from submodule directly — avoids Streamlit stale `reconciliation` package cache.
 from reconciliation.clearing import fetch_unsettled_card_sales_for_visibility
-from reconciliation.clearing_visibility import (
-    ClearingVisibilitySnapshot,
-    compute_clearing_visibility,
-)
-from reconciliation.unsettled_card_sales_list import (
-    DEFAULT_LIST_LIMIT,
-    apply_list_limit,
-    enrich_unsettled_sale_row,
-    filter_unsettled_by_date,
-    list_total_mismatch,
-    sum_unsettled_card_sales,
-)
 from reconciliation.pos_match_failure import evaluate_pos_match_failure
 from reconciliation.pos_settlement_preview import compute_pos_settlement_preview
 from reconciliation.match_post import (
@@ -246,6 +234,18 @@ from reconciliation.match_post import (
     suggest_withdrawal_match_kind,
 )
 from ui.avatar import render_user_avatar, user_initials
+from ui.banking import (
+    apply_banking_pos_settlement_route as _apply_banking_pos_settlement_route,
+    banking_match_failure_label as _banking_match_failure_label,
+    banking_pos_settlement_route_keys as _banking_pos_settlement_route_keys,
+    banking_section_select as _banking_section_select,
+    render_banking_pos_settlement_entry as _render_banking_pos_settlement_entry,
+    render_banking_pos_settlement_section as _render_banking_pos_settlement_section,
+    render_card_sales_clearing_visibility_block as _render_card_sales_clearing_visibility_block,
+    render_pos_match_failure_block as _render_pos_match_failure_block,
+    render_pos_settlement_preview_block as _render_pos_settlement_preview_block,
+    render_unsettled_card_sales_list_block as _render_unsettled_card_sales_list_block,
+)
 from ui.section import (
     aging_buckets_html,
     financial_section_header_html,
@@ -4415,31 +4415,6 @@ def _mgmt_report_select(widget_key: str, options: list[tuple[str, str]]) -> str:
                 if col.button(
                     _t(msg_key),
                     key=f"mob_rpt_pick_{widget_key}_{opt_id}",
-                    use_container_width=True,
-                    type="primary" if cur == opt_id else "secondary",
-                ):
-                    st.session_state[widget_key] = opt_id
-                    st.rerun()
-
-    return st.session_state[widget_key]
-
-
-def _banking_section_select(widget_key: str, options: list[tuple[str, str]]) -> str:
-    """Banking chip grid — canonical section selector (BANKING-DESKTOP-01 B1)."""
-    ids = [opt_id for opt_id, _ in options]
-    if widget_key not in st.session_state or st.session_state[widget_key] not in ids:
-        st.session_state[widget_key] = ids[0]
-    cur = st.session_state[widget_key]
-
-    with st.container(border=False, key=f"bank_sec_sel_{widget_key}"):
-        st.markdown('<div class="erp-bank-sel-chip-host"></div>', unsafe_allow_html=True)
-        for i in range(0, len(options), 2):
-            chunk = options[i : i + 2]
-            cols = st.columns(len(chunk), gap="small")
-            for col, (opt_id, msg_key) in zip(cols, chunk):
-                if col.button(
-                    _t(msg_key),
-                    key=f"bank_sec_pick_{widget_key}_{opt_id}",
                     use_container_width=True,
                     type="primary" if cur == opt_id else "secondary",
                 ):
@@ -16771,252 +16746,6 @@ def _bsi_default_match_kind(session, sel_row, *, is_deposit: bool) -> str:
     return default if default in valid else "vendor"
 
 
-def _render_pos_settlement_preview_block(
-    preview,
-    currency: str,
-) -> None:
-    """Read-only POS settlement preview (BANKING-UX-02 P1)."""
-    st.markdown(
-        financial_section_header_html(
-            _t("banking.pos_preview.section_title"), accent="info"
-        ),
-        unsafe_allow_html=True,
-    )
-    st.caption(_t("banking.pos_preview.revenue_note"))
-    with st.container(border=True):
-        p1, p2, p3 = st.columns(3)
-        p1.metric(
-            _t("banking.pos_preview.available_clearing"),
-            f"{currency} {preview.available_clearing:,.2f}",
-        )
-        p2.metric(
-            _t("banking.pos_preview.settlement_amount"),
-            f"{currency} {preview.settlement_amount:,.2f}",
-        )
-        p3.metric(
-            _t("banking.pos_preview.bank_charges"),
-            f"{currency} {preview.bank_charges:,.2f}",
-        )
-        p4, p5 = st.columns(2)
-        p4.metric(
-            _t("banking.pos_preview.expected_deposit"),
-            f"{currency} {preview.expected_bank_deposit:,.2f}",
-        )
-        p5.metric(
-            _t("banking.pos_preview.remaining_clearing"),
-            f"{currency} {preview.remaining_clearing:,.2f}",
-        )
-    for warn in preview.warnings:
-        st.warning(_t(warn.key, currency=currency, **warn.kwargs))
-
-
-def _banking_match_failure_label(key: str, **kwargs) -> str:
-    """Resolve banking.match_failure.* — same catalogs as P1–P3 (_t + transactional fallback)."""
-    text = _t(key, **kwargs)
-    if text != key:
-        return text
-    from registry.locales.transactional import TRANSACTIONAL_EN, TRANSACTIONAL_TR
-
-    cat = TRANSACTIONAL_TR if _ui_locale() == "tr" else TRANSACTIONAL_EN
-    raw = cat.get(key) or TRANSACTIONAL_EN.get(key) or key
-    if kwargs and raw != key:
-        try:
-            return raw.format(**kwargs)
-        except KeyError:
-            return raw
-    return raw
-
-
-def _render_pos_match_failure_block(
-    check,
-    currency: str,
-) -> None:
-    """Read-only match guidance before post (BANKING-UX-02 P4)."""
-    st.markdown(
-        financial_section_header_html(
-            _banking_match_failure_label("banking.match_failure.section_title"),
-            accent="info",
-        ),
-        unsafe_allow_html=True,
-    )
-    status_keys = {
-        "ready": "banking.match_failure.status.ready",
-        "attention": "banking.match_failure.status.attention",
-        "cannot_post": "banking.match_failure.status.cannot_post",
-    }
-    status_key = status_keys[check.status]
-    if check.status == "ready":
-        st.success(_banking_match_failure_label(status_key))
-    elif check.status == "attention":
-        st.warning(_banking_match_failure_label(status_key))
-    else:
-        st.error(_banking_match_failure_label(status_key))
-    if not check.items:
-        return
-    with st.container(border=True):
-        for item in check.items:
-            text = _banking_match_failure_label(
-                item.key, currency=currency, **item.kwargs
-            )
-            if item.blocking:
-                st.error(f"• {text}")
-            else:
-                st.warning(f"• {text}")
-
-
-def _render_card_sales_clearing_visibility_block(
-    session,
-    cid: int,
-    *,
-    clearing_acct,
-    currency: str,
-) -> ClearingVisibilitySnapshot | None:
-    """Read-only Card Sales Clearing visibility (BANKING-UX-02 P2)."""
-    if not clearing_acct:
-        return None
-    available_clearing = calculate_account_balance(session, clearing_acct)
-    snapshot = compute_clearing_visibility(
-        session,
-        cid,
-        clearing_account_id=clearing_acct.id,
-        current_clearing_balance=available_clearing,
-        get_unsettled_card_sales=get_unsettled_card_sales,
-        get_account_by_name=get_account_by_name,
-    )
-    st.markdown(
-        financial_section_header_html(
-            _t("banking.clearing_visibility.section_title"), accent="info"
-        ),
-        unsafe_allow_html=True,
-    )
-    st.caption(_t("banking.clearing_visibility.explainer"))
-    with st.container(border=True):
-        v1, v2 = st.columns(2)
-        v1.metric(
-            _t("banking.clearing_visibility.current_balance"),
-            f"{currency} {snapshot.current_clearing_balance:,.2f}",
-        )
-        v2.metric(
-            _t("banking.clearing_visibility.unsettled_sales"),
-            f"{currency} {snapshot.unsettled_card_sales_total:,.2f}",
-        )
-        v3, v4 = st.columns(2)
-        v3.metric(
-            _t("banking.clearing_visibility.settlements_posted"),
-            f"{currency} {snapshot.settlements_posted_total:,.2f}",
-        )
-        v4.metric(
-            _t("banking.clearing_visibility.remaining_clearing"),
-            f"{currency} {snapshot.remaining_clearing:,.2f}",
-        )
-    if snapshot.reconciliation_mismatch:
-        st.warning(
-            _t(
-                "banking.clearing_visibility.warn_reconciliation",
-                remaining=f"{snapshot.remaining_clearing:,.2f}",
-                current=f"{snapshot.current_clearing_balance:,.2f}",
-                currency=currency,
-            )
-        )
-    return snapshot
-
-
-def _render_unsettled_card_sales_list_block(
-    session,
-    cid: int,
-    *,
-    currency: str,
-    visibility_unsettled_total: float,
-) -> None:
-    """Read-only unsettled card sales table (BANKING-UX-02 P3)."""
-    rows = fetch_unsettled_card_sales_for_visibility(
-        session,
-        cid,
-        get_unsettled_card_sales=get_unsettled_card_sales,
-        get_account_by_name=get_account_by_name,
-    )
-    st.markdown(
-        financial_section_header_html(
-            _t("banking.unsettled_card_sales.section_title"), accent="info"
-        ),
-        unsafe_allow_html=True,
-    )
-    if not rows:
-        st.info(_t("banking.unsettled_card_sales.empty"))
-        return
-
-    f1, f2, f3 = st.columns([1, 1, 1])
-    with f1:
-        date_from = st.date_input(
-            _t("banking.unsettled_card_sales.filter_from"),
-            value=min(r["date"] for r in rows if r.get("date")),
-            key="bank_unsettled_from",
-        )
-    with f2:
-        date_to = st.date_input(
-            _t("banking.unsettled_card_sales.filter_to"),
-            value=max(r["date"] for r in rows if r.get("date")),
-            key="bank_unsettled_to",
-        )
-    with f3:
-        show_all = st.checkbox(
-            _t("banking.unsettled_card_sales.show_all"),
-            value=False,
-            key="bank_unsettled_show_all",
-        )
-
-    list_total = sum_unsettled_card_sales(rows)
-    filtered = filter_unsettled_by_date(
-        rows, date_from=date_from, date_to=date_to
-    )
-    visible, truncated = apply_list_limit(
-        filtered, show_all=show_all, limit=DEFAULT_LIST_LIMIT
-    )
-    if list_total_mismatch(list_total, visibility_unsettled_total):
-        st.warning(
-            _t(
-                "banking.unsettled_card_sales.warn_total_mismatch",
-                list_total=f"{list_total:,.2f}",
-                visibility_total=f"{visibility_unsettled_total:,.2f}",
-                currency=currency,
-            )
-        )
-    if truncated:
-        st.caption(
-            _t(
-                "banking.unsettled_card_sales.latest_limit",
-                limit=DEFAULT_LIST_LIMIT,
-                total=len(filtered),
-            )
-        )
-
-    table_rows = []
-    for row in visible:
-        enriched = enrich_unsettled_sale_row(
-            session, row, default_currency=currency
-        )
-        table_rows.append(
-            {
-                _t("banking.unsettled_card_sales.col.date"): enriched["date"],
-                _t("banking.unsettled_card_sales.col.reference"): enriched[
-                    "reference"
-                ],
-                _t("banking.unsettled_card_sales.col.amount"): enriched["amount"],
-                _t("banking.unsettled_card_sales.col.currency"): enriched[
-                    "currency"
-                ],
-                _t("banking.unsettled_card_sales.col.payment_method"): _i18n_db(
-                    SALE_TYPE_I18N, enriched["payment_method"]
-                ),
-                _t("banking.unsettled_card_sales.col.notes"): enriched["notes"],
-                _t("banking.unsettled_card_sales.col.status"): _t(
-                    "banking.unsettled_card_sales.status.unsettled"
-                ),
-            }
-        )
-    _render_readable_df(pd.DataFrame(table_rows))
-
-
 def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
     if not _card_settlement_on(session):
         st.caption(_t("banking.import.match.needs_settlement"))
@@ -20978,93 +20707,6 @@ def _banking_pos_settlement_enabled(session) -> bool:
         and _banking_reconciliation_on(session)
         and _can("view_bank_statement_import")
     )
-
-
-def _banking_pos_settlement_route_keys() -> dict:
-    """Session keys for BANKING-UX-02 P1B → focused POS settlement section."""
-    return {
-        "nav_selection": NAV_BANKING,
-        "banking_section": "pos_settlement",
-        "bsi_section": "match",
-        "bsi_match_kind": "card_clearing",
-        "bsi_pos_entry": True,
-    }
-
-
-def _apply_banking_pos_settlement_route() -> None:
-    for k, v in _banking_pos_settlement_route_keys().items():
-        st.session_state[k] = v
-    st.rerun()
-
-
-def _render_banking_pos_settlement_entry(session) -> None:
-    """BANKING-UX-02 P1B — visible shortcut to focused POS settlement section."""
-    if not _banking_pos_settlement_enabled(session):
-        return
-    if st.session_state.get("banking_section") == "pos_settlement":
-        return
-    cid = current_company_required()
-    with st.container(border=True):
-        st.markdown(
-            financial_section_header_html(
-                _t("banking.pos_entry.title"), accent="info"
-            ),
-            unsafe_allow_html=True,
-        )
-        st.caption(_t("banking.pos_entry.hint"))
-        if not _postable_deposit_rows(session, cid):
-            st.info(_t("banking.pos_entry.no_rows"))
-        if st.button(
-            _t("banking.pos_entry.open"),
-            type="primary",
-            key="bank_pos_settlement_open",
-        ):
-            _apply_banking_pos_settlement_route()
-
-
-def _render_banking_pos_settlement_section(session) -> None:
-    """BANKING-UX-02 P1B — focused POS / Card Settlement (no import chrome)."""
-    if not _banking_pos_settlement_enabled(session):
-        st.caption(_t("form.access_denied"))
-        return
-    cid = current_company_required()
-    st.markdown(
-        financial_section_header_html(
-            _t("banking.pos_entry.title"), accent="info"
-        ),
-        unsafe_allow_html=True,
-    )
-    st.caption(_t("banking.pos_entry.hint"))
-    deposit_rows = _postable_deposit_rows(session, cid)
-    if not deposit_rows:
-        st.info(_t("banking.pos_entry.no_rows_focused"))
-        if st.button(
-            _t("banking.pos_entry.go_import"),
-            type="primary",
-            key="bank_pos_go_import",
-        ):
-            st.session_state["banking_section"] = "import"
-            st.rerun()
-        return
-    row_labels = {
-        r.id: (
-            f"#{r.import_row_index} · {r.date} · "
-            f"+{r.amount:,.2f} · {(r.description or '')[:40]}"
-        )
-        for r in deposit_rows
-    }
-    if st.session_state.pop("bsi_pos_entry", False):
-        st.session_state["bsi_match_kind"] = "card_clearing"
-    sel_row_id = st.selectbox(
-        _t("banking.import.match.select_row"),
-        options=list(row_labels.keys()),
-        format_func=lambda i: row_labels[i],
-        key="bsi_match_row",
-    )
-    sel_row = session.get(BankStatementRow, sel_row_id)
-    if sel_row:
-        st.session_state["bsi_match_kind_row"] = sel_row_id
-        _render_bsi_deposit_clearing_panel(session, sel_row, cid)
 
 
 def _render_banking_statement_import(session):

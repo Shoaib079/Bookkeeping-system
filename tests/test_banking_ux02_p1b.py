@@ -44,9 +44,9 @@ class TestBankingEntryPoint:
 
     def test_entry_uses_t_helper_like_other_banking_labels(self):
         src = inspect.getsource(erp._render_banking_pos_settlement_entry)
-        assert '_t("banking.pos_entry.title")' in src
-        assert '_t("banking.pos_entry.hint")' in src
-        assert '_t("banking.pos_entry.open")' in src
+        assert "banking.pos_entry.title" in src
+        assert "banking.pos_entry.hint" in src
+        assert "banking.pos_entry.open" in src
         assert "_banking_pos_entry_label" not in src
 
     def test_entry_hides_on_focused_pos_settlement_section(self):
@@ -55,7 +55,7 @@ class TestBankingEntryPoint:
 
     def test_entry_button_calls_apply_route(self):
         src = inspect.getsource(erp._render_banking_pos_settlement_entry)
-        assert "_apply_banking_pos_settlement_route()" in src
+        assert "apply_banking_pos_settlement_route()" in src
 
     def test_entry_does_not_duplicate_deposit_clearing_panel(self):
         entry_src = inspect.getsource(erp._render_banking_pos_settlement_entry)
@@ -75,15 +75,15 @@ class TestFocusedPosSettlementSection:
 
     def test_focused_section_header_and_hint_at_top(self):
         src = inspect.getsource(erp._render_banking_pos_settlement_section)
-        idx_title = src.index('_t("banking.pos_entry.title")')
-        idx_hint = src.index('_t("banking.pos_entry.hint")')
+        idx_title = src.index("banking.pos_entry.title")
+        idx_hint = src.index("banking.pos_entry.hint")
         idx_panel = src.index("_render_bsi_deposit_clearing_panel")
         assert idx_title < idx_hint < idx_panel
 
     def test_focused_section_no_rows_shows_import_link(self):
         src = inspect.getsource(erp._render_banking_pos_settlement_section)
-        assert '_t("banking.pos_entry.no_rows_focused")' in src
-        assert '_t("banking.pos_entry.go_import")' in src
+        assert "banking.pos_entry.no_rows_focused" in src
+        assert "banking.pos_entry.go_import" in src
         assert 'banking_section"] = "import"' in src
 
     def test_focused_section_filters_deposit_rows_only(self):

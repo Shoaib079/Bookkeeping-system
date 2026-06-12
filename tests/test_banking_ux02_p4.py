@@ -205,7 +205,7 @@ class TestUiWiring:
 
     def test_match_panel_uses_banking_label_helper(self):
         src = inspect.getsource(erp._render_pos_match_failure_block)
-        assert "_banking_match_failure_label" in src
+        assert "banking_match_failure_label" in src
         assert '_t("banking.match_failure' not in src
 
     def test_app_banking_label_resolves_not_raw(self):

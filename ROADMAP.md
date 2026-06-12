@@ -70,7 +70,8 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | Future UX / navigation vision | 📋 **Low** — design direction only (MOBILE-07–12, DESIGN-05, DESKTOP-04) — implementation gated on MOBILE-11 system |
 | **PROFILE-PHOTO-01** — Profile photo / avatar upload | 📋 **Proposed** · Low — UX only; no accounting impact |
 | **UI-STAB-01** — Shared avatar renderer | ✅ **Complete** — `ui/avatar.py`; header, mobile profile, My Account, login tiles |
-| UI architecture stability (UI-STAB) | 📋 **Planned** — header CSS consolidation remainder; avatar portion shipped |
+| **UI-STAB-02** — Banking presentation separation | ✅ **Complete** — `ui/banking.py`; P1–P4 + P1B presentation; posting stays in `app.py` |
+| UI architecture stability (UI-STAB) | 📋 **Planned** — header CSS consolidation remainder; avatar + banking presentation shipped |
 | Operational friction log (OBS-01) | 🟡 **Active** — record real-world UX friction; 3+ occurrences → roadmap candidate |
 
 ---
@@ -95,7 +96,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 
 **Do NOT start (future projects — see [FUTURE UX / NAVIGATION VISION](#future-ux--navigation-vision)):** Banking redesign · Reports redesign · Mobile shell redesign · Navigation redesign · More Hub redesign · Sidebar redesign.
 
-**Next Banking work (before Banking redesign or new Banking features):** observe daily friction via **[OBS-01](#obs-01--operational-friction-log)**; presentation cleanup **[UI-STAB-02](#ui-stab-02--banking-presentation-separation)** when approved.
+**Next Banking work (before Banking redesign or new Banking features):** observe daily friction via **[OBS-01](#obs-01--operational-friction-log)**.
 
 **Current focus stays on:** (1) Accounting stability · (2) Daily-use workflow testing · (3) Banking observation · (4) UX cleanup · (5) Real-world usage feedback.
 
@@ -814,28 +815,15 @@ These remain **future projects**. Current focus stays on accounting stability, d
 
 ### UI-STAB-02 — Banking Presentation Separation
 
-**Priority:** High
+**Status:** ✅ **Complete** (2026-06-05)
 
-**Current findings:**
+**Delivered:** `ui/banking.py` — chip selector, P1 settlement preview, P2 clearing visibility, P3 unsettled sales list, P4 match failure panel, P1B POS settlement entry + focused section. `app.py` keeps orchestration (`render_banking`, `_render_bsi_deposit_clearing`, statement import) and all posting.
 
-- Banking remains largely desktop-first (`render_banking()` — one presentation layer for all viewports).
-- Desktop and mobile share one presentation layer (horizontal radio, multi-column forms, dataframes).
+**Unchanged:** Posting logic · settlement math · journal entries · account **1150** · BANKING-UX-02 behavior.
 
-**Future direction:**
+**Tests:** `tests/test_ui_stab02_banking.py` (contract tests) + existing `test_banking_ux02_*` / `test_banking_desktop_b1b2.py`.
 
-Separate:
-
-- `render_banking_desktop()`
-- `render_banking_mobile()`
-
-while keeping shared:
-
-- Accounting logic
-- Posting
-- Permissions
-- Reconciliation logic
-
-**Goal:** Presentation separation only.
+**Future direction (not started):** Optional `render_banking_desktop()` / `render_banking_mobile()` dual-host presenters — same pattern as Transaction Ledger; business logic already separated.
 
 ---
 

@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-05 (BANKING-UX-02 complete)  
-**Full suite:** run `pytest tests/` — **1162 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
+**Last updated:** 2026-06-05 (UI-STAB-02 complete)  
+**Full suite:** run `pytest tests/` — **1179 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -532,6 +532,42 @@ Remaining xfails (M3/M4) are optional suppression relocations — not MOBILE-14 
 | Summary labels translate (not raw `partner.summary_*` keys) | i18n regression |
 | Summary labels in MESSAGES + TRANSACTIONAL catalogs | Reliable lookup |
 | `post_partner_movement` unchanged | No posting drift |
+
+---
+
+## UI-STAB-02 — Banking Presentation Separation
+
+**Status:** Complete  
+**Coverage:** `tests/test_ui_stab02_banking.py` (17 contract tests)
+
+| Contract | Protects |
+|---|---|
+| `ui/banking.py` owns extracted renderers | Presentation layer isolated from `app.py` |
+| `app.py` re-exports `_render_*` / `_banking_*` aliases | Existing wiring + test entry points unchanged |
+| POS settlement route keys unchanged | P1B navigation (`pos_settlement`, `bsi_match_kind`) |
+| P1–P4 panels present in UI module | Preview · clearing visibility · unsettled list · match failure |
+| `_render_bsi_deposit_clearing` stays in `app.py` with posting | No accounting drift into UI layer |
+| No `post_*` / `create_journal_entry` in `ui/banking.py` | UI module is presentation-only |
+| Lazy `import app` in `ui/banking.py` | Avoids circular import at module load |
+
+**Quick command:**
+
+```bash
+pytest tests/test_ui_stab02_banking.py -q
+```
+
+---
+
+## UI-STAB-01 — Shared Avatar Renderer
+
+**Status:** Complete  
+**Coverage:** `tests/test_ui_stab01_avatar.py`
+
+| Contract | Protects |
+|---|---|
+| `user_initials` / `render_user_avatar` in `ui/avatar.py` | Single initials renderer |
+| Header, login, My Account use shared helper | No duplicate avatar markup in `app.py` |
+| `.erp-user-avatar--sm/md/lg` in `theme.css` | Size tokens |
 
 ---
 

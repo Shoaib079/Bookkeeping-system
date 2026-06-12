@@ -49,13 +49,13 @@ def evaluate_pos_match_failure(
     deposit_amount: float,
     picked_sale_count: int,
     unsettled_sales_available: bool,
-    window_sales_available: bool = True,
     bank_charges_enabled: bool,
     bank_charges_account_exists: bool,
     confirm_inferred_fee: bool,
     fee_gap_needs_confirm: bool,
     import_currency: str | None,
     company_currency: str,
+    window_sales_available: bool = True,
 ) -> PosMatchFailureCheck:
     """Explain why a POS settlement may not match or post (uses P1 preview values)."""
     items: list[MatchFailureItem] = []

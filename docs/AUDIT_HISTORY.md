@@ -27,6 +27,18 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-05 — UI-STAB-02 (Banking presentation separation)
+
+**Task:** Stabilize Banking UI by separating presentation from business logic so future Banking work does not accidentally break layout, routing, or accounting behavior.
+
+**Delivered:** `ui/banking.py` — `banking_section_select`, P1 preview, P2 clearing visibility, P3 unsettled sales list, P4 match failure panel, P1B route keys + entry + focused POS settlement section. `app.py` re-exports as `_render_*` / `_banking_*` aliases; orchestration and posting remain in `app.py` + `reconciliation/*`.
+
+**Unchanged:** Posting logic · `post_deposit_clearing_match` · settlement math · journal entries · account **1150** · BANKING-UX-02 panel order and locale keys.
+
+**Tests:** `tests/test_ui_stab02_banking.py`; existing `test_banking_ux02_*` and `test_banking_desktop_b1b2.py` updated for `ui/banking` source paths.
+
+---
+
 ## 2026-06-05 — UI-STAB-01 (Shared avatar renderer)
 
 **Task:** Stabilize initials avatars across header, mobile profile, My Account, and login tiles before PROFILE-PHOTO-01.
