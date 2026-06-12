@@ -168,3 +168,16 @@ def test_section_header_html_title_only(ui_src: str):
         "rc.menu.subtitle",
     ):
         assert f'st.caption(erp._t("{subtitle_key}")' in ui_src
+
+
+def test_render_recipe_recipes_units_initialized_before_selectbox():
+    """Avoid UnboundLocalError when no ingredients/sub-recipes are available."""
+    from ui.recipe_costing import render_recipe_recipes
+
+    src = inspect.getsource(render_recipe_recipes)
+    assert "_DEFAULT_LINE_UNITS" in src
+    add_block = src.split('erp._t("rc.recipes.add_line")', 1)[1]
+    select_idx = add_block.find("options=units")
+    assign_idx = add_block.find("units =")
+    assert assign_idx != -1 and select_idx != -1
+    assert assign_idx < select_idx

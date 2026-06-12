@@ -14,6 +14,7 @@ from services import recipe_costing as rc_svc
 from ui.section import section_header_html
 
 _NEW_RECIPE_KEY = 0
+_DEFAULT_LINE_UNITS = ("each", "g", "kg", "ml", "l", "dozen")
 
 
 def _erp():
@@ -421,14 +422,22 @@ def render_recipe_recipes(session) -> None:
                 horizontal=True,
                 key="rc_add_line_kind",
             )
+            units = _DEFAULT_LINE_UNITS
+            pick = None
+            ing_opts: list[str] = []
+            sub_opts: list[str] = []
+
             if line_kind == "ingredient":
                 ing_opts, ing_map = _ingredient_options(ingredients)
                 if not ing_opts:
                     st.caption(erp._t("rc.recipes.need_ingredients"))
                 else:
-                    pick = st.selectbox(erp._t("rc.field.pick_ingredient"), ing_opts, key="rc_add_ing_pick")
+                    pick = st.selectbox(
+                        erp._t("rc.field.pick_ingredient"), ing_opts, key="rc_add_ing_pick"
+                    )
                     ing = next(i for i in ingredients if i.id == ing_map[pick])
-                    units = rc_svc.units_for_dimension(ing.base_dimension) or (ing.base_unit,)
+                    dim_units = rc_svc.units_for_dimension(ing.base_dimension)
+                    units = dim_units or (ing.base_unit,)
             else:
                 sub_opts, sub_map = _recipe_options(
                     recipes,
@@ -436,17 +445,17 @@ def render_recipe_recipes(session) -> None:
                 )
                 if not sub_opts:
                     st.caption(erp._t("rc.recipes.need_sub_recipes"))
-                    units = ("each",)
-                    pick = None
                 else:
-                    pick = st.selectbox(erp._t("rc.field.pick_sub_recipe"), sub_opts, key="rc_add_sub_pick")
+                    pick = st.selectbox(
+                        erp._t("rc.field.pick_sub_recipe"), sub_opts, key="rc_add_sub_pick"
+                    )
                     sub_id = sub_map[pick]
                     sub_detail = rc_svc.get_recipe(session, company_id, sub_id)
-                    units = (
-                        rc_svc.units_for_dimension(sub_detail.yield_dimension)
-                        if sub_detail
-                        else ("each",)
-                    )
+                    if sub_detail:
+                        dim_units = rc_svc.units_for_dimension(sub_detail.yield_dimension)
+                        units = dim_units or (sub_detail.yield_unit,)
+                    else:
+                        units = ("each",)
 
             q_col, u_col, w_col = st.columns(3)
             with q_col:
