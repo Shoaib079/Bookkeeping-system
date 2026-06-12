@@ -19,7 +19,11 @@ _STALE_WORKFLOW_PATTERNS = (
     re.compile(r"card[\s-]settlement", re.I),
     re.compile(r"card sales → bank", re.I),
     re.compile(r"kart satışı → banka", re.I),
-    re.compile(r"kart satış takası", re.I),
+    re.compile(r"(?<!Sales )card clearing", re.I),
+    re.compile(r"\bclearing sales\b", re.I),
+    re.compile(r"deposit clearing", re.I),
+    re.compile(r"\bBSI\b"),
+    re.compile(r"\btakas satış", re.I),
 )
 
 # Keys that may still mention Card Sales Clearing as the GL account name.
@@ -28,7 +32,8 @@ _GL_ACCOUNT_OK_PREFIXES = (
     "settings.banking.backfill.",
     "settings.banking.backfill_done",
     "bank.settings.card_settlement.caption",
-    "banking.import.match.pos_settlement_explainer",
+    "banking.import.section.",
+    "banking.import.match.",
     "banking.pos_preview.",
     "banking.pos_entry.",
     "banking.clearing_visibility.",

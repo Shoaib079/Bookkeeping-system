@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-05 (UI-STAB-02 complete)  
-**Full suite:** run `pytest tests/` — **1179 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
+**Last updated:** 2026-06-05 (PARTNER-STATEMENT-01 P4)  
+**Full suite:** run `pytest tests/` — **1217 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -468,6 +468,30 @@ Remaining xfails (M3/M4) are optional suppression relocations — not MOBILE-14 
 
 ---
 
+### `tests/test_partner_statement_p4.py` (27 tests) — PARTNER-STATEMENT-01 P4
+
+| Contract | Protects |
+|---|---|
+| One row per partner; values match `build_partner_statement` | P1 projection rollup |
+| Multiple partners with different activity | Multi-partner rollup |
+| Voided movements excluded | Statement integrity |
+| Profit allocation by fiscal period end-date | Period attribution |
+| AdvanceOffset shown but zero net effect | Settlement accounting |
+| Position = capital + current − advances | Core formula |
+| company_owes / partner_owes / settled status | Status labels |
+| Footer totals match row sums | Rollup math |
+| Reconciliation / outstanding advance / closed-period warnings | P1 warning alignment |
+| Inactive partner included by default; hide inactive filter | Partner filters |
+| Month preset + invalid range + empty period | Period controls |
+| Excel/CSV export rows + footer totals | Export parity |
+| PDF payload primary columns + bytes generated | PDF export |
+| P4 above single-partner statement; shared period keys | UI placement |
+| View statement sets selected partner session key | Row action |
+| EN/TR `partner.stmt.all_*` locale keys resolve | i18n |
+| `post_partner_movement` / `allocate_profit_to_partners` unchanged | No posting drift |
+
+---
+
 ### `tests/test_partner_statement_p3.py` (9 tests) — PARTNER-STATEMENT-01 P3
 
 | Contract | Protects |
@@ -532,6 +556,28 @@ Remaining xfails (M3/M4) are optional suppression relocations — not MOBILE-14 
 | Summary labels translate (not raw `partner.summary_*` keys) | i18n regression |
 | Summary labels in MESSAGES + TRANSACTIONAL catalogs | Reliable lookup |
 | `post_partner_movement` unchanged | No posting drift |
+
+---
+
+## BANK-03 — Banking Wording Verification
+
+**Status:** Verified (2026-06-05)  
+**Coverage:** `tests/test_bank03_wording.py` (13 contract tests) + stale-wording guards in `tests/test_banking_desktop_b1b2.py`
+
+| Contract | Protects |
+|---|---|
+| Canonical EN/TR labels (POS / Card Settlement, Settlement preview, Match check, Card sales deposit) | Wording consistency |
+| No BSI / card clearing / clearing sales / deposit clearing in banking locales | Retired jargon |
+| All `bank.*` / `banking.*` keys resolve via `t()` EN/TR | No raw locale keys |
+| MESSAGES duplicates match TRANSACTIONAL for banking keys | Reliable lookup |
+| `render_banking` uses `_st_page_title(NAV_BANKING)` | Localized page header |
+| Banking chips use locale keys (`bank.section.*`, `banking.pos_entry.title`) | Navigation labels |
+
+**Quick command:**
+
+```bash
+pytest tests/test_bank03_wording.py tests/test_banking_desktop_b1b2.py -q
+```
 
 ---
 

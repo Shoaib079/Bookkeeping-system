@@ -287,7 +287,7 @@ class TestLocales:
             "Card Sales Clearing (1150)"
         )
         assert TRANSACTIONAL_TR["banking.clearing_visibility.section_title"] == (
-            "Kart Satışları Bekleyen Tahsilatlar (1150)"
+            "Kart Satış Takası (1150)"
         )
         assert MESSAGES["en"]["banking.clearing_visibility.section_title"] == (
             TRANSACTIONAL_EN["banking.clearing_visibility.section_title"]

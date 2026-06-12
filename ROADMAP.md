@@ -1,7 +1,7 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** 2026-06-05 (PARTNER-STATEMENT-01 P1 shipped)  
+**Last updated:** 2026-06-05 (PARTNER-STATEMENT-01 P4 shipped)  
 **Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
@@ -20,21 +20,21 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | Company creation (14D-D) | ✅ Complete |
 | Sidebar uses company role (nav fix) | ✅ Complete |
 | Simplified Company Setup UI | ✅ Complete (Expert policies stub) |
-| Automated tests | ✅ **1074 passing, 2 xfailed** (run `pytest tests/` on host) |
+| Automated tests | ✅ **1217 passing, 2 xfailed** (run `pytest tests/` on host) |
 | Member management (14D-E) | ✅ Complete |
 | Member roster polish (14D-F) | ✅ Complete |
 | Setup wizard v1 (14D-G) | ✅ Complete — **superseded by SETUP-01** |
 | SETUP-01 Company Creation Wizard | ✅ **Built and tested** (reconciled 2026-06-10) — `registry/setup01_wizard.py` + `ui/setup01_wizard.py` (`render_setup01_wizard`) + wizard CSS/locales; tests: `setup01_wizard_b1/b2/b3`, `setup01_i18n`, `setup01_error_messages`, `setup01_entry_regression` |
 | SETUP-02 Setup Summary | 📋 Medium — planned |
 | SETUP-03 Configuration Health Check | 📋 Medium — planned |
-| BANK-03 POS Settlement wording | ✅ Shipped (BANKING-DESKTOP-01 B2 — Banking Settings + import match locales EN/TR) |
+| BANK-03 POS Settlement wording | ✅ **Verified** (2026-06-05 — locales EN/TR; `tests/test_bank03_wording.py`) |
 | BANKING-POS-WORKFLOW-01 P1+P2 | ✅ Shipped — Other Income Sales Revenue guardrails + POS Settlement explainer (no posting changes) |
 | **BANKING-UX-02** — POS Settlement Transparency | ✅ **Complete** — P1 preview · P1B focused entry · P2 clearing visibility · P3 unsettled list · P4 match check (no posting changes) |
 | PARTNER-UX-01 P1–P3 | ✅ Shipped — Partner movement explanations, advance warnings, Summary plain labels (no posting changes) |
 | PARTNER-STATEMENT-01 P1 | ✅ Shipped — read-only Partner Statement tab (month/quarter/year/custom); profit by fiscal period end-date; no posting changes |
 | PARTNER-STATEMENT-01 P2 | ✅ Shipped — detail lines, running position, Excel export |
 | PARTNER-STATEMENT-01 P3 | ✅ Shipped — PDF export + print-friendly report UI |
-| PARTNER-STATEMENT-01 P4 | 📋 Planned — all-partners settlement summary |
+| PARTNER-STATEMENT-01 P4 | ✅ Shipped — all-partners settlement summary (P1 projection rollup; Excel/CSV/PDF export) |
 | Localization EN/TR (15) | ✅ Complete |
 | DEVELOPMENT_MODE | ✅ **Resolved by DEV-AUTH-01** — env-gated dev mode: `DEV_MODE = os.getenv("ERP_DEV_MODE", "0") == "1"` (default off). **Production checklist: must not run with `ERP_DEV_MODE=1`** |
 | Shell / mobile chrome (Phase A) | ✅ Stabilized — fixed header, 968px breakpoint, People hub wired |
@@ -84,7 +84,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 
 **Next recommended active item:** operational friction log (**OBS-01**) during daily use — build only what causes real bookkeeping friction.
 
-**Short verification passes pending:** **BANK-03** (Banking-page rename) · **CHART-01** (helper call sites / chart migration state).
+**Short verification passes pending:** **CHART-01** (helper call sites / chart migration state).
 
 (SETUP-01 reconciled as built and tested — removed from active list, 2026-06-10.)
 
@@ -191,15 +191,15 @@ Advisory warnings only (no forced changes). Examples:
 
 ---
 
-### BANK-03 — Wording update ✅ **Shipped**
+### BANK-03 — Wording update ✅ **Verified**
 
-Rename user-facing **“Card Settlement”** → **“POS Settlement”**.
+Rename user-facing **“Card Settlement”** → **“POS Settlement”** (settings toggle) and **“POS / Card Settlement”** (focused workflow chip).
 
-Keep **“Card Sales Clearing”** for COA / account names only.
+Keep **“Card Sales Clearing”** for COA / account names only. Retire jargon: **card clearing**, **clearing sales**, **deposit clearing**, **BSI** in user-facing copy.
 
 **Purpose:** Reduce confusion with Company Credit Card (KK).
 
-**Status:** Shipped in BANKING-DESKTOP-01 B2 (`bank.settings.card_settlement.section`, `settings.banking.card_settlement_enabled`, import match hint, backfill caption — EN/TR).
+**Status:** Verified 2026-06-05 after BANKING-UX-02 + UI-STAB-02 — locale sweep EN/TR; Banking page title uses `NAV_BANKING`; contract tests in `tests/test_bank03_wording.py`.
 
 ---
 

@@ -242,3 +242,117 @@ def generate_partner_statement_pdf(payload: dict) -> bytes:
     doc.build(elements)
     output.seek(0)
     return output.read()
+
+
+def generate_all_partners_settlement_pdf(payload: dict) -> bytes:
+    """Consolidated all-partners settlement summary PDF (P4)."""
+    output = BytesIO()
+    W = A4[0] - 40 * mm
+    accent_hex = "#0f766e"
+    h1, h2, body, muted_s, right_body, right_bold = _stmt_common_styles(accent_hex)
+    footer_style = ParagraphStyle(
+        "apfooter", fontSize=7, fontName="Helvetica",
+        textColor=colors.HexColor("#9ca3af"),
+    )
+
+    company_name = str(payload.get("company_name", ""))
+    currency = str(payload.get("currency", ""))
+    from_date = payload.get("from_date")
+    to_date = payload.get("to_date")
+    generated_date = payload.get("generated_date", datetime.date.today())
+    table_rows = payload.get("table_rows") or []
+    footer = payload.get("footer") or {}
+
+    header_tbl = Table(
+        [[Paragraph(company_name, h1), Paragraph("ALL PARTNERS SETTLEMENT", h1)]],
+        colWidths=[W * 0.55, W * 0.45],
+        style=TableStyle([
+            ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ]),
+    )
+
+    data = [[
+        Paragraph("Partner", h2),
+        Paragraph("Share %", h2),
+        Paragraph("Opening", h2),
+        Paragraph("Net Δ", h2),
+        Paragraph("Closing", h2),
+        Paragraph("Status", h2),
+        Paragraph("Advances", h2),
+        Paragraph("Warn", h2),
+    ]]
+    for row in table_rows:
+        status = str(row.get("status", ""))
+        amt = float(row.get("status_amount", 0) or 0)
+        status_label = status
+        if status == "company_owes":
+            status_label = f"Co owes {amt:,.2f}"
+        elif status == "partner_owes":
+            status_label = f"Pt owes {amt:,.2f}"
+        elif status == "settled":
+            status_label = "Settled"
+        data.append([
+            Paragraph(str(row.get("partner", "")), body),
+            Paragraph(_fmt_amt(row.get("share_pct", "")), right_body),
+            Paragraph(_fmt_amt(row.get("opening", "")), right_body),
+            Paragraph(_fmt_amt(row.get("net_change", "")), right_body),
+            Paragraph(_fmt_amt(row.get("closing", "")), right_body),
+            Paragraph(status_label, body),
+            Paragraph(_fmt_amt(row.get("advances", "")), right_body),
+            Paragraph(str(row.get("warnings", "—")), body),
+        ])
+
+    data.append([
+        Paragraph("<b>Totals</b>", body),
+        Paragraph("", body),
+        Paragraph(_fmt_amt(footer.get("opening", "")), right_bold),
+        Paragraph(_fmt_amt(footer.get("net_change", "")), right_bold),
+        Paragraph(_fmt_amt(footer.get("closing", "")), right_bold),
+        Paragraph(str(footer.get("status_summary", "")), body),
+        Paragraph(_fmt_amt(footer.get("advances", "")), right_bold),
+        Paragraph("", body),
+    ])
+
+    col_w = [W * 0.22, W * 0.08, W * 0.11, W * 0.11, W * 0.11, W * 0.17, W * 0.11, W * 0.09]
+    tbl = Table(data, colWidths=col_w, repeatRows=1)
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#ecfdf5")),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.5, colors.HexColor("#6ee7b7")),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#e5e7eb")),
+        ("ALIGN", (1, 0), (-2, -1), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#f0fdf4")),
+    ]))
+
+    elements = [
+        header_tbl,
+        Spacer(1, 4 * mm),
+        HRFlowable(width=W, thickness=1.5, color=colors.HexColor(accent_hex)),
+        Spacer(1, 4 * mm),
+        Paragraph(
+            f"Period: {_fmt_date(from_date)} – {_fmt_date(to_date)} · "
+            f"Generated {_fmt_date(generated_date)} · {currency}",
+            muted_s,
+        ),
+        Spacer(1, 4 * mm),
+        tbl,
+        Spacer(1, 4 * mm),
+        HRFlowable(width=W, thickness=0.5, color=colors.HexColor("#e5e7eb")),
+        Spacer(1, 2 * mm),
+        Paragraph(
+            f"Generated on {_fmt_date(generated_date)}. This document is for reference only.",
+            footer_style,
+        ),
+    ]
+
+    doc = SimpleDocTemplate(
+        output, pagesize=A4,
+        leftMargin=16 * mm, rightMargin=16 * mm,
+        topMargin=18 * mm, bottomMargin=18 * mm,
+    )
+    doc.build(elements)
+    output.seek(0)
+    return output.read()

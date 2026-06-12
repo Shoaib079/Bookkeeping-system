@@ -8,6 +8,26 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-05 — PARTNER-STATEMENT-01 P4 (all-partners settlement summary)
+
+**Task:** Period-scoped all-partners settlement board so owners can review every partner’s opening position, activity, closing position, settlement status, outstanding advances, and warnings in one view.
+
+**P4 deliverables:**
+- `build_all_partners_settlement_summary()` — one `build_partner_statement()` call per partner; no parallel accounting math.
+- `AllPartnersSettlementRow` / `Footer` / `Summary` dataclasses; net change uses P1 semantics (AdvanceOffset excluded from net change).
+- UI: All Partners Settlement Summary section **above** single-partner P1–P3 panel on Partner Statement tab; shared period controls; KPI cards; filters (hide inactive / hide settled); “View statement” row action.
+- Exports: Excel, CSV, PDF via `all_partners_settlement_to_export_df()` + `generate_all_partners_settlement_pdf()`; filename stem `all_partners_settlement_{from}_{to}`.
+- Caption distinguishes P4 from Tab 4 Summary (period position vs point-in-time balances without advances netted).
+- Locales: `partner.stmt.all_*` keys EN/TR.
+
+**Unchanged:** `post_partner_movement`, `allocate_profit_to_partners`, JE logic, account structure, Balance Sheet, P1/P2/P3 formulas, profit allocation inclusion rule.
+
+**Files:** `registry/partner_statement.py`, `registry/partner_statement_pdf.py`, `app.py`, `registry/locales/transactional.py`, `tests/test_partner_statement_p4.py`.
+
+**Tests:** 27 new tests; full suite **1217 passed, 2 xfailed**.
+
+---
+
 ## 2026-06-05 — BANKING-UX-02 completed (POS Settlement Transparency P1–P4)
 
 **Status:** Complete — all phases shipped.
@@ -24,6 +44,18 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 **Key files:** `reconciliation/pos_settlement_preview.py`, `reconciliation/clearing_visibility.py`, `reconciliation/unsettled_card_sales_list.py`, `reconciliation/pos_match_failure.py`, `app.py`, `registry/locales/transactional.py`, `tests/test_banking_ux02_p1.py` through `p4.py`.
 
 **Docs:** `ROADMAP.md`, `docs/TEST_COVERAGE_MAP.md`, `docs/COMPLETED_FEATURES.md`.
+
+---
+
+## 2026-06-05 — BANK-03 verification pass (Banking wording)
+
+**Task:** Verify Banking navigation labels, section titles, and POS Settlement wording after BANKING-UX-02 + UI-STAB-02.
+
+**Findings fixed:** Retired user-facing jargon (`card clearing sales`, `clearing sales`, generic `takas` labels) in import match copy EN/TR; aligned P2 visibility labels with **Card Sales Clearing** account name; Banking page title now uses `NAV_BANKING` for localized header; TR chip title aligned to **POS / Kart Mutabakatı**.
+
+**Unchanged:** Posting logic · routes · account **1150** · internal session keys (`bsi_*`).
+
+**Tests:** `tests/test_bank03_wording.py`; strengthened stale-wording patterns in `tests/test_banking_desktop_b1b2.py`.
 
 ---
 

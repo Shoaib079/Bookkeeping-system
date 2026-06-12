@@ -650,3 +650,296 @@ def build_partner_statement(
         reconciliation_ok=recon_ok,
         detail_lines=detail_lines,
     )
+
+
+@dataclass
+class AllPartnersSettlementRow:
+    partner_id: int
+    partner_name: str
+    partner_is_active: bool
+    profit_share_pct: float
+    opening_position: float
+    capital_contributions: float
+    profit_allocated: float
+    repayments: float
+    drawings: float
+    salary: float
+    advances_taken: float
+    loss_allocated: float
+    advance_offsets: float
+    net_position_change: float
+    closing_position: float
+    settlement_status: str
+    status_amount: float
+    closing_advances: float
+    warning_flags: list[str]
+    reconciliation_ok: bool
+
+
+@dataclass
+class AllPartnersSettlementFooter:
+    total_opening_position: float
+    total_capital_contributions: float
+    total_profit_allocated: float
+    total_repayments: float
+    total_drawings: float
+    total_salary: float
+    total_advances_taken: float
+    total_loss_allocated: float
+    total_advance_offsets: float
+    total_net_position_change: float
+    total_closing_position: float
+    total_outstanding_advances: float
+    count_settled: int
+    count_company_owes: int
+    count_partner_owes: int
+    count_with_warnings: int
+
+
+@dataclass
+class AllPartnersSettlementSummary:
+    from_date: datetime.date
+    to_date: datetime.date
+    rows: list[AllPartnersSettlementRow]
+    footer: AllPartnersSettlementFooter
+    statements_by_partner_id: dict[int, PartnerStatementData]
+
+
+def _warning_flags_from_statement(stmt: PartnerStatementData) -> list[str]:
+    flags: list[str] = []
+    if not stmt.reconciliation_ok:
+        flags.append("reconciliation")
+    if stmt.closing_advances > _POSITION_TOLERANCE:
+        flags.append("outstanding_advance")
+    for warn in stmt.warnings:
+        if warn.key == "partner.stmt.warn_closed_period_no_alloc":
+            flags.append("closed_period_no_alloc")
+            break
+    return flags
+
+
+def _is_fully_settled_statement(stmt: PartnerStatementData) -> bool:
+    if abs(stmt.closing_position) > _POSITION_TOLERANCE:
+        return False
+    if abs(stmt.net_position_change) > _POSITION_TOLERANCE:
+        return False
+    activity = (
+        stmt.capital_contributions
+        + stmt.profit_allocated
+        + stmt.repayments
+        + stmt.drawings
+        + stmt.salary
+        + stmt.advances_taken
+        + stmt.loss_allocated
+        + stmt.advance_offsets
+    )
+    return abs(activity) <= _POSITION_TOLERANCE
+
+
+def _row_from_partner_statement(
+    stmt: PartnerStatementData, *, profit_share_pct: float
+) -> AllPartnersSettlementRow:
+    return AllPartnersSettlementRow(
+        partner_id=stmt.partner_id,
+        partner_name=stmt.partner_name,
+        partner_is_active=stmt.partner_is_active,
+        profit_share_pct=profit_share_pct,
+        opening_position=stmt.opening_position,
+        capital_contributions=stmt.capital_contributions,
+        profit_allocated=stmt.profit_allocated,
+        repayments=stmt.repayments,
+        drawings=stmt.drawings,
+        salary=stmt.salary,
+        advances_taken=stmt.advances_taken,
+        loss_allocated=stmt.loss_allocated,
+        advance_offsets=stmt.advance_offsets,
+        net_position_change=stmt.net_position_change,
+        closing_position=stmt.closing_position,
+        settlement_status=stmt.status,
+        status_amount=stmt.status_amount,
+        closing_advances=stmt.closing_advances,
+        warning_flags=_warning_flags_from_statement(stmt),
+        reconciliation_ok=stmt.reconciliation_ok,
+    )
+
+
+def _footer_from_rows(rows: list[AllPartnersSettlementRow]) -> AllPartnersSettlementFooter:
+    return AllPartnersSettlementFooter(
+        total_opening_position=round(sum(r.opening_position for r in rows), 2),
+        total_capital_contributions=round(
+            sum(r.capital_contributions for r in rows), 2
+        ),
+        total_profit_allocated=round(sum(r.profit_allocated for r in rows), 2),
+        total_repayments=round(sum(r.repayments for r in rows), 2),
+        total_drawings=round(sum(r.drawings for r in rows), 2),
+        total_salary=round(sum(r.salary for r in rows), 2),
+        total_advances_taken=round(sum(r.advances_taken for r in rows), 2),
+        total_loss_allocated=round(sum(r.loss_allocated for r in rows), 2),
+        total_advance_offsets=round(sum(r.advance_offsets for r in rows), 2),
+        total_net_position_change=round(sum(r.net_position_change for r in rows), 2),
+        total_closing_position=round(sum(r.closing_position for r in rows), 2),
+        total_outstanding_advances=round(sum(r.closing_advances for r in rows), 2),
+        count_settled=sum(1 for r in rows if r.settlement_status == "settled"),
+        count_company_owes=sum(
+            1 for r in rows if r.settlement_status == "company_owes"
+        ),
+        count_partner_owes=sum(
+            1 for r in rows if r.settlement_status == "partner_owes"
+        ),
+        count_with_warnings=sum(1 for r in rows if r.warning_flags),
+    )
+
+
+def build_all_partners_settlement_summary(
+    session,
+    from_date: datetime.date,
+    to_date: datetime.date,
+    balance_for_period: BalanceForPeriodFn,
+    *,
+    include_inactive: bool = True,
+    hide_settled: bool = False,
+) -> AllPartnersSettlementSummary | None:
+    """P4 rollup — one build_partner_statement call per partner (no parallel math)."""
+    partners = (
+        session.query(Partner).order_by(Partner.is_active.desc(), Partner.name, Partner.id).all()
+    )
+    if not partners:
+        return None
+
+    statements_by_partner_id: dict[int, PartnerStatementData] = {}
+    all_rows: list[AllPartnersSettlementRow] = []
+
+    for partner in partners:
+        stmt = build_partner_statement(
+            session,
+            partner.id,
+            from_date,
+            to_date,
+            balance_for_period,
+        )
+        if not stmt:
+            continue
+        statements_by_partner_id[partner.id] = stmt
+        if not include_inactive and not partner.is_active:
+            continue
+        if hide_settled and _is_fully_settled_statement(stmt):
+            continue
+        all_rows.append(
+            _row_from_partner_statement(stmt, profit_share_pct=partner.profit_share_pct)
+        )
+
+    footer = _footer_from_rows(all_rows)
+    return AllPartnersSettlementSummary(
+        from_date=from_date,
+        to_date=to_date,
+        rows=all_rows,
+        footer=footer,
+        statements_by_partner_id=statements_by_partner_id,
+    )
+
+
+def all_partners_settlement_export_rows(
+    summary: AllPartnersSettlementSummary,
+) -> list[dict[str, object]]:
+    """Stable English keys for Excel/CSV export (P4)."""
+    rows: list[dict[str, object]] = []
+    for r in summary.rows:
+        rows.append(
+            {
+                "Partner": r.partner_name,
+                "Active": "Yes" if r.partner_is_active else "No",
+                "Share %": r.profit_share_pct,
+                "Opening position": r.opening_position,
+                "Capital contributions": r.capital_contributions,
+                "Profit allocated": r.profit_allocated,
+                "Repayments": r.repayments,
+                "Drawings": r.drawings,
+                "Salary / takeout": r.salary,
+                "Advances taken": r.advances_taken,
+                "Loss allocated": r.loss_allocated,
+                "Advance offsets": r.advance_offsets,
+                "Net position change": r.net_position_change,
+                "Closing position": r.closing_position,
+                "Settlement status": r.settlement_status,
+                "Status amount": r.status_amount,
+                "Outstanding advances": r.closing_advances,
+                "Warnings": ", ".join(r.warning_flags) if r.warning_flags else "",
+            }
+        )
+    f = summary.footer
+    rows.append(
+        {
+            "Partner": "Totals",
+            "Active": "",
+            "Share %": "",
+            "Opening position": f.total_opening_position,
+            "Capital contributions": f.total_capital_contributions,
+            "Profit allocated": f.total_profit_allocated,
+            "Repayments": f.total_repayments,
+            "Drawings": f.total_drawings,
+            "Salary / takeout": f.total_salary,
+            "Advances taken": f.total_advances_taken,
+            "Loss allocated": f.total_loss_allocated,
+            "Advance offsets": f.total_advance_offsets,
+            "Net position change": f.total_net_position_change,
+            "Closing position": f.total_closing_position,
+            "Settlement status": (
+                f"{f.count_settled} settled · {f.count_company_owes} company owes · "
+                f"{f.count_partner_owes} partner owes"
+            ),
+            "Status amount": "",
+            "Outstanding advances": f.total_outstanding_advances,
+            "Warnings": f"{f.count_with_warnings} with warnings",
+        }
+    )
+    return rows
+
+
+def all_partners_settlement_to_export_df(
+    summary: AllPartnersSettlementSummary,
+) -> pd.DataFrame:
+    return pd.DataFrame(all_partners_settlement_export_rows(summary))
+
+
+def all_partners_settlement_pdf_payload(
+    summary: AllPartnersSettlementSummary,
+    *,
+    company_name: str,
+    currency: str,
+    generated_date: datetime.date | None = None,
+) -> dict[str, object]:
+    """Structured payload for consolidated all-partners PDF (P4)."""
+    table_rows = []
+    for r in summary.rows:
+        table_rows.append(
+            {
+                "partner": r.partner_name,
+                "share_pct": r.profit_share_pct,
+                "opening": r.opening_position,
+                "net_change": r.net_position_change,
+                "closing": r.closing_position,
+                "status": r.settlement_status,
+                "status_amount": r.status_amount,
+                "advances": r.closing_advances,
+                "warnings": ", ".join(r.warning_flags) if r.warning_flags else "—",
+            }
+        )
+    f = summary.footer
+    return {
+        "company_name": company_name,
+        "currency": currency,
+        "from_date": summary.from_date,
+        "to_date": summary.to_date,
+        "generated_date": generated_date or datetime.date.today(),
+        "table_rows": table_rows,
+        "footer": {
+            "opening": f.total_opening_position,
+            "net_change": f.total_net_position_change,
+            "closing": f.total_closing_position,
+            "advances": f.total_outstanding_advances,
+            "status_summary": (
+                f"{f.count_settled} settled · {f.count_company_owes} company owes · "
+                f"{f.count_partner_owes} partner owes"
+            ),
+        },
+    }

@@ -25,7 +25,10 @@ from exports import (
     generate_customer_statement_pdf,
     generate_vendor_statement_pdf,
 )
-from registry.partner_statement_pdf import generate_partner_statement_pdf
+from registry.partner_statement_pdf import (
+    generate_all_partners_settlement_pdf,
+    generate_partner_statement_pdf,
+)
 from registry.icon_svg import (
     TXH_ACTION_DUPLICATE,
     TXH_ACTION_EDIT,
@@ -100,6 +103,9 @@ from registry.member_roster import (
     roster_to_dataframe,
 )
 from registry.partner_statement import (
+    all_partners_settlement_pdf_payload,
+    all_partners_settlement_to_export_df,
+    build_all_partners_settlement_summary,
     build_partner_statement,
     partner_statement_pdf_payload,
     partner_statement_preset_range,
@@ -7079,8 +7085,267 @@ def _partner_stmt_detail_display_df(stmt, currency: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _partner_stmt_all_warning_text(flags: list[str]) -> str:
+    labels = {
+        "reconciliation": _t("partner.stmt.all_warn_reconciliation"),
+        "outstanding_advance": _t("partner.stmt.all_warn_outstanding_advance"),
+        "closed_period_no_alloc": _t("partner.stmt.all_warn_closed_period_no_alloc"),
+    }
+    return " · ".join(labels[f] for f in flags if f in labels) or "—"
+
+
+def _partner_stmt_all_status_cell(row, currency: str) -> str:
+    if row.settlement_status == "company_owes":
+        return _t(
+            "partner.stmt.status_company_owes",
+            currency=currency,
+            amount=row.status_amount,
+        )
+    if row.settlement_status == "partner_owes":
+        return _t(
+            "partner.stmt.status_partner_owes",
+            currency=currency,
+            amount=row.status_amount,
+        )
+    return _t("partner.stmt.status_settled")
+
+
+def _render_all_partners_settlement_exports(
+    summary,
+    *,
+    currency: str,
+    company_name: str,
+    from_date: datetime.date,
+    to_date: datetime.date,
+) -> None:
+    export_df = all_partners_settlement_to_export_df(summary)
+    if export_df.empty:
+        return
+    stem = f"all_partners_settlement_{from_date}_{to_date}"
+    sheet = "All partners summary"[:31]
+    excel_data = df_to_excel_bytes(export_df, sheet_name=sheet)
+    csv_data = export_df.to_csv(index=False).encode("utf-8")
+    pdf_payload = all_partners_settlement_pdf_payload(
+        summary,
+        company_name=company_name,
+        currency=currency,
+    )
+    pdf_data = generate_all_partners_settlement_pdf(pdf_payload)
+    export_label = _t(
+        "partner.stmt.all_export_title",
+        from_date=from_date.strftime("%Y-%m-%d"),
+        to_date=to_date.strftime("%Y-%m-%d"),
+    )
+    safe = export_label.replace(" ", "_").replace("/", "_").replace("—", "-")[:48]
+    with st.popover(f"⬇️ {_t('export.download')}", key="partner_stmt_all_export_pop"):
+        st.download_button(
+            label=f"📊 {_t('export.excel')}",
+            data=excel_data,
+            file_name=f"{stem}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key=f"dl_pstmt_all_xlsx_{safe}",
+        )
+        st.download_button(
+            label=f"🗒️ {_t('export.csv')}",
+            data=csv_data,
+            file_name=f"{stem}.csv",
+            mime="text/csv",
+            key=f"dl_pstmt_all_csv_{safe}",
+        )
+        st.download_button(
+            label=f"📄 {_t('partner.stmt.all_export_pdf')}",
+            data=pdf_data,
+            file_name=f"{stem}.pdf",
+            mime="application/pdf",
+            key=f"dl_pstmt_all_pdf_{safe}",
+        )
+
+
+def _render_all_partners_settlement_summary(
+    summary,
+    all_partners: list,
+    *,
+    currency: str,
+    company_name: str,
+    from_date: datetime.date,
+    to_date: datetime.date,
+) -> None:
+    """P4 — all-partners settlement board above single-partner statement."""
+    st.markdown(
+        financial_section_header_html(
+            _t("partner.stmt.all_section_title"), accent="info"
+        ),
+        unsafe_allow_html=True,
+    )
+    st.caption(_t("partner.stmt.all_tab4_note"))
+
+    f = summary.footer
+    total_company_owes = round(
+        sum(
+            r.status_amount
+            for r in summary.rows
+            if r.settlement_status == "company_owes"
+        ),
+        2,
+    )
+    total_partner_owes = round(
+        sum(
+            r.status_amount
+            for r in summary.rows
+            if r.settlement_status == "partner_owes"
+        ),
+        2,
+    )
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric(_t("partner.stmt.all_kpi_company_owes"), f"{currency} {total_company_owes:,.2f}")
+    k2.metric(_t("partner.stmt.all_kpi_partner_owes"), f"{currency} {total_partner_owes:,.2f}")
+    k3.metric(
+        _t("partner.stmt.all_kpi_net_exposure"),
+        f"{currency} {f.total_closing_position:,.2f}",
+    )
+    k4.metric(
+        _t("partner.stmt.all_kpi_status_counts"),
+        f"{f.count_settled} / {f.count_company_owes} / {f.count_partner_owes}",
+    )
+    if f.count_with_warnings:
+        st.caption(_t("partner.stmt.all_warn_count", count=f.count_with_warnings))
+
+    show_activity = st.checkbox(
+        _t("partner.stmt.all_show_activity"),
+        value=False,
+        key="partner_stmt_all_show_activity",
+    )
+
+    table_rows = []
+    for row in summary.rows:
+        partner_label = row.partner_name
+        if not row.partner_is_active:
+            partner_label += f" ({_t('partner.inactive_tag')})"
+        entry = {
+            _t("partner.stmt.all_col_partner"): partner_label,
+            _t("partner.stmt.all_col_share"): f"{row.profit_share_pct:.1f}%",
+            _t("partner.stmt.all_col_opening"): f"{currency} {row.opening_position:,.2f}",
+            _t("partner.stmt.all_col_net_change"): f"{currency} {row.net_position_change:,.2f}",
+            _t("partner.stmt.all_col_closing"): f"{currency} {row.closing_position:,.2f}",
+            _t("partner.stmt.all_col_status"): _partner_stmt_all_status_cell(row, currency),
+            _t("partner.stmt.all_col_status_amount"): (
+                f"{currency} {row.status_amount:,.2f}"
+                if row.settlement_status != "settled"
+                else "—"
+            ),
+            _t("partner.stmt.all_col_advances"): f"{currency} {row.closing_advances:,.2f}",
+            _t("partner.stmt.all_col_warnings"): _partner_stmt_all_warning_text(
+                row.warning_flags
+            ),
+        }
+        if show_activity:
+            entry.update(
+                {
+                    _t("partner.stmt.all_col_capital"): (
+                        f"{currency} {row.capital_contributions:,.2f}"
+                    ),
+                    _t("partner.stmt.all_col_profit"): (
+                        f"{currency} {row.profit_allocated:,.2f}"
+                    ),
+                    _t("partner.stmt.all_col_repayments"): (
+                        f"{currency} {row.repayments:,.2f}"
+                    ),
+                    _t("partner.stmt.all_col_drawings"): (
+                        f"{currency} {row.drawings:,.2f}"
+                    ),
+                    _t("partner.stmt.all_col_salary"): f"{currency} {row.salary:,.2f}",
+                    _t("partner.stmt.all_col_advances_taken"): (
+                        f"{currency} {row.advances_taken:,.2f}"
+                    ),
+                    _t("partner.stmt.all_col_loss"): (
+                        f"{currency} {row.loss_allocated:,.2f}"
+                    ),
+                    _t("partner.stmt.all_col_offsets"): (
+                        f"{currency} {row.advance_offsets:,.2f}"
+                    ),
+                }
+            )
+        table_rows.append((row.partner_id, entry))
+
+    if table_rows:
+        _render_readable_df(pd.DataFrame([e for _, e in table_rows]))
+    else:
+        st.info(_t("partner.stmt.no_partners"))
+
+    totals_row = {
+        _t("partner.stmt.all_col_partner"): _t("partner.stmt.all_totals_label"),
+        _t("partner.stmt.all_col_share"): "—",
+        _t("partner.stmt.all_col_opening"): f"{currency} {f.total_opening_position:,.2f}",
+        _t("partner.stmt.all_col_net_change"): (
+            f"{currency} {f.total_net_position_change:,.2f}"
+        ),
+        _t("partner.stmt.all_col_closing"): f"{currency} {f.total_closing_position:,.2f}",
+        _t("partner.stmt.all_col_status"): _t(
+            "partner.stmt.all_status_summary",
+            settled=f.count_settled,
+            company_owes=f.count_company_owes,
+            partner_owes=f.count_partner_owes,
+        ),
+        _t("partner.stmt.all_col_status_amount"): "—",
+        _t("partner.stmt.all_col_advances"): (
+            f"{currency} {f.total_outstanding_advances:,.2f}"
+        ),
+        _t("partner.stmt.all_col_warnings"): (
+            _t("partner.stmt.all_warn_count", count=f.count_with_warnings)
+            if f.count_with_warnings
+            else "—"
+        ),
+    }
+    if show_activity:
+        totals_row.update(
+            {
+                _t("partner.stmt.all_col_capital"): (
+                    f"{currency} {f.total_capital_contributions:,.2f}"
+                ),
+                _t("partner.stmt.all_col_profit"): (
+                    f"{currency} {f.total_profit_allocated:,.2f}"
+                ),
+                _t("partner.stmt.all_col_repayments"): (
+                    f"{currency} {f.total_repayments:,.2f}"
+                ),
+                _t("partner.stmt.all_col_drawings"): (
+                    f"{currency} {f.total_drawings:,.2f}"
+                ),
+                _t("partner.stmt.all_col_salary"): f"{currency} {f.total_salary:,.2f}",
+                _t("partner.stmt.all_col_advances_taken"): (
+                    f"{currency} {f.total_advances_taken:,.2f}"
+                ),
+                _t("partner.stmt.all_col_loss"): (
+                    f"{currency} {f.total_loss_allocated:,.2f}"
+                ),
+                _t("partner.stmt.all_col_offsets"): (
+                    f"{currency} {f.total_advance_offsets:,.2f}"
+                ),
+            }
+        )
+    _render_readable_df(pd.DataFrame([totals_row]))
+
+    st.markdown('<div class="erp-partner-stmt-no-print">', unsafe_allow_html=True)
+    _render_all_partners_settlement_exports(
+        summary,
+        currency=currency,
+        company_name=company_name,
+        from_date=from_date,
+        to_date=to_date,
+    )
+    for row in summary.rows:
+        partner_obj = next((p for p in all_partners if p.id == row.partner_id), None)
+        if partner_obj and st.button(
+            f"{_t('partner.stmt.all_view_statement')} — {row.partner_name}",
+            key=f"partner_stmt_view_{row.partner_id}",
+        ):
+            st.session_state["partner_stmt_partner"] = partner_obj
+            st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
 def _render_partner_statement(session, currency: str, today: datetime.date) -> None:
-    """Read-only partner settlement statement (PARTNER-STATEMENT-01 P1–P3)."""
+    """Read-only partner settlement statement (PARTNER-STATEMENT-01 P1–P4)."""
     all_partners = cq(session, Partner).order_by(Partner.id).all()
     if not all_partners:
         st.info(_t("partner.stmt.no_partners"))
@@ -7102,7 +7367,7 @@ def _render_partner_statement(session, currency: str, today: datetime.date) -> N
 
     st.markdown('<div class="erp-partner-stmt-report">', unsafe_allow_html=True)
 
-    fc1, fc2, fc3, fc4 = st.columns([2, 2, 2, 2])
+    fc1, fc2, fc3 = st.columns([2, 2, 2])
     st.markdown('<div class="erp-partner-stmt-no-print">', unsafe_allow_html=True)
     with fc1:
         preset = st.selectbox(
@@ -7113,22 +7378,12 @@ def _render_partner_statement(session, currency: str, today: datetime.date) -> N
         )
     preset_from, preset_to = partner_statement_preset_range(preset, today)
     with fc2:
-        stmt_partner = st.selectbox(
-            _t("partner.stmt.partner_label"),
-            all_partners,
-            format_func=lambda p: (
-                f"{p.name}"
-                + (f" ({_t('partner.inactive_tag')})" if not p.is_active else "")
-            ),
-            key="partner_stmt_partner",
-        )
-    with fc3:
         from_date = st.date_input(
             _t("partner.stmt.from_date"),
             value=preset_from if preset_from else default_from,
             key="partner_stmt_from",
         )
-    with fc4:
+    with fc3:
         to_date = st.date_input(
             _t("partner.stmt.to_date"),
             value=preset_to if preset_to else default_to,
@@ -7142,13 +7397,70 @@ def _render_partner_statement(session, currency: str, today: datetime.date) -> N
         st.markdown("</div>", unsafe_allow_html=True)
         return
 
-    stmt = build_partner_statement(
+    f1, f2 = st.columns(2)
+    with f1:
+        hide_inactive = st.checkbox(
+            _t("partner.stmt.all_hide_inactive"),
+            value=False,
+            key="partner_stmt_all_hide_inactive",
+        )
+    with f2:
+        hide_settled = st.checkbox(
+            _t("partner.stmt.all_hide_settled"),
+            value=False,
+            key="partner_stmt_all_hide_settled",
+        )
+
+    summary = build_all_partners_settlement_summary(
         session,
-        stmt_partner.id,
         from_date,
         to_date,
         calculate_account_balance_for_period,
+        include_inactive=not hide_inactive,
+        hide_settled=hide_settled,
     )
+    if not summary:
+        st.error(_t("partner.stmt.no_partners"))
+        st.markdown("</div>", unsafe_allow_html=True)
+        return
+
+    _render_all_partners_settlement_summary(
+        summary,
+        all_partners,
+        currency=currency,
+        company_name=company_name,
+        from_date=from_date,
+        to_date=to_date,
+    )
+
+    st.divider()
+    st.markdown(
+        financial_section_header_html(
+            _t("partner.stmt.all_single_section_title"), accent="info"
+        ),
+        unsafe_allow_html=True,
+    )
+    st.markdown('<div class="erp-partner-stmt-no-print">', unsafe_allow_html=True)
+    stmt_partner = st.selectbox(
+        _t("partner.stmt.partner_label"),
+        all_partners,
+        format_func=lambda p: (
+            f"{p.name}"
+            + (f" ({_t('partner.inactive_tag')})" if not p.is_active else "")
+        ),
+        key="partner_stmt_partner",
+    )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    stmt = summary.statements_by_partner_id.get(stmt_partner.id)
+    if stmt is None:
+        stmt = build_partner_statement(
+            session,
+            stmt_partner.id,
+            from_date,
+            to_date,
+            calculate_account_balance_for_period,
+        )
     if not stmt:
         st.error(_t("partner.stmt.no_partners"))
         st.markdown("</div>", unsafe_allow_html=True)
@@ -20807,7 +21119,7 @@ def _render_banking_statement_import(session):
 def render_banking(session):
     from reconciliation.company_card import apply_account_balance_delta
 
-    _st_page_title("Banking")
+    _st_page_title(NAV_BANKING)
 
     _render_banking_pos_settlement_entry(session)
 
