@@ -3215,6 +3215,98 @@ def _get_user_pref_in_session(session, user_id: int, key: str, default: str = ""
     return row.value if row and row.value is not None else default
 
 
+_DATE_FORMAT_OPTIONS: tuple[str, ...] = ("DD.MM.YYYY", "DD/MM/YYYY", "YYYY-MM-DD")
+_DATE_FORMAT_DEFAULT = "DD.MM.YYYY"
+_DATE_FORMAT_LEGACY_TO_CANONICAL = {
+    "DD MMM YYYY": "DD.MM.YYYY",
+    "MM/DD/YYYY": "DD/MM/YYYY",
+}
+_DATE_FORMAT_STRFTIME: dict[str, str] = {
+    "DD.MM.YYYY": "%d.%m.%Y",
+    "DD/MM/YYYY": "%d/%m/%Y",
+    "YYYY-MM-DD": "%Y-%m-%d",
+    "DD MMM YYYY": "%d %b %Y",
+    "MM/DD/YYYY": "%m/%d/%Y",
+}
+_AT_DATE_PARSE_HINT = "YYYY-MM-DD · DD.MM.YYYY · DD/MM/YYYY"
+
+
+def _normalize_user_date_format(pref: str) -> str:
+    """Map profile/legacy tokens to a known display format key."""
+    p = (pref or "").strip()
+    if p in _DATE_FORMAT_STRFTIME:
+        return p
+    return _DATE_FORMAT_LEGACY_TO_CANONICAL.get(p, _DATE_FORMAT_DEFAULT)
+
+
+def _canonical_user_date_format(pref: str) -> str:
+    """Profile selectbox value — legacy prefs map to canonical options."""
+    p = _normalize_user_date_format(pref)
+    if p in _DATE_FORMAT_OPTIONS:
+        return p
+    return _DATE_FORMAT_LEGACY_TO_CANONICAL.get(p, _DATE_FORMAT_DEFAULT)
+
+
+def _get_user_date_format(session=None, user_id: int | None = None) -> str:
+    if user_id is None:
+        user = _current_user()
+        user_id = user.get("id") if user else None
+    if not user_id:
+        return _DATE_FORMAT_DEFAULT
+    if session is not None:
+        raw = _get_user_pref_in_session(
+            session, user_id, "date_format", _DATE_FORMAT_DEFAULT
+        )
+    else:
+        raw = _get_user_pref(user_id, "date_format", _DATE_FORMAT_DEFAULT)
+    return _normalize_user_date_format(raw)
+
+
+def _cache_user_date_format(session) -> None:
+    """Store active user's date-format pref for Add Transaction widgets."""
+    user = _current_user()
+    if user and user.get("id"):
+        st.session_state["_user_date_format"] = _get_user_date_format(
+            session, user["id"]
+        )
+    else:
+        st.session_state.setdefault("_user_date_format", _DATE_FORMAT_DEFAULT)
+
+
+def _active_user_date_format() -> str:
+    return _normalize_user_date_format(
+        st.session_state.get("_user_date_format", _DATE_FORMAT_DEFAULT)
+    )
+
+
+def _format_date_for_user_pref(d: datetime.date, pref: str) -> str:
+    key = _normalize_user_date_format(pref)
+    fmt = _DATE_FORMAT_STRFTIME.get(
+        key, _DATE_FORMAT_STRFTIME[_DATE_FORMAT_DEFAULT]
+    )
+    return d.strftime(fmt)
+
+
+def _format_at_display_date(d: datetime.date) -> str:
+    return _format_date_for_user_pref(d, _active_user_date_format())
+
+
+def _at_date_input_placeholder() -> str:
+    sample = _format_at_display_date(datetime.date(2026, 6, 12))
+    return f"{sample} ({_AT_DATE_PARSE_HINT})"
+
+
+def _at_refresh_date_text_display(d: datetime.date | None = None) -> None:
+    """Sync desktop/mobile typed date strings to the user's display format."""
+    if d is None:
+        d = st.session_state.get("at_date", datetime.date.today())
+    if not isinstance(d, datetime.date):
+        return
+    shown = _format_at_display_date(d)
+    st.session_state["at_date_text"] = shown
+    st.session_state["mob_at_date_custom_str"] = shown
+
+
 def _next_header_theme_mode(current: str) -> str:
     """Flip explicit light/dark; system/light → dark, dark → light."""
     return "light" if current == "dark" else "dark"
@@ -12200,6 +12292,7 @@ def _at_resolve_entry_date() -> datetime.date:
         typed = _at_parse_date_text(str(raw)) if raw and str(raw).strip() else None
         if typed:
             st.session_state["at_date"] = typed
+            st.session_state["at_date_text"] = _format_at_display_date(typed)
             return typed
     d = st.session_state.get("at_date")
     if isinstance(d, datetime.date):
@@ -12226,18 +12319,18 @@ def _at_render_desktop_date_field() -> None:
     # Seed once; afterwards the widget owns its state. DATE-01 rollover: if the
     # date follows "today" and the text still shows a stale day, re-seed it.
     if "at_date_text" not in st.session_state:
-        st.session_state["at_date_text"] = d.isoformat()
+        st.session_state["at_date_text"] = _format_at_display_date(d)
     elif (
         st.session_state.get("at_date_follows_today")
         and _at_parse_date_text(st.session_state.get("at_date_text", "")) not in (None, today)
         and st.session_state.get("at_date") == today
     ):
-        st.session_state["at_date_text"] = today.isoformat()
+        st.session_state["at_date_text"] = _format_at_display_date(today)
 
     st.text_input(
         "📅 " + _t("col.date"),
         key="at_date_text",
-        placeholder="YYYY-MM-DD · DD.MM.YYYY · DD/MM/YYYY",
+        placeholder=_at_date_input_placeholder(),
         help=_t("txn.date_help"),
     )
     err = _at_entry_date_error()
@@ -13206,17 +13299,21 @@ def _mob_at_render_date_picker_sheet(session) -> bool:
             ):
                 st.session_state["mob_at_date_custom"] = True
                 st.session_state["at_date_follows_today"] = False
-                st.session_state["mob_at_date_custom_str"] = current.isoformat()
+                st.session_state["mob_at_date_custom_str"] = _format_at_display_date(
+                    current
+                )
                 st.rerun()
 
         if custom_open:
             if "mob_at_date_custom_str" not in st.session_state:
-                st.session_state["mob_at_date_custom_str"] = current.isoformat()
+                st.session_state["mob_at_date_custom_str"] = _format_at_display_date(
+                    current
+                )
             st.text_input(
-                _tf("txn.mob.date_custom_label", "Date (YYYY-MM-DD)"),
+                _tf("txn.mob.date_custom_label", "Date"),
                 key="mob_at_date_custom_str",
                 label_visibility="collapsed",
-                placeholder=_tf("txn.mob.date_custom_ph", "YYYY-MM-DD"),
+                placeholder=_at_date_input_placeholder(),
             )
             if st.button(
                 _tf("txn.mob.date_confirm", "✓ Confirm Date"),
@@ -13232,6 +13329,9 @@ def _mob_at_render_date_picker_sheet(session) -> bool:
                     return False
                 _mob_at_render_date_closed_period_notice(session, parsed)
                 _mob_at_set_date_choice(parsed, follows_today=False)
+                st.session_state["mob_at_date_custom_str"] = _format_at_display_date(
+                    parsed
+                )
                 _mob_at_close_picker()
                 return True
     return False
@@ -13364,12 +13464,11 @@ def _mob_at_append_amount_digit(digit: str) -> bool:
 
 
 def _mob_at_c_row1_date_label() -> str:
-    """Short formatted date for the Row 1 date button (e.g. '09 Jun')."""
+    """Formatted date for the Row 1 date button (user profile format)."""
     d = st.session_state.get("at_date", datetime.date.today())
-    try:
-        return d.strftime("%-d %b")
-    except ValueError:
-        return d.strftime("%d %b")
+    if not isinstance(d, datetime.date):
+        d = datetime.date.today()
+    return _format_at_display_date(d)
 
 
 def _mob_at_pm_chip_methods(session, txn_type: str) -> list[str]:
@@ -14228,6 +14327,7 @@ def _at_process_submit(
             )
             if st.session_state.pop("_at_save_succeeded", False):
                 _at_clear_post_save_transient_fields()
+                _at_refresh_date_text_display()
                 st.rerun()
         except Exception as exc:
             st.error(_t("txn.save_failed", error=exc))
@@ -14572,6 +14672,7 @@ def render_add_transaction(session):
     }
 
     # ── Session state ─────────────────────────────────────────────────────────
+    _cache_user_date_format(session)
     _is_mobile_at = _sync_mobile_ui_flag_from_cookie()
     if "at_type_idx" not in st.session_state:
         st.session_state["at_type_idx"] = 0
@@ -25622,9 +25723,15 @@ def render_my_account(session):
 
             st.markdown(f"**{_t('account.formatting')}**")
             _df1, _df2 = st.columns(2)
-            _date_opts  = ["DD MMM YYYY", "MM/DD/YYYY", "YYYY-MM-DD"]
-            _cur_datefmt = _get_user_pref(user_id, "date_format", "DD MMM YYYY")
-            _date_idx   = _date_opts.index(_cur_datefmt) if _cur_datefmt in _date_opts else 0
+            _date_opts = list(_DATE_FORMAT_OPTIONS)
+            _cur_datefmt = _canonical_user_date_format(
+                _get_user_pref(user_id, "date_format", _DATE_FORMAT_DEFAULT)
+            )
+            _date_idx = (
+                _date_opts.index(_cur_datefmt)
+                if _cur_datefmt in _date_opts
+                else 0
+            )
             new_datefmt = _df1.selectbox(_t("account.date_format"), _date_opts, index=_date_idx)
             _num_opts   = ["1,234.56  (EN)", "1.234,56  (EU)"]
             _cur_numfmt = _get_user_pref(user_id, "number_format", "1,234.56  (EN)")
