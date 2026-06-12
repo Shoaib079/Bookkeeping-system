@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-05 (RECIPE-COSTING-01 RC-P1–P1b)  
-**Full suite:** run `pytest tests/` — **1447 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
+**Last updated:** 2026-06-05 (RECIPE-COSTING-01 RC-P1–P2A)  
+**Full suite:** run `pytest tests/` — **1465 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -150,7 +150,7 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 
 ---
 
-### `tests/test_recipe_costing_service.py` (32 tests) — RC-P1 / RC-P1b
+### `tests/test_recipe_costing_service.py` (32 tests) — RC-P1 / RC-P1b / RC-P2A
 
 | Feature covered | Business rule protected | Risk if untested |
 |-----------------|-------------------------|------------------|
@@ -163,18 +163,34 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 | Deactivated ingredient warning | Breakdown continues with warning | **Medium** |
 | Explicit `company_id` API | No Streamlit in service | **High** |
 | `list_ingredients` / `get_recipe` / `update_ingredient` | Read APIs for RC-P1b UI | **High** |
-| Posting/inventory guard contract scan | No JE/inventory/menu imports in `services/` | **Critical** |
+| Menu service APIs on migration contract | `create_menu_item` … `list_menu_profitability` take `company_id` | **High** |
+| Posting/inventory guard contract scan | No JE/inventory imports in `services/` | **Critical** |
 
 ---
 
-### `tests/test_recipe_costing_ui_contract.py` (9 tests) — RC-P1b
+### `tests/test_recipe_costing_menu_service.py` (15 tests) — RC-P2A
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| `gross_to_net_price` / `net_to_gross_price` | Tax-inclusive gross → net revenue | **High** |
+| `compute_food_cost_pct` / `compute_markup_pct` | Food cost % and markup from cost + net price | **High** |
+| `compute_suggested_gross_price` | Target food cost % → suggested list price | **High** |
+| `get_current_menu_price` / `as_of` | Latest effective price; historical lookup | **High** |
+| Company `tax_rate` setting | Net price from `CompanySetting` | **High** |
+| Company isolation | Menu items scoped per company | **Critical** |
+| Inactive menu item warning | Profitability still computed with warning | **Medium** |
+| `list_menu_profitability` `active_only` | Inactive items excluded by default | **Medium** |
+
+---
+
+### `tests/test_recipe_costing_ui_contract.py` (9 tests) — RC-P1b / RC-P2A
 
 | Feature covered | Business rule protected | Risk if untested |
 |-----------------|-------------------------|------------------|
 | Renderer calls `services.recipe_costing` only | No business logic in UI | **High** |
-| No costing math in UI source | No duplicate rollup in Streamlit | **Critical** |
+| No costing math in UI source | No duplicate rollup or profitability math in Streamlit | **Critical** |
 | Restaurant-friendly tree (`_recipe_tree_markdown`) | Names not raw IDs in forms | **Medium** |
-| Recipe Costing nav + permissions wired | Owner/manager access | **Medium** |
+| Recipe Costing nav + permissions wired | Owner/manager access; Menu Items page | **Medium** |
 | No inventory/posting imports in UI | Scope guard | **High** |
 
 ---
@@ -186,6 +202,16 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 | Company-scoped ingredient name uniqueness | Multi-tenant isolation | **High** |
 | Recipe line XOR via service validation | No dual ingredient + sub-recipe | **High** |
 | Recipe row has no stored computed cost | Cost always computed on demand | **High** |
+
+---
+
+### `tests/test_recipe_costing_menu_models.py` (3 tests) — RC-P2A
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Company-scoped menu item name uniqueness | Multi-tenant isolation | **High** |
+| Menu item has no stored profitability columns | Profitability always computed on demand | **High** |
+| `MenuPriceHistory` append-only | Price changes add rows; no overwrite | **High** |
 
 ---
 

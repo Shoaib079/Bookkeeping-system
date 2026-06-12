@@ -77,7 +77,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | **VENDOR-NEUTRAL-01** | 🟢 **Active immediately** — no vendor-specific core architecture; generic external-source pattern |
 | **MIGRATION-READINESS-01** | 🟢 **Active immediately** — FastAPI/React-ready service design checklist; exemplars: DSC-P1 · RC-P1 |
 | **DAILY-SALES-CLOSE-01** | ✅ **DSC-P1–P2 complete** · 📋 **DSC-P3–P4 pending** — source-neutral external sales verification (no posting); see [docs/DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
-| **RECIPE-COSTING-01** | ✅ **RC-P1–P1b complete** · 📋 **RC-P2–P3 pending** — ingredient/recipe costing service + daily-use UI; see [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-RC-*) |
+| **RECIPE-COSTING-01** | ✅ **RC-P1–P2A complete** · 📋 **RC-P2B–P3 pending** — ingredient/recipe costing + menu profitability basics; see [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-RC-*) |
 
 ---
 
@@ -287,7 +287,8 @@ Spec: [docs/DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md). 
 |-------|--------|-------------|
 | **RC-P1** | ✅ **Complete** | `Ingredient` · `Recipe` · `RecipeLine` models · `services/recipe_costing.py` · service/model tests · schema indexes |
 | **RC-P1b** | ✅ **Complete** | List/read APIs · `ui/recipe_costing.py` (Ingredients · Recipes · Cost Breakdown) · Recipe Costing nav · UI contract tests |
-| **RC-P2** | 📋 **Pending** | Analytics — menu linkage · food cost % · profitability · markup · dashboard · charts |
+| **RC-P2A** | ✅ **Complete** | `MenuItem` · `MenuPriceHistory` · menu CRUD · price history · profitability math · `render_recipe_menu_items` · Menu Items nav |
+| **RC-P2B** | 📋 **Pending** | Advanced analytics — menu engineering matrix · sales volume · dashboard charts (out of RC-P2A scope) |
 | **RC-P3** | 📋 **Pending** | Export · purchase integration · `RECIPE_COSTING_01_SPEC.md` |
 
 Tech debt: [docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-RC-*).
@@ -2300,6 +2301,7 @@ Migration target is future-state only and does not change current development pr
 | 2026-06-05 | **ARCHITECTURE-PROTECTION-01** active immediately — all new modules service-first (models → services → tests → minimal UI). Streamlit must not own business logic; pause before deep UI for auth, staff portal, uploads, approval workflows. |
 | 2026-06-13 | **VENDOR-NEUTRAL-01** active immediately — core architecture must not depend on named POS/vendor products; generic External Sales Source pattern (`source_name` free text, optional `source_type` category). Vendor names allowed in documentation examples only; future adapters live outside core. Cross-links ARCHITECTURE-PROTECTION-01 and FUTURE-MIGRATION-01. Audit (2026-06-13): no vendor leakage in production code. |
 | 2026-06-05 | **MIGRATION-READINESS-01** active immediately — FastAPI/React-ready service checklist (explicit `company_id`, serializable DTOs, no Streamlit in `services/`, contract tests, tech-debt register). Exemplar: DSC-P1 (`services/daily_sales_close.py`). Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md). |
+| 2026-06-05 | **RECIPE-COSTING-01 RC-P2A complete** — `MenuItem` / `MenuPriceHistory` models, menu profitability service APIs, `render_recipe_menu_items`, Menu Items nav, EN/TR `rc.menu.*` locales, tests (`test_recipe_costing_menu_models.py`, `test_recipe_costing_menu_service.py`). RC-P2B–P3 pending. Host `pytest tests/` — **1465 passed, 2 xfailed**. |
 | 2026-06-05 | **RECIPE-COSTING-01 RC-P1b complete** — `ui/recipe_costing.py` (Ingredients · Recipes · Cost Breakdown), Recipe Costing nav, list/read/update APIs, EN/TR `rc.*` locales, UI contract tests (`test_recipe_costing_ui_contract.py`). RC-P2–P3 pending. Host `pytest tests/` — **1447 passed, 2 xfailed**. |
 | 2026-06-05 | **RECIPE-COSTING-01 RC-P1 complete** — `Ingredient` / `Recipe` / `RecipeLine` models, `services/recipe_costing.py`, service/model tests. |
 | 2026-06-05 | **DAILY-SALES-CLOSE-01 DSC-P2 complete** — `ui/external_sales_verification.py`, Closings nav, permissions, EN/TR `esv.*` locales, UI contract tests (`test_daily_sales_close_ui_contract.py`). Thin `app.py` dispatch only. DSC-P3–P4 pending. Host `pytest tests/` — **1403 passed, 2 xfailed**. |

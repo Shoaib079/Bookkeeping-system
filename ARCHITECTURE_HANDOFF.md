@@ -390,7 +390,7 @@ Full detail: [ROADMAP.md § VENDOR-NEUTRAL-01](./ROADMAP.md#vendor-neutral-01--v
 - Tests without Streamlit; contract scans for posting and vendor neutrality
 - Log known debt in [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md)
 
-**Exemplar:** DSC-P1 — `services/daily_sales_close.py`; DSC-P2 — `ui/external_sales_verification.py`; RC-P1 — `services/recipe_costing.py`; RC-P1b — `ui/recipe_costing.py`. Full detail: [ROADMAP.md § MIGRATION-READINESS-01](./ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist).
+**Exemplar:** DSC-P1 — `services/daily_sales_close.py`; DSC-P2 — `ui/external_sales_verification.py`; RC-P1 — `services/recipe_costing.py`; RC-P1b — `ui/recipe_costing.py`; RC-P2A — menu profitability in `services/recipe_costing.py` + `render_recipe_menu_items`. Full detail: [ROADMAP.md § MIGRATION-READINESS-01](./ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist).
 
 ### DAILY-SALES-CLOSE-01 (implementation status)
 
@@ -409,7 +409,8 @@ Spec: [DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md).
 |-------|--------|
 | RC-P1 | ✅ Complete — `Ingredient` / `Recipe` / `RecipeLine` · `services/recipe_costing.py` · tests |
 | RC-P1b | ✅ Complete — `ui/recipe_costing.py` · Recipe Costing nav · list/read APIs · UI contract tests |
-| RC-P2 | 📋 Pending — analytics (menu · food cost % · profitability · dashboard) |
+| RC-P2A | ✅ Complete — `MenuItem` / `MenuPriceHistory` · menu profitability service · Menu Items UI |
+| RC-P2B | 📋 Pending — advanced analytics (menu engineering matrix · sales volume · dashboard charts) |
 | RC-P3 | 📋 Pending — export · purchase integration · design spec |
 
 Tech debt: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-RC-*).
@@ -496,4 +497,4 @@ Copy-paste this when starting work:
 
 ---
 
-*Last updated after Phase 14D-C, 14D-D, nav fix, Company Setup UI pass, DAILY-SALES-CLOSE-01 DSC-P2 doc sync, RECIPE-COSTING-01 RC-P1–P1b.*
+*Last updated after Phase 14D-C, 14D-D, nav fix, Company Setup UI pass, DAILY-SALES-CLOSE-01 DSC-P2 doc sync, RECIPE-COSTING-01 RC-P1–P2A.*

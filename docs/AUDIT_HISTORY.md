@@ -8,6 +8,26 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-05 — RECIPE-COSTING-01 RC-P2A (Menu Profitability Basics)
+
+**Task:** Menu item linkage to recipes, selling price history, and on-demand profitability (recipe cost · gross/net price · food cost % · markup · suggested price). No menu engineering matrix, sales volume, inventory, or posting.
+
+**RC-P2A delivered:**
+- Models: `MenuItem`, `MenuPriceHistory` (append-only gross price history)
+- Service: `create_menu_item`, `update_menu_item`, `deactivate_menu_item`, `set_menu_price`, `get_current_menu_price`, `compute_menu_profitability`, `list_menu_profitability`
+- DTOs: `MenuItemView`, `MenuPriceView`, `MenuProfitabilityView`
+- UI: `render_recipe_menu_items` — Menu Items nav under Recipe Costing
+- Locales: `rc.menu.*`, `nav.rc_menu_items` EN/TR
+- Tests: `test_recipe_costing_menu_models.py` (3), `test_recipe_costing_menu_service.py` (15); UI contract extended (+0 count, menu assertions)
+
+**Deferred (RC-P2B–P3):** Menu engineering matrix · Stars/Puzzles/Plowhorses/Dogs · sales volume analytics · dashboard charts · export · purchase integration · design spec.
+
+**Unchanged:** Inventory · posting paths · automatic repricing · API endpoints.
+
+**Tests:** Full suite **1465 passed, 2 xfailed**.
+
+---
+
 ## 2026-06-05 — RECIPE-COSTING-01 RC-P1b (Recipe Costing UI)
 
 **Task:** Daily-use Streamlit UI for recipe costing — Ingredients, Recipes (tree editor), Cost Breakdown. Service-only writes; no costing math in UI.
@@ -20,7 +40,7 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 - Locales: `rc.*`, `nav.rc_*`, `nav.group.recipe_costing` EN/TR
 - Tests: `test_recipe_costing_ui_contract.py` (9); service read API tests (+3)
 
-**Deferred (RC-P2–P3):** Menu linkage · food cost % · profitability · markup · dashboard · charts · export · purchase integration · design spec.
+**Deferred (RC-P2B–P3 at time of P1b):** Advanced menu analytics · dashboard · charts · export · purchase integration · design spec — see RC-P2A entry for menu profitability basics.
 
 **Unchanged:** Inventory · posting paths · menu modules · mobile-specific UI.
 
