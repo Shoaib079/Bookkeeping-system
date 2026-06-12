@@ -246,19 +246,28 @@ def render_unsettled_card_sales_list_block(
         st.info(erp._t("banking.unsettled_card_sales.empty"))
         return
 
+    from ui import date_input as date_ui
+
+    _min_d = min(r["date"] for r in rows if r.get("date"))
+    _max_d = max(r["date"] for r in rows if r.get("date"))
+    _inv = erp._t("txn.date_invalid")
     f1, f2, f3 = st.columns([1, 1, 1])
     with f1:
-        date_from = st.date_input(
+        date_ui.render_preferred_date_input(
             erp._t("banking.unsettled_card_sales.filter_from"),
-            value=min(r["date"] for r in rows if r.get("date")),
-            key="bank_unsettled_from",
+            "bank_unsettled_from",
+            default=_min_d,
+            invalid_message=_inv,
         )
     with f2:
-        date_to = st.date_input(
+        date_ui.render_preferred_date_input(
             erp._t("banking.unsettled_card_sales.filter_to"),
-            value=max(r["date"] for r in rows if r.get("date")),
-            key="bank_unsettled_to",
+            "bank_unsettled_to",
+            default=_max_d,
+            invalid_message=_inv,
         )
+    date_from = date_ui.parse_bound_date("bank_unsettled_from") or _min_d
+    date_to = date_ui.parse_bound_date("bank_unsettled_to") or _max_d
     with f3:
         show_all = st.checkbox(
             erp._t("banking.unsettled_card_sales.show_all"),

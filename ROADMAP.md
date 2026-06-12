@@ -73,6 +73,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | **UI-STAB-02** — Banking presentation separation | ✅ **Complete** — `ui/banking.py`; P1–P4 + P1B presentation; posting stays in `app.py` |
 | UI architecture stability (UI-STAB) | 📋 **Planned** — header CSS consolidation remainder; avatar + banking presentation shipped |
 | Operational friction log (OBS-01) | 🟡 **Active** — record real-world UX friction; 3+ occurrences → roadmap candidate |
+| **ARCHITECTURE-PROTECTION-01** | 🟢 **Active immediately** — service-first, migration-safe development rule |
 
 ---
 
@@ -101,6 +102,64 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 **Current focus stays on:** (1) Accounting stability · (2) Daily-use workflow testing · (3) Banking observation · (4) UX cleanup · (5) Real-world usage feedback.
 
 **Success metric:** Daily sales, expenses, and purchases are easy to enter; banking is understandable; month-end is fast; company switching is reliable — not feature count.
+
+---
+
+## ARCHITECTURE-PROTECTION-01 — Service-First Development Rule
+
+**Status:** Active immediately
+
+**Rule:** All new modules must be **service-first** and **migration-safe**.
+
+**Required order:**
+
+1. Database models
+2. Service / business logic
+3. Tests
+4. Minimal Streamlit UI only if useful
+
+**Strict rule:**
+
+- Streamlit must **not** own business logic.
+- Business rules must live **outside** `app.py`.
+- Accounting logic must live in **reusable services**.
+- Tests are the authority.
+
+**Reason:** Future target is FastAPI + React ([FUTURE-MIGRATION-01](#future-architecture--long-term-roadmap)). Any logic built correctly now must be reusable later.
+
+**Warning rule:** If a feature is mainly UI-heavy, multi-user, mobile, login/auth, permissions dashboard, staff portal, uploads, or approval workflow — **pause** before building it deeply in Streamlit.
+
+**Build now:**
+
+- Accounting logic
+- Reports logic
+- Daily Sales Close service
+- Recipe Costing service
+- Data models
+- Tests
+
+**Defer or keep minimal:**
+
+- Full login system
+- Staff portal UI
+- Mobile receipt uploads
+- Complex permission screens
+- Approval inbox UI
+- Advanced admin/settings UI
+
+**Future target stack:**
+
+```
+React
+↓
+FastAPI
+↓
+Services
+↓
+SQLAlchemy
+↓
+PostgreSQL
+```
 
 ---
 
@@ -2105,6 +2164,7 @@ Migration target is future-state only and does not change current development pr
 | 2026-06-10 | **MOBILE-14 TXH micro-step closed.** Duplicate `txh_actions_` grid removed from `widgets.css`; canonical owner `mobile_txn_history.css`. **MOBILE-14 closed.** Suite: **918 passed, 2 xfailed** (M3/M4 optional xfails only). |
 | 2026-06-09 | **ERP Ownership Audit** complete (**AUDIT-01**). Critical conflicts identified: `--hdr-h` 4-way token split, `widgets.css` KPI catch-all, mobile ownership drift, sidebar triple-hide, notification active state duplication, reports internal duplicate. Architectural finding: Dashboard, Banking, and Mobile Reports are mostly clean; Company Picker and Desktop Reports have no CSS surface (future work). Five quick wins identified that can be executed before MOBILE-14. Decision: all future UI work must follow ownership-first planning; new features must not introduce additional ownership conflicts. |
 | 2026-06-05 | **FUTURE-MIGRATION-01** approved as long-term direction only — React + FastAPI + service layer + PostgreSQL target stack. Streamlit remains primary until pre-migration requirements and decision gate are met. No change to active module priorities. |
+| 2026-06-05 | **ARCHITECTURE-PROTECTION-01** active immediately — all new modules service-first (models → services → tests → minimal UI). Streamlit must not own business logic; pause before deep UI for auth, staff portal, uploads, approval workflows. |
 
 ---
 

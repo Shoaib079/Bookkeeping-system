@@ -274,6 +274,19 @@ from ui.theme import (
     render_themed_line,
     sync_derived_dark_mode,
 )
+from ui import date_input as date_ui
+from registry.date_utils import (
+    DATE_FORMAT_DEFAULT,
+    DATE_FORMAT_OPTIONS,
+    DATE_PARSE_HINT,
+    canonical_user_date_format,
+    date_input_placeholder,
+    format_date_for_preference,
+    format_date_input_for_preference,
+    normalize_date_digits,
+    normalize_user_date_format,
+    parse_date_text,
+)
 
 _validate_settings_registry()
 
@@ -824,40 +837,54 @@ def _global_date_range(
 def _render_date_range_filters(container, *, key_suffix: str) -> None:
     """Date-range pickers for Reports (sidebar on desktop, inline on mobile)."""
     today = datetime.date.today()
-    if "date_from" not in st.session_state:
-        st.session_state.date_from = today.replace(day=1)
-    if "date_to" not in st.session_state:
-        st.session_state.date_to = today
+    default_from = st.session_state.get("date_from", today.replace(day=1))
+    default_to = st.session_state.get("date_to", today)
+    if isinstance(default_from, str):
+        default_from = (
+            parse_date_text(default_from, _active_user_date_format())
+            or today.replace(day=1)
+        )
+    if isinstance(default_to, str):
+        default_to = (
+            parse_date_text(default_to, _active_user_date_format()) or today
+        )
 
     container.markdown(
         f'<div class="erp-filter-date-hdr">{html.escape(_t("filter.date_range"))}</div>',
         unsafe_allow_html=True,
     )
     col1, col2 = container.columns(2)
+    _inv = _t("txn.date_invalid")
     with col1:
-        st.markdown(
+        container.markdown(
             f'<div class="erp-filter-date-lbl">{html.escape(_t("form.from"))}</div>',
             unsafe_allow_html=True,
         )
-        date_from = st.date_input(
+        date_ui.render_preferred_date_input(
             _t("form.from"),
-            st.session_state.date_from,
-            key=f"flt_{key_suffix}_from",
+            f"flt_{key_suffix}_from",
+            default=default_from,
             label_visibility="collapsed",
+            invalid_message=_inv,
         )
     with col2:
-        st.markdown(
+        container.markdown(
             f'<div class="erp-filter-date-lbl">{html.escape(_t("form.to"))}</div>',
             unsafe_allow_html=True,
         )
-        date_to = st.date_input(
+        date_ui.render_preferred_date_input(
             _t("form.to"),
-            st.session_state.date_to,
-            key=f"flt_{key_suffix}_to",
+            f"flt_{key_suffix}_to",
+            default=default_to,
             label_visibility="collapsed",
+            invalid_message=_inv,
         )
-    st.session_state.date_from = date_from
-    st.session_state.date_to   = date_to
+    d_from = date_ui.parse_bound_date(f"flt_{key_suffix}_from") or default_from
+    d_to = date_ui.parse_bound_date(f"flt_{key_suffix}_to") or default_to
+    if d_from > d_to:
+        d_from, d_to = d_to, d_from
+    st.session_state.date_from = d_from
+    st.session_state.date_to = d_to
 
 
 def render_sidebar_filters():
@@ -3215,36 +3242,15 @@ def _get_user_pref_in_session(session, user_id: int, key: str, default: str = ""
     return row.value if row and row.value is not None else default
 
 
-_DATE_FORMAT_OPTIONS: tuple[str, ...] = ("DD.MM.YYYY", "DD/MM/YYYY", "YYYY-MM-DD")
-_DATE_FORMAT_DEFAULT = "DD.MM.YYYY"
-_DATE_FORMAT_LEGACY_TO_CANONICAL = {
-    "DD MMM YYYY": "DD.MM.YYYY",
-    "MM/DD/YYYY": "DD/MM/YYYY",
-}
-_DATE_FORMAT_STRFTIME: dict[str, str] = {
-    "DD.MM.YYYY": "%d.%m.%Y",
-    "DD/MM/YYYY": "%d/%m/%Y",
-    "YYYY-MM-DD": "%Y-%m-%d",
-    "DD MMM YYYY": "%d %b %Y",
-    "MM/DD/YYYY": "%m/%d/%Y",
-}
-_AT_DATE_PARSE_HINT = "YYYY-MM-DD · DD.MM.YYYY · DD/MM/YYYY"
+_AT_DATE_PARSE_HINT = DATE_PARSE_HINT
 
 
 def _normalize_user_date_format(pref: str) -> str:
-    """Map profile/legacy tokens to a known display format key."""
-    p = (pref or "").strip()
-    if p in _DATE_FORMAT_STRFTIME:
-        return p
-    return _DATE_FORMAT_LEGACY_TO_CANONICAL.get(p, _DATE_FORMAT_DEFAULT)
+    return normalize_user_date_format(pref)
 
 
 def _canonical_user_date_format(pref: str) -> str:
-    """Profile selectbox value — legacy prefs map to canonical options."""
-    p = _normalize_user_date_format(pref)
-    if p in _DATE_FORMAT_OPTIONS:
-        return p
-    return _DATE_FORMAT_LEGACY_TO_CANONICAL.get(p, _DATE_FORMAT_DEFAULT)
+    return canonical_user_date_format(pref)
 
 
 def _get_user_date_format(session=None, user_id: int | None = None) -> str:
@@ -3252,48 +3258,39 @@ def _get_user_date_format(session=None, user_id: int | None = None) -> str:
         user = _current_user()
         user_id = user.get("id") if user else None
     if not user_id:
-        return _DATE_FORMAT_DEFAULT
+        return DATE_FORMAT_DEFAULT
     if session is not None:
         raw = _get_user_pref_in_session(
-            session, user_id, "date_format", _DATE_FORMAT_DEFAULT
+            session, user_id, "date_format", DATE_FORMAT_DEFAULT
         )
     else:
-        raw = _get_user_pref(user_id, "date_format", _DATE_FORMAT_DEFAULT)
+        raw = _get_user_pref(user_id, "date_format", DATE_FORMAT_DEFAULT)
     return _normalize_user_date_format(raw)
 
 
 def _cache_user_date_format(session) -> None:
-    """Store active user's date-format pref for Add Transaction widgets."""
+    """Store active user's date-format pref for masked date inputs app-wide."""
     user = _current_user()
     if user and user.get("id"):
-        st.session_state["_user_date_format"] = _get_user_date_format(
-            session, user["id"]
-        )
+        date_ui.set_active_date_format(_get_user_date_format(session, user["id"]))
     else:
-        st.session_state.setdefault("_user_date_format", _DATE_FORMAT_DEFAULT)
+        date_ui.set_active_date_format(DATE_FORMAT_DEFAULT)
 
 
 def _active_user_date_format() -> str:
-    return _normalize_user_date_format(
-        st.session_state.get("_user_date_format", _DATE_FORMAT_DEFAULT)
-    )
+    return date_ui.get_active_date_format()
 
 
 def _format_date_for_user_pref(d: datetime.date, pref: str) -> str:
-    key = _normalize_user_date_format(pref)
-    fmt = _DATE_FORMAT_STRFTIME.get(
-        key, _DATE_FORMAT_STRFTIME[_DATE_FORMAT_DEFAULT]
-    )
-    return d.strftime(fmt)
+    return format_date_for_preference(d, pref)
 
 
 def _format_at_display_date(d: datetime.date) -> str:
-    return _format_date_for_user_pref(d, _active_user_date_format())
+    return date_ui.format_display_date(d)
 
 
 def _at_date_input_placeholder() -> str:
-    sample = _format_at_display_date(datetime.date(2026, 6, 12))
-    return f"{sample} ({_AT_DATE_PARSE_HINT})"
+    return date_input_placeholder(_active_user_date_format())
 
 
 def _at_refresh_date_text_display(d: datetime.date | None = None) -> None:
@@ -4466,24 +4463,105 @@ def _txh_matches_keyword(
 
 
 def _render_txh_date_filters(container) -> tuple[datetime.date, datetime.date]:
-    """From / To date pickers for Transaction Ledger."""
+    """From / To masked date fields for Transaction Ledger."""
     today = datetime.date.today()
-    if "txh_date_from" not in st.session_state:
-        st.session_state["txh_date_from"] = today.replace(day=1)
-    if "txh_date_to" not in st.session_state:
-        st.session_state["txh_date_to"] = today
-    if st.session_state["txh_date_from"] > st.session_state["txh_date_to"]:
-        st.session_state["txh_date_from"], st.session_state["txh_date_to"] = (
-            st.session_state["txh_date_to"],
-            st.session_state["txh_date_from"],
+    default_from = today.replace(day=1)
+    default_to = today
+    existing_from = st.session_state.get("txh_date_from")
+    existing_to = st.session_state.get("txh_date_to")
+    if isinstance(existing_from, datetime.date):
+        default_from = existing_from
+    elif isinstance(existing_from, str):
+        default_from = (
+            parse_date_text(existing_from, _active_user_date_format())
+            or default_from
         )
+    if isinstance(existing_to, datetime.date):
+        default_to = existing_to
+    elif isinstance(existing_to, str):
+        default_to = (
+            parse_date_text(existing_to, _active_user_date_format()) or default_to
+        )
+
     container.markdown(
         f'<div class="erp-txh-filters-label">{html.escape(_t("filter.date_range"))}</div>',
         unsafe_allow_html=True,
     )
     c1, c2 = container.columns(2)
-    d_from = c1.date_input(_t("form.from"), key="txh_date_from")
-    d_to = c2.date_input(_t("form.to"), key="txh_date_to")
+    _inv = _t("txn.date_invalid")
+    with c1:
+        date_ui.render_preferred_date_input(
+            _t("form.from"),
+            "txh_date_from",
+            default=default_from,
+            label_visibility="collapsed",
+            invalid_message=_inv,
+        )
+    with c2:
+        date_ui.render_preferred_date_input(
+            _t("form.to"),
+            "txh_date_to",
+            default=default_to,
+            label_visibility="collapsed",
+            invalid_message=_inv,
+        )
+    d_from = date_ui.parse_bound_date("txh_date_from") or default_from
+    d_to = date_ui.parse_bound_date("txh_date_to") or default_to
+    if d_from > d_to:
+        d_from, d_to = d_to, d_from
+    return d_from, d_to
+
+
+def _bound_date_from_session(key: str, default: datetime.date) -> datetime.date:
+    """Resolve a filter key to datetime.date (handles legacy date objects or text)."""
+    raw = st.session_state.get(key)
+    if isinstance(raw, datetime.date):
+        return raw
+    if raw is not None and str(raw).strip():
+        parsed = parse_date_text(str(raw), _active_user_date_format())
+        if parsed is not None:
+            return parsed
+    return default
+
+
+def _render_preferred_date_range_cols(
+    col_from,
+    col_to,
+    from_key: str,
+    to_key: str,
+    default_from: datetime.date,
+    default_to: datetime.date,
+    *,
+    from_label: str | None = None,
+    to_label: str | None = None,
+    in_form: bool = False,
+) -> tuple[datetime.date, datetime.date]:
+    """Two masked from/to fields in adjacent columns; returns clamped datetime.date pair."""
+    from_label = from_label or _t("form.from")
+    to_label = to_label or _t("form.to")
+    eff_from = _bound_date_from_session(from_key, default_from)
+    eff_to = _bound_date_from_session(to_key, default_to)
+    _inv = _t("txn.date_invalid")
+    with col_from:
+        date_ui.render_preferred_date_input(
+            from_label,
+            from_key,
+            default=eff_from,
+            label_visibility="collapsed",
+            invalid_message=_inv,
+            in_form=in_form,
+        )
+    with col_to:
+        date_ui.render_preferred_date_input(
+            to_label,
+            to_key,
+            default=eff_to,
+            label_visibility="collapsed",
+            invalid_message=_inv,
+            in_form=in_form,
+        )
+    d_from = date_ui.parse_bound_date(from_key) or eff_from
+    d_to = date_ui.parse_bound_date(to_key) or eff_to
     if d_from > d_to:
         d_from, d_to = d_to, d_from
     return d_from, d_to
@@ -7488,18 +7566,26 @@ def _render_partner_statement(session, currency: str, today: datetime.date) -> N
             key="partner_stmt_preset",
         )
     preset_from, preset_to = partner_statement_preset_range(preset, today)
-    with fc2:
-        from_date = st.date_input(
-            _t("partner.stmt.from_date"),
-            value=preset_from if preset_from else default_from,
-            key="partner_stmt_from",
+    range_from = preset_from if preset_from else default_from
+    range_to = preset_to if preset_to else default_to
+    if preset != "custom":
+        _pref = _active_user_date_format()
+        st.session_state["partner_stmt_from"] = format_date_for_preference(
+            range_from, _pref
         )
-    with fc3:
-        to_date = st.date_input(
-            _t("partner.stmt.to_date"),
-            value=preset_to if preset_to else default_to,
-            key="partner_stmt_to",
+        st.session_state["partner_stmt_to"] = format_date_for_preference(
+            range_to, _pref
         )
+    from_date, to_date = _render_preferred_date_range_cols(
+        fc2,
+        fc3,
+        "partner_stmt_from",
+        "partner_stmt_to",
+        range_from,
+        range_to,
+        from_label=_t("partner.stmt.from_date"),
+        to_label=_t("partner.stmt.to_date"),
+    )
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -12243,19 +12329,8 @@ def _mob_at_close_picker() -> None:
 
 
 def _at_parse_date_text(raw: str) -> datetime.date | None:
-    """Parse manual date entry: YYYY-MM-DD, DD.MM.YYYY, DD/MM/YYYY."""
-    s = (raw or "").strip()
-    if not s:
-        return None
-    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y"):
-        try:
-            return datetime.datetime.strptime(s, fmt).date()
-        except ValueError:
-            continue
-    try:
-        return datetime.date.fromisoformat(s)
-    except ValueError:
-        return None
+    """Parse manual date entry — separators or digit-only per active preference."""
+    return parse_date_text(raw, _active_user_date_format())
 
 
 def _mob_at_parse_date_text(raw: str) -> datetime.date | None:
@@ -12271,12 +12346,7 @@ def _at_entry_date_error() -> str | None:
     """
     if _is_mobile_ui():
         return None
-    raw = st.session_state.get("at_date_text")
-    if raw is None or not str(raw).strip():
-        return None
-    if _at_parse_date_text(str(raw)) is None:
-        return _t("txn.date_invalid")
-    return None
+    return date_ui.date_text_error("at_date_text", invalid_message=_t("txn.date_invalid"))
 
 
 def _at_resolve_entry_date() -> datetime.date:
@@ -12288,6 +12358,7 @@ def _at_resolve_entry_date() -> datetime.date:
     stale typed values can never override a mobile date pick.
     """
     if not _is_mobile_ui():
+        date_ui.normalize_date_text_key("at_date_text")
         raw = st.session_state.get("at_date_text")
         typed = _at_parse_date_text(str(raw)) if raw and str(raw).strip() else None
         if typed:
@@ -12303,23 +12374,15 @@ def _at_resolve_entry_date() -> datetime.date:
 
 
 def _at_render_desktop_date_field() -> None:
-    """ADD-TXN-FIX date UX — exactly ONE visible date control on desktop.
-
-    A single text input. Typed dates: YYYY-MM-DD, DD.MM.YYYY, DD/MM/YYYY.
-    Renders INSIDE the entry form so typing a date + Enter submits the
-    transaction. No checkbox, no calendar widget, no second control; invalid
-    text blocks submit via _at_entry_date_error() in the save path.
-    """
+    """ADD-TXN date UX — one masked text field inside the entry form (Enter submits)."""
     today = datetime.date.today()
     d = st.session_state.get("at_date", today)
     if not isinstance(d, datetime.date):
         d = today
         st.session_state["at_date"] = d
 
-    # Seed once; afterwards the widget owns its state. DATE-01 rollover: if the
-    # date follows "today" and the text still shows a stale day, re-seed it.
     if "at_date_text" not in st.session_state:
-        st.session_state["at_date_text"] = _format_at_display_date(d)
+        date_ui.seed_date_text_key("at_date_text", d)
     elif (
         st.session_state.get("at_date_follows_today")
         and _at_parse_date_text(st.session_state.get("at_date_text", "")) not in (None, today)
@@ -12327,15 +12390,13 @@ def _at_render_desktop_date_field() -> None:
     ):
         st.session_state["at_date_text"] = _format_at_display_date(today)
 
-    st.text_input(
+    date_ui.render_preferred_date_input(
         "📅 " + _t("col.date"),
-        key="at_date_text",
-        placeholder=_at_date_input_placeholder(),
+        "at_date_text",
+        in_form=True,
         help=_t("txn.date_help"),
+        invalid_message=_t("txn.date_invalid"),
     )
-    err = _at_entry_date_error()
-    if err:
-        st.caption(f"⚠️ {err}")
 
 
 def _mob_at_render_picker_hdr(title: str) -> bool:
@@ -13305,15 +13366,12 @@ def _mob_at_render_date_picker_sheet(session) -> bool:
                 st.rerun()
 
         if custom_open:
-            if "mob_at_date_custom_str" not in st.session_state:
-                st.session_state["mob_at_date_custom_str"] = _format_at_display_date(
-                    current
-                )
-            st.text_input(
+            date_ui.seed_date_text_key("mob_at_date_custom_str", current)
+            date_ui.render_preferred_date_input(
                 _tf("txn.mob.date_custom_label", "Date"),
-                key="mob_at_date_custom_str",
+                "mob_at_date_custom_str",
                 label_visibility="collapsed",
-                placeholder=_at_date_input_placeholder(),
+                invalid_message=_t("txn.date_invalid"),
             )
             if st.button(
                 _tf("txn.mob.date_confirm", "✓ Confirm Date"),
@@ -14965,13 +15023,19 @@ def render_add_transaction(session):
                                 at_subcat_name = None
                                 subcats_list = []
                             else:
-                                at_cat, at_cat_id = _inline_cat_row(session, txn_type, cats)
-                                at_subcat_name, subcats_list = _inline_subcat_row(session, at_cat)
+                                at_cat, at_cat_id = _inline_cat_row(
+                                    session, txn_type, cats, inside_form=True
+                                )
+                                at_subcat_name, subcats_list = _inline_subcat_row(
+                                    session, at_cat, inside_form=True
+                                )
                             _at_render_bank_pay_select(bank_accounts)
                             _at_render_company_cc_select(session, txn_type="Expense")
 
                         elif txn_type == "Purchase":
-                            vendor_name_val = _inline_vendor_row(session, vendors)
+                            vendor_name_val = _inline_vendor_row(
+                                session, vendors, inside_form=True
+                            )
                             fc1, fc2 = st.columns(2)
                             at_payment_method = fc1.selectbox(
                                 "💳 " + _t("form.payment_method"),
@@ -14983,14 +15047,20 @@ def render_add_transaction(session):
                                           index=CURRENCIES.index(currency_default) if currency_default in CURRENCIES else 0,
                                           key="at_currency")
 
-                            at_cat, at_cat_id = _inline_cat_row(session, txn_type, cats)
-                            at_subcat_name, subcats_list = _inline_subcat_row(session, at_cat)
+                            at_cat, at_cat_id = _inline_cat_row(
+                                session, txn_type, cats, inside_form=True
+                            )
+                            at_subcat_name, subcats_list = _inline_subcat_row(
+                                session, at_cat, inside_form=True
+                            )
                             _at_render_bank_pay_select(bank_accounts)
                             _at_render_company_cc_select(session, txn_type="Purchase")
 
                         elif txn_type == "Supplier Payment":
                             _at_clear_category_session_state()
-                            vendor_name_val = _inline_vendor_row(session, vendors)
+                            vendor_name_val = _inline_vendor_row(
+                                session, vendors, inside_form=True
+                            )
 
                             # ── Open payable selector ─────────────────────────────────
                             if vendors and vendor_name_val:
@@ -15178,6 +15248,9 @@ def render_add_transaction(session):
     else:
         with st.container(key="erp_at_desktop_host"):
             st.markdown('<div class="erp-at-desktop-host-skip"></div>', unsafe_allow_html=True)
+
+    if not _is_mobile_at:
+        _at_consume_inline_form_dialog_actions(session, txn_type, cats, vendors)
 
     # ── SUBMISSION HANDLER (desktop + mobile) ─────────────────────────────────
     _mob_save_pending = _at_consume_mobile_save_pending() if _is_mobile_at else False
@@ -18828,12 +18901,16 @@ def render_vendors(session):
             ven_opts = {r.name: r.id for r in records}
             stmt_ven  = st.selectbox(_t("purchase.vendor"), list(ven_opts.keys()), key="stmt_ven_select")
             stmt_ven_id = ven_opts[stmt_ven]
-            _today  = datetime.date.today()
+            _today = datetime.date.today()
             vc1, vc2 = st.columns(2)
-            stmt_vstart = vc1.date_input(
-                _t("form.from"), datetime.date(_today.year, _today.month, 1), key="stmt_ven_start"
+            stmt_vstart, stmt_vend = _render_preferred_date_range_cols(
+                vc1,
+                vc2,
+                "stmt_ven_start",
+                "stmt_ven_end",
+                datetime.date(_today.year, _today.month, 1),
+                _today,
             )
-            stmt_vend = vc2.date_input(_t("form.to"), _today, key="stmt_ven_end")
             if st.button(_t("vendor.stmt_gen"), key="gen_ven_stmt_btn"):
                 try:
                     _settings = load_settings()
@@ -20116,8 +20193,16 @@ def render_cash_reconciliation(session):
                     )
                 
                 with col2:
-                    recon_date = st.date_input(_t("recon.date"), today, key="recon_date")
-                
+                    date_ui.render_preferred_date_input(
+                        _t("recon.date"),
+                        "recon_date",
+                        default=today,
+                        in_form=True,
+                        label_visibility="visible",
+                        invalid_message=_t("txn.date_invalid"),
+                    )
+                    recon_date = date_ui.parse_bound_date("recon_date") or today
+
                 # Calculate expected cash
                 if cash_account:
                     expected_cash = calculate_expected_cash(session, recon_date, cash_account.id)
@@ -20288,12 +20373,15 @@ def render_cash_reconciliation(session):
                 key="history_status_filter",
             )
         
-        with col_filter2:
-            today = datetime.date.today()
-            date_from = st.date_input(_t("form.from"), today.replace(day=1), key="history_from")
-        
-        with col_filter3:
-            date_to = st.date_input(_t("form.to"), today, key="history_to")
+        today = datetime.date.today()
+        date_from, date_to = _render_preferred_date_range_cols(
+            col_filter2,
+            col_filter3,
+            "history_from",
+            "history_to",
+            today.replace(day=1),
+            today,
+        )
         
         q = (
             cq(session, DailyCashReconciliation)
@@ -20348,15 +20436,15 @@ def render_cash_reconciliation(session):
         _render_tab_intro("recon.tab.reports", caption_key="recon.tab.reports_desc")
 
         col_from, col_to = st.columns(2)
-        with col_from:
-            today = datetime.date.today()
-            report_from = st.date_input(
-                _t("form.from"),
-                today.replace(day=1),
-                key="report_from",
-            )
-        with col_to:
-            report_to = st.date_input(_t("form.to"), today, key="report_to")
+        today = datetime.date.today()
+        report_from, report_to = _render_preferred_date_range_cols(
+            col_from,
+            col_to,
+            "report_from",
+            "report_to",
+            today.replace(day=1),
+            today,
+        )
         
         # Query all reconciled reconciliations in range
         reconciliations = (
@@ -20654,12 +20742,14 @@ def render_end_of_day_close(session):
         st.subheader(_t("eod.history_header"))
 
         col1, col2 = st.columns(2)
-        with col1:
-            hist_from = st.date_input(
-                _t("form.from"), today.replace(day=1), key="eod_hist_from"
-            )
-        with col2:
-            hist_to = st.date_input(_t("form.to"), today, key="eod_hist_to")
+        hist_from, hist_to = _render_preferred_date_range_cols(
+            col1,
+            col2,
+            "eod_hist_from",
+            "eod_hist_to",
+            today.replace(day=1),
+            today,
+        )
 
         closes = (
             cq(session, EndOfDayClose)
@@ -20839,11 +20929,14 @@ def render_customers(session):
                 )
                 _today = datetime.date.today()
                 sc1, sc2 = st.columns(2)
-                stmt_start = sc1.date_input(
-                    _t("form.from"), datetime.date(_today.year, _today.month, 1),
-                    key="stmt_cust_start"
+                stmt_start, stmt_end = _render_preferred_date_range_cols(
+                    sc1,
+                    sc2,
+                    "stmt_cust_start",
+                    "stmt_cust_end",
+                    datetime.date(_today.year, _today.month, 1),
+                    _today,
                 )
-                stmt_end = sc2.date_input(_t("form.to"), _today, key="stmt_cust_end")
                 if st.button(_t("vendor.stmt_gen"), key="gen_cust_stmt_btn"):
                     try:
                         _settings  = load_settings()
@@ -23667,7 +23760,67 @@ def _vendor_manage_dialog(vendor: Vendor, session):
         st.rerun()
 
 
-def _inline_vendor_row(session, vendors: list):
+def _at_consume_inline_form_dialog_actions(
+    session,
+    txn_type: str,
+    cats: list,
+    vendors: list,
+) -> None:
+    """Open vendor/category dialogs requested via form_submit_button in AT form."""
+    if st.session_state.pop("_at_pending_vendor_add", False):
+        _vendor_add_dialog(session)
+        return
+    if st.session_state.pop("_at_pending_vendor_manage", False):
+        _vendor_names = [v.name for v in vendors]
+        _cur_name = _at_normalize_vendor_selection(
+            st.session_state.get("at_vendor"), _vendor_names
+        )
+        _cur_vendor = (
+            next((v for v in vendors if v.name == _cur_name), None)
+            if _cur_name
+            else None
+        )
+        if _cur_vendor:
+            _vendor_manage_dialog(_cur_vendor, session)
+        return
+    if pending_type := st.session_state.pop("_at_pending_cat_add", None):
+        _cat_add_dialog(pending_type, session)
+        return
+    if st.session_state.pop("_at_pending_cat_manage", False):
+        _cats = _at_filter_transaction_categories(cats)
+        _cur_name = st.session_state.get("at_cat")
+        _cur_cat = (
+            next((c for c in _cats if c.name == _cur_name), None) if _cur_name else None
+        )
+        if _cur_cat:
+            _cat_manage_dialog(_cur_cat, session)
+        return
+    if pending_cat_id := st.session_state.pop("_at_pending_subcat_add", None):
+        _at_cat = session.get(TransactionCategory, pending_cat_id)
+        if _at_cat:
+            _subcat_add_dialog(_at_cat, session)
+        return
+    if st.session_state.pop("_at_pending_subcat_manage", False):
+        _cats = _at_filter_transaction_categories(cats)
+        _cur_name = st.session_state.get("at_cat")
+        _cur_cat = (
+            next((c for c in _cats if c.name == _cur_name), None) if _cur_name else None
+        )
+        if _cur_cat:
+            _subcats = _at_filter_transaction_categories(
+                cq(session, TransactionSubcategory)
+                .filter_by(category_id=_cur_cat.id, is_active=True)
+                .all()
+            )
+            _cur_sub = next(
+                (s for s in _subcats if s.name == st.session_state.get("at_subcat")),
+                None,
+            )
+            if _cur_sub:
+                _subcat_manage_dialog(_cur_sub, session)
+
+
+def _inline_vendor_row(session, vendors: list, *, inside_form: bool = False):
     """Render [ Supplier ▼ ] [＋] [⚙️] row. Returns selected vendor name or None."""
     _vendor_names = [v.name for v in vendors]
     _at_clear_invalid_at_vendor(_vendor_names)
@@ -23706,20 +23859,36 @@ def _inline_vendor_row(session, vendors: list):
             vendor_name_val = None
     with col_act:
         with st.container(horizontal=True, gap="small", vertical_alignment="center", width="content"):
-            if st.button(
-                "＋",
-                key="vendor_add_btn",
-                help=_t("vendor.add_help"),
-                disabled=not _can("create_customer_vendor"),
-            ):
-                _vendor_add_dialog(session)
-            if st.button(
-                "⚙️",
-                key="vendor_cog_btn",
-                help=_t("vendor.manage_help"),
-                disabled=_cur_vendor is None or not _can("edit_customer_vendor"),
-            ):
-                _vendor_manage_dialog(_cur_vendor, session)
+            if inside_form:
+                if st.form_submit_button(
+                    "＋",
+                    key="vendor_add_btn",
+                    help=_t("vendor.add_help"),
+                    disabled=not _can("create_customer_vendor"),
+                ):
+                    st.session_state["_at_pending_vendor_add"] = True
+                if st.form_submit_button(
+                    "⚙️",
+                    key="vendor_cog_btn",
+                    help=_t("vendor.manage_help"),
+                    disabled=_cur_vendor is None or not _can("edit_customer_vendor"),
+                ):
+                    st.session_state["_at_pending_vendor_manage"] = True
+            else:
+                if st.button(
+                    "＋",
+                    key="vendor_add_btn",
+                    help=_t("vendor.add_help"),
+                    disabled=not _can("create_customer_vendor"),
+                ):
+                    _vendor_add_dialog(session)
+                if st.button(
+                    "⚙️",
+                    key="vendor_cog_btn",
+                    help=_t("vendor.manage_help"),
+                    disabled=_cur_vendor is None or not _can("edit_customer_vendor"),
+                ):
+                    _vendor_manage_dialog(_cur_vendor, session)
     return vendor_name_val
 
 
@@ -23849,7 +24018,7 @@ def _subcat_manage_dialog(sub, session):
         st.rerun()
 
 
-def _inline_cat_row(session, txn_type: str, cats: list):
+def _inline_cat_row(session, txn_type: str, cats: list, *, inside_form: bool = False):
     """Render [ Category ▼ ] [＋] [⚙️] row. Returns (at_cat, at_cat_id)."""
     cats = _at_filter_transaction_categories(cats)
     _cat_names = [c.name for c in cats]
@@ -23887,16 +24056,40 @@ def _inline_cat_row(session, txn_type: str, cats: list):
             at_cat = at_cat_id = None
     with col_act:
         with st.container(horizontal=True, gap="small", vertical_alignment="center", width="content"):
-            if st.button("＋", key="cat_add_btn", help=_t("cat.add_help"),
-                         disabled=not _can("manage_categories")):
-                _cat_add_dialog(txn_type, session)
-            if st.button("⚙️", key="cat_cog_btn", help=_t("cat.manage_help"),
-                         disabled=_cur_cat is None or not _can("manage_categories")):
-                _cat_manage_dialog(_cur_cat, session)
+            if inside_form:
+                if st.form_submit_button(
+                    "＋",
+                    key="cat_add_btn",
+                    help=_t("cat.add_help"),
+                    disabled=not _can("manage_categories"),
+                ):
+                    st.session_state["_at_pending_cat_add"] = txn_type
+                if st.form_submit_button(
+                    "⚙️",
+                    key="cat_cog_btn",
+                    help=_t("cat.manage_help"),
+                    disabled=_cur_cat is None or not _can("manage_categories"),
+                ):
+                    st.session_state["_at_pending_cat_manage"] = True
+            else:
+                if st.button(
+                    "＋",
+                    key="cat_add_btn",
+                    help=_t("cat.add_help"),
+                    disabled=not _can("manage_categories"),
+                ):
+                    _cat_add_dialog(txn_type, session)
+                if st.button(
+                    "⚙️",
+                    key="cat_cog_btn",
+                    help=_t("cat.manage_help"),
+                    disabled=_cur_cat is None or not _can("manage_categories"),
+                ):
+                    _cat_manage_dialog(_cur_cat, session)
     return at_cat, at_cat_id
 
 
-def _inline_subcat_row(session, at_cat):
+def _inline_subcat_row(session, at_cat, *, inside_form: bool = False):
     """Render [ Subcategory ▼ ] [＋] [⚙️] row. Returns (at_subcat_name, subcats_list)."""
     if not at_cat:
         return None, []
@@ -23930,12 +24123,36 @@ def _inline_subcat_row(session, at_cat):
             (s for s in subcats_list if s.name == st.session_state.get("at_subcat")), None
         )
         with st.container(horizontal=True, gap="small", vertical_alignment="center", width="content"):
-            if st.button("＋", key="subcat_add_btn", help=_t("subcat.add_help"),
-                         disabled=not _can("manage_categories")):
-                _subcat_add_dialog(at_cat, session)
-            if st.button("⚙️", key="subcat_cog_btn", help=_t("subcat.manage_help"),
-                         disabled=_cur_sub_obj is None or not _can("manage_categories")):
-                _subcat_manage_dialog(_cur_sub_obj, session)
+            if inside_form:
+                if st.form_submit_button(
+                    "＋",
+                    key="subcat_add_btn",
+                    help=_t("subcat.add_help"),
+                    disabled=not _can("manage_categories"),
+                ):
+                    st.session_state["_at_pending_subcat_add"] = at_cat.id
+                if st.form_submit_button(
+                    "⚙️",
+                    key="subcat_cog_btn",
+                    help=_t("subcat.manage_help"),
+                    disabled=_cur_sub_obj is None or not _can("manage_categories"),
+                ):
+                    st.session_state["_at_pending_subcat_manage"] = True
+            else:
+                if st.button(
+                    "＋",
+                    key="subcat_add_btn",
+                    help=_t("subcat.add_help"),
+                    disabled=not _can("manage_categories"),
+                ):
+                    _subcat_add_dialog(at_cat, session)
+                if st.button(
+                    "⚙️",
+                    key="subcat_cog_btn",
+                    help=_t("subcat.manage_help"),
+                    disabled=_cur_sub_obj is None or not _can("manage_categories"),
+                ):
+                    _subcat_manage_dialog(_cur_sub_obj, session)
     return at_subcat_name, subcats_list
 
 
@@ -25723,9 +25940,9 @@ def render_my_account(session):
 
             st.markdown(f"**{_t('account.formatting')}**")
             _df1, _df2 = st.columns(2)
-            _date_opts = list(_DATE_FORMAT_OPTIONS)
+            _date_opts = list(DATE_FORMAT_OPTIONS)
             _cur_datefmt = _canonical_user_date_format(
-                _get_user_pref(user_id, "date_format", _DATE_FORMAT_DEFAULT)
+                _get_user_pref(user_id, "date_format", DATE_FORMAT_DEFAULT)
             )
             _date_idx = (
                 _date_opts.index(_cur_datefmt)
@@ -25904,6 +26121,7 @@ def main():
         _sync_ui_locale_from_user(user["id"])
         with get_session() as _mem_session:
             _refresh_user_company_memberships(_mem_session, user["id"])
+            _cache_user_date_format(_mem_session)
 
     # ── Load settings (needed for header) ────────────────────────────────────
     settings = load_settings()

@@ -78,6 +78,23 @@ Use `amount_input(label, key, ...)` instead of `st.number_input` for monetary fi
 
 Call `render_export_buttons(df, prefix)` to add an Excel/PDF download popover to any page. The `prefix` string becomes the filename stem and PDF title.
 
+## ARCHITECTURE-PROTECTION-01 (active)
+
+All new modules must be **service-first** and **migration-safe**. Required order:
+
+1. Database models (`models.py`)
+2. Service / business logic (`services/` or `registry/` — not `app.py`)
+3. Tests (`tests/`)
+4. Minimal Streamlit UI in `app.py` only if useful
+
+**Strict:** Streamlit must not own business logic. Accounting rules live in reusable services. Tests are authoritative.
+
+**Pause before deep Streamlit UI** for: login/auth, staff portal, mobile uploads, permission dashboards, approval inboxes, advanced admin/settings.
+
+**Prefer services now:** accounting, reports, Daily Sales Close, Recipe Costing.
+
+See [ROADMAP.md § ARCHITECTURE-PROTECTION-01](./ROADMAP.md#architecture-protection-01--service-first-development-rule) and [FUTURE-MIGRATION-01](./ROADMAP.md#future-architecture--long-term-roadmap).
+
 ## Project memory — documentation gate
 
 **No task is complete until documentation is updated** after every feature, bug fix, accounting change, audit, migration, or major test addition:

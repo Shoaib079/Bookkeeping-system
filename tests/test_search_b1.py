@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -44,9 +45,11 @@ def test_txh_matches_keyword_fields():
 
 
 def test_txh_date_filters_from_to_only():
+    block = inspect.getsource(erp._render_txh_date_filters)
+    assert "txh_date_from" in block
+    assert "txh_date_to" in block
+    assert "render_preferred_date_input" in block
     src = (ROOT / "app.py").read_text(encoding="utf-8")
-    assert 'key="txh_date_from"' in src
-    assert 'key="txh_date_to"' in src
     assert "txh_date_preset" not in src
     assert "_TXH_DATE_PRESETS" not in src
 

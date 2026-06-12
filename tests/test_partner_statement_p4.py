@@ -514,8 +514,8 @@ class TestUiWiring:
     def test_shared_period_keys(self):
         src = inspect.getsource(app._render_partner_statement)
         assert 'key="partner_stmt_preset"' in src
-        assert 'key="partner_stmt_from"' in src
-        assert 'key="partner_stmt_to"' in src
+        assert '"partner_stmt_from"' in src
+        assert '"partner_stmt_to"' in src
 
     def test_view_statement_sets_partner_key(self):
         src = inspect.getsource(app._render_all_partners_settlement_summary)

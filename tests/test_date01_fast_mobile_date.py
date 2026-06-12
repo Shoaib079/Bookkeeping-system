@@ -229,15 +229,17 @@ def test_desktop_date_field_is_single_text_input_only():
     text field (in-form, Enter submits). No checkbox, no calendar expander,
     no st.date_input. Mobile keeps its own date sheet."""
     src = inspect.getsource(erp.render_add_transaction)
-    desktop_block = src.split("if not _is_mobile_at:")[-1]
-    assert "_at_render_desktop_date_field()" in desktop_block
+    form_pos = src.index('st.form("at_entry_form"')
+    assert "_at_render_desktop_date_field()" in src
+    assert src.index("_at_render_desktop_date_field()") > form_pos
     date_helper = inspect.getsource(erp._at_render_desktop_date_field)
-    assert 'key="at_date_text"' in date_helper
-    assert date_helper.count("st.text_input") == 1
+    assert "at_date_text" in date_helper
+    assert "render_preferred_date_input" in date_helper
     for banned in ("st.checkbox", "st.date_input", "st.expander", "st.popover",
                    "at_date_manual_entry"):
         assert banned not in date_helper
-    assert "_mob_at_apply_date_follow_today" not in desktop_block
-    assert "_mob_at_render_date_picker_sheet" not in desktop_block
+    desktop_host = src.split('with st.container(key="erp_at_desktop_host")', 1)[1]
+    assert "_mob_at_apply_date_follow_today" not in desktop_host
+    assert "_mob_at_render_date_picker_sheet" not in desktop_host
     mobile_src = inspect.getsource(erp._render_add_transaction_mobile)
     assert "_mob_at_apply_date_follow_today" in mobile_src

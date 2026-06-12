@@ -144,10 +144,10 @@ def test_vendor_linked_counts(db):
 
 def test_inline_vendor_row_wired_in_at_purchase_and_supplier_payment():
     src = inspect.getsource(erp.render_add_transaction)
-    assert "_inline_vendor_row(session, vendors)" in src
-    assert src.count("_inline_vendor_row(session, vendors)") >= 2
+    assert "_inline_vendor_row(" in src
+    assert "inside_form=True" in src
+    assert src.count("_inline_vendor_row(") >= 2
     assert 'elif txn_type == "Purchase"' in src
-    assert src.count("_inline_vendor_row(session, vendors)") >= 2
 
 
 def test_vendor_dialogs_and_buttons_present():

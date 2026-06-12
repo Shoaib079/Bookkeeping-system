@@ -111,12 +111,19 @@ def _company(db, *, cash_gl=True, bank_gl=True):
         ("2026-06-05", datetime.date(2026, 6, 5)),
         ("05.06.2026", datetime.date(2026, 6, 5)),
         ("05/06/2026", datetime.date(2026, 6, 5)),
+        ("05062026", datetime.date(2026, 6, 5)),
         ("", None),
         ("not-a-date", None),
         ("32.13.2026", None),
+        ("31022026", None),
     ],
 )
-def test_at_parse_date_text_formats(raw, expected):
+def test_at_parse_date_text_formats(raw, expected, monkeypatch):
+    monkeypatch.setattr(
+        erp.st,
+        "session_state",
+        {"_user_date_format": "DD.MM.YYYY"},
+    )
     assert erp._at_parse_date_text(raw) == expected
 
 
@@ -135,8 +142,13 @@ def test_at_resolve_entry_date_typed_text_wins(monkeypatch):
         ("2026-06-05", datetime.date(2026, 6, 5)),
         ("05.06.2026", datetime.date(2026, 6, 5)),
         ("05/06/2026", datetime.date(2026, 6, 5)),
+        ("05062026", datetime.date(2026, 6, 5)),
     ):
-        state = {"at_date_text": raw, "at_date": datetime.date(2020, 1, 1)}
+        state = {
+            "_user_date_format": "DD.MM.YYYY",
+            "at_date_text": raw,
+            "at_date": datetime.date(2020, 1, 1),
+        }
         monkeypatch.setattr(erp.st, "session_state", state)
         assert erp._at_resolve_entry_date() == expected
         assert state["at_date"] == expected
@@ -166,11 +178,28 @@ def test_at_entry_date_error_mobile_never_blocks(monkeypatch):
     assert erp._at_entry_date_error() is None
 
 
+def test_inline_rows_use_form_submit_buttons_inside_at_form():
+    """st.button is forbidden inside st.form — inline rows use form_submit_button."""
+    for fn_name in (
+        "_inline_cat_row",
+        "_inline_subcat_row",
+        "_inline_vendor_row",
+    ):
+        src = inspect.getsource(getattr(erp, fn_name))
+        assert "inside_form" in src
+        assert "st.form_submit_button" in src
+    at_src = inspect.getsource(erp.render_add_transaction)
+    assert "_at_consume_inline_form_dialog_actions" in at_src
+    assert "inside_form=True" in at_src
+
+
 def test_desktop_date_field_single_visible_control():
     """Exactly ONE visible date control: a text input. No checkbox, no
     calendar expander, no st.date_input, no second widget of any kind."""
     src = inspect.getsource(erp._at_render_desktop_date_field)
-    assert src.count("st.text_input") == 1
+    assert "render_preferred_date_input" in src
+    assert "in_form=True" in src
+    assert "at_date_text" in src
     for banned in (
         "st.checkbox",
         "st.date_input",
@@ -178,9 +207,10 @@ def test_desktop_date_field_single_visible_control():
         "st.popover",
         "at_date_manual_entry",
         "date_enter_manually",
-        "on_change",
     ):
         assert banned not in src, f"banned widget/pattern in date field: {banned}"
+    assert "render_preferred_date_input" in src
+    assert "isoformat()" not in src
 
 
 def test_no_manual_entry_checkbox_anywhere():
@@ -305,14 +335,14 @@ def test_desktop_at_uses_entry_form():
 
 
 def test_desktop_date_field_inside_form_for_enter_submit():
-    """Date field moved INSIDE the form: typing a date + Enter submits the
-    transaction. Calendar helper is callback-free (form-safe)."""
+    """Date field inside the form: typing a date + Enter submits the transaction."""
     src = inspect.getsource(erp.render_add_transaction)
     form_pos = src.index('st.form("at_entry_form"')
     date_pos = src.index("_at_render_desktop_date_field()")
     assert date_pos > form_pos
     date_helper = inspect.getsource(erp._at_render_desktop_date_field)
-    assert "on_change" not in date_helper
+    assert "render_preferred_date_input" in date_helper
+    assert "in_form=True" in date_helper
 
 
 def test_at_date_text_is_company_scoped():
