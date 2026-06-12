@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import inspect
 import pathlib
 
@@ -146,3 +147,24 @@ def test_renderer_public_signatures():
     ):
         params = list(inspect.signature(fn).parameters)
         assert params == ["session"]
+
+
+def test_section_header_html_title_only(ui_src: str):
+    """section_header_html(title) — subtitle via st.caption, not a second positional arg."""
+    tree = ast.parse(ui_src)
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name) and func.id == "section_header_html":
+            assert len(node.args) <= 1, (
+                "section_header_html accepts title only; render subtitle with st.caption"
+            )
+
+    for subtitle_key in (
+        "rc.ingredients.subtitle",
+        "rc.recipes.subtitle",
+        "rc.cost.subtitle",
+        "rc.menu.subtitle",
+    ):
+        assert f'st.caption(erp._t("{subtitle_key}")' in ui_src

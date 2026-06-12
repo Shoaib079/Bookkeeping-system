@@ -139,9 +139,10 @@ def render_recipe_ingredients(session) -> None:
     can_manage = erp._can("manage_recipe_costing")
 
     st.markdown(
-        section_header_html(erp._t("rc.ingredients.title"), erp._t("rc.ingredients.subtitle")),
+        section_header_html(erp._t("rc.ingredients.title")),
         unsafe_allow_html=True,
     )
+    st.caption(erp._t("rc.ingredients.subtitle"))
 
     c1, c2 = st.columns([2, 1])
     with c1:
@@ -339,9 +340,10 @@ def render_recipe_recipes(session) -> None:
     can_manage = erp._can("manage_recipe_costing")
 
     st.markdown(
-        section_header_html(erp._t("rc.recipes.title"), erp._t("rc.recipes.subtitle")),
+        section_header_html(erp._t("rc.recipes.title")),
         unsafe_allow_html=True,
     )
+    st.caption(erp._t("rc.recipes.subtitle"))
 
     search = st.text_input(erp._t("rc.filter.search"), key="rc_rec_search")
     recipes = rc_svc.list_recipes(session, company_id, search=search or None)
@@ -540,9 +542,10 @@ def render_recipe_cost_breakdown(session) -> None:
     currency = settings.get("currency", "TRY")
 
     st.markdown(
-        section_header_html(erp._t("rc.cost.title"), erp._t("rc.cost.subtitle")),
+        section_header_html(erp._t("rc.cost.title")),
         unsafe_allow_html=True,
     )
+    st.caption(erp._t("rc.cost.subtitle"))
 
     recipes = rc_svc.list_recipes(session, company_id, active_only=True)
     if not recipes:
@@ -618,9 +621,10 @@ def render_recipe_menu_items(session) -> None:
     can_manage = erp._can("manage_recipe_costing")
 
     st.markdown(
-        section_header_html(erp._t("rc.menu.title"), erp._t("rc.menu.subtitle")),
+        section_header_html(erp._t("rc.menu.title")),
         unsafe_allow_html=True,
     )
+    st.caption(erp._t("rc.menu.subtitle"))
 
     target_fc = st.number_input(
         erp._t("rc.menu.target_food_cost"),
