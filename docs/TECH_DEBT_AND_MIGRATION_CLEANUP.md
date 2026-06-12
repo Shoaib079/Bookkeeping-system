@@ -86,6 +86,34 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 | **TD-RC-06** | **Roadmap / spec drift** — add `RECIPE_COSTING_01_SPEC.md` and ROADMAP phase table when RC-P2+ lands | Low | Open | RC-P1b UI shipped 2026-06-05; spec file still pending |
 | **TD-RC-09** | **Widget session keys** — `rc_*` draft line state and recipe editor keys are Streamlit-only; React form state replaces at API migration | Low | Open | RC-P1b UI |
 | **TD-RC-10** | **UI `_erp()` lazy import** — `ui/recipe_costing.py` reaches into `app.py` for `_t`, `_can`, `amount_input`, `current_company_required`; replace with injected context or `ui/context.py` | Medium | Open | FastAPI Phase D |
+| **TD-RC-11** | **Menu price history** — append-only `MenuPriceHistory`; no soft-delete or price void; FastAPI may need explicit price correction workflow | Low | Open | RC-P2A |
+| **TD-RC-12** | **Tax rate source** — `_get_company_tax_rate_pct` reads `CompanySetting.key == "tax_rate"`; align with registry `accounting.default_tax_rate` single source at API migration | Low | Open | RC-P2A |
+
+### RC-P2A Migration Cleanup (2026-06-05)
+
+#### 1. Code to keep during FastAPI/React migration
+- `models.MenuItem`, `models.MenuPriceHistory` — menu schema; profitability computed on demand only
+- RC-P2A service API in `services/recipe_costing.py`: menu CRUD, price history, pure profitability helpers, DTOs `MenuItemView`, `MenuPriceView`, `MenuProfitabilityView`
+- `ui/recipe_costing.py` — `render_recipe_menu_items` thin renderer
+- Registry: `NAV_RC_MENU_ITEMS`, locales `rc.menu.*`, `nav.rc_menu_items`
+- Tests: `tests/test_recipe_costing_menu_models.py`, `tests/test_recipe_costing_menu_service.py`, UI contract extensions
+- `migrate_schema()` indexes for `menu_items`, `menu_price_history`
+
+#### 2. Code likely to replace during FastAPI/React migration
+- `ui/recipe_costing.py` menu section → React menu profitability module
+- `session.query(CompanySetting)` tax lookup — shared settings service
+- Internal `session.commit()` in menu mutations (TD-RC-01)
+- `st.number_input` for target food cost % — React form control bound to API query param
+
+#### 3. Dead code found
+- None
+
+#### 4. Temporary Streamlit-only code
+- `rc_menu_target_fc`, `rc_add_menu_*`, `rc_edit_menu_*`, `rc_menu_edit_pick` session keys
+- Target food cost % widget (parameter only — math stays in service)
+
+#### 5. Future cleanup items (registered above)
+- TD-RC-11, TD-RC-12 added this session
 
 ### RC-P1b Migration Cleanup (2026-06-05)
 

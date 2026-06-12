@@ -67,6 +67,7 @@ from registry.nav_keys import (
     NAV_PURCHASES,
     NAV_RC_COST_BREAKDOWN,
     NAV_RC_INGREDIENTS,
+    NAV_RC_MENU_ITEMS,
     NAV_RC_RECIPES,
     NAV_RECEIVABLES,
     NAV_RECON_HEALTH,
@@ -260,6 +261,7 @@ from ui.external_sales_verification import render_external_sales_verification
 from ui.recipe_costing import (
     render_recipe_cost_breakdown,
     render_recipe_ingredients,
+    render_recipe_menu_items,
     render_recipe_recipes,
 )
 from ui.section import (
@@ -2057,6 +2059,13 @@ def migrate_schema(session):
         "CREATE INDEX IF NOT EXISTS ix_rline_recipe_id        ON recipe_lines                     (recipe_id)",
         "CREATE INDEX IF NOT EXISTS ix_rline_ingredient_id    ON recipe_lines                     (ingredient_id)",
         "CREATE INDEX IF NOT EXISTS ix_rline_sub_recipe_id    ON recipe_lines                     (sub_recipe_id)",
+        # RC-P2A — Menu profitability
+        "CREATE INDEX IF NOT EXISTS ix_menuitem_company_id   ON menu_items                       (company_id)",
+        "CREATE INDEX IF NOT EXISTS ix_menuitem_is_active    ON menu_items                       (is_active)",
+        "CREATE INDEX IF NOT EXISTS ix_menuitem_recipe_id     ON menu_items                       (recipe_id)",
+        "CREATE INDEX IF NOT EXISTS ix_mph_company_id         ON menu_price_history               (company_id)",
+        "CREATE INDEX IF NOT EXISTS ix_mph_menu_item_id       ON menu_price_history               (menu_item_id)",
+        "CREATE INDEX IF NOT EXISTS ix_mph_effective_at       ON menu_price_history               (effective_at)",
         "CREATE INDEX IF NOT EXISTS ix_txcat_company_id        ON transaction_categories         (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_txsub_company_id        ON transaction_subcategories      (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_retmpl_company_id       ON recurring_expense_templates    (company_id)",
@@ -3572,6 +3581,7 @@ _NAV_ACCORDION = [
         (None, NAV_RC_INGREDIENTS),
         (None, NAV_RC_RECIPES),
         (None, NAV_RC_COST_BREAKDOWN),
+        (None, NAV_RC_MENU_ITEMS),
     ]),
     ("statements", "Financial Statements", [
         (None, NAV_PROFIT_LOSS),
@@ -3617,7 +3627,7 @@ _NAV_ROLE_PAGES = {
         NAV_HOME,
         NAV_NEW_TRANSACTION, _TXN_LEDGER_PAGE_KEY, NAV_SALES, NAV_EXPENSES, NAV_RECURRING_EXPENSES, NAV_PURCHASES,
         NAV_CASH_RECONCILIATION, NAV_EXTERNAL_SALES_VERIFICATION, NAV_END_OF_DAY_CLOSE,
-        NAV_RC_INGREDIENTS, NAV_RC_RECIPES, NAV_RC_COST_BREAKDOWN,
+        NAV_RC_INGREDIENTS, NAV_RC_RECIPES, NAV_RC_COST_BREAKDOWN, NAV_RC_MENU_ITEMS,
         NAV_CUSTOMERS, NAV_VENDORS, NAV_RECEIVABLES, NAV_PAYABLES,
         NAV_INVENTORY, NAV_BANKING,
         NAV_REPORTS,
@@ -26273,6 +26283,7 @@ def main():
         NAV_RC_INGREDIENTS: render_recipe_ingredients,
         NAV_RC_RECIPES: render_recipe_recipes,
         NAV_RC_COST_BREAKDOWN: render_recipe_cost_breakdown,
+        NAV_RC_MENU_ITEMS: render_recipe_menu_items,
         NAV_END_OF_DAY_CLOSE:  render_end_of_day_close,
         NAV_CUSTOMERS:         render_customers,
         NAV_VENDORS:           render_vendors,

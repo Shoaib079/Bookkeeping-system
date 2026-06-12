@@ -17,6 +17,7 @@ NAV_END_OF_DAY_CLOSE = "End-of-Day Close"
 NAV_RC_INGREDIENTS = "Ingredients"
 NAV_RC_RECIPES = "Recipes"
 NAV_RC_COST_BREAKDOWN = "Cost Breakdown"
+NAV_RC_MENU_ITEMS = "Menu Items"
 NAV_CUSTOMERS = "Customers"
 NAV_VENDORS = "Vendors"
 NAV_RECEIVABLES = "Receivables"
@@ -60,6 +61,7 @@ ALL_NAV_PAGE_KEYS: frozenset[str] = frozenset(
         NAV_RC_INGREDIENTS,
         NAV_RC_RECIPES,
         NAV_RC_COST_BREAKDOWN,
+        NAV_RC_MENU_ITEMS,
         NAV_CUSTOMERS,
         NAV_VENDORS,
         NAV_RECEIVABLES,

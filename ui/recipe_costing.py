@@ -596,3 +596,208 @@ def render_recipe_cost_breakdown(session) -> None:
 
     if rows:
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
+def _fmt_pct(value: float | None) -> str:
+    if value is None:
+        return "—"
+    return f"{value:g}%"
+
+
+def render_recipe_menu_items(session) -> None:
+    erp = _erp()
+    if not erp._can("view_recipe_costing"):
+        st.warning(erp._t("rc.no_permission"))
+        return
+
+    company_id = erp.current_company_required()
+    user = erp._current_user() or {}
+    user_id = user.get("id", 0)
+    settings = erp.load_settings()
+    currency = settings.get("currency", "TRY")
+    can_manage = erp._can("manage_recipe_costing")
+
+    st.markdown(
+        section_header_html(erp._t("rc.menu.title"), erp._t("rc.menu.subtitle")),
+        unsafe_allow_html=True,
+    )
+
+    target_fc = st.number_input(
+        erp._t("rc.menu.target_food_cost"),
+        min_value=1.0,
+        max_value=99.0,
+        value=rc_svc.DEFAULT_TARGET_FOOD_COST_PCT,
+        step=1.0,
+        key="rc_menu_target_fc",
+    )
+
+    profitability = rc_svc.list_menu_profitability(
+        session,
+        company_id,
+        active_only=True,
+        target_food_cost_pct=target_fc,
+    )
+
+    if profitability:
+        df = pd.DataFrame(
+            [
+                {
+                    erp._t("rc.col.name"): row.menu_item_name,
+                    erp._t("rc.col.recipe"): row.recipe_name,
+                    erp._t("rc.col.recipe_cost"): _fmt_money(currency, row.recipe_cost),
+                    erp._t("rc.col.price_gross"): _fmt_money(
+                        currency, row.selling_price_gross
+                    ),
+                    erp._t("rc.col.price_net"): _fmt_money(currency, row.selling_price_net),
+                    erp._t("rc.col.gross_profit"): _fmt_money(currency, row.gross_profit),
+                    erp._t("rc.col.food_cost_pct"): _fmt_pct(row.food_cost_pct),
+                    erp._t("rc.col.markup_pct"): _fmt_pct(row.markup_pct),
+                    erp._t("rc.col.suggested_price"): _fmt_money(
+                        currency, row.suggested_price_gross
+                    ),
+                }
+                for row in profitability
+            ]
+        )
+        st.dataframe(df, use_container_width=True, hide_index=True)
+        for row in profitability:
+            for warn in row.warnings:
+                st.caption(f"⚠ {row.menu_item_name}: {warn}")
+    else:
+        st.info(erp._t("rc.menu.empty"))
+
+    if not can_manage:
+        return
+
+    recipes = rc_svc.list_recipes(session, company_id, active_only=True)
+    if not recipes:
+        st.warning(erp._t("rc.menu.need_recipes"))
+        return
+
+    rec_labels, rec_by_label = _recipe_options(recipes)
+
+    with st.expander(erp._t("rc.menu.add"), expanded=not profitability):
+        with st.form("rc_add_menu_item"):
+            name = st.text_input(erp._t("rc.field.name"), key="rc_add_menu_name")
+            recipe_label = st.selectbox(
+                erp._t("rc.menu.link_recipe"),
+                options=rec_labels,
+                key="rc_add_menu_recipe",
+            )
+            notes = st.text_area(erp._t("rc.field.notes"), key="rc_add_menu_notes")
+            price = erp.amount_input(erp._t("rc.menu.price_gross"), key="rc_add_menu_price")
+            if st.form_submit_button(erp._t("rc.action.add_menu_item"), type="primary"):
+                result = rc_svc.create_menu_item(
+                    session,
+                    company_id,
+                    name,
+                    rec_by_label[recipe_label],
+                    user_id,
+                    notes=notes or None,
+                    performed_by=user.get("username"),
+                )
+                if not result.ok:
+                    st.error(result.error)
+                else:
+                    if price and price > 0:
+                        price_res = rc_svc.set_menu_price(
+                            session,
+                            company_id,
+                            result.record_id,
+                            price,
+                            user_id,
+                            performed_by=user.get("username"),
+                        )
+                        if not price_res.ok:
+                            st.error(price_res.error)
+                            return
+                    st.success(erp._t("rc.msg.menu_item_saved"))
+                    st.rerun()
+
+    menu_items = rc_svc.list_menu_items(session, company_id, active_only=None)
+    if menu_items:
+        pick_labels = [m.name for m in menu_items]
+        selected_name = st.selectbox(
+            erp._t("rc.menu.edit_select"),
+            options=pick_labels,
+            key="rc_menu_edit_pick",
+        )
+        selected = next(m for m in menu_items if m.name == selected_name)
+        current_recipe_label = next(
+            (lbl for lbl, rid in rec_by_label.items() if rid == selected.recipe_id),
+            rec_labels[0],
+        )
+        with st.form("rc_edit_menu_item"):
+            edit_name = st.text_input(
+                erp._t("rc.field.name"),
+                value=selected.name,
+                key="rc_edit_menu_name",
+            )
+            edit_recipe = st.selectbox(
+                erp._t("rc.menu.link_recipe"),
+                options=rec_labels,
+                index=rec_labels.index(current_recipe_label)
+                if current_recipe_label in rec_labels
+                else 0,
+                key="rc_edit_menu_recipe",
+            )
+            edit_notes = st.text_area(
+                erp._t("rc.field.notes"),
+                value=selected.notes or "",
+                key="rc_edit_menu_notes",
+            )
+            edit_price = erp.amount_input(
+                erp._t("rc.menu.price_gross"),
+                key="rc_edit_menu_price",
+                default=selected.current_price_gross,
+            )
+            c_save, c_price, c_deact = st.columns(3)
+            save = c_save.form_submit_button(erp._t("rc.action.save"), type="primary")
+            set_price = c_price.form_submit_button(erp._t("rc.action.set_price"))
+            deactivate = c_deact.form_submit_button(erp._t("rc.action.deactivate"))
+            if save:
+                res = rc_svc.update_menu_item(
+                    session,
+                    company_id,
+                    selected.id,
+                    edit_name,
+                    rec_by_label[edit_recipe],
+                    user_id,
+                    notes=edit_notes or None,
+                    performed_by=user.get("username"),
+                )
+                if res.ok:
+                    st.success(erp._t("rc.msg.menu_item_saved"))
+                    st.rerun()
+                else:
+                    st.error(res.error)
+            elif set_price:
+                if edit_price is None or edit_price < 0:
+                    st.error(erp._t("rc.menu.price_required"))
+                else:
+                    res = rc_svc.set_menu_price(
+                        session,
+                        company_id,
+                        selected.id,
+                        edit_price,
+                        user_id,
+                        performed_by=user.get("username"),
+                    )
+                    if res.ok:
+                        st.success(erp._t("rc.msg.price_saved"))
+                        st.rerun()
+                    else:
+                        st.error(res.error)
+            elif deactivate:
+                res = rc_svc.deactivate_menu_item(
+                    session,
+                    company_id,
+                    selected.id,
+                    user_id,
+                    performed_by=user.get("username"),
+                )
+                if res.ok:
+                    st.success(erp._t("rc.msg.menu_item_deactivated"))
+                    st.rerun()
+                else:
+                    st.error(res.error)

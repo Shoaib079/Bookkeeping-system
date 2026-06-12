@@ -23,6 +23,12 @@ SERVICE_CALLS = (
     "save_recipe",
     "compute_recipe_cost",
     "units_for_dimension",
+    "list_menu_items",
+    "create_menu_item",
+    "update_menu_item",
+    "deactivate_menu_item",
+    "set_menu_price",
+    "list_menu_profitability",
 )
 
 FORBIDDEN_UI_TOKENS = (
@@ -33,10 +39,11 @@ FORBIDDEN_UI_TOKENS = (
     "post_cash_sale",
     "post_purchase",
     "inventory_transactions",
-    "MenuItem",
-    "profitability",
-    "food_cost",
-    "markup",
+    "gross_to_net_price",
+    "compute_food_cost_pct",
+    "compute_markup_pct",
+    "compute_suggested_gross_price",
+    "compute_menu_profitability_metrics",
 )
 
 
@@ -59,6 +66,7 @@ def test_renderer_module_exists():
     from ui.recipe_costing import (
         render_recipe_cost_breakdown,
         render_recipe_ingredients,
+        render_recipe_menu_items,
         render_recipe_recipes,
     )
 
@@ -66,6 +74,7 @@ def test_renderer_module_exists():
         render_recipe_ingredients,
         render_recipe_recipes,
         render_recipe_cost_breakdown,
+        render_recipe_menu_items,
     ):
         assert callable(fn)
 
@@ -94,9 +103,11 @@ def test_app_dispatches_to_ui_renderers(app_src: str):
     assert "render_recipe_ingredients" in app_src
     assert "render_recipe_recipes" in app_src
     assert "render_recipe_cost_breakdown" in app_src
+    assert "render_recipe_menu_items" in app_src
     assert "NAV_RC_INGREDIENTS: render_recipe_ingredients" in app_src
     assert "NAV_RC_RECIPES: render_recipe_recipes" in app_src
     assert "NAV_RC_COST_BREAKDOWN: render_recipe_cost_breakdown" in app_src
+    assert "NAV_RC_MENU_ITEMS: render_recipe_menu_items" in app_src
 
 
 def test_nav_wired_under_recipe_costing(app_src: str):
@@ -106,6 +117,7 @@ def test_nav_wired_under_recipe_costing(app_src: str):
     assert "NAV_RC_INGREDIENTS" in snippet
     assert "NAV_RC_RECIPES" in snippet
     assert "NAV_RC_COST_BREAKDOWN" in snippet
+    assert "NAV_RC_MENU_ITEMS" in snippet
 
 
 def test_permissions_registered(app_src: str):
@@ -122,6 +134,7 @@ def test_renderer_public_signatures():
     from ui.recipe_costing import (
         render_recipe_cost_breakdown,
         render_recipe_ingredients,
+        render_recipe_menu_items,
         render_recipe_recipes,
     )
 
@@ -129,6 +142,7 @@ def test_renderer_public_signatures():
         render_recipe_ingredients,
         render_recipe_recipes,
         render_recipe_cost_breakdown,
+        render_recipe_menu_items,
     ):
         params = list(inspect.signature(fn).parameters)
         assert params == ["session"]

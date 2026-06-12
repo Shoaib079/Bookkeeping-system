@@ -1103,3 +1103,49 @@ class RecipeLine(Base):
     recipe = relationship("Recipe", foreign_keys=[recipe_id], back_populates="lines")
     ingredient = relationship("Ingredient", foreign_keys=[ingredient_id])
     sub_recipe = relationship("Recipe", foreign_keys=[sub_recipe_id])
+
+
+# ── RECIPE-COSTING-01 RC-P2A — Menu items & price history (no inventory) ───────
+
+
+class MenuItem(Base):
+    """Sellable menu item linked to a recipe for on-demand profitability."""
+    __tablename__ = "menu_items"
+    __table_args__ = (
+        UniqueConstraint("company_id", "name", name="uq_menu_item_company_name"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    recipe_id = Column(Integer, ForeignKey("recipes.id"), nullable=False, index=True)
+    is_active = Column(Boolean, default=True, index=True)
+    notes = Column(Text, nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=True)
+
+    recipe = relationship("Recipe", foreign_keys=[recipe_id])
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    price_history = relationship(
+        "MenuPriceHistory",
+        back_populates="menu_item",
+        cascade="all, delete-orphan",
+        order_by="MenuPriceHistory.effective_at.desc()",
+    )
+
+
+class MenuPriceHistory(Base):
+    """Append-only selling price history (gross / tax-inclusive list price)."""
+    __tablename__ = "menu_price_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, nullable=False, index=True)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=False, index=True)
+    price_gross = Column(Float, nullable=False)
+    effective_at = Column(DateTime, nullable=False, index=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, nullable=False)
+
+    menu_item = relationship("MenuItem", back_populates="price_history")
+    created_by = relationship("User", foreign_keys=[created_by_id])

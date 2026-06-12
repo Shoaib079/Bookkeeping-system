@@ -1,7 +1,7 @@
 """RC-P1 — Recipe Costing service layer.
 
 FastAPI-ready: explicit company_id, serializable DTOs, no Streamlit or app.py imports.
-Verification/costing only — no inventory, posting, or menu linkage in RC-P1.
+RC-P2A adds menu item profitability — still no inventory or posting.
 """
 
 from __future__ import annotations
@@ -11,11 +11,20 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from models import AuditLog, Ingredient, Recipe, RecipeLine
+from models import (
+    AuditLog,
+    CompanySetting,
+    Ingredient,
+    MenuItem,
+    MenuPriceHistory,
+    Recipe,
+    RecipeLine,
+)
 from sqlalchemy.orm import Session
 
 MAX_RECURSION_DEPTH = 3
 MAX_NAME_LEN = 200
+DEFAULT_TARGET_FOOD_COST_PCT = 30.0
 
 DIMENSIONS = frozenset({"weight", "volume", "count"})
 UNITS_BY_DIMENSION: dict[str, tuple[str, ...]] = {
@@ -1294,3 +1303,568 @@ def where_used(
                 frontier.append(pid)
 
     return sorted(results.values(), key=lambda e: (e.depth, e.recipe_name.lower()))
+
+
+# ── RC-P2A — Menu profitability DTOs ─────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class MenuPriceView:
+    id: int
+    menu_item_id: int
+    price_gross: float
+    effective_at: datetime.datetime
+    created_at: datetime.datetime
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "menu_item_id": self.menu_item_id,
+            "price_gross": self.price_gross,
+            "effective_at": self.effective_at.isoformat(),
+            "created_at": self.created_at.isoformat(),
+        }
+
+
+@dataclass(frozen=True)
+class MenuItemView:
+    id: int
+    company_id: int
+    name: str
+    recipe_id: int
+    recipe_name: str
+    is_active: bool
+    notes: str | None
+    current_price_gross: float | None
+    created_at: datetime.datetime
+    updated_at: datetime.datetime | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "company_id": self.company_id,
+            "name": self.name,
+            "recipe_id": self.recipe_id,
+            "recipe_name": self.recipe_name,
+            "is_active": self.is_active,
+            "notes": self.notes,
+            "current_price_gross": self.current_price_gross,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+@dataclass(frozen=True)
+class MenuProfitabilityView:
+    menu_item_id: int
+    menu_item_name: str
+    recipe_id: int
+    recipe_name: str
+    is_active: bool
+    recipe_cost: float | None
+    selling_price_gross: float | None
+    selling_price_net: float | None
+    tax_rate_pct: float
+    gross_profit: float | None
+    food_cost_pct: float | None
+    markup_pct: float | None
+    target_food_cost_pct: float
+    suggested_price_gross: float | None
+    warnings: tuple[str, ...] = field(default_factory=tuple)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "menu_item_id": self.menu_item_id,
+            "menu_item_name": self.menu_item_name,
+            "recipe_id": self.recipe_id,
+            "recipe_name": self.recipe_name,
+            "is_active": self.is_active,
+            "recipe_cost": self.recipe_cost,
+            "selling_price_gross": self.selling_price_gross,
+            "selling_price_net": self.selling_price_net,
+            "tax_rate_pct": self.tax_rate_pct,
+            "gross_profit": self.gross_profit,
+            "food_cost_pct": self.food_cost_pct,
+            "markup_pct": self.markup_pct,
+            "target_food_cost_pct": self.target_food_cost_pct,
+            "suggested_price_gross": self.suggested_price_gross,
+            "warnings": list(self.warnings),
+        }
+
+
+# ── RC-P2A — Pure profitability math ─────────────────────────────────────────
+
+
+def gross_to_net_price(gross: float, tax_rate_pct: float) -> float:
+    """Convert tax-inclusive gross price to net revenue."""
+    if gross < 0:
+        raise ValueError("Gross price cannot be negative.")
+    if tax_rate_pct <= 0:
+        return round(gross, 4)
+    return round(gross / (1.0 + tax_rate_pct / 100.0), 4)
+
+
+def net_to_gross_price(net: float, tax_rate_pct: float) -> float:
+    """Convert net revenue to tax-inclusive gross list price."""
+    if net < 0:
+        raise ValueError("Net price cannot be negative.")
+    if tax_rate_pct <= 0:
+        return round(net, 4)
+    return round(net * (1.0 + tax_rate_pct / 100.0), 4)
+
+
+def compute_food_cost_pct(recipe_cost: float, net_selling_price: float) -> float | None:
+    if net_selling_price <= 0:
+        return None
+    return round((recipe_cost / net_selling_price) * 100.0, 2)
+
+
+def compute_markup_pct(recipe_cost: float, net_selling_price: float) -> float | None:
+    if recipe_cost <= 0:
+        return None
+    return round(((net_selling_price - recipe_cost) / recipe_cost) * 100.0, 2)
+
+
+def compute_suggested_gross_price(
+    recipe_cost: float,
+    target_food_cost_pct: float,
+    tax_rate_pct: float,
+) -> float | None:
+    if recipe_cost <= 0 or target_food_cost_pct <= 0:
+        return None
+    net_needed = recipe_cost / (target_food_cost_pct / 100.0)
+    return net_to_gross_price(net_needed, tax_rate_pct)
+
+
+def compute_menu_profitability_metrics(
+    *,
+    recipe_cost: float | None,
+    selling_price_gross: float | None,
+    tax_rate_pct: float,
+    target_food_cost_pct: float = DEFAULT_TARGET_FOOD_COST_PCT,
+    is_active: bool = True,
+) -> MenuProfitabilityView:
+    """Pure profitability rollup — no database access."""
+    warnings: list[str] = []
+    if not is_active:
+        warnings.append("Menu item is deactivated.")
+    if recipe_cost is None:
+        warnings.append("Recipe cost unavailable.")
+        recipe_cost_val: float | None = None
+    else:
+        recipe_cost_val = round(recipe_cost, 4)
+
+    net: float | None = None
+    gross_profit: float | None = None
+    food_pct: float | None = None
+    markup: float | None = None
+    suggested: float | None = None
+
+    if selling_price_gross is None:
+        warnings.append("No selling price set.")
+    elif selling_price_gross < 0:
+        warnings.append("Selling price cannot be negative.")
+    else:
+        net = gross_to_net_price(selling_price_gross, tax_rate_pct)
+        if recipe_cost_val is not None:
+            gross_profit = round(net - recipe_cost_val, 4)
+            food_pct = compute_food_cost_pct(recipe_cost_val, net)
+            markup = compute_markup_pct(recipe_cost_val, net)
+            suggested = compute_suggested_gross_price(
+                recipe_cost_val, target_food_cost_pct, tax_rate_pct
+            )
+
+    if recipe_cost_val is not None and suggested is None and target_food_cost_pct > 0:
+        suggested = compute_suggested_gross_price(
+            recipe_cost_val, target_food_cost_pct, tax_rate_pct
+        )
+
+    return MenuProfitabilityView(
+        menu_item_id=0,
+        menu_item_name="",
+        recipe_id=0,
+        recipe_name="",
+        is_active=is_active,
+        recipe_cost=recipe_cost_val,
+        selling_price_gross=selling_price_gross,
+        selling_price_net=net,
+        tax_rate_pct=round(tax_rate_pct, 4),
+        gross_profit=gross_profit,
+        food_cost_pct=food_pct,
+        markup_pct=markup,
+        target_food_cost_pct=target_food_cost_pct,
+        suggested_price_gross=suggested,
+        warnings=tuple(warnings),
+    )
+
+
+# ── RC-P2A — Menu DB helpers ───────────────────────────────────────────────────
+
+
+def _get_company_tax_rate_pct(session: Session, company_id: int) -> float:
+    row = (
+        session.query(CompanySetting.value)
+        .filter(
+            CompanySetting.company_id == company_id,
+            CompanySetting.key == "tax_rate",
+        )
+        .first()
+    )
+    if row is None or row[0] is None:
+        return 0.0
+    try:
+        return max(0.0, float(row[0]))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _get_menu_item_row(
+    session: Session, company_id: int, menu_item_id: int
+) -> MenuItem | None:
+    return (
+        session.query(MenuItem)
+        .filter(MenuItem.id == menu_item_id, MenuItem.company_id == company_id)
+        .first()
+    )
+
+
+def _menu_item_view(
+    session: Session,
+    company_id: int,
+    row: MenuItem,
+    *,
+    current_price: MenuPriceView | None = None,
+) -> MenuItemView:
+    recipe = _get_recipe_row(session, company_id, row.recipe_id)
+    recipe_name = recipe.name if recipe else f"Recipe #{row.recipe_id}"
+    price_gross = current_price.price_gross if current_price else None
+    return MenuItemView(
+        id=row.id,
+        company_id=row.company_id,
+        name=row.name,
+        recipe_id=row.recipe_id,
+        recipe_name=recipe_name,
+        is_active=row.is_active,
+        notes=row.notes,
+        current_price_gross=price_gross,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
+
+
+def _price_view(row: MenuPriceHistory) -> MenuPriceView:
+    return MenuPriceView(
+        id=row.id,
+        menu_item_id=row.menu_item_id,
+        price_gross=row.price_gross,
+        effective_at=row.effective_at,
+        created_at=row.created_at,
+    )
+
+
+def _build_menu_profitability_view(
+    session: Session,
+    company_id: int,
+    item: MenuItem,
+    *,
+    tax_rate_pct: float,
+    target_food_cost_pct: float,
+) -> MenuProfitabilityView:
+    recipe = _get_recipe_row(session, company_id, item.recipe_id)
+    recipe_name = recipe.name if recipe else f"Recipe #{item.recipe_id}"
+    breakdown = compute_recipe_cost(session, company_id, item.recipe_id)
+    recipe_cost = breakdown.total_cost if breakdown else None
+    current = get_current_menu_price(session, company_id, item.id)
+    gross = current.price_gross if current else None
+    metrics = compute_menu_profitability_metrics(
+        recipe_cost=recipe_cost,
+        selling_price_gross=gross,
+        tax_rate_pct=tax_rate_pct,
+        target_food_cost_pct=target_food_cost_pct,
+        is_active=item.is_active,
+    )
+    extra_warnings = list(metrics.warnings)
+    if breakdown and breakdown.warnings:
+        extra_warnings.extend(breakdown.warnings)
+    return MenuProfitabilityView(
+        menu_item_id=item.id,
+        menu_item_name=item.name,
+        recipe_id=item.recipe_id,
+        recipe_name=recipe_name,
+        is_active=item.is_active,
+        recipe_cost=metrics.recipe_cost,
+        selling_price_gross=metrics.selling_price_gross,
+        selling_price_net=metrics.selling_price_net,
+        tax_rate_pct=metrics.tax_rate_pct,
+        gross_profit=metrics.gross_profit,
+        food_cost_pct=metrics.food_cost_pct,
+        markup_pct=metrics.markup_pct,
+        target_food_cost_pct=metrics.target_food_cost_pct,
+        suggested_price_gross=metrics.suggested_price_gross,
+        warnings=tuple(dict.fromkeys(extra_warnings)),
+    )
+
+
+# ── RC-P2A — Menu service API ──────────────────────────────────────────────────
+
+
+def create_menu_item(
+    session: Session,
+    company_id: int,
+    name: str,
+    recipe_id: int,
+    user_id: int,
+    *,
+    notes: str | None = None,
+    performed_by: str | None = None,
+) -> MutationResult:
+    trimmed = (name or "").strip()
+    if not trimmed:
+        return MutationResult(record_id=None, error="Menu item name is required.")
+    if _get_recipe_row(session, company_id, recipe_id) is None:
+        return MutationResult(record_id=None, error="Recipe not found.")
+    dup = (
+        session.query(MenuItem.id)
+        .filter(MenuItem.company_id == company_id, MenuItem.name == trimmed)
+        .first()
+    )
+    if dup:
+        return MutationResult(record_id=None, error="A menu item with this name already exists.")
+
+    now = datetime.datetime.now()
+    row = MenuItem(
+        company_id=company_id,
+        name=trimmed,
+        recipe_id=recipe_id,
+        is_active=True,
+        notes=notes,
+        created_by_id=user_id,
+        created_at=now,
+    )
+    session.add(row)
+    session.flush()
+    _write_audit(
+        session,
+        company_id=company_id,
+        action="create_menu_item",
+        entity_type="MenuItem",
+        entity_id=row.id,
+        description=f"Created menu item '{trimmed}'",
+        performed_by=performed_by,
+    )
+    session.commit()
+    return MutationResult(record_id=row.id)
+
+
+def update_menu_item(
+    session: Session,
+    company_id: int,
+    menu_item_id: int,
+    name: str,
+    recipe_id: int,
+    user_id: int,
+    *,
+    notes: str | None = None,
+    performed_by: str | None = None,
+) -> MutationResult:
+    trimmed = (name or "").strip()
+    if not trimmed:
+        return MutationResult(record_id=None, error="Menu item name is required.")
+
+    row = _get_menu_item_row(session, company_id, menu_item_id)
+    if row is None:
+        return MutationResult(record_id=None, error="Menu item not found.")
+    if _get_recipe_row(session, company_id, recipe_id) is None:
+        return MutationResult(record_id=None, error="Recipe not found.")
+    dup = (
+        session.query(MenuItem.id)
+        .filter(
+            MenuItem.company_id == company_id,
+            MenuItem.name == trimmed,
+            MenuItem.id != menu_item_id,
+        )
+        .first()
+    )
+    if dup:
+        return MutationResult(record_id=None, error="A menu item with this name already exists.")
+
+    row.name = trimmed
+    row.recipe_id = recipe_id
+    row.notes = notes
+    row.updated_at = datetime.datetime.now()
+    _write_audit(
+        session,
+        company_id=company_id,
+        action="update_menu_item",
+        entity_type="MenuItem",
+        entity_id=row.id,
+        description=f"Updated menu item '{trimmed}'",
+        performed_by=performed_by,
+    )
+    session.commit()
+    return MutationResult(record_id=row.id)
+
+
+def deactivate_menu_item(
+    session: Session,
+    company_id: int,
+    menu_item_id: int,
+    user_id: int,
+    *,
+    performed_by: str | None = None,
+) -> MutationResult:
+    row = _get_menu_item_row(session, company_id, menu_item_id)
+    if row is None:
+        return MutationResult(record_id=None, error="Menu item not found.")
+    if not row.is_active:
+        return MutationResult(record_id=row.id)
+
+    row.is_active = False
+    row.updated_at = datetime.datetime.now()
+    _write_audit(
+        session,
+        company_id=company_id,
+        action="deactivate_menu_item",
+        entity_type="MenuItem",
+        entity_id=row.id,
+        description=f"Deactivated menu item '{row.name}'",
+        performed_by=performed_by,
+    )
+    session.commit()
+    return MutationResult(record_id=row.id)
+
+
+def set_menu_price(
+    session: Session,
+    company_id: int,
+    menu_item_id: int,
+    price_gross: float,
+    user_id: int,
+    *,
+    effective_at: datetime.datetime | None = None,
+    performed_by: str | None = None,
+) -> MutationResult:
+    if price_gross < 0:
+        return MutationResult(record_id=None, error="Price cannot be negative.")
+
+    row = _get_menu_item_row(session, company_id, menu_item_id)
+    if row is None:
+        return MutationResult(record_id=None, error="Menu item not found.")
+
+    now = datetime.datetime.now()
+    effective = effective_at or now
+    price_row = MenuPriceHistory(
+        company_id=company_id,
+        menu_item_id=menu_item_id,
+        price_gross=round(price_gross, 4),
+        effective_at=effective,
+        created_by_id=user_id,
+        created_at=now,
+    )
+    session.add(price_row)
+    session.flush()
+    row.updated_at = now
+    _write_audit(
+        session,
+        company_id=company_id,
+        action="set_menu_price",
+        entity_type="MenuItem",
+        entity_id=menu_item_id,
+        description=json.dumps(
+            {"price_gross": price_row.price_gross, "price_history_id": price_row.id}
+        ),
+        performed_by=performed_by,
+    )
+    session.commit()
+    return MutationResult(record_id=price_row.id)
+
+
+def get_current_menu_price(
+    session: Session,
+    company_id: int,
+    menu_item_id: int,
+    *,
+    as_of: datetime.datetime | None = None,
+) -> MenuPriceView | None:
+    if _get_menu_item_row(session, company_id, menu_item_id) is None:
+        return None
+    cutoff = as_of or datetime.datetime.now()
+    row = (
+        session.query(MenuPriceHistory)
+        .filter(
+            MenuPriceHistory.company_id == company_id,
+            MenuPriceHistory.menu_item_id == menu_item_id,
+            MenuPriceHistory.effective_at <= cutoff,
+        )
+        .order_by(MenuPriceHistory.effective_at.desc(), MenuPriceHistory.id.desc())
+        .first()
+    )
+    return _price_view(row) if row else None
+
+
+def list_menu_items(
+    session: Session,
+    company_id: int,
+    *,
+    search: str | None = None,
+    active_only: bool | None = None,
+) -> list[MenuItemView]:
+    query = session.query(MenuItem).filter(MenuItem.company_id == company_id)
+    if active_only is True:
+        query = query.filter(MenuItem.is_active.is_(True))
+    elif active_only is False:
+        query = query.filter(MenuItem.is_active.is_(False))
+    if search and search.strip():
+        query = query.filter(MenuItem.name.ilike(f"%{search.strip()}%"))
+    rows = query.order_by(MenuItem.name).all()
+    views: list[MenuItemView] = []
+    for row in rows:
+        current = get_current_menu_price(session, company_id, row.id)
+        views.append(_menu_item_view(session, company_id, row, current_price=current))
+    return views
+
+
+def compute_menu_profitability(
+    session: Session,
+    company_id: int,
+    menu_item_id: int,
+    *,
+    tax_rate_pct: float | None = None,
+    target_food_cost_pct: float = DEFAULT_TARGET_FOOD_COST_PCT,
+) -> MenuProfitabilityView | None:
+    item = _get_menu_item_row(session, company_id, menu_item_id)
+    if item is None:
+        return None
+    tax = _get_company_tax_rate_pct(session, company_id) if tax_rate_pct is None else tax_rate_pct
+    return _build_menu_profitability_view(
+        session,
+        company_id,
+        item,
+        tax_rate_pct=tax,
+        target_food_cost_pct=target_food_cost_pct,
+    )
+
+
+def list_menu_profitability(
+    session: Session,
+    company_id: int,
+    *,
+    active_only: bool = True,
+    tax_rate_pct: float | None = None,
+    target_food_cost_pct: float = DEFAULT_TARGET_FOOD_COST_PCT,
+) -> list[MenuProfitabilityView]:
+    tax = _get_company_tax_rate_pct(session, company_id) if tax_rate_pct is None else tax_rate_pct
+    query = session.query(MenuItem).filter(MenuItem.company_id == company_id)
+    if active_only:
+        query = query.filter(MenuItem.is_active.is_(True))
+    rows = query.order_by(MenuItem.name).all()
+    return [
+        _build_menu_profitability_view(
+            session,
+            company_id,
+            row,
+            tax_rate_pct=tax,
+            target_food_cost_pct=target_food_cost_pct,
+        )
+        for row in rows
+    ]

@@ -602,7 +602,6 @@ class TestMigrationReadinessContract:
         "post_purchase",
         "post_expense",
         "inventory_transactions",
-        "menu_item",
     )
 
     def test_service_imports_no_streamlit_or_app(self):
@@ -629,6 +628,14 @@ class TestMigrationReadinessContract:
             svc.activate_ingredient,
             svc.list_recipes,
             svc.get_recipe,
+            svc.create_menu_item,
+            svc.update_menu_item,
+            svc.deactivate_menu_item,
+            svc.set_menu_price,
+            svc.get_current_menu_price,
+            svc.compute_menu_profitability,
+            svc.list_menu_profitability,
+            svc.list_menu_items,
         )
         for fn in db_funcs:
             params = list(inspect.signature(fn).parameters)
