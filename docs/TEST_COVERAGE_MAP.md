@@ -270,7 +270,14 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 |-----------------|-------------------------|------------------|
 | Unique `(company_id, user_id, permission_key)` | One override row per key; flip updates in place | **High** |
 
-*UA-P1 smoke audit (2026-06-13): Owner/Manager/Viewer compatibility passed; 0 permission regressions; `manage_permissions` intentional owner-only addition.*
+**UA-P1 smoke audit (2026-06-13):**
+- Owner compatibility passed
+- Manager compatibility passed
+- Viewer compatibility passed
+- 0 permission regressions
+- 0 hidden page regressions
+- 0 access regressions
+- `manage_permissions` is an intentional owner-only addition (not a regression)
 
 ---
 

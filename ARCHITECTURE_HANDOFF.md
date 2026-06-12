@@ -426,7 +426,16 @@ Tech debt: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_C
 | UA-P1b | 📋 Pending — owner permission management UI |
 | UA-P2 | 📋 Pending — Staff Capture foundation (SC-P1) |
 
-**UA-P1 smoke audit (2026-06-13):** Owner/Manager/Viewer compatibility passed; 0 permission regressions; `manage_permissions` is an intentional owner-only addition. Host `pytest tests/` — **1502 passed, 2 xfailed**.
+**UA-P1 smoke audit (2026-06-13):**
+- Owner compatibility passed
+- Manager compatibility passed
+- Viewer compatibility passed
+- 0 permission regressions
+- 0 hidden page regressions
+- 0 access regressions
+- `manage_permissions` is an intentional owner-only addition (not a regression)
+
+Host `pytest tests/` — **1502 passed, 2 xfailed**.
 
 Spec: [USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md). Tech debt: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-UA-*).
 

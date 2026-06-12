@@ -20,10 +20,13 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 - Docs: UA-P1 migration cleanup in `TECH_DEBT_AND_MIGRATION_CLEANUP.md` (TD-UA-*)
 
 **Smoke audit (2026-06-13):**
-- Owner/Manager/Viewer compatibility **passed**
-- **0 permission regressions** (legacy matrix parity for owner/manager/cashier/partner)
-- **0 hidden-page regressions** · **0 access regressions** on audit pages (Dashboard, Add Transaction, Banking, Reports, Partner Accounts, External Sales Verification, Recipe Costing)
-- `manage_permissions` is an **intentional owner-only addition** (not a regression)
+- Owner compatibility passed
+- Manager compatibility passed
+- Viewer compatibility passed
+- 0 permission regressions
+- 0 hidden page regressions
+- 0 access regressions
+- `manage_permissions` is an intentional owner-only addition (not a regression)
 
 **Pending:** UA-P1b (permission UI) · UA-P2 (Staff Capture SC-P1).
 

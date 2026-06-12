@@ -334,7 +334,14 @@ Tech debt: [docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRAT
 
 Spec: [USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md). Tech debt: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-UA-*).
 
-**UA-P1 smoke audit (2026-06-13):** Owner/Manager/Viewer compatibility passed; **0 permission regressions**; **0 hidden-page regressions**; **0 access regressions** on audit pages (Dashboard, Add Transaction, Banking, Reports, Partner Accounts, External Sales Verification, Recipe Costing). `manage_permissions` is an intentional owner-only addition (not a regression).
+**UA-P1 smoke audit (2026-06-13):**
+- Owner compatibility passed
+- Manager compatibility passed
+- Viewer compatibility passed
+- 0 permission regressions
+- 0 hidden page regressions
+- 0 access regressions
+- `manage_permissions` is an intentional owner-only addition (not a regression)
 
 ---
 
@@ -2343,7 +2350,7 @@ Migration target is future-state only and does not change current development pr
 | 2026-06-05 | **FUTURE-MIGRATION-01** approved as long-term direction only — React + FastAPI + service layer + PostgreSQL target stack. Streamlit remains primary until pre-migration requirements and decision gate are met. No change to active module priorities. |
 | 2026-06-05 | **ARCHITECTURE-PROTECTION-01** active immediately — all new modules service-first (models → services → tests → minimal UI). Streamlit must not own business logic; pause before deep UI for auth, staff portal, uploads, approval workflows. |
 | 2026-06-13 | **VENDOR-NEUTRAL-01** active immediately — core architecture must not depend on named POS/vendor products; generic External Sales Source pattern (`source_name` free text, optional `source_type` category). Vendor names allowed in documentation examples only; future adapters live outside core. Cross-links ARCHITECTURE-PROTECTION-01 and FUTURE-MIGRATION-01. Audit (2026-06-13): no vendor leakage in production code. |
-| 2026-06-13 | **USER-ACCESS-01 UA-P1 complete** — `UserPermissionOverride` model, `services/user_access.py` (registry, templates, effective resolver, override CRUD, owner lockout guard), `_can()` resolver swap, tests (`test_user_access01_permissions.py`, `test_user_access01_models.py`). UA-P1b · UA-P2 pending. **Smoke audit:** Owner/Manager/Viewer compatibility passed; 0 permission regressions; `manage_permissions` intentional owner-only addition. Host `pytest tests/` — **1502 passed, 2 xfailed**. |
+| 2026-06-13 | **USER-ACCESS-01 UA-P1 complete** — `UserPermissionOverride` model, `services/user_access.py` (registry, templates, effective resolver, override CRUD, owner lockout guard), `_can()` resolver swap, tests (`test_user_access01_permissions.py`, `test_user_access01_models.py`). UA-P1b · UA-P2 pending. **Smoke audit:** Owner/Manager/Viewer compatibility passed; 0 permission/hidden-page/access regressions; `manage_permissions` intentional owner-only addition. Host `pytest tests/` — **1502 passed, 2 xfailed**. |
 | 2026-06-05 | **MIGRATION-READINESS-01** active immediately — FastAPI/React-ready service checklist (explicit `company_id`, serializable DTOs, no Streamlit in `services/`, contract tests, tech-debt register). Exemplar: DSC-P1 (`services/daily_sales_close.py`). Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md). |
 | 2026-06-05 | **RECIPE-COSTING-01 RC-P2A complete** — `MenuItem` / `MenuPriceHistory` models, menu profitability service APIs, `render_recipe_menu_items`, Menu Items nav, EN/TR `rc.menu.*` locales, tests (`test_recipe_costing_menu_models.py`, `test_recipe_costing_menu_service.py`). RC-P2B–P3 pending. Host `pytest tests/` — **1465 passed, 2 xfailed**. |
 | 2026-06-05 | **RECIPE-COSTING-01 RC-P1b complete** — `ui/recipe_costing.py` (Ingredients · Recipes · Cost Breakdown), Recipe Costing nav, list/read/update APIs, EN/TR `rc.*` locales, UI contract tests (`test_recipe_costing_ui_contract.py`). RC-P2–P3 pending. Host `pytest tests/` — **1447 passed, 2 xfailed**. |
