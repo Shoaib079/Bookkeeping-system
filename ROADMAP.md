@@ -29,8 +29,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | SETUP-03 Configuration Health Check | 📋 Medium — planned |
 | BANK-03 POS Settlement wording | ✅ Shipped (BANKING-DESKTOP-01 B2 — Banking Settings + import match locales EN/TR) |
 | BANKING-POS-WORKFLOW-01 P1+P2 | ✅ Shipped — Other Income Sales Revenue guardrails + POS Settlement explainer (no posting changes) |
-| BANKING-UX-02 P1 POS Settlement Preview | ✅ Shipped — settlement preview before post (no posting changes) |
-| BANKING-UX-02 P2–P4 | 📋 Planned — clearing visibility, candidate list, match guidance |
+| **BANKING-UX-02** — POS Settlement Transparency | ✅ **Complete** — P1 preview · P1B focused entry · P2 clearing visibility · P3 unsettled list · P4 match check (no posting changes) |
 | PARTNER-UX-01 P1–P3 | ✅ Shipped — Partner movement explanations, advance warnings, Summary plain labels (no posting changes) |
 | PARTNER-STATEMENT-01 P1 | ✅ Shipped — read-only Partner Statement tab (month/quarter/year/custom); profit by fiscal period end-date; no posting changes |
 | PARTNER-STATEMENT-01 P2 | ✅ Shipped — detail lines, running position, Excel export |
@@ -96,7 +95,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 
 **Do NOT start (future projects — see [FUTURE UX / NAVIGATION VISION](#future-ux--navigation-vision)):** Banking redesign · Reports redesign · Mobile shell redesign · Navigation redesign · More Hub redesign · Sidebar redesign.
 
-**Next approved Banking work (before Banking redesign or new Banking features):** [BANKING-UX-02](#banking-ux-02--pos-settlement-transparency) — POS Settlement Transparency (Proposed, High).
+**Next Banking work (before Banking redesign or new Banking features):** observe daily friction via **[OBS-01](#obs-01--operational-friction-log)**; presentation cleanup **[UI-STAB-02](#ui-stab-02--banking-presentation-separation)** when approved.
 
 **Current focus stays on:** (1) Accounting stability · (2) Daily-use workflow testing · (3) Banking observation · (4) UX cleanup · (5) Real-world usage feedback.
 
@@ -213,12 +212,22 @@ Keep **“Card Sales Clearing”** for COA / account names only.
 
 ---
 
-### BANKING-UX-02 — POS Settlement Transparency 📋 **Proposed** · **High**
+### BANKING-UX-02 — POS Settlement Transparency ✅ **Complete**
 
-**Status:** Proposed  
-**Priority:** High
+**Status:** Complete  
+**Priority:** High (shipped June 2026)
 
-**Reason:** User testing showed Card Sales Clearing works correctly in accounting, but users cannot easily locate or understand it during **Banking → Match & Post**. Workflow visibility is weak; the goal is transparency, not accounting redesign.
+**Completed phases:**
+
+| Phase | Deliverable |
+|-------|-------------|
+| **P1** | Settlement preview — amounts and warnings before post |
+| **P1B** | Focused **POS / Card Settlement** entry on Banking (no import chrome) |
+| **P2** | Card Sales Clearing (1150) visibility panel |
+| **P3** | Unsettled card sales list with filters |
+| **P4** | Match check — plain-language failure explanations |
+
+**Reason (original):** User testing showed Card Sales Clearing works correctly in accounting, but users could not easily locate or understand it during **Banking → Match & Post**. Workflow visibility was weak; the goal was transparency, not accounting redesign.
 
 **Current flow (correct, hard to see):**
 
@@ -230,9 +239,13 @@ Users cannot easily see the middle stage (**Card Sales Clearing**): outstanding 
 
 **Ordering:** After [BANKING-POS-WORKFLOW-01](#banking-pos-workflow-01--pos-settlement-workflow-ux--p1p2-shipped). Before any new Banking feature development or Banking redesign.
 
+**Unchanged by design:** Revenue recognition · `post_deposit_clearing_match` JE · matching algorithms · Card Sales Clearing account **1150**.
+
+**Tests:** `tests/test_banking_ux02_p1.py` · `p1b` · `p2` · `p3` · `p4` (79 tests). See [docs/COMPLETED_FEATURES.md](./docs/COMPLETED_FEATURES.md).
+
 ---
 
-#### Phase P1 — Settlement Match Preview
+#### Phase P1 — Settlement Match Preview ✅
 
 **Where:** Banking → Statement Import → Match & Post → Card Sale Deposit / POS Settlement
 
@@ -248,7 +261,7 @@ Users cannot easily see the middle stage (**Card Sales Clearing**): outstanding 
 
 ---
 
-#### Phase P2 — Card Sales Clearing Visibility
+#### Phase P2 — Card Sales Clearing Visibility ✅
 
 Add visible **Card Sales Clearing** balance.
 
@@ -265,7 +278,7 @@ TRY X waiting settlement
 
 ---
 
-#### Phase P3 — Unsettled Card Sales List
+#### Phase P3 — Unsettled Card Sales List ✅
 
 Drill-down list:
 
@@ -282,7 +295,7 @@ Drill-down list:
 
 ---
 
-#### Phase P4 — Match Failure Explanation
+#### Phase P4 — Match Failure Explanation ✅
 
 When **Confirm & Post** is unavailable, replace vague messaging with:
 

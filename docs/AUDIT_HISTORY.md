@@ -8,6 +8,25 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-05 — BANKING-UX-02 completed (POS Settlement Transparency P1–P4)
+
+**Status:** Complete — all phases shipped.
+
+**Summary:**
+
+- Focused POS / Card Settlement workflow (P1B entry + P1 preview on deposit clearing panel)
+- Card Sales Clearing (1150) balance visibility (P2)
+- Unsettled card sales drill-down list (P3)
+- Match failure explanations before post (P4)
+
+**Unchanged:** Revenue recognition · `post_deposit_clearing_match` posting logic · matching algorithms · Card Sales Clearing account **1150**.
+
+**Key files:** `reconciliation/pos_settlement_preview.py`, `reconciliation/clearing_visibility.py`, `reconciliation/unsettled_card_sales_list.py`, `reconciliation/pos_match_failure.py`, `app.py`, `registry/locales/transactional.py`, `tests/test_banking_ux02_p1.py` through `p4.py`.
+
+**Docs:** `ROADMAP.md`, `docs/TEST_COVERAGE_MAP.md`, `docs/COMPLETED_FEATURES.md`.
+
+---
+
 ## 2026-06-05 — UI-STAB-01 (Shared avatar renderer)
 
 **Task:** Stabilize initials avatars across header, mobile profile, My Account, and login tiles before PROFILE-PHOTO-01.

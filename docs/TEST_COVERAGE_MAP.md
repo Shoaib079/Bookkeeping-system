@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-05 (PARTNER-STATEMENT-01 P1)  
-**Full suite:** run `pytest tests/` — **1074 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
+**Last updated:** 2026-06-05 (BANKING-UX-02 complete)  
+**Full suite:** run `pytest tests/` — **1162 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -535,7 +535,30 @@ Remaining xfails (M3/M4) are optional suppression relocations — not MOBILE-14 
 
 ---
 
-### `tests/test_banking_ux02_p1.py` (13 tests) — BANKING-UX-02 P1
+## BANKING-UX-02 — POS Settlement Transparency
+
+**Status:** Complete  
+**Coverage:** P1 · P1B · P2 · P3 · P4 (79 tests total)
+
+| Test file | Tests | Phase |
+|---|---|---|
+| `tests/test_banking_ux02_p1.py` | 13 | P1 — Settlement preview |
+| `tests/test_banking_ux02_p1b.py` | 19 | P1B — Focused POS / Card Settlement entry |
+| `tests/test_banking_ux02_p2.py` | 11 | P2 — Card Sales Clearing visibility |
+| `tests/test_banking_ux02_p3.py` | 14 | P3 — Unsettled card sales list |
+| `tests/test_banking_ux02_p4.py` | 22 | P4 — Match failure explanation |
+
+**Quick command:**
+
+```bash
+pytest tests/test_banking_ux02_p1.py tests/test_banking_ux02_p1b.py \
+  tests/test_banking_ux02_p2.py tests/test_banking_ux02_p3.py \
+  tests/test_banking_ux02_p4.py -q
+```
+
+**Protected invariants (all phases):** No changes to revenue recognition · `post_deposit_clearing_match` JE · Card Sales Clearing account **1150** · Sales Revenue advanced-only guardrails.
+
+### `tests/test_banking_ux02_p1.py` (13 tests) — P1
 
 | Contract | Protects |
 |---|---|
