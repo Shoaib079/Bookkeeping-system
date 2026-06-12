@@ -43,6 +43,7 @@ NAV_MEMBERS = "Members"
 NAV_AUDIT_LOG = "Audit Log"
 NAV_BACKUP_RESTORE = "Backup & Restore"
 NAV_OPENING_BALANCES = "Opening Balances"
+NAV_PERMISSIONS = "Permissions"
 NAV_MY_ACCOUNT = "My Account"
 
 ALL_NAV_PAGE_KEYS: frozenset[str] = frozenset(
@@ -87,6 +88,7 @@ ALL_NAV_PAGE_KEYS: frozenset[str] = frozenset(
         NAV_AUDIT_LOG,
         NAV_BACKUP_RESTORE,
         NAV_OPENING_BALANCES,
+        NAV_PERMISSIONS,
         NAV_MY_ACCOUNT,
     }
 )

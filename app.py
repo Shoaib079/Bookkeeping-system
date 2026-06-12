@@ -64,6 +64,7 @@ from registry.nav_keys import (
     NAV_OPENING_BALANCES,
     NAV_PARTNER_ACCOUNTS,
     NAV_PAYABLES,
+    NAV_PERMISSIONS,
     NAV_PROFIT_LOSS,
     NAV_PURCHASES,
     NAV_RC_COST_BREAKDOWN,
@@ -259,6 +260,7 @@ from ui.banking import (
     render_unsettled_card_sales_list_block as _render_unsettled_card_sales_list_block,
 )
 from ui.external_sales_verification import render_external_sales_verification
+from ui.permissions import render_permissions_management
 from ui.recipe_costing import (
     render_recipe_cost_breakdown,
     render_recipe_ingredients,
@@ -3570,6 +3572,7 @@ _NAV_ACCORDION = [
     ("settings", "Settings", [
         (None, NAV_COMPANY_SETTINGS),
         (None, NAV_MEMBERS),
+        (None, NAV_PERMISSIONS),
         (None, NAV_AUDIT_LOG),
         (None, NAV_BACKUP_RESTORE),
     ]),
@@ -26273,6 +26276,7 @@ def main():
         NAV_WORKERS:           render_workers,
         NAV_COMPANY_SETTINGS:  render_company_settings,
         NAV_MEMBERS:           render_user_management,
+        NAV_PERMISSIONS:       render_permissions_management,
         NAV_AUDIT_LOG:         render_audit_log,
         NAV_BACKUP_RESTORE:    lambda s: render_backup_restore(),
         NAV_OPENING_BALANCES:  render_opening_balances,

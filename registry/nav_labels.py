@@ -27,6 +27,7 @@ from registry.nav_keys import (
     NAV_OPENING_BALANCES,
     NAV_PARTNER_ACCOUNTS,
     NAV_PAYABLES,
+    NAV_PERMISSIONS,
     NAV_PROFIT_LOSS,
     NAV_PURCHASES,
     NAV_RC_COST_BREAKDOWN,
@@ -88,5 +89,6 @@ NAV_PAGE_I18N: dict[str, str] = {
     NAV_AUDIT_LOG: "nav.audit_log",
     NAV_BACKUP_RESTORE: "nav.backup_restore",
     NAV_OPENING_BALANCES: "nav.opening_balances",
+    NAV_PERMISSIONS: "nav.permissions",
     NAV_MY_ACCOUNT: "nav.my_account",
 }

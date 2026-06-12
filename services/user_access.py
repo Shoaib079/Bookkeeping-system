@@ -10,7 +10,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from models import AuditLog, CompanyUser, UserPermissionOverride
+from models import AuditLog, CompanyUser, User, UserPermissionOverride
 from sqlalchemy.orm import Session
 
 OverrideMode = Literal["grant", "deny"]
@@ -209,6 +209,42 @@ class EffectivePermissionsView:
 
 
 @dataclass(frozen=True)
+class CompanyMemberView:
+    user_id: int
+    username: str
+    display_name: str
+    role: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "user_id": self.user_id,
+            "username": self.username,
+            "display_name": self.display_name,
+            "role": self.role,
+        }
+
+
+@dataclass(frozen=True)
+class PermissionAuditEntryView:
+    id: int
+    timestamp: datetime.datetime
+    action: str
+    description: str
+    performed_by: str | None
+    target_user_id: int | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "timestamp": self.timestamp.isoformat(),
+            "action": self.action,
+            "description": self.description,
+            "performed_by": self.performed_by,
+            "target_user_id": self.target_user_id,
+        }
+
+
+@dataclass(frozen=True)
 class MutationResult:
     record_id: int | None
     error: str = ""
@@ -245,6 +281,79 @@ def template_definition(role: str) -> frozenset[str]:
 
 def list_registry() -> list[PermissionRegistryEntry]:
     return [PERMISSION_REGISTRY[k] for k in sorted(PERMISSION_REGISTRY)]
+
+
+def list_active_members(session: Session, company_id: int) -> list[CompanyMemberView]:
+    """Active company members for permission management UI."""
+    rows = (
+        session.query(CompanyUser, User)
+        .join(User, CompanyUser.user_id == User.id)
+        .filter(
+            CompanyUser.company_id == company_id,
+            CompanyUser.is_active.is_(True),
+            User.is_active.is_(True),
+        )
+        .order_by(User.display_name, User.username)
+        .all()
+    )
+    return [
+        CompanyMemberView(
+            user_id=user.id,
+            username=user.username,
+            display_name=user.display_name or user.username,
+            role=membership.role,
+        )
+        for membership, user in rows
+    ]
+
+
+def _parse_audit_target_user_id(description: str | None) -> int | None:
+    if not description:
+        return None
+    try:
+        data = json.loads(description)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    raw = data.get("target_user_id")
+    return int(raw) if raw is not None else None
+
+
+def list_permission_audit(
+    session: Session,
+    company_id: int,
+    *,
+    target_user_id: int | None = None,
+    limit: int = 50,
+) -> list[PermissionAuditEntryView]:
+    """Recent permission override audit rows for a company (optional user filter)."""
+    rows = (
+        session.query(AuditLog)
+        .filter(
+            AuditLog.company_id == company_id,
+            AuditLog.entity_type == "UserPermissionOverride",
+        )
+        .order_by(AuditLog.timestamp.desc())
+        .limit(max(limit * 10, limit))
+        .all()
+    )
+    entries: list[PermissionAuditEntryView] = []
+    for row in rows:
+        target = _parse_audit_target_user_id(row.description)
+        if target_user_id is not None and target != target_user_id:
+            continue
+        entries.append(
+            PermissionAuditEntryView(
+                id=row.id,
+                timestamp=row.timestamp,
+                action=row.action,
+                description=row.description or "",
+                performed_by=row.performed_by,
+                target_user_id=target,
+            )
+        )
+        if len(entries) >= limit:
+            break
+    return entries
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────

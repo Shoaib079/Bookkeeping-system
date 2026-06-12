@@ -106,10 +106,36 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 #### 4. Temporary Streamlit-only code
 - `_clear_permission_cache()` and `_effective_perms_{user}_{company}` keys in `app.py`
 - `_PERMISSIONS` dict retained as backward-compat seed for tests reading `app._PERMISSIONS`
-- No permission management UI (deferred to UA-P1b)
+- No permission management UI (deferred to UA-P1b) — **shipped UA-P1b** `ui/permissions.py`
 
 #### 5. Future cleanup items (registered above)
 - TD-UA-01 through TD-UA-05 added this session
+
+### UA-P1b Migration Cleanup (2026-06-13)
+
+#### 1. Code to keep during FastAPI/React migration
+- `ui/permissions.py` — `render_permissions_management`; calls `services.user_access` only
+- Read APIs: `list_active_members`, `list_permission_audit`, `CompanyMemberView`, `PermissionAuditEntryView`
+- `NAV_PERMISSIONS` nav key + Settings accordion wiring
+- Tests: `tests/test_user_access01_ui_contract.py`
+- Locale keys: `ua.*`, `nav.permissions` EN/TR
+
+#### 2. Code likely to replace during FastAPI/React migration
+- Streamlit selectbox/button mutation UX — React permission matrix UI
+- `st.rerun()` after each mutation — API round-trip + client state refresh
+- `erp._clear_permission_cache()` from UI — request-scoped cache invalidation at API layer
+- Audit table rendered via `st.dataframe` — React data grid
+
+#### 3. Dead code found
+- None in UA-P1b scope
+
+#### 4. Temporary Streamlit-only code
+- `ui/permissions.py` — desktop-only; no mobile permission UI (by design)
+- Provenance table built from `EffectivePermissionsView` frozensets in UI (presentation only)
+- Permission labels fall back to title-cased key when `perm.*` locale missing
+
+#### 5. Future cleanup items (registered above)
+- TD-UA-01 through TD-UA-05 remain open; TD-UA-03 still deferred (no custom DB roles)
 
 ---
 

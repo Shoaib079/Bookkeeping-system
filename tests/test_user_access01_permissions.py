@@ -360,3 +360,26 @@ class TestMigrationReadiness:
         )
         json.dumps(view.to_dict())
         assert ua.MutationResult(record_id=1).to_dict()["ok"] is True
+
+
+class TestReadApis:
+    def test_list_active_members(self, session):
+        db, company_id, _, owner_id, manager_id = session
+        _membership(db, company_id, owner_id, "owner")
+        _membership(db, company_id, manager_id, "manager")
+        members = ua.list_active_members(db, company_id)
+        ids = {m.user_id for m in members}
+        assert owner_id in ids
+        assert manager_id in ids
+        manager = next(m for m in members if m.user_id == manager_id)
+        assert manager.role == "manager"
+
+    def test_list_permission_audit_after_override(self, session):
+        db, company_id, _, owner_id, manager_id = session
+        _membership(db, company_id, owner_id, "owner")
+        _membership(db, company_id, manager_id, "manager")
+        ua.set_override(db, company_id, manager_id, "manage_budget", "grant", owner_id)
+        entries = ua.list_permission_audit(db, company_id, target_user_id=manager_id)
+        assert entries
+        assert entries[0].action == "set_permission_override"
+        assert entries[0].target_user_id == manager_id
