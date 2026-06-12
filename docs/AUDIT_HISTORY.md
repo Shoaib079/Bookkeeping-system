@@ -8,6 +8,31 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-05 — DAILY-SALES-CLOSE-01 DSC-P1 + DSC-P2 (External Sales Verification)
+
+**Task:** Source-neutral daily external-vs-ERP sales verification — service-first (P1), minimal Streamlit UI (P2). Verification only; no JE/GL/bank posting.
+
+**DSC-P1 delivered:**
+- `ExternalSalesVerification` model (`external_sales_verifications`)
+- `services/daily_sales_close.py` — explicit `company_id`, serializable DTOs, no Streamlit
+- Tests: `test_daily_sales_close_service.py`, `test_daily_sales_close_models.py`
+- Schema indexes in `migrate_schema()`
+
+**DSC-P2 delivered:**
+- `ui/external_sales_verification.py` — verify + history tabs; calls service only
+- Closings nav: `NAV_EXTERNAL_SALES_VERIFICATION`
+- Permissions: `view_external_sales_verification`, `verify_external_sales`, `void_external_sales_verification` (owner + manager)
+- Locales: `esv.*`, `nav.external_sales_verification` EN/TR
+- Tests: `test_daily_sales_close_ui_contract.py` (9 contract tests)
+
+**Deferred (DSC-P3–P4):** Attachments · EOD warning hook · export · per-provider import adapters.
+
+**Unchanged:** `create_journal_entry` / posting paths · EOD close posting behavior · cash reconciliation.
+
+**Tests:** Full suite **1403 passed, 2 xfailed**.
+
+---
+
 ## 2026-06-05 — PARTNER-STATEMENT-01 P4 (all-partners settlement summary)
 
 **Task:** Period-scoped all-partners settlement board so owners can review every partner’s opening position, activity, closing position, settlement status, outstanding advances, and warnings in one view.

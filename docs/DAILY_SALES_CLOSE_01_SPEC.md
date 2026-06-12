@@ -1,6 +1,6 @@
 # DAILY-SALES-CLOSE-01 — External Sales Verification Design
 
-**Status:** Design approved for review — **NOT** scheduled for implementation.  
+**Status:** **DSC-P1 ✅ · DSC-P2 ✅ · DSC-P3–P4 📋 pending** — service + minimal Streamlit UI shipped; attachments, EOD hook, and adapters deferred.
 **Scope guard:** **Verification only.** No accounting entries. No journal entries. No GL
 impact. No bank impact. No calls to `create_journal_entry`, `post_*`, or cash
 reconciliation posting paths.
@@ -506,7 +506,7 @@ Implement **before** Streamlit UI. No tests assert provider-specific code paths 
 Model create; `company_id` stamp; draft leaves ERP/variance NULL; unique active
 `(company, date, normalized branch)`; `""` branch collides with default site.
 
-### 8.3 `tests/test_daily_sales_close_ui_contract.py` (~6 tests, DSC-P2)
+### 8.3 `tests/test_daily_sales_close_ui_contract.py` (9 tests, DSC-P2 — ✅ complete)
 
 - Renderer uses service only
 - UI has free-text `source_name`, not provider enum select
@@ -518,9 +518,10 @@ Model create; `company_id` stamp; draft leaves ERP/variance NULL; unique active
 
 ---
 
-## 9. Minimal Streamlit UI proposal (DSC-P2)
+## 9. Minimal Streamlit UI (DSC-P2 — ✅ complete)
 
-Thin `render_external_sales_verification(session)` in `app.py` — **no business rules**.
+**Location:** `ui/external_sales_verification.py` — `render_external_sales_verification(session)`.  
+**Dispatch:** `app.py` maps `NAV_EXTERNAL_SALES_VERIFICATION` only (no business rules).
 
 ### 9.1 Navigation
 
@@ -573,7 +574,7 @@ Mapped to owner + manager until USER-ACCESS-01.
 | Phase | Status | Deliverable | Gate |
 |-------|--------|-------------|------|
 | **DSC-P1** | ✅ **Complete** | Models + service + tests (generic only) | Posting-guard + no-provider-branch tests pass |
-| **DSC-P2** | 📋 **Pending** | Minimal Streamlit + nav + UI contract | Manual verify with arbitrary `source_name` |
+| **DSC-P2** | ✅ **Complete** | Minimal Streamlit + Closings nav + UI contract (`ui/external_sales_verification.py`) | Manual verify with arbitrary `source_name` |
 | **DSC-P3** | 📋 **Pending** | Attachment metadata + EOD warning + export | |
 | **DSC-P4** | 📋 **Pending** | **Optional per-provider import adapters** (separate modules) | Each adapter tested in isolation; core unchanged |
 
@@ -583,7 +584,7 @@ Roadmap: [ROADMAP.md § DAILY-SALES-CLOSE-01](../ROADMAP.md#daily-sales-close-01
 
 ## 11. Open decisions
 
-1. TR locale strings for nav and `source_type` categories.
+1. TR locale strings for nav and `source_type` categories — **partial:** `esv.*` and `nav.external_sales_verification` shipped EN/TR; broader Phase 15 sweep optional.
 2. Void-and-reverify only vs edit verified record (recommend: void-and-reverify).
 3. Tolerance constant vs registry setting in P1.
 
@@ -603,7 +604,8 @@ variances; `external_total` remains primary when both entered).
 | Material variance | `not within_tolerance` — ack note required on verify (§7.2) |
 | Does it post? | **Never** |
 | ERP side | Read-only `Sale` sums; NULL on draft until verify |
-| Logic location | `services/daily_sales_close.py` |
+| UI location | `ui/external_sales_verification.py` (dispatch in `app.py` only) |
+| Implementation status | P1–P2 complete; P3–P4 pending (§10) |
 | Future imports | Optional adapters in DSC-P4+, same record shape |
 
-*DSC-P1 complete — see [ROADMAP.md](../ROADMAP.md) and [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./TECH_DEBT_AND_MIGRATION_CLEANUP.md).*
+*DSC-P1–P2 complete — see [ROADMAP.md](../ROADMAP.md) and [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./TECH_DEBT_AND_MIGRATION_CLEANUP.md).*

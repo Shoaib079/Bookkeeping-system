@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-05 (PARTNER-STATEMENT-01 P4)  
-**Full suite:** run `pytest tests/` — **1217 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
+**Last updated:** 2026-06-05 (DAILY-SALES-CLOSE-01 DSC-P1–P2)  
+**Full suite:** run `pytest tests/` — **1403 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -147,6 +147,40 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 | Role permissions (cashier/manager/owner) | Authorization | **Medium** |
 
 *Not company CC — but part of daily banking/cash ops.*
+
+---
+
+### `tests/test_daily_sales_close_service.py` (~36 tests) — DSC-P1
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| `compute_erp_sales_totals` / `compute_variance` | Read-only ERP compare; pure variance math | **High** |
+| `save_draft` / `verify_external_sales` / `void_verification` | Draft nullability; material-variance ack; branch uniqueness | **High** |
+| Explicit `company_id` API | No Streamlit `cq()` in service | **High** |
+| Posting-guard + vendor-neutrality contract scan | No JE/posting/vendor branches in `services/` | **Critical** |
+| `is_verification_stale` | Snapshot invalidation | **Medium** |
+
+---
+
+### `tests/test_daily_sales_close_models.py` (5 tests) — DSC-P1
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Draft ERP/variance NULL | Distinguish draft vs verified | **High** |
+| Branch normalization uniqueness | Default-site collision | **Medium** |
+
+---
+
+### `tests/test_daily_sales_close_ui_contract.py` (9 tests) — DSC-P2
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Renderer calls `services.daily_sales_close` only | No business logic in UI | **High** |
+| No `Sale` sum/query in UI source | No duplicate ERP math in Streamlit | **High** |
+| `source_name` text input (not vendor dropdown) | VENDOR-NEUTRAL-01 | **High** |
+| Closings nav + permissions wired | Owner/manager access | **Medium** |
+
+*Orthogonal to EOD — `test_end_of_day_close.py` unchanged until DSC-P3 EOD hook.*
 
 ---
 
