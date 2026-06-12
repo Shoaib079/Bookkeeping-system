@@ -1030,3 +1030,76 @@ class WorkerMovement(Base):
     worker = relationship("Worker", back_populates="movements", foreign_keys=[worker_id])
     journal_entry = relationship("JournalEntry", foreign_keys=[journal_entry_id])
     bank_transaction = relationship("BankTransaction", foreign_keys=[bank_transaction_id])
+
+
+# ── RECIPE-COSTING-01 RC-P1 — Ingredients & recipes (no inventory linkage) ───
+
+
+class Ingredient(Base):
+    """Purchased/raw material with cost stored per canonical base unit (g, ml, each)."""
+    __tablename__ = "ingredients"
+    __table_args__ = (
+        UniqueConstraint("company_id", "name", name="uq_ingredient_company_name"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    base_dimension = Column(String(20), nullable=False)  # weight | volume | count
+    base_unit = Column(String(20), nullable=False)  # g | ml | each
+    cost_per_base_unit = Column(Float, nullable=False, default=0.0)
+    is_active = Column(Boolean, default=True, index=True)
+    notes = Column(Text, nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=True)
+
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+
+class Recipe(Base):
+    """Batch or plated item; cost is computed on demand — never stored on the row."""
+    __tablename__ = "recipes"
+    __table_args__ = (
+        UniqueConstraint("company_id", "name", name="uq_recipe_company_name"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    yield_quantity = Column(Float, nullable=False, default=1.0)
+    yield_unit = Column(String(20), nullable=False, default="each")
+    yield_dimension = Column(String(20), nullable=False, default="count")
+    is_active = Column(Boolean, default=True, index=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=True)
+
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    lines = relationship(
+        "RecipeLine",
+        back_populates="recipe",
+        foreign_keys="RecipeLine.recipe_id",
+        cascade="all, delete-orphan",
+        order_by="RecipeLine.sort_order",
+    )
+
+
+class RecipeLine(Base):
+    """One component: either an ingredient or a sub-recipe (XOR), never both."""
+    __tablename__ = "recipe_lines"
+
+    id = Column(Integer, primary_key=True, index=True)
+    recipe_id = Column(Integer, ForeignKey("recipes.id"), nullable=False, index=True)
+    sort_order = Column(Integer, nullable=False, default=0)
+    ingredient_id = Column(Integer, ForeignKey("ingredients.id"), nullable=True, index=True)
+    sub_recipe_id = Column(Integer, ForeignKey("recipes.id"), nullable=True, index=True)
+    quantity = Column(Float, nullable=False)
+    unit = Column(String(20), nullable=False)
+    waste_percent = Column(Float, nullable=False, default=0.0)
+    notes = Column(Text, nullable=True)
+
+    recipe = relationship("Recipe", foreign_keys=[recipe_id], back_populates="lines")
+    ingredient = relationship("Ingredient", foreign_keys=[ingredient_id])
+    sub_recipe = relationship("Recipe", foreign_keys=[sub_recipe_id])

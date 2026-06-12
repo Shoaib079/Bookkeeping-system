@@ -74,6 +74,43 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 
 ---
 
+## RC-P1 / Recipe Costing (TD-RC)
+
+| ID | Item | Priority | Status | When / trigger |
+|----|------|----------|--------|----------------|
+| **TD-RC-01** | **Service commits internally** — `create_ingredient`, `save_recipe`, `bulk_update_costs`, etc. call `session.commit()`; refactor to `flush()` + caller-owned transaction for FastAPI | Medium | Open | FastAPI Phase B |
+| **TD-RC-02** | **Error surface** — plain English `error` on `MutationResult`; add stable `error_code` (e.g. `RC_CYCLE_DETECTED`) for React/FastAPI | Medium | Open | Before FastAPI exposure |
+| **TD-RC-03** | **Float money** — ingredient `cost_per_base_unit` and computed breakdown use `float`; migrate to `Decimal` with TD-MIG-04 | Low | Open | Global migration prep |
+| **TD-RC-04** | **Unit registry** — hardcoded `_UNIT_FACTORS` map; optional registry/settings for locale-specific units | Low | Open | RC-P2+ |
+| **TD-RC-05** | **Dual `compute_recipe_cost` dispatch** — pure graph vs DB via `isinstance(Session)`; split into `rollup_recipe_cost` + `compute_recipe_cost` at API migration | Low | Open | FastAPI Phase B |
+| **TD-RC-06** | **Roadmap / spec drift** — add `RECIPE_COSTING_01_SPEC.md` and ROADMAP phase table when RC-P2+ lands | Low | Open | RC-P1 complete 2026-06-05 |
+
+### RC-P1 Migration Cleanup (2026-06-05)
+
+#### 1. Code to keep during FastAPI/React migration
+- `models.Ingredient`, `models.Recipe`, `models.RecipeLine` — core schema; sub-recipe via `RecipeLine.sub_recipe_id` only (no SubRecipe table)
+- `services/recipe_costing.py` — unit conversion, validation, cost rollup, `where_used`, CRUD mutations
+- Frozen DTOs: `IngredientView`, `RecipeLineCost`, `RecipeCostBreakdown`, `WhereUsedEntry`, `ValidationResult`, `MutationResult`
+- Tests: `tests/test_recipe_costing_service.py`, `tests/test_recipe_costing_models.py`
+- `migrate_schema()` indexes for `ingredients`, `recipes`, `recipe_lines`
+
+#### 2. Code likely to replace during FastAPI/React migration
+- `compute_recipe_cost` Session dispatch — split into explicit API handler + pure `rollup` import
+- `session.query()` style ORM access — SQLAlchemy 2.0 `select()` (TD-MIG-05)
+- Internal `session.commit()` in service mutations — FastAPI dependency-injected unit of work
+- `AuditLog` string `description` JSON blobs — structured audit event schema
+
+#### 3. Dead code found
+- None in RC-P1 scope (greenfield module)
+
+#### 4. Temporary Streamlit-only code
+- None — RC-P1 deliberately ships no UI, no `app.py` wiring, no Streamlit session keys
+
+#### 5. Future cleanup items (registered above)
+- TD-RC-01 through TD-RC-06 added this session
+
+---
+
 ## Reference implementation
 
 **DSC-P1** (`services/daily_sales_close.py`) is the first module built under:
@@ -81,6 +118,8 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 - [ARCHITECTURE-PROTECTION-01](../ROADMAP.md#architecture-protection-01--service-first-development-rule)
 - [VENDOR-NEUTRAL-01](../ROADMAP.md#vendor-neutral-01--vendor-neutral-architecture-rule)
 - [MIGRATION-READINESS-01](../ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist)
+
+**RC-P1** (`services/recipe_costing.py`) follows the same pattern — second reference implementation under MIGRATION-READINESS-01.
 
 Audit source: DSC-P1 migration readiness review (2026-06-05).
 
