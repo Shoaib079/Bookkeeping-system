@@ -75,6 +75,7 @@ from registry.nav_keys import (
     NAV_RECURRING_EXPENSES,
     NAV_REPORTS,
     NAV_SALES,
+    NAV_STAFF_EXPENSE_CAPTURE,
     NAV_TODAY_SUMMARY,
     NAV_TRIAL_BALANCE,
     NAV_TXN_LEDGER,
@@ -260,6 +261,7 @@ from ui.banking import (
 )
 from ui.external_sales_verification import render_external_sales_verification
 from ui.permissions import render_permissions_management
+from ui.staff_capture import render_staff_expense_capture
 from ui.recipe_costing import (
     render_recipe_cost_breakdown,
     render_recipe_ingredients,
@@ -3540,6 +3542,7 @@ _NAV_ACCORDION = [
     ("transactions", "Record transactions", [
         (None, NAV_SALES),
         (None, NAV_EXPENSES),
+        (None, NAV_STAFF_EXPENSE_CAPTURE),
         (None, NAV_PURCHASES),
         (None, NAV_RECURRING_EXPENSES),
     ]),
@@ -5768,6 +5771,47 @@ def _save_and_post_expense_record(
         return False, str(exc)
     session.commit()
     return True, None
+
+
+def _staff_capture_post_expense_draft(session, view) -> "sc.ExpensePostResult":
+    """TD-SC-01 posting seam — wire approved expense draft to existing save/post path."""
+    from services import staff_capture as sc
+
+    cat = session.get(TransactionCategory, view.tx_category_id) if view.tx_category_id else None
+    sub = (
+        session.get(TransactionSubcategory, view.tx_subcategory_id)
+        if view.tx_subcategory_id
+        else None
+    )
+    expense_type = cat.name if cat else "Other"
+    gl_category = (sub.name if sub else None) or expense_type
+    record = ExpenseRecord(
+        date=view.date,
+        expense_type=expense_type,
+        category=gl_category,
+        description=view.description or "",
+        amount=view.amount,
+        payment_method=view.payment_method,
+        gross_salary=view.amount,
+        deductions=0.0,
+        net_salary=view.amount,
+        tx_category_id=view.tx_category_id,
+        tx_subcategory_id=view.tx_subcategory_id,
+        created_by_id=view.created_by_id,
+        currency=view.currency,
+        fx_rate=1.0,
+        native_amount=view.amount,
+        company_id=view.company_id,
+    )
+    ok, err = _save_and_post_expense_record(
+        session,
+        record,
+        category=gl_category,
+        payment_method=view.payment_method,
+    )
+    if not ok:
+        return sc.ExpensePostResult(expense_record_id=None, error=err or "Posting failed.")
+    return sc.ExpensePostResult(expense_record_id=record.id)
 
 
 def _validate_company_cc_payment(session, payment_method: str | None) -> str | None:
@@ -26256,6 +26300,7 @@ def main():
         NAV_TXN_LEDGER:        render_transaction_ledger_page,
         NAV_SALES:             render_sales,
         NAV_EXPENSES:          render_expenses,
+        NAV_STAFF_EXPENSE_CAPTURE: render_staff_expense_capture,
         NAV_RECURRING_EXPENSES: render_recurring_expenses,
         NAV_PURCHASES:         render_purchases,
         NAV_CASH_RECONCILIATION: render_cash_reconciliation,

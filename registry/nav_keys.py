@@ -9,6 +9,7 @@ NAV_NEW_TRANSACTION = "New Transaction"
 NAV_TXN_LEDGER = "Transaction Ledger"
 NAV_SALES = "Sales"
 NAV_EXPENSES = "Expenses"
+NAV_STAFF_EXPENSE_CAPTURE = "Staff Expenses"
 NAV_RECURRING_EXPENSES = "Recurring Expenses"
 NAV_PURCHASES = "Purchases"
 NAV_CASH_RECONCILIATION = "Cash Reconciliation"
@@ -54,6 +55,7 @@ ALL_NAV_PAGE_KEYS: frozenset[str] = frozenset(
         NAV_TXN_LEDGER,
         NAV_SALES,
         NAV_EXPENSES,
+        NAV_STAFF_EXPENSE_CAPTURE,
         NAV_RECURRING_EXPENSES,
         NAV_PURCHASES,
         NAV_CASH_RECONCILIATION,

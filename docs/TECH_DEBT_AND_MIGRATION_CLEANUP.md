@@ -203,6 +203,32 @@ Independent architectural review (Claude) — baseline FastAPI/React readiness a
 #### 5. Future cleanup items (registered above)
 - TD-SC-01 through TD-SC-05 added this session
 
+### SC-P1b Migration Cleanup (2026-06-13)
+
+#### 1. Code to keep during FastAPI/React migration
+- `ui/staff_capture.py` — tab layout (submit · my submissions · inbox), permission gates, service-only mutations, `post_fn` injection at approve call site
+- `app._staff_capture_post_expense_draft` — thin posting seam (TD-SC-01); maps `ExpenseDraftView` → `ExpenseRecord` + `_save_and_post_expense_record`
+- Nav wiring: `NAV_STAFF_EXPENSE_CAPTURE`, `registry/nav_keys.py`, `nav_labels.py`, locales `sc.*` / `nav.staff_expenses`
+- Tests: `tests/test_staff_capture01_ui_contract.py`
+
+#### 2. Code likely to replace during FastAPI/React migration
+- `_erp()` lazy `import app` in UI — injected context (CONTEXT-AUDIT-01)
+- `st.session_state` form keys (`sc_*`) — React form state
+- `st.file_uploader` / `st.download_button` attachment UX — authenticated API + signed URLs (TD-SC-03)
+- Category/subcategory read via `erp.cq(TransactionCategory)` in UI — read API on service or shared catalog helper
+- `_staff_capture_post_expense_draft` in `app.py` — POSTING-SERVICE-01 shared module
+
+#### 3. Dead code found
+- None in SC-P1b scope
+
+#### 4. Temporary Streamlit-only code
+- `app._staff_capture_post_expense_draft` — posting adapter only; no new GL rules
+- Attachment download reads disk via `resolve_data_path` — no authenticated serving yet (TD-SC-03)
+- Portal gate / capture-only session routing still deferred (TD-SC-04)
+
+#### 5. Future cleanup items (registered above)
+- TD-SC-01 through TD-SC-05 unchanged; TD-SC-03 partially exercised by SC-P1b download buttons
+
 ---
 
 ## RC-P1 / Recipe Costing (TD-RC)

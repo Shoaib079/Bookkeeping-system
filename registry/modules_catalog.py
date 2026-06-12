@@ -13,6 +13,7 @@ from registry.nav_keys import (
     NAV_CUSTOMERS,
     NAV_END_OF_DAY_CLOSE,
     NAV_EXPENSES,
+    NAV_STAFF_EXPENSE_CAPTURE,
     NAV_EXTERNAL_SALES_VERIFICATION,
     NAV_FISCAL_PERIODS,
     NAV_GENERAL_LEDGER,
@@ -57,6 +58,12 @@ MODULES: tuple[ModuleDef, ...] = (
     ),
     ModuleDef("sales", "nav.sales", "operations", nav_page=NAV_SALES),
     ModuleDef("expenses", "nav.expenses", "operations", nav_page=NAV_EXPENSES),
+    ModuleDef(
+        "staff_expense_capture",
+        "nav.staff_expenses",
+        "operations",
+        nav_page=NAV_STAFF_EXPENSE_CAPTURE,
+    ),
     ModuleDef(
         "recurring_expenses",
         "nav.recurring_expenses",
@@ -179,6 +186,7 @@ NAV_PAGES_IN_APP = frozenset(
         NAV_TXN_LEDGER,
         NAV_SALES,
         NAV_EXPENSES,
+        NAV_STAFF_EXPENSE_CAPTURE,
         NAV_RECURRING_EXPENSES,
         NAV_PURCHASES,
         NAV_CASH_RECONCILIATION,
