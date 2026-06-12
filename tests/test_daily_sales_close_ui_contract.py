@@ -105,13 +105,15 @@ def test_nav_wired_under_closings(app_src: str):
     assert "NAV_EXTERNAL_SALES_VERIFICATION" in snippet
 
 
-def test_permissions_registered(app_src: str):
+def test_permissions_registered():
+    from services import user_access as ua
+
     for perm in (
         "view_external_sales_verification",
         "verify_external_sales",
         "void_external_sales_verification",
     ):
-        assert perm in app_src
+        assert perm in ua.PERMISSION_REGISTRY
 
 
 def test_renderer_public_signature():

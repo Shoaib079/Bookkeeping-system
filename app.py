@@ -17,6 +17,7 @@ import streamlit as st
 from sqlalchemy import case, event, func, text
 
 from db import Base, SessionLocal, engine
+from services import user_access as _user_access_svc
 from exports import (
     df_to_excel_bytes,
     df_to_pdf_bytes,
@@ -2066,6 +2067,10 @@ def migrate_schema(session):
         "CREATE INDEX IF NOT EXISTS ix_mph_company_id         ON menu_price_history               (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_mph_menu_item_id       ON menu_price_history               (menu_item_id)",
         "CREATE INDEX IF NOT EXISTS ix_mph_effective_at       ON menu_price_history               (effective_at)",
+        # UA-P1 — User permission overrides
+        "CREATE INDEX IF NOT EXISTS ix_upo_company_id        ON user_permission_overrides        (company_id)",
+        "CREATE INDEX IF NOT EXISTS ix_upo_user_id           ON user_permission_overrides        (user_id)",
+        "CREATE INDEX IF NOT EXISTS ix_upo_permission_key    ON user_permission_overrides        (permission_key)",
         "CREATE INDEX IF NOT EXISTS ix_txcat_company_id        ON transaction_categories         (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_txsub_company_id        ON transaction_subcategories      (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_retmpl_company_id       ON recurring_expense_templates    (company_id)",
@@ -3108,67 +3113,7 @@ def _require_role(*roles: str) -> bool:
 
 
 _PERMISSIONS: dict[str, set[str]] = {
-    "create_transaction":     {"owner", "manager", "cashier"},
-    "edit_transaction":       {"owner", "manager"},
-    "void_transaction":       {"owner", "manager"},
-    "create_customer_vendor": {"owner", "manager", "cashier"},
-    "edit_customer_vendor":   {"owner", "manager"},
-    "manage_inventory":       {"owner", "manager"},
-    "manage_banking":         {"owner", "manager"},
-    "post_manual_journal":    {"owner", "manager"},
-    "close_fiscal_period":    {"owner", "manager"},
-    "manage_budget":          {"owner", "manager"},
-    "manage_categories":      {"owner", "manager", "cashier"},
-    "manage_users":           {"owner"},
-    "manage_settings":        {"owner"},
-    "manage_backup":          {"owner"},
-    "post_equity_movement":        {"owner"},
-    "manage_recurring_templates":  {"owner", "manager"},
-    "post_recurring_draft":        {"owner", "manager", "cashier"},
-    # Phase 9C: Cash Reconciliation
-    "create_reconciliation":      {"owner", "manager", "cashier"},
-    "submit_reconciliation":      {"owner", "manager", "cashier"},
-    "approve_reconciliation":     {"owner", "manager"},
-    "reject_reconciliation":      {"owner", "manager"},
-    "void_reconciliation":        {"owner"},
-    "view_reconciliation":        {"owner", "manager", "cashier", "partner"},
-    # Phase 9D: End-of-Day Close
-    "close_day":                  {"owner", "manager"},
-    "void_eod":                   {"owner"},
-    "view_eod":                   {"owner", "manager", "cashier", "partner"},
-    # DSC-P2: External Sales Verification
-    "view_external_sales_verification": {"owner", "manager"},
-    "verify_external_sales":            {"owner", "manager"},
-    "void_external_sales_verification": {"owner", "manager"},
-    # RC-P1b: Recipe Costing
-    "view_recipe_costing":              {"owner", "manager"},
-    "manage_recipe_costing":            {"owner", "manager"},
-    # Phase 10: Management Reporting
-    "view_management_reports":    {"owner", "manager", "partner"},
-    # Phase 12: Partners & Profit Allocation
-    "manage_partners":            {"owner"},
-    "post_partner_movement":      {"owner", "manager"},
-    "allocate_profit":            {"owner"},
-    "void_partner_movement":      {"owner"},
-    "void_profit_allocation":     {"owner"},
-    "view_partner_accounts":      {"owner", "manager", "partner"},
-    "manage_workers":             {"owner", "manager"},
-    "post_worker_movement":       {"owner", "manager"},
-    "void_worker_movement":       {"owner"},
-    "view_workers":               {"owner", "manager"},
-    # Phase 11: Documents & Attachments
-    "upload_attachment":          {"owner", "manager", "cashier"},
-    "delete_attachment":          {"owner", "manager"},
-    "view_attachment":            {"owner", "manager", "cashier"},
-    "generate_document":          {"owner", "manager", "cashier"},
-    "view_statement":             {"owner", "manager", "partner"},
-    # Phase 18-MVP-2: Bank statement import (staging only)
-    "import_bank_statement":      {"owner", "manager"},
-    "view_bank_statement_import": {"owner", "manager", "cashier", "partner"},
-    # Phase 13: Year-End Close
-    "perform_year_end_close":     {"owner"},
-    "void_year_end_close":        {"owner"},
-    "view_year_end_close":        {"owner", "manager", "partner"},
+    k: set(v) for k, v in _user_access_svc.LEGACY_PERMISSION_MATRIX.items()
 }
 
 
@@ -3233,19 +3178,38 @@ def _stamp_company_id_on_new_objects(session, flush_context, instances):
             obj.company_id = cid
 
 
+def _clear_permission_cache() -> None:
+    """Drop UA-P1 effective-permission cache (company switch / logout)."""
+    for key in list(st.session_state.keys()):
+        if key.startswith("_effective_perms_"):
+            st.session_state.pop(key, None)
+
+
 def _can(action: str) -> bool:
     """Return True if the current user may perform *action*.
 
-    Phase 14B: reads role from active_company_role (CompanyUser.role).
-    Falls back to User.role for backward compatibility during session
-    transitions (e.g. sessions that predate Phase 14B deployment).
-    Fallback removed in Phase 14C.
+    UA-P1: resolves via services.user_access effective permissions when company
+    context is present; falls back to legacy role matrix when absent.
     """
     u = _current_user()
     if u is None:
         return False
-    role = _current_company_role() or u["role"]
-    return role in _PERMISSIONS.get(action, set())
+    cid = _current_company_id()
+    if cid is None:
+        role = _current_company_role() or u.get("role")
+        return role in _PERMISSIONS.get(action, set())
+
+    cache_key = f"_effective_perms_{u['id']}_{cid}"
+    if cache_key not in st.session_state:
+        sess = SessionLocal()
+        try:
+            view = _user_access_svc.effective_permissions(
+                sess, cid, u["id"], membership_role=_current_company_role()
+            )
+            st.session_state[cache_key] = view.effective_keys
+        finally:
+            sess.close()
+    return action in st.session_state[cache_key]
 
 
 # ─── User preference helpers (AppSetting, namespaced per user) ────────────────
@@ -4700,6 +4664,7 @@ def _clear_company_scoped_session_state() -> None:
     """Drop Add Transaction draft fields that belong to the previous company."""
     for _k in _COMPANY_SCOPED_AT_KEYS:
         st.session_state.pop(_k, None)
+    _clear_permission_cache()
 
 
 def _active_membership_count(session, user_id: int) -> int:
@@ -4934,6 +4899,7 @@ def _login(session, username: str, password: str) -> str | None:
 
 def _logout():
     st.session_state[_SESSION_LOGGED_OUT] = True
+    _clear_permission_cache()
     for _k in (
         "auth_user", "auth_expires",
         "active_company_id", "active_company_role",

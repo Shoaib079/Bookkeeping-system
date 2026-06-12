@@ -121,9 +121,11 @@ def test_nav_wired_under_recipe_costing(app_src: str):
     assert "NAV_RC_MENU_ITEMS" in snippet
 
 
-def test_permissions_registered(app_src: str):
+def test_permissions_registered():
+    from services import user_access as ua
+
     for perm in ("view_recipe_costing", "manage_recipe_costing"):
-        assert perm in app_src
+        assert perm in ua.PERMISSION_REGISTRY
 
 
 def test_renderer_passes_explicit_company_id(ui_src: str):

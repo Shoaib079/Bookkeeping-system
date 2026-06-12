@@ -74,6 +74,45 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 
 ---
 
+## USER-ACCESS-01 (TD-UA)
+
+| ID | Item | Priority | Status | When / trigger |
+|----|------|----------|--------|----------------|
+| **TD-UA-01** | **Service commits internally** — `set_override`, `clear_override`, `reset_to_template` call `session.commit()`; refactor to `flush()` + caller-owned transaction for FastAPI | Medium | Open | FastAPI Phase B |
+| **TD-UA-02** | **Denied-attempt logging** — resolver returns `False` only; audit failed permission checks deferred | Low | Open | Security hardening |
+| **TD-UA-03** | **Custom DB roles** — templates code-only in UA-P1; per-company role definitions deferred | Low | Open | Post UA-P1b |
+| **TD-UA-04** | **Streamlit permission cache** — `_effective_perms_*` in `st.session_state`; replace with request-scoped context at API migration | Medium | Open | FastAPI Phase D |
+| **TD-UA-05** | **`_PERMISSIONS` dict in app.py** — temporary re-export of `LEGACY_PERMISSION_MATRIX`; remove once all tests import registry/templates from service | Low | Open | After UA-P1b |
+
+### UA-P1 Migration Cleanup (2026-06-13)
+
+#### 1. Code to keep during FastAPI/React migration
+- `models.UserPermissionOverride` — override schema; unique `(company_id, user_id, permission_key)`
+- `services/user_access.py` — `PERMISSION_REGISTRY`, `PERMISSION_TEMPLATES`, `LEGACY_PERMISSION_MATRIX`, effective resolver, owner lockout guard, override CRUD
+- Frozen DTOs: `PermissionRegistryEntry`, `PermissionOverrideView`, `EffectivePermissionsView`, `MutationResult`
+- Tests: `tests/test_user_access01_permissions.py`, `tests/test_user_access01_models.py`
+- `migrate_schema()` indexes for `user_permission_overrides`
+- `_can(action)` signature unchanged — thin caller over `has_permission`
+
+#### 2. Code likely to replace during FastAPI/React migration
+- `_can()` Streamlit session cache (`_effective_perms_*`) — FastAPI dependency + JWT/session middleware
+- `app._PERMISSIONS` re-export — API exposes `list_registry` / `template_definition` only
+- Internal `session.commit()` in override mutations (TD-UA-01)
+- `session.query()` ORM access — SQLAlchemy 2.0 `select()` (TD-MIG-05)
+
+#### 3. Dead code found
+- None in UA-P1 scope
+
+#### 4. Temporary Streamlit-only code
+- `_clear_permission_cache()` and `_effective_perms_{user}_{company}` keys in `app.py`
+- `_PERMISSIONS` dict retained as backward-compat seed for tests reading `app._PERMISSIONS`
+- No permission management UI (deferred to UA-P1b)
+
+#### 5. Future cleanup items (registered above)
+- TD-UA-01 through TD-UA-05 added this session
+
+---
+
 ## RC-P1 / Recipe Costing (TD-RC)
 
 | ID | Item | Priority | Status | When / trigger |

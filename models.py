@@ -1149,3 +1149,28 @@ class MenuPriceHistory(Base):
 
     menu_item = relationship("MenuItem", back_populates="price_history")
     created_by = relationship("User", foreign_keys=[created_by_id])
+
+
+# ── USER-ACCESS-01 UA-P1 — Per-user permission overrides ─────────────────────
+
+
+class UserPermissionOverride(Base):
+    """Grant/deny override for a permission key — effective = template ∪ grants − denies."""
+    __tablename__ = "user_permission_overrides"
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id", "user_id", "permission_key", name="uq_user_perm_override"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    permission_key = Column(String(100), nullable=False)
+    mode = Column(String(10), nullable=False)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    created_by = relationship("User", foreign_keys=[created_by_id])
