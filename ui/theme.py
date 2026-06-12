@@ -253,11 +253,6 @@ def get_theme_mode() -> str:
     return mode if mode in ("light", "dark", "system") else "system"
 
 
-def sync_derived_dark_mode() -> None:
-    """Keep dark_mode aligned with theme_mode — never an independent authority."""
-    st.session_state["dark_mode"] = get_theme_mode() == "dark"
-
-
 def _system_theme_injection_dark() -> bool | None:
     """Known OS scheme for system-mode CSS injection; None → @media only."""
     signal = _os_dark_preferred_signal()
@@ -309,6 +304,22 @@ def resolve_effective_dark(*, dark: bool | None = None) -> bool:
 def _resolve_chart_dark(dark: bool | None = None) -> bool:
     """Chart palette resolver — delegates to resolve_effective_dark."""
     return resolve_effective_dark(dark=dark)
+
+
+def sync_derived_dark_mode() -> bool:
+    """Keep st.session_state['dark_mode'] as a derived mirror of the authoritative theme mode.
+
+    dark_mode must not be used as theme authority.
+    """
+    mode = get_theme_mode()
+    if mode == "light":
+        effective_dark = False
+    elif mode == "dark":
+        effective_dark = True
+    else:
+        effective_dark = bool(resolve_effective_dark())
+    st.session_state["dark_mode"] = bool(effective_dark)
+    return bool(effective_dark)
 
 
 def inject_theme_authority_marker(theme_mode: str) -> None:
@@ -517,3 +528,26 @@ def bootstrap_theme(session_factory, auth_user: dict | None) -> None:
         if os_inject is not None:
             inject_theme_css(os_inject)
     sync_os_dark_flag_from_cookie()
+
+
+__all__ = (
+    "apply_altair_theme",
+    "apply_user_theme_from_db",
+    "bootstrap_theme",
+    "chart_accent_color",
+    "chart_palette",
+    "chart_reference_color",
+    "chart_series_color",
+    "chart_theme_tokens",
+    "get_theme_mode",
+    "inject_theme_css",
+    "load_theme_css",
+    "render_global_style",
+    "render_themed_bar",
+    "render_themed_grouped_bar",
+    "render_themed_line",
+    "resolve_effective_dark",
+    "role_accent_css_var",
+    "sync_derived_dark_mode",
+    "sync_os_dark_flag_from_cookie",
+)

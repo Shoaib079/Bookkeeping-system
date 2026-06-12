@@ -26,6 +26,7 @@ from ui.theme import (
     render_themed_grouped_bar,
     render_themed_line,
     role_accent_css_var,
+    sync_derived_dark_mode,
 )
 
 __all__ = [
@@ -49,6 +50,7 @@ __all__ = [
     "render_themed_grouped_bar",
     "render_themed_line",
     "role_accent_css_var",
+    "sync_derived_dark_mode",
     "section_header_html",
     "tab_panel_intro",
     "theme_table_html",

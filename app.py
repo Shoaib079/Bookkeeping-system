@@ -272,6 +272,7 @@ from ui.theme import (
     render_themed_bar,
     render_themed_grouped_bar,
     render_themed_line,
+    sync_derived_dark_mode,
 )
 
 _validate_settings_registry()
@@ -3223,7 +3224,6 @@ def _flip_header_theme(user: dict) -> None:
     """Header ☀️/🌙 toggle — persist light|dark so inject_theme_css applies on rerun."""
     new_mode = _next_header_theme_mode(st.session_state.get("theme_mode", "system"))
     st.session_state["theme_mode"] = new_mode
-    from ui.theme import sync_derived_dark_mode
     sync_derived_dark_mode()
     uid = user.get("id")
     if uid:
@@ -4673,7 +4673,6 @@ def _establish_auth_session(
     if _theme_row and _theme_row.value:
         _tv = _theme_row.value.strip().lower()
         st.session_state["theme_mode"] = _tv if _tv in ("light", "dark", "system") else "light"
-        from ui.theme import sync_derived_dark_mode
         sync_derived_dark_mode()
     _landing_row = session.get(AppSetting, f"user_pref_{user.id}_landing_page")
     if _landing_row and _landing_row.value:
@@ -25631,7 +25630,6 @@ def render_my_account(session):
                 session.commit()
                 st.session_state["ui_locale"] = normalize_locale(new_language)
                 st.session_state["theme_mode"] = new_theme_code
-                from ui.theme import sync_derived_dark_mode
                 sync_derived_dark_mode()
                 st.session_state["preferred_landing"] = new_landing
                 st.success(_t("common.preferences_saved"))

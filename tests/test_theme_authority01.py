@@ -139,11 +139,47 @@ def test_company_picker_preserves_theme_mode():
     assert '"theme_mode"' in block
 
 
-def test_sync_derived_dark_mode_aligns_session(theme_module):
+def test_ui_theme_exports_sync_derived_dark_mode():
+    from ui.theme import sync_derived_dark_mode as imported_fn
+    import ui.theme as theme_mod
+
+    assert hasattr(theme_mod, "sync_derived_dark_mode")
+    assert callable(theme_mod.sync_derived_dark_mode)
+    assert imported_fn is theme_mod.sync_derived_dark_mode
+    assert "sync_derived_dark_mode" in theme_mod.__all__
+
+
+def test_sync_derived_dark_mode_import_and_call_no_crash(theme_module):
+    from ui.theme import sync_derived_dark_mode
+
+    theme, st = theme_module
+    st.session_state["theme_mode"] = "light"
+    st.context = types.SimpleNamespace(cookies={}, headers={})
+    assert sync_derived_dark_mode() is False
+
+
+def test_sync_derived_dark_mode_explicit_light(theme_module):
+    theme, st = theme_module
+    st.session_state["theme_mode"] = "light"
+    st.context = types.SimpleNamespace(cookies={"erp_os_dark": "1"}, headers={})
+    assert theme.sync_derived_dark_mode() is False
+    assert st.session_state["dark_mode"] is False
+
+
+def test_sync_derived_dark_mode_explicit_dark(theme_module):
+    theme, st = theme_module
+    st.session_state["theme_mode"] = "dark"
+    st.context = types.SimpleNamespace(cookies={"erp_os_dark": "0"}, headers={})
+    assert theme.sync_derived_dark_mode() is True
+    assert st.session_state["dark_mode"] is True
+
+
+def test_sync_derived_dark_mode_system_follows_os_hint(theme_module):
     theme, st = theme_module
     st.session_state["theme_mode"] = "system"
-    theme.sync_derived_dark_mode()
-    assert st.session_state["dark_mode"] is False
-    st.session_state["theme_mode"] = "dark"
-    theme.sync_derived_dark_mode()
+    st.context = types.SimpleNamespace(cookies={"erp_os_dark": "1"}, headers={})
+    assert theme.sync_derived_dark_mode() is True
     assert st.session_state["dark_mode"] is True
+    st.context = types.SimpleNamespace(cookies={"erp_os_dark": "0"}, headers={})
+    assert theme.sync_derived_dark_mode() is False
+    assert st.session_state["dark_mode"] is False
