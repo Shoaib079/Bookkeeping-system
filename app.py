@@ -237,6 +237,7 @@ from reconciliation.unsettled_card_sales_list import (
     list_total_mismatch,
     sum_unsettled_card_sales,
 )
+from reconciliation.pos_match_failure import evaluate_pos_match_failure
 from reconciliation.pos_settlement_preview import compute_pos_settlement_preview
 from reconciliation.match_post import (
     looks_like_worker_payroll,
@@ -16816,6 +16817,40 @@ def _render_pos_settlement_preview_block(
         st.warning(_t(warn.key, currency=currency, **warn.kwargs))
 
 
+def _render_pos_match_failure_block(
+    check,
+    currency: str,
+) -> None:
+    """Read-only match guidance before post (BANKING-UX-02 P4)."""
+    st.markdown(
+        financial_section_header_html(
+            _t("banking.match_failure.section_title"), accent="info"
+        ),
+        unsafe_allow_html=True,
+    )
+    status_keys = {
+        "ready": "banking.match_failure.status.ready",
+        "attention": "banking.match_failure.status.attention",
+        "cannot_post": "banking.match_failure.status.cannot_post",
+    }
+    status_key = status_keys[check.status]
+    if check.status == "ready":
+        st.success(_t(status_key))
+    elif check.status == "attention":
+        st.warning(_t(status_key))
+    else:
+        st.error(_t(status_key))
+    if not check.items:
+        return
+    with st.container(border=True):
+        for item in check.items:
+            text = _t(item.key, currency=currency, **item.kwargs)
+            if item.blocking:
+                st.error(f"• {text}")
+            else:
+                st.warning(f"• {text}")
+
+
 def _render_card_sales_clearing_visibility_block(
     session,
     cid: int,
@@ -17083,6 +17118,29 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
         fee_amount=preview_fee,
     )
     _render_pos_settlement_preview_block(preview, currency)
+    _bsi_imp = session.get(BankStatementImport, sel_row.bank_statement_import_id)
+    _import_currency = _bsi_imp.currency if _bsi_imp else None
+    _charges_acct = get_account_by_name(session, "Bank Charges")
+    _fee_gap_needs_confirm = bool(
+        picked_sales
+        and sel_total_r > deposit_amt + 0.01
+        and _bank_charges_on(session)
+        and not settlement_row_id
+    )
+    _match_check = evaluate_pos_match_failure(
+        sel_row=sel_row,
+        preview=preview,
+        deposit_amount=deposit_amt,
+        picked_sale_count=len(picked_sales),
+        unsettled_sales_available=bool(clearing),
+        bank_charges_enabled=_bank_charges_on(session),
+        bank_charges_account_exists=_charges_acct is not None,
+        confirm_inferred_fee=confirm_inferred_fee,
+        fee_gap_needs_confirm=_fee_gap_needs_confirm,
+        import_currency=_import_currency,
+        company_currency=currency,
+    )
+    _render_pos_match_failure_block(_match_check, currency)
     visibility = _render_card_sales_clearing_visibility_block(
         session,
         cid,

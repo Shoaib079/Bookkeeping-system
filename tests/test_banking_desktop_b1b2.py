@@ -33,6 +33,7 @@ _GL_ACCOUNT_OK_PREFIXES = (
     "banking.pos_entry.",
     "banking.clearing_visibility.",
     "banking.unsettled_card_sales.",
+    "banking.match_failure.",
 )
 
 
