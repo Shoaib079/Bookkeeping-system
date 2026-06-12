@@ -17,7 +17,6 @@ import streamlit as st
 from sqlalchemy import case, event, func, text
 
 from db import Base, SessionLocal, engine
-from services import user_access as _user_access_svc
 from exports import (
     df_to_excel_bytes,
     df_to_pdf_bytes,
@@ -349,9 +348,14 @@ from models import (
     TransactionCategory,
     TransactionSubcategory,
     User,
+    UserPermissionOverride,
+    ExpenseDraft,
+    DraftAttachment,
     Vendor,
     YearEndClose,
 )
+
+from services import user_access as _user_access_svc
 
 # Initialize database
 Base.metadata.create_all(bind=engine)
