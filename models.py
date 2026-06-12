@@ -637,6 +637,53 @@ class EndOfDayClose(Base):
     reconciliation = relationship("DailyCashReconciliation", foreign_keys=[recon_id])
 
 
+class ExternalSalesVerification(Base):
+    """Daily external-vs-ERP sales verification (DSC-P1). Verification only — no posting."""
+    __tablename__ = "external_sales_verifications"
+
+    id                    = Column(Integer, primary_key=True, index=True)
+    company_id            = Column(Integer, nullable=False, index=True)
+    business_date         = Column(Date, nullable=False, index=True)
+    source_name           = Column(String(200), nullable=False)
+    source_type           = Column(String(30), nullable=True)
+    branch_location       = Column(String(200), nullable=True)
+    status                = Column(String(30), nullable=False, default="draft", index=True)
+    external_total        = Column(Float, nullable=True)
+    z_report_total        = Column(Float, nullable=True)
+    external_cash         = Column(Float, nullable=True)
+    external_card         = Column(Float, nullable=True)
+    external_online       = Column(Float, nullable=True)
+    erp_total             = Column(Float, nullable=True)
+    erp_cash              = Column(Float, nullable=True)
+    erp_card              = Column(Float, nullable=True)
+    erp_credit            = Column(Float, nullable=True)
+    variance_total        = Column(Float, nullable=True)
+    variance_cash         = Column(Float, nullable=True)
+    variance_card         = Column(Float, nullable=True)
+    variance_online       = Column(Float, nullable=True)
+    z_report_variance     = Column(Float, nullable=True)
+    variance_type         = Column(String(30), nullable=True)
+    within_tolerance      = Column(Boolean, nullable=True)
+    variance_acknowledged = Column(Boolean, default=False)
+    variance_ack_note     = Column(Text, nullable=True)
+    notes                 = Column(Text, nullable=True)
+    verified_by_id        = Column(Integer, ForeignKey("users.id"), nullable=True)
+    verified_at           = Column(DateTime, nullable=True)
+    created_by_id         = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at            = Column(DateTime, nullable=False)
+    updated_at            = Column(DateTime, nullable=True)
+    is_void               = Column(Boolean, default=False, index=True)
+    voided_by_id          = Column(Integer, ForeignKey("users.id"), nullable=True)
+    voided_at             = Column(DateTime, nullable=True)
+    void_reason           = Column(Text, nullable=True)
+    sale_count_snapshot   = Column(Integer, nullable=True)
+    attachment_count      = Column(Integer, nullable=False, default=0)
+
+    verified_by = relationship("User", foreign_keys=[verified_by_id])
+    created_by  = relationship("User", foreign_keys=[created_by_id])
+    voided_by   = relationship("User", foreign_keys=[voided_by_id])
+
+
 class Partner(Base):
     """A business partner (owner or profit-sharing partner)."""
     __tablename__ = "partners"

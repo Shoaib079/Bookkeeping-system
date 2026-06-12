@@ -2033,6 +2033,12 @@ def migrate_schema(session):
         "CREATE INDEX IF NOT EXISTS ix_budget_company_id       ON budgets                        (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_dcr_company_id          ON daily_cash_reconciliation      (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_eod_company_id          ON end_of_day_closes              (company_id)",
+        # DSC-P1 — External Sales Verification
+        "CREATE INDEX IF NOT EXISTS ix_esv_business_date      ON external_sales_verifications   (business_date)",
+        "CREATE INDEX IF NOT EXISTS ix_esv_company_id         ON external_sales_verifications   (company_id)",
+        "CREATE INDEX IF NOT EXISTS ix_esv_is_void            ON external_sales_verifications   (is_void)",
+        "CREATE INDEX IF NOT EXISTS ix_esv_status             ON external_sales_verifications   (status)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_esv_active      ON external_sales_verifications (company_id, business_date, COALESCE(branch_location, '')) WHERE is_void = 0",
         "CREATE INDEX IF NOT EXISTS ix_txcat_company_id        ON transaction_categories         (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_txsub_company_id        ON transaction_subcategories      (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_retmpl_company_id       ON recurring_expense_templates    (company_id)",
