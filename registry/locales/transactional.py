@@ -1800,8 +1800,9 @@ TRANSACTIONAL_EN: dict[str, str] = {
     "txn.save_help": "Save this transaction and post to general ledger",
     "txn.enter_to_save_hint": "Press Enter in any field to save.",
     "txn.date_invalid": "Invalid date — use YYYY-MM-DD, DD.MM.YYYY, or DD/MM/YYYY.",
-    "txn.date_calendar": "Calendar",
-    "txn.date_enter_manually": "Enter date manually",
+    "txn.date_help": "Type a date or pick one from the calendar below.",
+
+
     "txn.worker_cash_subledger_missing": "Cash GL exists but no Cash bank account — add one under Banking → Accounts.",
     "txn.worker_cash_gl_missing": "No Cash account in chart of accounts — run COA setup first.",
     "txn.worker_bank_subledger_missing": "No bank account found for salary payment — add one under Banking → Accounts.",
@@ -3993,8 +3994,9 @@ TRANSACTIONAL_TR: dict[str, str] = {
     "txn.save_help": "Bu işlemi kaydedin ve büyük deftere işleyin",
     "txn.enter_to_save_hint": "Herhangi bir alanda Enter tuşuna basarak kaydedin.",
     "txn.date_invalid": "Geçersiz tarih — YYYY-MM-DD, DD.MM.YYYY veya DD/MM/YYYY kullanın.",
-    "txn.date_calendar": "Takvim",
-    "txn.date_enter_manually": "Tarihi elle gir",
+    "txn.date_help": "Tarihi yazın veya aşağıdaki takvimden seçin.",
+
+
     "txn.worker_cash_subledger_missing": "Kasa hesabı var ancak Kasa banka hesabı yok — Bankacılık → Hesaplar'dan ekleyin.",
     "txn.worker_cash_gl_missing": "Hesap planında Kasa hesabı yok — önce COA kurulumunu yapın.",
     "txn.worker_bank_subledger_missing": "Maaş ödemesi için banka hesabı bulunamadı — Bankacılık → Hesaplar'dan ekleyin.",

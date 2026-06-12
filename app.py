@@ -4464,6 +4464,7 @@ _COMPANY_SCOPED_AT_KEYS = (
     "mob_at_picker",
     "mob_at_picker_search",
     "at_date",
+    "at_date_text",
     "at_date_follows_today",
     "at_type_idx",
     "at_expense_mode",
@@ -12171,8 +12172,12 @@ def _mob_at_parse_date_text(raw: str) -> datetime.date | None:
 
 
 def _at_entry_date_error() -> str | None:
-    """Return localized error when manual date text is present but invalid."""
-    if not st.session_state.get("at_date_manual_entry"):
+    """Return localized error when the typed date text is present but invalid.
+
+    Desktop-only: the mobile AT uses its own date sheet (at_date directly), so
+    stale desktop text must never block or affect a mobile submit.
+    """
+    if _is_mobile_ui():
         return None
     raw = st.session_state.get("at_date_text")
     if raw is None or not str(raw).strip():
@@ -12183,18 +12188,19 @@ def _at_entry_date_error() -> str | None:
 
 
 def _at_resolve_entry_date() -> datetime.date:
-    """Resolve entry date from manual text (when enabled), calendar, else at_date, else today."""
-    if st.session_state.get("at_date_manual_entry"):
+    """Resolve entry date.
+
+    Desktop: the single typed Date field (at_date_text) is the source of truth;
+    valid text wins, empty text falls back to the resolved at_date.
+    Mobile: the date sheet writes at_date directly — desktop text is ignored so
+    stale typed values can never override a mobile date pick.
+    """
+    if not _is_mobile_ui():
         raw = st.session_state.get("at_date_text")
-        if raw is not None and str(raw).strip():
-            parsed = _at_parse_date_text(str(raw))
-            if parsed:
-                st.session_state["at_date"] = parsed
-                return parsed
-    picked = st.session_state.get("at_date_picker")
-    if isinstance(picked, datetime.date):
-        st.session_state["at_date"] = picked
-        return picked
+        typed = _at_parse_date_text(str(raw)) if raw and str(raw).strip() else None
+        if typed:
+            st.session_state["at_date"] = typed
+            return typed
     d = st.session_state.get("at_date")
     if isinstance(d, datetime.date):
         return d
@@ -12203,63 +12209,40 @@ def _at_resolve_entry_date() -> datetime.date:
     return today
 
 
-def _at_sync_date_from_picker() -> None:
-    picked = st.session_state.get("at_date_picker")
-    if isinstance(picked, datetime.date):
-        st.session_state["at_date"] = picked
-
-
-def _at_on_manual_date_toggle() -> None:
-    """Keep calendar and manual values in sync when the user switches entry mode."""
-    if st.session_state.get("at_date_manual_entry"):
-        picked = st.session_state.get("at_date_picker")
-        d = picked if isinstance(picked, datetime.date) else st.session_state.get("at_date")
-        if not isinstance(d, datetime.date):
-            d = datetime.date.today()
-        st.session_state["at_date_text"] = d.isoformat()
-        st.session_state["at_date"] = d
-        return
-    parsed = _at_parse_date_text(st.session_state.get("at_date_text", ""))
-    d = parsed if parsed else st.session_state.get("at_date")
-    if not isinstance(d, datetime.date):
-        d = datetime.date.today()
-    st.session_state["at_date_picker"] = d
-    st.session_state["at_date"] = d
-
-
 def _at_render_desktop_date_field() -> None:
-    """Calendar by default; reveal manual text field only when requested (OBS-01)."""
+    """ADD-TXN-FIX date UX — exactly ONE visible date control on desktop.
+
+    A single text input. Typed dates: YYYY-MM-DD, DD.MM.YYYY, DD/MM/YYYY.
+    Renders INSIDE the entry form so typing a date + Enter submits the
+    transaction. No checkbox, no calendar widget, no second control; invalid
+    text blocks submit via _at_entry_date_error() in the save path.
+    """
     today = datetime.date.today()
     d = st.session_state.get("at_date", today)
     if not isinstance(d, datetime.date):
         d = today
         st.session_state["at_date"] = d
 
-    st.checkbox(
-        _t("txn.date_enter_manually"),
-        key="at_date_manual_entry",
-        on_change=_at_on_manual_date_toggle,
-    )
+    # Seed once; afterwards the widget owns its state. DATE-01 rollover: if the
+    # date follows "today" and the text still shows a stale day, re-seed it.
+    if "at_date_text" not in st.session_state:
+        st.session_state["at_date_text"] = d.isoformat()
+    elif (
+        st.session_state.get("at_date_follows_today")
+        and _at_parse_date_text(st.session_state.get("at_date_text", "")) not in (None, today)
+        and st.session_state.get("at_date") == today
+    ):
+        st.session_state["at_date_text"] = today.isoformat()
 
-    if st.session_state.get("at_date_manual_entry"):
-        if "at_date_text" not in st.session_state:
-            st.session_state["at_date_text"] = d.isoformat()
-        st.text_input(
-            "📅 " + _t("col.date"),
-            key="at_date_text",
-            placeholder="YYYY-MM-DD, DD.MM.YYYY, DD/MM/YYYY",
-        )
-        err = _at_entry_date_error()
-        if err:
-            st.caption(f"⚠️ {err}")
-    else:
-        if not isinstance(st.session_state.get("at_date_picker"), datetime.date):
-            st.session_state["at_date_picker"] = d
-        st.date_input(
-            "📅 " + _t("col.date"),
-            key="at_date_picker",
-            on_change=_at_sync_date_from_picker,
-        )
+    st.text_input(
+        "📅 " + _t("col.date"),
+        key="at_date_text",
+        placeholder="YYYY-MM-DD · DD.MM.YYYY · DD/MM/YYYY",
+        help=_t("txn.date_help"),
+    )
+    err = _at_entry_date_error()
+    if err:
+        st.caption(f"⚠️ {err}")
 
 
 def _mob_at_render_picker_hdr(title: str) -> bool:
@@ -14739,7 +14722,6 @@ def render_add_transaction(session):
                     bank_dest_val = None
                     at_subcat_name = None
 
-                    # Header + date outside form — st.date_input on_change is not allowed inside forms.
                     st.markdown(
                         f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;'
                         f'padding-bottom:12px;border-bottom:2px solid var(--theme-border);">'
@@ -14753,9 +14735,12 @@ def render_add_transaction(session):
                         f'</div>',
                         unsafe_allow_html=True,
                     )
-                    _at_render_desktop_date_field()
 
                     with st.form("at_entry_form", clear_on_submit=False):
+                        # ADD-TXN-FIX date UX — single Date field INSIDE the form so
+                        # Enter submits; calendar helper is a collapsed expander
+                        # (callback-free; reconciled in _at_resolve_entry_date).
+                        _at_render_desktop_date_field()
                         # ── CONDITIONAL FIELDS BY TRANSACTION TYPE ─────────────────────
                         if txn_type == "Sale":
                             fc1, fc2 = st.columns(2)

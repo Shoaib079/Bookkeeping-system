@@ -1575,6 +1575,22 @@ Constants pinned in `ui/theme.py` (`MOBILE_VIEWPORT_*`). `mobile_header.css` alr
 
 ---
 
+## 2026-06-11 — ADD-TXN date UX final: text-input-only (calendar expander removed)
+
+**Follow-up to the entry below — user verdict: the collapsed calendar expander still read as a second date control.** Final state: desktop AT renders **exactly one date widget** — the typed text field (in-form, Enter submits; YYYY-MM-DD / DD.MM.YYYY / DD/MM/YYYY; invalid text blocks submit with the localized error). Calendar expander, `st.date_input`, `at_date_picker`/`at_picker_prev` keys, and the `txn.date_calendar*` locale keys all removed from the desktop AT path. `_at_resolve_entry_date` simplified: desktop = typed text wins, empty falls back to `at_date`; **mobile guard added** — on mobile UI both the resolver and `_at_entry_date_error` ignore desktop text entirely, so stale typed text can never override or block the mobile date sheet (which is unchanged). Tests rewritten in `test_add_txn_fix01.py` (single-control ban-list contract incl. expander/popover/date_input; 3-format parse-and-resolve; mobile-ignores-text; mobile-never-blocks; no-date_input-in-AT-path; checkbox-removed sweep; in-form Enter contract) and `test_date01_fast_mobile_date.py` (desktop = single text input). Logic verified 8/8 in sandbox; static sweep 74/2/0. Host run + visual check pending.
+
+---
+
+## 2026-06-11 — ADD-TXN date UX fix: single Date control, checkbox removed
+
+**Problem:** the desktop AT date entry had grown a "txn.date_enter_manually" checkbox toggling between calendar and text modes — two controls + a mode switch for one date.
+
+**Fix:** ONE visible Date control — a text input (accepts YYYY-MM-DD, DD.MM.YYYY, DD/MM/YYYY) rendered **inside** `at_entry_form` so typing a date + Enter submits the transaction, with a collapsed "🗓 Calendar" expander as the optional helper (expander-in-form is form-safe). Checkbox, mode flag (`at_date_manual_entry`), and both widget callbacks removed; locale key deleted EN/TR; new keys: `txn.date_help`, `txn.date_calendar`, `txn.date_calendar_hint`. Because forms forbid callbacks, calendar↔text reconciliation moved to submit time: `_at_resolve_entry_date` now uses **last-touched-wins** via an `at_picker_prev` shadow (calendar changed this submit → calendar wins and syncs the text; otherwise typed text wins; empty text falls back to resolved `at_date`). Invalid typed text still errors via `_at_entry_date_error` (mode gate removed) and still blocks submit (existing guard at the save path). DATE-01 rollover guard re-seeds stale "today" text. Mobile date sheet untouched.
+
+**Tests:** `test_add_txn_fix01.py` date tests rewritten (8): parser formats; invalid-text error (ungated); typed-wins / calendar-touched-wins / empty-fallback / fresh-picker resolution; single-visible-control contract (no checkbox, 1 text + 1 date input inside expander, no callbacks); checkbox-fully-removed sweep (app + locales); date-field-inside-form (Enter-to-submit) contract. `test_date01_fast_mobile_date.py` desktop assertion updated. Resolution logic verified 4/4 in sandbox; static sweep 74 pass / 2 xfail / 0 unexpected. Host run required: `pytest tests/test_add_txn_fix01.py tests/test_date01_fast_mobile_date.py -ra` then full suite.
+
+---
+
 ## How to use this file
 
 1. Before a banking/CC task, read [BANKING_RECON_CC_STATUS.md](./BANKING_RECON_CC_STATUS.md) and the latest entry here.

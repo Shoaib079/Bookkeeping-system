@@ -120,73 +120,86 @@ def test_at_parse_date_text_formats(raw, expected):
     assert erp._at_parse_date_text(raw) == expected
 
 
-def test_at_entry_date_error_invalid_only_in_manual_mode(monkeypatch):
+def test_at_entry_date_error_on_invalid_text(monkeypatch):
+    """Invalid typed text always errors — no mode flag involved."""
     monkeypatch.setattr(erp.st, "session_state", {"at_date_text": "bad"})
-    assert erp._at_entry_date_error() is None
-    monkeypatch.setattr(
-        erp.st,
-        "session_state",
-        {"at_date_text": "bad", "at_date_manual_entry": True},
-    )
     assert erp._at_entry_date_error() is not None
+    monkeypatch.setattr(erp.st, "session_state", {"at_date_text": "2026-06-05"})
+    assert erp._at_entry_date_error() is None
+    monkeypatch.setattr(erp.st, "session_state", {"at_date_text": "   "})
+    assert erp._at_entry_date_error() is None
 
 
-def test_at_resolve_entry_date_prefers_manual_text_when_enabled(monkeypatch):
+def test_at_resolve_entry_date_typed_text_wins(monkeypatch):
+    for raw, expected in (
+        ("2026-06-05", datetime.date(2026, 6, 5)),
+        ("05.06.2026", datetime.date(2026, 6, 5)),
+        ("05/06/2026", datetime.date(2026, 6, 5)),
+    ):
+        state = {"at_date_text": raw, "at_date": datetime.date(2020, 1, 1)}
+        monkeypatch.setattr(erp.st, "session_state", state)
+        assert erp._at_resolve_entry_date() == expected
+        assert state["at_date"] == expected
+
+
+def test_at_resolve_entry_date_empty_text_falls_back(monkeypatch):
+    state = {"at_date_text": "", "at_date": datetime.date(2026, 2, 2)}
+    monkeypatch.setattr(erp.st, "session_state", state)
+    assert erp._at_resolve_entry_date() == datetime.date(2026, 2, 2)
+
+
+def test_at_resolve_entry_date_mobile_ignores_desktop_text(monkeypatch):
+    """Mobile date sheet writes at_date; stale desktop text must not override."""
     state = {
-        "at_date_manual_entry": True,
+        "_erp_mobile_ui": True,
         "at_date_text": "05.06.2026",
-        "at_date": datetime.date(2020, 1, 1),
-        "at_date_picker": datetime.date(2020, 1, 2),
+        "at_date": datetime.date(2026, 9, 9),
     }
     monkeypatch.setattr(erp.st, "session_state", state)
-    assert erp._at_resolve_entry_date() == datetime.date(2026, 6, 5)
-    assert state["at_date"] == datetime.date(2026, 6, 5)
+    assert erp._at_resolve_entry_date() == datetime.date(2026, 9, 9)
 
 
-def test_at_resolve_entry_date_uses_picker_when_not_manual(monkeypatch):
-    state = {
-        "at_date_manual_entry": False,
-        "at_date_text": "05.06.2026",
-        "at_date_picker": datetime.date(2026, 3, 10),
-    }
-    monkeypatch.setattr(erp.st, "session_state", state)
-    assert erp._at_resolve_entry_date() == datetime.date(2026, 3, 10)
-    assert state["at_date"] == datetime.date(2026, 3, 10)
-
-
-def test_at_manual_date_toggle_syncs_picker_to_text(monkeypatch):
-    state = {
-        "at_date_manual_entry": True,
-        "at_date_picker": datetime.date(2026, 4, 1),
-        "at_date": datetime.date(2026, 4, 1),
-    }
-    monkeypatch.setattr(erp.st, "session_state", state)
-    erp._at_on_manual_date_toggle()
-    assert state["at_date_text"] == "2026-04-01"
-    assert state["at_date"] == datetime.date(2026, 4, 1)
-
-
-def test_at_manual_date_toggle_syncs_text_to_picker(monkeypatch):
-    state = {
-        "at_date_manual_entry": False,
-        "at_date_text": "15.05.2026",
-    }
-    monkeypatch.setattr(erp.st, "session_state", state)
-    erp._at_on_manual_date_toggle()
-    assert state["at_date_picker"] == datetime.date(2026, 5, 15)
-    assert state["at_date"] == datetime.date(2026, 5, 15)
+def test_at_entry_date_error_mobile_never_blocks(monkeypatch):
+    monkeypatch.setattr(
+        erp.st, "session_state", {"_erp_mobile_ui": True, "at_date_text": "bad"}
+    )
+    assert erp._at_entry_date_error() is None
 
 
 def test_desktop_date_field_single_visible_control():
+    """Exactly ONE visible date control: a text input. No checkbox, no
+    calendar expander, no st.date_input, no second widget of any kind."""
     src = inspect.getsource(erp._at_render_desktop_date_field)
-    assert 'key="at_date_manual_entry"' in src
-    assert "if st.session_state.get(\"at_date_manual_entry\"):" in src
-    text_block = src.split('if st.session_state.get("at_date_manual_entry"):', 1)[1]
-    calendar_block = src.split("else:", 1)[1]
-    assert 'st.text_input' in text_block
-    assert 'st.date_input' not in text_block.split("else:")[0]
-    assert 'st.date_input' in calendar_block
-    assert 'st.text_input' not in calendar_block
+    assert src.count("st.text_input") == 1
+    for banned in (
+        "st.checkbox",
+        "st.date_input",
+        "st.expander",
+        "st.popover",
+        "at_date_manual_entry",
+        "date_enter_manually",
+        "on_change",
+    ):
+        assert banned not in src, f"banned widget/pattern in date field: {banned}"
+
+
+def test_no_manual_entry_checkbox_anywhere():
+    """The txn.date_enter_manually control is fully removed (app + locales)."""
+    app_src = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert "date_enter_manually" not in app_src
+    assert "at_date_manual_entry" not in app_src
+    for loc in ("transactional.py", "messages.py"):
+        loc_src = (ROOT / "registry" / "locales" / loc).read_text(encoding="utf-8")
+        assert "date_enter_manually" not in loc_src
+
+
+def test_date_field_renders_inside_entry_form():
+    """Enter-to-submit: the date field call sits inside the at_entry_form block."""
+    app_src = (ROOT / "app.py").read_text(encoding="utf-8")
+    form_idx = app_src.index('with st.form("at_entry_form"')
+    call_idx = app_src.index("_at_render_desktop_date_field()", form_idx)
+    # called within 400 chars of the form opening — first element of the form
+    assert 0 < call_idx - form_idx < 400
 
 
 # ── No remembered transaction ─────────────────────────────────────────────────
@@ -291,23 +304,32 @@ def test_desktop_at_uses_entry_form():
     assert "st.form_submit_button" in src.split('st.form("at_entry_form"')[1]
 
 
-def test_desktop_date_field_outside_form_for_calendar_callback():
+def test_desktop_date_field_inside_form_for_enter_submit():
+    """Date field moved INSIDE the form: typing a date + Enter submits the
+    transaction. Calendar helper is callback-free (form-safe)."""
     src = inspect.getsource(erp.render_add_transaction)
     form_pos = src.index('st.form("at_entry_form"')
     date_pos = src.index("_at_render_desktop_date_field()")
-    assert date_pos < form_pos
+    assert date_pos > form_pos
     date_helper = inspect.getsource(erp._at_render_desktop_date_field)
-    assert "on_change=_at_sync_date_from_picker" in date_helper
+    assert "on_change" not in date_helper
 
 
-def test_at_resolve_entry_date_falls_back_to_picker(monkeypatch):
-    picked = datetime.date(2026, 3, 15)
-    monkeypatch.setattr(
-        erp.st,
-        "session_state",
-        {"at_date_text": "", "at_date_picker": picked},
-    )
-    assert erp._at_resolve_entry_date() == picked
+def test_at_date_text_is_company_scoped():
+    """Typed date text must clear on company switch — desktop text wins at
+    resolve time, so an unscoped value would leak Company A's date into
+    Company B's first transaction."""
+    assert "at_date_text" in erp._COMPANY_SCOPED_AT_KEYS
+    assert "at_date" in erp._COMPANY_SCOPED_AT_KEYS
+
+
+def test_no_desktop_date_input_in_add_transaction_path():
+    """The desktop AT flow contains no st.date_input — the typed field is the
+    only date control. (Mobile keeps its own date sheet; global sidebar filters
+    and other pages are out of scope.)"""
+    for fn in (erp._at_render_desktop_date_field, erp.render_add_transaction):
+        src = inspect.getsource(fn)
+        assert "st.date_input" not in src, f"st.date_input found in {fn.__name__}"
 
 
 # ── Dialog / dark theme contracts ─────────────────────────────────────────────
