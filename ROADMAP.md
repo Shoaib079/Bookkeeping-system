@@ -79,7 +79,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | **DAILY-SALES-CLOSE-01** | ✅ **DSC-P1–P2 complete** · 📋 **DSC-P3–P4 pending** — source-neutral external sales verification (no posting); see [docs/DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
 | **RECIPE-COSTING-01** | ✅ **RC-P1–P2A complete** · 📋 **RC-P2B–P3 pending** · 🔮 **RC-AI-01 optional (future)** — ingredient/recipe costing + menu profitability basics; see [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-RC-*) |
 | **USER-ACCESS-01** | ✅ **UA-P1 complete** · 📋 **UA-P1b pending** — permission override service + effective resolver; see [docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-UA-*) |
-| **STAFF-CAPTURE-01** | ✅ **SC-P1 complete** · 📋 **SC-P1b pending** · 📋 **SC-P2 pending** · 📋 **SC-P3 pending** — expense draft spine + service layer (no UI in SC-P1); see [docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-SC-*) |
+| **STAFF-CAPTURE-01** | ✅ **SC-P1 complete** · ✅ **SC-P1b complete** · 📋 **SC-P2 pending** · 📋 **SC-P3 pending** — expense draft service + thin Streamlit UI (submit · receipts · inbox); see [docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-SC-*) |
 | **FUTURE-MIGRATION-AUDIT-01** | 📊 **Recorded** — FastAPI readiness **62/100**; keystone **POSTING-SERVICE-01**; see [§ FUTURE-MIGRATION-AUDIT-01](#future-migration-audit-01--fastapi-readiness-audit) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
 
 ---
@@ -355,14 +355,14 @@ Spec: [USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.
 
 | Phase | Status | Deliverable |
 |-------|--------|-------------|
-| **SC-P1** | ✅ **Complete** | `ExpenseDraft` · `DraftAttachment` · `services/staff_capture.py` (lifecycle, attachments, DTOs, injected `post_fn` approval) · SC permission keys in `services/user_access.py` · service/model/approval tests · schema indexes. **No UI, portal, or inbox.** |
-| **SC-P1b** | 📋 **Pending** | Capture portal gate · expense draft form · receipt upload UI · approval inbox (expense only) · Streamlit attachment serving |
+| **SC-P1** | ✅ **Complete** | `ExpenseDraft` · `DraftAttachment` · `services/staff_capture.py` (lifecycle, attachments, DTOs, injected `post_fn` approval) · SC permission keys in `services/user_access.py` · service/model/approval tests · schema indexes |
+| **SC-P1b** | ✅ **Complete** | `ui/staff_capture.py` · `NAV_STAFF_EXPENSE_CAPTURE` · expense submit form · receipt upload · my submissions feed · approval inbox (expense only) · return/reject/approve · `app._staff_capture_post_expense_draft` posting seam · UI contract tests · EN/TR `sc.*` locales. **No portal gate.** |
 | **SC-P2** | 📋 **Pending** | `sales_total_drafts` · `salary_drafts` · `cash_count_drafts` · inbox grows to three types |
 | **SC-P3** | 📋 **Pending** | Returned-flow polish · staff submission feed · retention/archive job · OBS-01 review |
 
 Spec: [USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md). Tech debt: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-SC-*).
 
-Host `pytest tests/` — **1540 passed, 2 xfailed**.
+Host `pytest tests/` — **1551 passed, 2 xfailed**.
 
 ---
 
@@ -2454,6 +2454,7 @@ Inventory and reduce Streamlit-only context coupling — `_erp()` lazy `import a
 | 2026-06-05 | **ARCHITECTURE-PROTECTION-01** active immediately — all new modules service-first (models → services → tests → minimal UI). Streamlit must not own business logic; pause before deep UI for auth, staff portal, uploads, approval workflows. |
 | 2026-06-13 | **VENDOR-NEUTRAL-01** active immediately — core architecture must not depend on named POS/vendor products; generic External Sales Source pattern (`source_name` free text, optional `source_type` category). Vendor names allowed in documentation examples only; future adapters live outside core. Cross-links ARCHITECTURE-PROTECTION-01 and FUTURE-MIGRATION-01. Audit (2026-06-13): no vendor leakage in production code. |
 | 2026-06-13 | **FUTURE-MIGRATION-AUDIT-01 recorded** — independent FastAPI readiness audit (Claude): score **62/100**; new service modules FastAPI-ready; main blocker `app.py` posting engine; keystone **POSTING-SERVICE-01**; also track MONEY-DECIMAL-01, ALEMBIC-01, BANKING-SERVICE-01, REPORTS-SERVICE-01, CONTEXT-AUDIT-01. Register: [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md). Does not start FastAPI/React implementation. |
+| 2026-06-13 | **STAFF-CAPTURE-01 SC-P1b complete** — `ui/staff_capture.py` (submit · my submissions · approval inbox), `NAV_STAFF_EXPENSE_CAPTURE`, `app._staff_capture_post_expense_draft` posting seam, EN/TR `sc.*` locales, `test_staff_capture01_ui_contract.py` (11). SC-P2 · SC-P3 pending. Host `pytest tests/` — **1551 passed, 2 xfailed**. |
 | 2026-06-13 | **STAFF-CAPTURE-01 SC-P1 complete** — `ExpenseDraft` / `DraftAttachment` models, `services/staff_capture.py` (lifecycle, attachments, DTOs, injected `post_fn` approval, separation of duties), SC permission keys in `services/user_access.py`, tests (`test_staff_capture01_models.py`, `test_staff_capture01_drafts.py`, `test_staff_capture01_approval.py`). SC-P1b · SC-P2 · SC-P3 pending. Host `pytest tests/` — **1540 passed, 2 xfailed**. |
 | 2026-06-13 | **USER-ACCESS-01 UA-P1 complete** — `UserPermissionOverride` model, `services/user_access.py` (registry, templates, effective resolver, override CRUD, owner lockout guard), `_can()` resolver swap, tests (`test_user_access01_permissions.py`, `test_user_access01_models.py`). UA-P1b · UA-P2 pending. **Smoke audit:** Owner/Manager/Viewer compatibility passed; 0 permission/hidden-page/access regressions; `manage_permissions` intentional owner-only addition. Host `pytest tests/` — **1502 passed, 2 xfailed**. |
 | 2026-06-05 | **MIGRATION-READINESS-01** active immediately — FastAPI/React-ready service checklist (explicit `company_id`, serializable DTOs, no Streamlit in `services/`, contract tests, tech-debt register). Exemplar: DSC-P1 (`services/daily_sales_close.py`). Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md). |

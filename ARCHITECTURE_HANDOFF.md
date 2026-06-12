@@ -390,7 +390,7 @@ Full detail: [ROADMAP.md § VENDOR-NEUTRAL-01](./ROADMAP.md#vendor-neutral-01--v
 - Tests without Streamlit; contract scans for posting and vendor neutrality
 - Log known debt in [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md)
 
-**Exemplar:** DSC-P1 — `services/daily_sales_close.py`; DSC-P2 — `ui/external_sales_verification.py`; RC-P1 — `services/recipe_costing.py`; RC-P1b — `ui/recipe_costing.py`; RC-P2A — menu profitability in `services/recipe_costing.py` + `render_recipe_menu_items`; UA-P1 — `services/user_access.py`; SC-P1 — `services/staff_capture.py`. Full detail: [ROADMAP.md § MIGRATION-READINESS-01](./ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist).
+**Exemplar:** DSC-P1 — `services/daily_sales_close.py`; DSC-P2 — `ui/external_sales_verification.py`; RC-P1 — `services/recipe_costing.py`; RC-P1b — `ui/recipe_costing.py`; RC-P2A — menu profitability in `services/recipe_costing.py` + `render_recipe_menu_items`; UA-P1 — `services/user_access.py`; SC-P1 — `services/staff_capture.py`; SC-P1b — `ui/staff_capture.py`. Full detail: [ROADMAP.md § MIGRATION-READINESS-01](./ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist).
 
 ### DAILY-SALES-CLOSE-01 (implementation status)
 
@@ -440,12 +440,12 @@ Spec: [USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.
 
 | Phase | Status |
 |-------|--------|
-| SC-P1 | ✅ Complete — `ExpenseDraft` · `DraftAttachment` · `services/staff_capture.py` · injected `post_fn` approval · tests. No UI/portal/inbox. |
-| SC-P1b | 📋 Pending — capture portal · expense draft UI · receipt upload · approval inbox · attachment serving |
+| SC-P1 | ✅ Complete — `ExpenseDraft` · `DraftAttachment` · `services/staff_capture.py` · injected `post_fn` approval · tests |
+| SC-P1b | ✅ Complete — `ui/staff_capture.py` · submit/receipts/inbox · `NAV_STAFF_EXPENSE_CAPTURE` · posting seam · UI contract tests. No portal gate. |
 | SC-P2 | 📋 Pending — `sales_total_drafts` · `salary_drafts` · `cash_count_drafts` |
 | SC-P3 | 📋 Pending — returned-flow polish · submission feed · retention/archive · OBS-01 review |
 
-Host `pytest tests/` — **1540 passed, 2 xfailed**.
+Host `pytest tests/` — **1551 passed, 2 xfailed**.
 
 Spec: [USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md). Tech debt: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-SC-*).
 

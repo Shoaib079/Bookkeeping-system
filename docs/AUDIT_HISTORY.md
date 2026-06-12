@@ -8,6 +8,25 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-13 — STAFF-CAPTURE-01 SC-P1b (Staff Expense Capture UI)
+
+**Task:** Thin Streamlit UI over SC-P1 service — expense submission, receipt upload, my submissions feed, approval inbox (expense only). No portal gate, no SC-P2 draft types.
+
+**SC-P1b delivered:**
+- UI: `ui/staff_capture.py` — submit form · attachments · my submissions · inbox (return/reject/approve)
+- Nav: `NAV_STAFF_EXPENSE_CAPTURE` under Record transactions; EN/TR `sc.*` + `nav.staff_expenses` locales
+- Posting seam: `app._staff_capture_post_expense_draft` → existing `_save_and_post_expense_record` (TD-SC-01)
+- Tests: `test_staff_capture01_ui_contract.py` (11)
+- Docs: SC-P1b migration cleanup in `TECH_DEBT_AND_MIGRATION_CLEANUP.md`
+
+**Pending:** SC-P2 (sales/salary/cash-count drafts) · SC-P3 (polish + retention) · portal gate (TD-SC-04).
+
+**Tests:** Full suite **1551 passed, 2 xfailed**.
+
+**Files changed:** `ui/staff_capture.py`, `app.py`, `registry/nav_keys.py`, `registry/nav_labels.py`, `registry/locales/messages.py`, `registry/locales/transactional.py`, `registry/icon_svg.py`, `registry/modules_catalog.py`, `tests/test_staff_capture01_ui_contract.py`, `docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md`.
+
+---
+
 ## 2026-06-13 — STAFF-CAPTURE-01 SC-P1 (Expense Draft Service)
 
 **Task:** Service-first staff expense capture — draft spine, attachments, lifecycle, approval via injected `post_fn`. No UI, portal, inbox, or mobile capture (SC-P1b deferred).
@@ -20,7 +39,7 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 - Docs: SC-P1 migration cleanup in `TECH_DEBT_AND_MIGRATION_CLEANUP.md` (TD-SC-01–05)
 - Tests: `test_staff_capture01_models.py` (2), `test_staff_capture01_drafts.py` (15), `test_staff_capture01_approval.py` (7)
 
-**Pending:** SC-P1b (portal + expense UI + inbox) · SC-P2 (sales/salary/cash-count drafts) · SC-P3 (polish + retention).
+**Pending:** SC-P2 (sales/salary/cash-count drafts) · SC-P3 (polish + retention).
 
 **Tests:** Full suite **1540 passed, 2 xfailed**.
 
@@ -48,7 +67,7 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 - 0 access regressions
 - `manage_permissions` is an intentional owner-only addition (not a regression)
 
-**Pending:** UA-P1b (permission UI) · STAFF-CAPTURE-01 SC-P1b (portal + inbox).
+**Pending:** UA-P1b (permission UI) · STAFF-CAPTURE-01 SC-P2.
 
 **Tests:** Full suite **1502 passed, 2 xfailed**.
 

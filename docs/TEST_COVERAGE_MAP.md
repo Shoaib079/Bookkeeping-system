@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-13 (STAFF-CAPTURE-01 SC-P1)  
-**Full suite:** run `pytest tests/` — **1540 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
+**Last updated:** 2026-06-13 (STAFF-CAPTURE-01 SC-P1b)  
+**Full suite:** run `pytest tests/` — **1551 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -310,6 +310,18 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 |-----------------|-------------------------|------------------|
 | `ExpenseDraft` spine + expense fields | Draft status workflow anchor + posted-ref idempotency | **High** |
 | `DraftAttachment` polymorphic link | `draft_type` + `draft_id` attachment spine | **High** |
+
+---
+
+### `tests/test_staff_capture01_ui_contract.py` (11 tests) — SC-P1b
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Service-only UI renderer | No `ExpenseDraft`/`session.add`/`post_expense` in `ui/staff_capture.py` | **Critical** |
+| Injected `post_fn` at approve | `approve_expense_draft(..., post_fn=_staff_capture_post_expense_draft)` | **Critical** |
+| Permission gates | `submit_expense_drafts` · `upload_receipts` · `approve_expense_drafts` | **High** |
+| Nav dispatch | `NAV_STAFF_EXPENSE_CAPTURE` under Record transactions accordion | **High** |
+| Inbox + submissions tabs | `list_expense_drafts` · `list_submitted_expense_drafts` · return/reject/approve | **High** |
 
 ---
 
