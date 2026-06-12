@@ -72,3 +72,9 @@ def test_render_kpi_grid_variant_only_no_color_escape():
 
 def test_theme_contrast_suite_still_importable():
     from tests import test_theme_contrast  # noqa: F401
+
+
+def test_dashboard_trend_chart_uses_themed_grouped_bar():
+    src = _dashboard_src()
+    assert "render_themed_grouped_bar" in src
+    assert "st.altair_chart" not in src

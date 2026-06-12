@@ -724,6 +724,16 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
   border-radius: 8px !important;
 }
 
+/* System theme fallback — Vega .background rect tracks OS when cookie lags one request */
+@media (prefers-color-scheme: dark) {
+  html[data-erp-os-dark="1"] [data-testid="stMain"] [data-testid="stVegaLiteChart"] rect.background,
+  html[data-erp-os-dark="1"] [data-testid="stMain"] [data-testid="stArrowVegaLiteChart"] rect.background,
+  html:not([data-erp-os-dark="0"]) [data-testid="stMain"] [data-testid="stVegaLiteChart"] rect.background,
+  html:not([data-erp-os-dark="0"]) [data-testid="stMain"] [data-testid="stArrowVegaLiteChart"] rect.background {
+    fill: var(--theme-card) !important;
+  }
+}
+
 /* ── Alerts / status messages — mono card (same in light and dark) ─────── */
 [data-testid="stMain"] [data-testid="stAlert"] {
   background-color: var(--theme-card) !important;

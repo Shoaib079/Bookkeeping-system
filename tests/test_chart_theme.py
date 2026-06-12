@@ -25,7 +25,12 @@ from ui.theme import (
 
 @pytest.fixture(autouse=True)
 def _reset_theme_session():
+    import ui.theme as theme_mod
+
     st = sys.modules["streamlit"]
+    if not isinstance(getattr(st, "session_state", None), dict):
+        st.session_state = {}
+    theme_mod.st.session_state = st.session_state
     st.session_state.clear()
     st.session_state["theme_mode"] = "light"
     st.session_state["dark_mode"] = False
@@ -52,6 +57,20 @@ def test_chart_theme_tokens_follows_session_dark_mode():
     st = sys.modules["streamlit"]
     st.session_state["theme_mode"] = "dark"
     st.session_state["dark_mode"] = True
+    assert chart_theme_tokens()["card"] == DARK_ROOT_VARS["--theme-card"]
+
+
+def test_chart_theme_tokens_system_follows_os_cookie():
+    import ui.theme as theme_mod
+
+    st = sys.modules["streamlit"]
+    st.session_state["theme_mode"] = "system"
+    st.session_state["dark_mode"] = False
+    ctx = type("Ctx", (), {"cookies": {"erp_os_dark": "1"}, "headers": {}})()
+    st.context = ctx
+    theme_mod.st.context = ctx
+
+    assert theme_mod._resolve_chart_dark() is True
     assert chart_theme_tokens()["card"] == DARK_ROOT_VARS["--theme-card"]
 
 
@@ -104,3 +123,5 @@ def test_widgets_chart_container_uses_theme_card():
     assert "stVegaLiteChart" in block
     assert "var(--theme-card)" in block
     assert "var(--theme-border)" in block
+    assert "rect.background" in block
+    assert "prefers-color-scheme: dark" in block

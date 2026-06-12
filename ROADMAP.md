@@ -69,6 +69,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | **CHART-01** — Chart Theme Consolidation | ⚠️ **Needs short verification pass** — `chart_theme_tokens()` exists in `ui/theme.py` but has 0 app.py call sites; 0 native `st.bar_chart`/`st.line_chart` remain (AUDIT-01 counted 6). Charts migrated or removed — verify before trusting status (reconciled 2026-06-10) |
 | **AUDIT-01** — ERP Ownership Audit | ✅ **Complete** — findings recorded; quick wins identified |
 | Future UX / navigation vision | 📋 **Low** — design direction only (MOBILE-07–12, DESIGN-05, DESKTOP-04) — implementation gated on MOBILE-11 system |
+| **PROFILE-PHOTO-01** — Profile photo / avatar upload | 📋 **Proposed** · Low — UX only; no accounting impact |
 | UI architecture stability (UI-STAB) | 📋 **Planned** — Desktop/Mobile audit findings recorded — **not approved for implementation** |
 | Operational friction log (OBS-01) | 🟡 **Active** — record real-world UX friction; 3+ occurrences → roadmap candidate |
 
@@ -666,6 +667,51 @@ This hides navigation only. It does **not** disable functionality. Users can res
 **Not implementation-ready.** Design direction only. *(Phase 16D delivered truncation/responsive foundation; this is a later polish pass.)*
 
 **Prerequisite (architecture, not redesign):** **[UI-STAB-01](#ui-stab-01--header-architecture-consolidation)** — header CSS/sizing consolidation. Trigger only after compact mobile header visuals are approved.
+
+---
+
+### PROFILE-PHOTO-01 — Profile Photo / Avatar
+
+**Status:** Proposed  
+**Priority:** Low  
+**Not approved for implementation.**
+
+**Purpose:** Allow users to upload and display a profile photo/avatar instead of initials.
+
+**Requirements:**
+
+- Upload profile image (My Account → Profile tab)
+- Store avatar path/reference on `User` (e.g. `avatar_path` column + file under company/user-scoped storage)
+- Show avatar in header profile popover/sheet and My Account profile card
+- Fallback to initials when no image exists (`erp-mono-avatar`, `erp-hdr-profile-avatar`)
+- EN/TR labels (`account.profile_photo`, upload/remove/success/error keys)
+- Permissions: self-service only (current user edits own avatar; no owner directory management)
+- Desktop + mobile: `_render_hdr_profile_panel_content`, mobile profile sheet, login user tiles
+
+**Non-goals:**
+
+- Social-login avatars
+- External image URLs
+- User directory / admin avatar management
+
+**Current state (June 2026):**
+
+- `User` model has no `avatar_path` field
+- `render_my_account` shows initials + `account.photo_coming` (“Upload coming in a future release”)
+- Header/mobile profile use initials HTML in three places (not a single helper yet)
+- [UI-STAB-01](#ui-stab-01--header-architecture-consolidation) calls for single avatar renderer — implement together or immediately before
+
+**Suggested implementation sketch (when approved):**
+
+1. Schema: `users.avatar_path` via `migrate_schema()`; store files under e.g. `data/avatars/{user_id}/`
+2. `registry/avatar.py`: save/delete/resolve URL, validate MIME/size, initials fallback HTML helper
+3. My Account Profile: `st.file_uploader` + remove button; audit log optional
+4. Replace inline initials in header, mobile sheet, login tiles with shared `_user_avatar_html(user)`
+5. Tests: upload round-trip, fallback, permission (cannot set another user's path), no posting changes
+
+**Reason:** UX enhancement only. No accounting impact.
+
+**Cross-reference:** [AUDIT_HISTORY.md](./docs/AUDIT_HISTORY.md) (mono-sweep-3 — photo was never implemented; not a regression).
 
 ---
 

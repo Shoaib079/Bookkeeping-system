@@ -1486,6 +1486,20 @@ Constants pinned in `ui/theme.py` (`MOBILE_VIEWPORT_*`). `mobile_header.css` alr
 
 ---
 
+## 2026-06-11 — UI regression audit (pre-BANKING-UX-02 P4) + chart OS-theme fix
+
+**Reported regressions, verdicts:**
+
+1. **Charts white on dark theme — real, fixed.** Root cause: `_resolve_chart_dark` resolved theme "system" to session `dark_mode` (default False); the server can't see `prefers-color-scheme`, so charts rendered the light palette's hex on a dark UI. Not a commit revert — a CHART-01 gap made visible by the banking recon trend chart. **Fix (UI-only):** viewport detector now mirrors the OS scheme into an `erp_os_dark` cookie (same pattern as `erp_mobile_ui`, with a live change listener); `_resolve_chart_dark`'s system branch consumes it, session fallback retained for first render. Files: `ui/theme.py` only.
+2. **Profile "picture/toggle → initials" — not a regression.** Photo upload was never implemented (locales say "Upload coming in a future release"; no setting, no asset path; repo history starts at the 2026-06-06 clean re-init). Likely remembered change: mono-sweep-3 flattening role-coloured avatars. Desktop theme toggle still renders. Logged as feature proposal **PROFILE-PHOTO-01**; the requested "picture mode" regression test is impossible without the feature.
+3. **Other reverts — none found.** Dashboard 0 inline styles; nav SVGs intact; 173/173 banking locale keys resolve; partner-statement CSS scoped + print-fenced (no screen leak); POS focused-route covered by `test_banking_ux02_p1b`; 68 contract tests green.
+
+**Tests added:** `tests/test_chart_os_theme_regression.py` (5): detector writes `erp_os_dark` + change listener; resolver consumes cookie before session fallback; dark chart palette never white + palettes differ; every `st.altair_chart` wrapped in `apply_altair_theme` + native-chart ban; banking locale-key completeness (raw-key guard).
+
+**Verification:** new tests 5/5; full static sweep 68 pass / 2 optional xfail / 0 unexpected; theme.py syntax OK. Host `pytest tests/` + visual check (theme=system, OS dark → recon trend chart dark) required. Accounting logic untouched.
+
+---
+
 ## How to use this file
 
 1. Before a banking/CC task, read [BANKING_RECON_CC_STATUS.md](./BANKING_RECON_CC_STATUS.md) and the latest entry here.

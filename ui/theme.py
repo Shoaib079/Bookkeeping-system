@@ -177,15 +177,21 @@ def inject_mobile_viewport_detector() -> None:
             const phoneLandscape = coarse && vh <= 520;
             const mobile = narrow || touchTablet || phoneLandscape;
             root.classList.toggle("erp-mobile", mobile);
+            const osDark = w.matchMedia("(prefers-color-scheme: dark)").matches;
+            root.setAttribute("data-erp-os-dark", osDark ? "1" : "0");
             try {
               w.document.cookie =
                 "erp_mobile_ui=" + (mobile ? "1" : "0") +
+                ";path=/;max-age=3600;SameSite=Lax";
+              w.document.cookie =
+                "erp_os_dark=" + (osDark ? "1" : "0") +
                 ";path=/;max-age=3600;SameSite=Lax";
             } catch (e) {}
           }
           apply();
           w.addEventListener("resize", apply);
           w.addEventListener("orientationchange", apply);
+          w.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", apply);
         })();
         </script>
         """,
@@ -214,8 +220,68 @@ def role_accent_css_var(role: str | None) -> str:
     return "color-mix(in srgb, var(--theme-info) 16%, var(--theme-card) 84%)"
 
 
+def _os_dark_from_client_hint() -> bool | None:
+    """First-request fallback when the viewport cookie is not on the wire yet."""
+    try:
+        hint = (st.context.headers.get("Sec-CH-Prefers-Color-Scheme") or "").strip().lower()
+    except Exception:
+        return None
+    if hint == "dark":
+        return True
+    if hint == "light":
+        return False
+    return None
+
+
+def _os_dark_preferred_signal() -> bool | None:
+    """OS scheme from cookie or client hint only (no session guesses)."""
+    try:
+        cookie = str(st.context.cookies.get("erp_os_dark") or "").strip()
+    except Exception:
+        cookie = ""
+    if cookie == "1":
+        return True
+    if cookie == "0":
+        return False
+    return _os_dark_from_client_hint()
+
+
+def _system_theme_injection_dark() -> bool | None:
+    """Known OS scheme for CSS injection; None keeps @media (prefers-color-scheme) in charge."""
+    signal = _os_dark_preferred_signal()
+    if signal is not None:
+        return signal
+    prev = st.session_state.get("_erp_os_dark_from_cookie")
+    if isinstance(prev, bool):
+        return prev
+    return None
+
+
+def sync_os_dark_flag_from_cookie() -> bool:
+    """Mirror OS light/dark for server-side charts when theme_mode is system.
+
+    Order: erp_os_dark cookie → Sec-CH-Prefers-Color-Scheme → sticky cookie session →
+    dark_mode session fallback (charts only — never forces light CSS injection).
+    """
+    signal = _os_dark_preferred_signal()
+    if signal is not None:
+        st.session_state["_erp_os_dark_from_cookie"] = signal
+        flag = signal
+    elif isinstance(st.session_state.get("_erp_os_dark_from_cookie"), bool):
+        flag = st.session_state["_erp_os_dark_from_cookie"]
+    else:
+        flag = bool(st.session_state.get("dark_mode", False))
+    st.session_state["_erp_os_dark"] = flag
+    return flag
+
+
 def _resolve_chart_dark(dark: bool | None = None) -> bool:
-    """Resolve ERP chart palette: explicit light/dark, else session dark_mode (system → OS via CSS)."""
+    """Resolve ERP chart palette: explicit light/dark; "system" follows the OS scheme.
+
+    CSS handles "system" via prefers-color-scheme, but charts render server-side
+    with palette hex — sync_os_dark_flag_from_cookie() mirrors the OS scheme from
+    the erp_os_dark cookie (viewport detector), client hints, or sticky session.
+    """
     if dark is not None:
         return dark
     mode = st.session_state.get("theme_mode", "system")
@@ -223,7 +289,7 @@ def _resolve_chart_dark(dark: bool | None = None) -> bool:
         return True
     if mode == "light":
         return False
-    return bool(st.session_state.get("dark_mode", False))
+    return sync_os_dark_flag_from_cookie()
 
 
 def chart_theme_tokens(*, dark: bool | None = None) -> dict[str, str]:
@@ -293,9 +359,10 @@ def render_themed_bar(
     """Single-series bar chart using ERP theme tokens."""
     import altair as alt
 
+    chart_dark = _resolve_chart_dark()
     chart = (
         alt.Chart(df)
-        .mark_bar(color=chart_accent_color())
+        .mark_bar(color=chart_accent_color(dark=chart_dark))
         .encode(
             x=alt.X(f"{x_col}:{x_type}", sort=None, title=None),
             y=alt.Y(f"{y_col}:Q", title=None),
@@ -303,7 +370,7 @@ def render_themed_bar(
         )
         .properties(height=height)
     )
-    st.altair_chart(apply_altair_theme(chart), use_container_width=True)
+    st.altair_chart(apply_altair_theme(chart, dark=chart_dark), use_container_width=True)
 
 
 def render_themed_grouped_bar(
@@ -319,7 +386,8 @@ def render_themed_grouped_bar(
     df_long = df[[x_col, *series_cols]].melt(
         id_vars=[x_col], var_name="Series", value_name="Value"
     )
-    palette = chart_palette()
+    chart_dark = _resolve_chart_dark()
+    palette = chart_palette(dark=chart_dark)
     chart = (
         alt.Chart(df_long)
         .mark_bar()
@@ -336,7 +404,7 @@ def render_themed_grouped_bar(
         )
         .properties(height=height)
     )
-    st.altair_chart(apply_altair_theme(chart), use_container_width=True)
+    st.altair_chart(apply_altair_theme(chart, dark=chart_dark), use_container_width=True)
 
 
 def render_themed_line(
@@ -353,7 +421,8 @@ def render_themed_line(
     df_long = df[[x_col, *y_cols]].melt(
         id_vars=[x_col], var_name="Series", value_name="Value"
     )
-    palette = chart_palette()
+    chart_dark = _resolve_chart_dark()
+    palette = chart_palette(dark=chart_dark)
     chart = (
         alt.Chart(df_long)
         .mark_line(point=True)
@@ -369,7 +438,7 @@ def render_themed_line(
         )
         .properties(height=height)
     )
-    st.altair_chart(apply_altair_theme(chart), use_container_width=True)
+    st.altair_chart(apply_altair_theme(chart, dark=chart_dark), use_container_width=True)
 
 
 def apply_user_theme_from_db(session, user_id: int) -> str | None:
@@ -404,6 +473,11 @@ def bootstrap_theme(session_factory, auth_user: dict | None) -> None:
         st.session_state.setdefault("theme_mode", "system")
         st.session_state.setdefault("dark_mode", False)
 
+    sync_os_dark_flag_from_cookie()
     theme_mode = st.session_state.get("theme_mode", "system")
-    if theme_mode != "system":
+    if theme_mode == "system":
+        os_inject = _system_theme_injection_dark()
+        if os_inject is not None:
+            inject_theme_css(os_inject)
+    else:
         inject_theme_css(bool(st.session_state.get("dark_mode", False)))
