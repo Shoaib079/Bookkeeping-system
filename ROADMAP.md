@@ -80,6 +80,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | **RECIPE-COSTING-01** | ✅ **RC-P1–P2A complete** · 📋 **RC-P2B–P3 pending** · 🔮 **RC-AI-01 optional (future)** — ingredient/recipe costing + menu profitability basics; see [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-RC-*) |
 | **USER-ACCESS-01** | ✅ **UA-P1 complete** · 📋 **UA-P1b pending** — permission override service + effective resolver; see [docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-UA-*) |
 | **STAFF-CAPTURE-01** | ✅ **SC-P1 complete** · 📋 **SC-P1b pending** · 📋 **SC-P2 pending** · 📋 **SC-P3 pending** — expense draft spine + service layer (no UI in SC-P1); see [docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-SC-*) |
+| **FUTURE-MIGRATION-AUDIT-01** | 📊 **Recorded** — FastAPI readiness **62/100**; keystone **POSTING-SERVICE-01**; see [§ FUTURE-MIGRATION-AUDIT-01](#future-migration-audit-01--fastapi-readiness-audit) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
 
 ---
 
@@ -87,13 +88,18 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 
 **Use the system daily** — build only what causes friction during real bookkeeping.
 
-**Recently closed:** **THEME-CONTRAST-01** (P0 primary fill + P1 success/warning text tokens; WCAG contrast tests). Host pytest: **943 passed, 2 xfailed** (2026-06-05). **LOGIN-01** and **MOBILE-14** closed prior.
+**FUTURE-MIGRATION-AUDIT-01: ✅ Complete (2026-06-13) — migration readiness score 62/100.**
+Key blocker: **POSTING-SERVICE-01** (extract `create_journal_entry` + `post_*`/`void_*`/close
+core from app.py into `services/posting.py`; commit discipline moves to callers). Everything
+else queues behind it: MONEY-DECIMAL-01 · ALEMBIC-01 · BANKING-SERVICE-01 ·
+REPORTS-SERVICE-01 · CONTEXT-AUDIT-01.
 
-**Next recommended active item:** operational friction log (**OBS-01**) during daily use — build only what causes real bookkeeping friction.
+**🚧 BUILD GATE (active):** Do **not** build large new Streamlit UI surfaces before the
+posting/reporting extraction. Allowed: OBS-01 friction fixes, service-first screen-light
+phases (RC-P2B/P3 class), thin UI over existing services. Screens are the layer React
+replaces — invest in services, not chrome.
 
-**Short verification passes pending:** **CHART-01** (helper call sites / chart migration state).
-
-(SETUP-01 reconciled as built and tested — removed from active list, 2026-06-10.)
+**Next recommended active item:** **POSTING-SERVICE-01** (or OBS-01 friction fixes while it's scoped).
 
 **CSS architecture cleanup:** **MOBILE-14 closed.** Optional follow-up: M3/M4 suppression-rule relocation in `widgets.css` (not blockers). **CSS-01** / **CSS-02** remain the ongoing ownership standard.
 
@@ -2274,7 +2280,84 @@ Current platform remains:
 
 Migration target is future-state only and does not change current development priorities.
 
-**Related:** [ARCHITECTURE-PROTECTION-01](#architecture-protection-01--service-first-development-rule) · [VENDOR-NEUTRAL-01](#vendor-neutral-01--vendor-neutral-architecture-rule) · [MIGRATION-READINESS-01](#migration-readiness-01--fastapireact-ready-service-checklist)
+**Related:** [ARCHITECTURE-PROTECTION-01](#architecture-protection-01--service-first-development-rule) · [VENDOR-NEUTRAL-01](#vendor-neutral-01--vendor-neutral-architecture-rule) · [MIGRATION-READINESS-01](#migration-readiness-01--fastapireact-ready-service-checklist) · [FUTURE-MIGRATION-AUDIT-01](#future-migration-audit-01--fastapi-readiness-audit)
+
+### FUTURE-MIGRATION-AUDIT-01 — FastAPI Readiness Audit
+
+**Status:** Recorded (independent architectural review — Claude, 2026-06-13)
+
+**Migration readiness score:** **62 / 100**
+
+Does **not** authorize FastAPI/React implementation start. Baseline assessment only — satisfies the *readiness review* input to [FUTURE-MIGRATION-01](#future-migration-01) decision gate; full gate still requires strategy reconfirmation at implementation time.
+
+| Dimension | Assessment |
+|-----------|------------|
+| **Strength** | New `services/` modules are **FastAPI-ready** — explicit `company_id`/`user_id`, serializable DTOs, no Streamlit in services, contract tests (DSC-P1, RC-P1, UA-P1, SC-P1 exemplars) |
+| **Main blocker** | **`app.py` posting engine** — `create_journal_entry`, balance updates, void/reversal, and `post_*` convenience wrappers remain in the ~26k-line monolith; API cannot expose posting without extraction |
+| **Keystone next task** | **[POSTING-SERVICE-01](#posting-service-01--keystone-migration-task)** — extract posting into a shared `services/` module; unlocks Staff Capture `post_fn` wiring, FastAPI Phase B, and incremental UI thinning |
+
+**Also tracked (migration prep — not active implementation):**
+
+| ID | Scope |
+|----|--------|
+| [POSTING-SERVICE-01](#posting-service-01--keystone-migration-task) | Extract GL posting engine from `app.py` |
+| [MONEY-DECIMAL-01](#money-decimal-01) | `Float` → `Decimal` for money fields (models + services) |
+| [ALEMBIC-01](#alembic-01) | Alembic migrations replace incremental `migrate_schema()` |
+| [BANKING-SERVICE-01](#banking-service-01) | Extract banking subledger logic to `services/` |
+| [REPORTS-SERVICE-01](#reports-service-01) | Extract report queries/aggregations to `services/` |
+| [CONTEXT-AUDIT-01](#context-audit-01) | Audit Streamlit `_erp()` / session-context coupling in `ui/` |
+
+Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § FUTURE-MIGRATION-AUDIT-01](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#future-migration-audit-01-2026-06-13).
+
+#### POSTING-SERVICE-01 — Keystone migration task
+
+**Priority:** Critical (migration prep)  
+**Status:** Open — not started
+
+Extract the accounting posting engine from `app.py` into a reusable service (e.g. `services/posting.py`):
+
+- `create_journal_entry` + balance rules (normal/contra)
+- Fiscal-period close guard
+- Void/reversal via `create_reversing_journal_entry`
+- Convenience wrappers (`post_cash_sale`, `post_purchase`, `post_expense`, …) as thin callers
+- Streamlit and FastAPI both call the same module; Staff Capture `post_fn` wires here (TD-SC-01)
+
+**Gate:** Contract tests against existing posting tests; zero GL behaviour change.
+
+#### MONEY-DECIMAL-01
+
+**Priority:** High (migration prep)  
+**Status:** Open
+
+Replace `Float` money columns and arithmetic with `Decimal` across models and services before PostgreSQL cutover. Aligns with [TD-MIG-04](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#global-migration-td-mig).
+
+#### ALEMBIC-01
+
+**Priority:** Medium (migration prep)  
+**Status:** Open
+
+Introduce Alembic revision chain; retire silent `ALTER TABLE` / `CREATE INDEX IF NOT EXISTS` pattern in `migrate_schema()` for schema evolution audibility. Required before multi-environment FastAPI deployment.
+
+#### BANKING-SERVICE-01
+
+**Priority:** High (migration prep)  
+**Status:** Open
+
+Extract banking subledger business logic (statement import matching, CC sync, reconciliation health) from `app.py` into `services/`. UI presentation already partially extracted (`ui/banking.py` — UI-STAB-02).
+
+#### REPORTS-SERVICE-01
+
+**Priority:** Medium (migration prep)  
+**Status:** Open
+
+Extract report query/aggregation logic from `app.py` into read-only `services/` modules; React report modules consume the same APIs later.
+
+#### CONTEXT-AUDIT-01
+
+**Priority:** Medium (migration prep)  
+**Status:** Open
+
+Inventory and reduce Streamlit-only context coupling — `_erp()` lazy `import app`, `st.session_state`, `cq()` in `ui/` renderers. Related: TD-DSC-08, TD-UA-04, TD-SC-03/04. Output: shared `ui/context.py` or injected context protocol for FastAPI Phase D.
 
 ---
 
@@ -2365,6 +2448,7 @@ Migration target is future-state only and does not change current development pr
 | 2026-06-05 | **FUTURE-MIGRATION-01** approved as long-term direction only — React + FastAPI + service layer + PostgreSQL target stack. Streamlit remains primary until pre-migration requirements and decision gate are met. No change to active module priorities. |
 | 2026-06-05 | **ARCHITECTURE-PROTECTION-01** active immediately — all new modules service-first (models → services → tests → minimal UI). Streamlit must not own business logic; pause before deep UI for auth, staff portal, uploads, approval workflows. |
 | 2026-06-13 | **VENDOR-NEUTRAL-01** active immediately — core architecture must not depend on named POS/vendor products; generic External Sales Source pattern (`source_name` free text, optional `source_type` category). Vendor names allowed in documentation examples only; future adapters live outside core. Cross-links ARCHITECTURE-PROTECTION-01 and FUTURE-MIGRATION-01. Audit (2026-06-13): no vendor leakage in production code. |
+| 2026-06-13 | **FUTURE-MIGRATION-AUDIT-01 recorded** — independent FastAPI readiness audit (Claude): score **62/100**; new service modules FastAPI-ready; main blocker `app.py` posting engine; keystone **POSTING-SERVICE-01**; also track MONEY-DECIMAL-01, ALEMBIC-01, BANKING-SERVICE-01, REPORTS-SERVICE-01, CONTEXT-AUDIT-01. Register: [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md). Does not start FastAPI/React implementation. |
 | 2026-06-13 | **STAFF-CAPTURE-01 SC-P1 complete** — `ExpenseDraft` / `DraftAttachment` models, `services/staff_capture.py` (lifecycle, attachments, DTOs, injected `post_fn` approval, separation of duties), SC permission keys in `services/user_access.py`, tests (`test_staff_capture01_models.py`, `test_staff_capture01_drafts.py`, `test_staff_capture01_approval.py`). SC-P1b · SC-P2 · SC-P3 pending. Host `pytest tests/` — **1540 passed, 2 xfailed**. |
 | 2026-06-13 | **USER-ACCESS-01 UA-P1 complete** — `UserPermissionOverride` model, `services/user_access.py` (registry, templates, effective resolver, override CRUD, owner lockout guard), `_can()` resolver swap, tests (`test_user_access01_permissions.py`, `test_user_access01_models.py`). UA-P1b · UA-P2 pending. **Smoke audit:** Owner/Manager/Viewer compatibility passed; 0 permission/hidden-page/access regressions; `manage_permissions` intentional owner-only addition. Host `pytest tests/` — **1502 passed, 2 xfailed**. |
 | 2026-06-05 | **MIGRATION-READINESS-01** active immediately — FastAPI/React-ready service checklist (explicit `company_id`, serializable DTOs, no Streamlit in `services/`, contract tests, tech-debt register). Exemplar: DSC-P1 (`services/daily_sales_close.py`). Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md). |

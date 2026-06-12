@@ -453,6 +453,8 @@ Spec: [USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.
 
 **FUTURE-MIGRATION-01** — Approved long-term direction: React frontend → FastAPI → service layer → SQLAlchemy → PostgreSQL. Streamlit + SQLite remain the current platform; migration is incremental and gated on pre-migration requirements (Daily Sales Close, Recipe Costing, User Access, Staff Capture, date system stabilization, service-layer extraction). Full detail: [ROADMAP.md § Future Architecture / Long-Term Roadmap](./ROADMAP.md#future-architecture--long-term-roadmap).
 
+**FUTURE-MIGRATION-AUDIT-01** — Recorded 2026-06-13 (Claude independent review). **Migration readiness score: 62/100.** New `services/` modules (DSC, RC, UA, SC) are FastAPI-ready per MIGRATION-READINESS-01. **Main blocker:** `app.py` posting engine (`create_journal_entry`, `post_*`, void/reversal). **Keystone next migration task:** [POSTING-SERVICE-01](./ROADMAP.md#posting-service-01--keystone-migration-task). Also tracked: MONEY-DECIMAL-01 · ALEMBIC-01 · BANKING-SERVICE-01 · REPORTS-SERVICE-01 · CONTEXT-AUDIT-01. Register: [TECH_DEBT § FUTURE-MIGRATION-AUDIT-01](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#future-migration-audit-01-2026-06-13). Audit does **not** authorize FastAPI/React build start.
+
 ### Order (frozen)
 
 ```
@@ -478,6 +480,7 @@ Full design is in **`PHASE_18_DESIGN_REVIEW.md`**. Core rules:
 | Risk | Why it matters |
 |------|----------------|
 | **Monolithic `app.py`** | Hard to maintain; any change can affect unrelated areas |
+| **`app.py` posting engine** | **Main FastAPI migration blocker** (FUTURE-MIGRATION-AUDIT-01, 62/100) — GL posting not yet in `services/`; keystone: POSTING-SERVICE-01 |
 | **COA not per company yet** | ✅ Resolved in 14D-C |
 | ~~**Nav role vs company role**~~ | ✅ Fixed |
 | **DEVELOPMENT_MODE on** | Easy to forget before go-live |

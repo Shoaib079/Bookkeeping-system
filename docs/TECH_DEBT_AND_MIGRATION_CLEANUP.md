@@ -74,6 +74,33 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 
 ---
 
+## FUTURE-MIGRATION-AUDIT-01 (2026-06-13)
+
+Independent architectural review (Claude) — baseline FastAPI/React readiness assessment. **Does not authorize migration implementation.**
+
+**Migration readiness score:** **62 / 100**
+
+| Finding | Detail |
+|---------|--------|
+| **Strength** | New `services/` modules are **FastAPI-ready** — `daily_sales_close`, `recipe_costing`, `user_access`, `staff_capture` follow MIGRATION-READINESS-01 (explicit IDs, DTOs, no Streamlit, contract tests) |
+| **Main blocker** | **`app.py` posting engine** — journal creation, CoA balance updates, fiscal-period guard, void/reversal, and `post_*` wrappers remain in the monolith |
+| **Keystone next task** | **POSTING-SERVICE-01** — extract posting into shared `services/` module; prerequisite for API posting parity, Staff Capture `post_fn` (TD-SC-01), and FastAPI Phase B |
+
+### Tracked migration tasks (FUTURE-MIGRATION-AUDIT-01)
+
+| ID | Item | Priority | Status | When / trigger |
+|----|------|----------|--------|----------------|
+| **POSTING-SERVICE-01** | Extract GL posting engine from `app.py` (`create_journal_entry`, reversals, `post_*` wrappers) | **Critical** | Open | Before FastAPI Phase B; keystone migration task |
+| **MONEY-DECIMAL-01** | `Float` → `Decimal` for money fields across models and services | High | Open | Pre-PostgreSQL; aligns with TD-MIG-04 |
+| **ALEMBIC-01** | Alembic revision chain replaces incremental `migrate_schema()` | Medium | Open | Multi-env FastAPI deployment |
+| **BANKING-SERVICE-01** | Extract banking subledger business logic to `services/` | High | Open | After POSTING-SERVICE-01 |
+| **REPORTS-SERVICE-01** | Extract report queries/aggregations to read-only `services/` | Medium | Open | Before React reports module |
+| **CONTEXT-AUDIT-01** | Audit `_erp()` / session-context coupling in `ui/`; plan injected context | Medium | Open | FastAPI Phase D; relates to TD-DSC-08, TD-UA-04, TD-SC-03/04 |
+
+**Related roadmap:** [ROADMAP.md § FUTURE-MIGRATION-AUDIT-01](../ROADMAP.md#future-migration-audit-01--fastapi-readiness-audit)
+
+---
+
 ## USER-ACCESS-01 (TD-UA)
 
 | ID | Item | Priority | Status | When / trigger |
@@ -280,7 +307,9 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 
 **RC-P1** (`services/recipe_costing.py`) follows the same pattern — second reference implementation under MIGRATION-READINESS-01.
 
-Audit source: DSC-P1 migration readiness review (2026-06-05).
+**UA-P1** (`services/user_access.py`) and **SC-P1** (`services/staff_capture.py`) extend the pattern — permission resolver and staff capture with injected `post_fn` posting seam.
+
+Audit source: DSC-P1 migration readiness review (2026-06-05); **FUTURE-MIGRATION-AUDIT-01** independent FastAPI readiness audit (2026-06-13) — score **62/100**, keystone **POSTING-SERVICE-01**.
 
 ---
 
