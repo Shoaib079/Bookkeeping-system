@@ -54,7 +54,7 @@ Copy this section into every implementation completion report:
 | **TD-DSC-04** | **Module naming** — `services/daily_sales_close.py` vs entity `ExternalSalesVerification`; consider `external_sales_verification.py` with backward-compatible re-export | Low | Open | Optional clarity pass |
 | **TD-DSC-05** | **Registry tolerance** — hardcoded `DEFAULT_TOLERANCE = 0.01`; wire `operations.sales_verify_tolerance` registry key per spec | Medium | Open | DSC-P2+ |
 | **TD-DSC-06** | **Stale snapshot** — `sale_count_snapshot` only; amount edits without count change do not flag stale (same limitation as EOD); document or extend | Low | Open | DSC-P3+ |
-| **TD-DSC-07** | **Roadmap / docs drift** — keep DSC phase status current in `ROADMAP.md` and spec §10 as P2–P4 land | Low | Open | DSC-P2 complete 2026-06-05; spec §10 still pending sync |
+| **TD-DSC-07** | **Roadmap / docs drift** — keep DSC phase status current in `ROADMAP.md` and spec §10 as P2–P4 land | Low | **Resolved** | 2026-06-05 — synced after DSC-P2: `ROADMAP.md`, `docs/DAILY_SALES_CLOSE_01_SPEC.md` §10, `docs/AUDIT_HISTORY.md`, `docs/TEST_COVERAGE_MAP.md`, `ARCHITECTURE_HANDOFF.md` |
 | **TD-DSC-08** | **UI `_erp()` lazy import** — `ui/external_sales_verification.py` reaches into `app.py` for `_t`, `_can`, `amount_input`, `current_company_required`; replace with injected context or shared `ui/context.py` at API migration | Medium | Open | FastAPI Phase D |
 | **TD-DSC-09** | **Widget session keys** — `esv_*` form keys and `esv_form_loaded_for` date-sync logic are Streamlit-only; React form state replaces entirely | Low | Open | React module for ESV |
 

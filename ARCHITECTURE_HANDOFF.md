@@ -390,15 +390,15 @@ Full detail: [ROADMAP.md § VENDOR-NEUTRAL-01](./ROADMAP.md#vendor-neutral-01--v
 - Tests without Streamlit; contract scans for posting and vendor neutrality
 - Log known debt in [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md)
 
-**Exemplar:** DSC-P1 — `services/daily_sales_close.py`. Full detail: [ROADMAP.md § MIGRATION-READINESS-01](./ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist).
+**Exemplar:** DSC-P1 — `services/daily_sales_close.py`; DSC-P2 — `ui/external_sales_verification.py`. Full detail: [ROADMAP.md § MIGRATION-READINESS-01](./ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist).
 
 ### DAILY-SALES-CLOSE-01 (implementation status)
 
 | Phase | Status |
 |-------|--------|
 | DSC-P1 | ✅ Complete — model + service + tests |
-| DSC-P2 | 📋 Pending — Streamlit UI |
-| DSC-P3 | 📋 Pending — attachments + EOD hook |
+| DSC-P2 | ✅ Complete — `ui/external_sales_verification.py` · Closings nav · UI contract tests |
+| DSC-P3 | 📋 Pending — attachments + EOD hook + export |
 | DSC-P4 | 📋 Pending — optional import adapters |
 
 Spec: [DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md).
@@ -485,4 +485,4 @@ Copy-paste this when starting work:
 
 ---
 
-*Last updated after Phase 14D-C, 14D-D, nav fix, and Company Setup UI pass.*
+*Last updated after Phase 14D-C, 14D-D, nav fix, Company Setup UI pass, and DAILY-SALES-CLOSE-01 DSC-P2 doc sync.*
