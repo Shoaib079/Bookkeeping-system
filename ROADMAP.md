@@ -77,7 +77,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | **VENDOR-NEUTRAL-01** | 🟢 **Active immediately** — no vendor-specific core architecture; generic external-source pattern |
 | **MIGRATION-READINESS-01** | 🟢 **Active immediately** — FastAPI/React-ready service design checklist; exemplars: DSC-P1 · RC-P1 |
 | **DAILY-SALES-CLOSE-01** | ✅ **DSC-P1–P2 complete** · 📋 **DSC-P3–P4 pending** — source-neutral external sales verification (no posting); see [docs/DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
-| **RECIPE-COSTING-01** | ✅ **RC-P1–P2A complete** · 📋 **RC-P2B–P3 pending** — ingredient/recipe costing + menu profitability basics; see [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-RC-*) |
+| **RECIPE-COSTING-01** | ✅ **RC-P1–P2A complete** · 📋 **RC-P2B–P3 pending** · 🔮 **RC-AI-01 optional (future)** — ingredient/recipe costing + menu profitability basics; see [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-RC-*) |
 
 ---
 
@@ -290,8 +290,36 @@ Spec: [docs/DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md). 
 | **RC-P2A** | ✅ **Complete** | `MenuItem` · `MenuPriceHistory` · menu CRUD · price history · profitability math · `render_recipe_menu_items` · Menu Items nav |
 | **RC-P2B** | 📋 **Pending** | Advanced analytics — menu engineering matrix · sales volume · dashboard charts (out of RC-P2A scope) |
 | **RC-P3** | 📋 **Pending** | Export · purchase integration · `RECIPE_COSTING_01_SPEC.md` |
+| **RC-AI-01** | 🔮 **Future / Optional** | AI-assisted recipe suggestions — suggest only; never auto-save; human review required (see below) |
 
 Tech debt: [docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-RC-*).
+
+### RC-AI-01 — AI recipe suggestions (future / optional)
+
+**Status:** Future / Optional — not scheduled; no implementation without explicit approval.
+
+**Prerequisites (all required before build):**
+
+| Gate | Requirement |
+|------|-------------|
+| Foundation | RC-P1 ✅ · RC-P1b ✅ · RC-P2A ✅ |
+| Data | Stable ingredient catalog in production use |
+| Architecture | Claude architecture review (ARCHITECTURE-PROTECTION-01 · VENDOR-NEUTRAL-01) |
+| Governance | Human approval before any save path is wired |
+
+**Allowed:**
+
+- AI may **suggest** recipes (draft lines, quantities, sub-recipes) from the existing ingredient catalog
+- Suggestions surfaced in UI as a **review draft** only
+
+**Hard rules:**
+
+- AI may **never** auto-save recipes (`save_recipe`, `create_menu_item`, or any mutation without explicit user confirm)
+- User must review, edit, and confirm before `save_recipe` runs
+- No bypass of `services/recipe_costing.py` validation · no direct ORM writes from AI layer
+- Service layer remains source of truth; AI adapter lives outside core (optional integration, not vendor-named in architecture)
+
+**Out of scope for RC-AI-01:** auto menu pricing · inventory linkage · purchase integration · unattended batch generation.
 
 ---
 

@@ -412,6 +412,9 @@ Spec: [DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md).
 | RC-P2A | ✅ Complete — `MenuItem` / `MenuPriceHistory` · menu profitability service · Menu Items UI |
 | RC-P2B | 📋 Pending — advanced analytics (menu engineering matrix · sales volume · dashboard charts) |
 | RC-P3 | 📋 Pending — export · purchase integration · design spec |
+| RC-AI-01 | 🔮 Future / Optional — AI recipe suggestions only; never auto-save; human confirm before `save_recipe` |
+
+**RC-AI-01 gates:** RC-P1 · RC-P1b · RC-P2A complete · stable ingredient catalog · architecture review · explicit human approval before save wiring. Detail: [ROADMAP.md § RC-AI-01](./ROADMAP.md#rc-ai-01--ai-recipe-suggestions-future--optional).
 
 Tech debt: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-RC-*).
 
@@ -497,4 +500,4 @@ Copy-paste this when starting work:
 
 ---
 
-*Last updated after Phase 14D-C, 14D-D, nav fix, Company Setup UI pass, DAILY-SALES-CLOSE-01 DSC-P2 doc sync, RECIPE-COSTING-01 RC-P1–P2A.*
+*Last updated after Phase 14D-C, 14D-D, nav fix, Company Setup UI pass, DAILY-SALES-CLOSE-01 DSC-P2 doc sync, RECIPE-COSTING-01 RC-P1–P2A, RC-AI-01 future spec.*
