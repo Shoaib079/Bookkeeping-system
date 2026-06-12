@@ -2309,6 +2309,11 @@ Does **not** authorize FastAPI/React implementation start. Baseline assessment o
 
 Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § FUTURE-MIGRATION-AUDIT-01](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#future-migration-audit-01-2026-06-13).
 
+**🚧 Build gate (owner decision, 2026-06-13):** no large new Streamlit UI surfaces before
+the posting/reporting extraction lands. Allowed meanwhile: OBS-01 friction fixes,
+service-first screen-light phases, thin UI over existing services. See
+[§ Current priority](#current-priority).
+
 #### POSTING-SERVICE-01 — Keystone migration task
 
 **Priority:** Critical (migration prep)  

@@ -1722,6 +1722,23 @@ Constants pinned in `ui/theme.py` (`MOBILE_VIEWPORT_*`). `mobile_header.css` alr
 
 ---
 
+## 2026-06-13 — FUTURE-MIGRATION-AUDIT-01 closed · build gate activated
+
+**Outcome recorded:** FastAPI/React migration readiness **62/100**. Ready as-is:
+`daily_sales_close`, `recipe_costing`, `user_access`, `staff_capture` services.
+Key blocker: **POSTING-SERVICE-01** (posting/void/close engine still in app.py).
+Queue behind it: MONEY-DECIMAL-01 · ALEMBIC-01 · BANKING-SERVICE-01 ·
+REPORTS-SERVICE-01 · CONTEXT-AUDIT-01 (all registered in TECH_DEBT § TD-MIG /
+FUTURE-MIGRATION-AUDIT-01).
+
+**Owner decision — build gate:** no large new Streamlit UI before posting/reporting
+extraction. Exceptions: OBS-01 friction fixes, service-first screen-light phases,
+thin UI over existing services. Recorded in ROADMAP § Current priority and
+§ FUTURE-MIGRATION-AUDIT-01. The audit does **not** authorize migration
+implementation — FUTURE-MIGRATION-01's decision gate still applies at that time.
+
+---
+
 ## How to use this file
 
 1. Before a banking/CC task, read [BANKING_RECON_CC_STATUS.md](./BANKING_RECON_CC_STATUS.md) and the latest entry here.
