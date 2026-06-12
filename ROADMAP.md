@@ -78,6 +78,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | **MIGRATION-READINESS-01** | 🟢 **Active immediately** — FastAPI/React-ready service design checklist; exemplars: DSC-P1 · RC-P1 |
 | **DAILY-SALES-CLOSE-01** | ✅ **DSC-P1–P2 complete** · 📋 **DSC-P3–P4 pending** — source-neutral external sales verification (no posting); see [docs/DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
 | **RECIPE-COSTING-01** | ✅ **RC-P1–P2A complete** · 📋 **RC-P2B–P3 pending** · 🔮 **RC-AI-01 optional (future)** — ingredient/recipe costing + menu profitability basics; see [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-RC-*) |
+| **USER-ACCESS-01** | ✅ **UA-P1 complete** · 📋 **UA-P1b pending** · 📋 **UA-P2 pending** — permission override service + effective resolver; see [docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-UA-*) |
 
 ---
 
@@ -320,6 +321,20 @@ Tech debt: [docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRAT
 - Service layer remains source of truth; AI adapter lives outside core (optional integration, not vendor-named in architecture)
 
 **Out of scope for RC-AI-01:** auto menu pricing · inventory linkage · purchase integration · unattended batch generation.
+
+---
+
+## USER-ACCESS-01 — Implementation status
+
+| Phase | Status | Deliverable |
+|-------|--------|-------------|
+| **UA-P1** | ✅ **Complete** | `UserPermissionOverride` model · `services/user_access.py` (`PERMISSION_REGISTRY`, `PERMISSION_TEMPLATES`, effective resolver, override CRUD, owner lockout guard) · `_can()` resolver swap · service/model tests · schema indexes |
+| **UA-P1b** | 📋 **Pending** | Thin owner permission UI — per-user override checkboxes, effective-permissions viewer, audit trail display |
+| **UA-P2** | 📋 **Pending** | Staff Capture foundation — draft spine + portal gate (SC-P1 per [USER_ACCESS_STAFF_CAPTURE_SPEC](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md)) |
+
+Spec: [USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md). Tech debt: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-UA-*).
+
+**UA-P1 smoke audit (2026-06-13):** Owner/Manager/Viewer compatibility passed; **0 permission regressions**; **0 hidden-page regressions**; **0 access regressions** on audit pages (Dashboard, Add Transaction, Banking, Reports, Partner Accounts, External Sales Verification, Recipe Costing). `manage_permissions` is an intentional owner-only addition (not a regression).
 
 ---
 
@@ -2328,6 +2343,7 @@ Migration target is future-state only and does not change current development pr
 | 2026-06-05 | **FUTURE-MIGRATION-01** approved as long-term direction only — React + FastAPI + service layer + PostgreSQL target stack. Streamlit remains primary until pre-migration requirements and decision gate are met. No change to active module priorities. |
 | 2026-06-05 | **ARCHITECTURE-PROTECTION-01** active immediately — all new modules service-first (models → services → tests → minimal UI). Streamlit must not own business logic; pause before deep UI for auth, staff portal, uploads, approval workflows. |
 | 2026-06-13 | **VENDOR-NEUTRAL-01** active immediately — core architecture must not depend on named POS/vendor products; generic External Sales Source pattern (`source_name` free text, optional `source_type` category). Vendor names allowed in documentation examples only; future adapters live outside core. Cross-links ARCHITECTURE-PROTECTION-01 and FUTURE-MIGRATION-01. Audit (2026-06-13): no vendor leakage in production code. |
+| 2026-06-13 | **USER-ACCESS-01 UA-P1 complete** — `UserPermissionOverride` model, `services/user_access.py` (registry, templates, effective resolver, override CRUD, owner lockout guard), `_can()` resolver swap, tests (`test_user_access01_permissions.py`, `test_user_access01_models.py`). UA-P1b · UA-P2 pending. **Smoke audit:** Owner/Manager/Viewer compatibility passed; 0 permission regressions; `manage_permissions` intentional owner-only addition. Host `pytest tests/` — **1502 passed, 2 xfailed**. |
 | 2026-06-05 | **MIGRATION-READINESS-01** active immediately — FastAPI/React-ready service checklist (explicit `company_id`, serializable DTOs, no Streamlit in `services/`, contract tests, tech-debt register). Exemplar: DSC-P1 (`services/daily_sales_close.py`). Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md). |
 | 2026-06-05 | **RECIPE-COSTING-01 RC-P2A complete** — `MenuItem` / `MenuPriceHistory` models, menu profitability service APIs, `render_recipe_menu_items`, Menu Items nav, EN/TR `rc.menu.*` locales, tests (`test_recipe_costing_menu_models.py`, `test_recipe_costing_menu_service.py`). RC-P2B–P3 pending. Host `pytest tests/` — **1465 passed, 2 xfailed**. |
 | 2026-06-05 | **RECIPE-COSTING-01 RC-P1b complete** — `ui/recipe_costing.py` (Ingredients · Recipes · Cost Breakdown), Recipe Costing nav, list/read/update APIs, EN/TR `rc.*` locales, UI contract tests (`test_recipe_costing_ui_contract.py`). RC-P2–P3 pending. Host `pytest tests/` — **1447 passed, 2 xfailed**. |
@@ -2344,7 +2360,7 @@ cd streamlit_accounting_erp
 ./venv/bin/python -m pytest tests/ -q
 ```
 
-Expected: **1447 passed, 2 xfailed**.
+Expected: **1502 passed, 2 xfailed**.
 
 ---
 

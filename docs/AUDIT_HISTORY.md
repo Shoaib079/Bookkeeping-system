@@ -8,6 +8,31 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-13 — USER-ACCESS-01 UA-P1 (Permission Override Service)
+
+**Task:** Service-first effective permissions — `user_permission_overrides` model, registry/templates, override CRUD, owner lockout guard, `_can()` resolver swap. No permission management UI (UA-P1b deferred).
+
+**UA-P1 delivered:**
+- Model: `UserPermissionOverride` — unique `(company_id, user_id, permission_key)`
+- Service: `services/user_access.py` — `PERMISSION_REGISTRY`, `PERMISSION_TEMPLATES`, `LEGACY_PERMISSION_MATRIX`, `effective_permissions`, `has_permission`, `set_override`, `clear_override`, `reset_to_template`, owner lockout guard, audit logging
+- App: `_can(action)` signature unchanged; session cache; `_PERMISSIONS` re-export from service seed
+- Tests: `test_user_access01_permissions.py` (23), `test_user_access01_models.py` (1)
+- Docs: UA-P1 migration cleanup in `TECH_DEBT_AND_MIGRATION_CLEANUP.md` (TD-UA-*)
+
+**Smoke audit (2026-06-13):**
+- Owner/Manager/Viewer compatibility **passed**
+- **0 permission regressions** (legacy matrix parity for owner/manager/cashier/partner)
+- **0 hidden-page regressions** · **0 access regressions** on audit pages (Dashboard, Add Transaction, Banking, Reports, Partner Accounts, External Sales Verification, Recipe Costing)
+- `manage_permissions` is an **intentional owner-only addition** (not a regression)
+
+**Pending:** UA-P1b (permission UI) · UA-P2 (Staff Capture SC-P1).
+
+**Tests:** Full suite **1502 passed, 2 xfailed**.
+
+**Files changed:** `models.py`, `app.py`, `services/user_access.py`, `tests/test_user_access01_permissions.py`, `tests/test_user_access01_models.py`, `tests/test_daily_sales_close_ui_contract.py`, `tests/test_recipe_costing_ui_contract.py`, `docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md`.
+
+---
+
 ## 2026-06-05 — RECIPE-COSTING-01 RC-P2A (Menu Profitability Basics)
 
 **Task:** Menu item linkage to recipes, selling price history, and on-demand profitability (recipe cost · gross/net price · food cost % · markup · suggested price). No menu engineering matrix, sales volume, inventory, or posting.

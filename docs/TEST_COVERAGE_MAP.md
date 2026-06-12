@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-05 (RECIPE-COSTING-01 RC-P1–P2A)  
-**Full suite:** run `pytest tests/` — **1465 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
+**Last updated:** 2026-06-13 (USER-ACCESS-01 UA-P1)  
+**Full suite:** run `pytest tests/` — **1502 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -246,6 +246,31 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 | Closings nav + permissions wired | Owner/manager access | **Medium** |
 
 *Orthogonal to EOD — `test_end_of_day_close.py` unchanged until DSC-P3 EOD hook.*
+
+---
+
+### `tests/test_user_access01_permissions.py` (23 tests) — UA-P1
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Template-only resolution | `template ∪ grants − denies` baseline | **Critical** |
+| Grant / deny / clear / reset lifecycle | Override CRUD + audit rows | **High** |
+| Deny beats grant | Explicit deny wins over grant | **High** |
+| Owner lockout guard | Last active owner cannot lose `manage_permissions` | **Critical** |
+| Legacy matrix backward compatibility | Owner/manager/cashier/partner parity with `_PERMISSIONS` seed | **Critical** |
+| Company isolation | Overrides scoped per company | **Critical** |
+| Unknown permission key → false | Registry is authoritative | **High** |
+| Service migration contract | No Streamlit/app imports; explicit `company_id`/`user_id`; DTO `to_dict()` JSON-safe | **High** |
+
+---
+
+### `tests/test_user_access01_models.py` (1 test) — UA-P1
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Unique `(company_id, user_id, permission_key)` | One override row per key; flip updates in place | **High** |
+
+*UA-P1 smoke audit (2026-06-13): Owner/Manager/Viewer compatibility passed; 0 permission regressions; `manage_permissions` intentional owner-only addition.*
 
 ---
 
