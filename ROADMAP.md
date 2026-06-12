@@ -251,6 +251,18 @@ PostgreSQL
 
 **Exemplar:** [DSC-P1](./docs/DAILY_SALES_CLOSE_01_SPEC.md) — `services/daily_sales_close.py` (`ExternalSalesVerification`).
 
+### Implementation report — Migration Cleanup (required)
+
+Every implementation handoff or completion report must end with a **Migration Cleanup** section covering:
+
+1. **Code to keep** during FastAPI/React migration (services, models, tests, DTOs)
+2. **Code likely to replace** (Streamlit renderers, `app.py` dispatch, session-key wiring)
+3. **Dead code found** (if any)
+4. **Temporary Streamlit-only code** (`st.session_state`, `_erp()` lazy imports, widget keys)
+5. **Items added to** [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md)
+
+Template lives in [TECH_DEBT § Implementation report template](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#implementation-report--migration-cleanup-template).
+
 **Related:** [ARCHITECTURE-PROTECTION-01](#architecture-protection-01--service-first-development-rule) · [VENDOR-NEUTRAL-01](#vendor-neutral-01--vendor-neutral-architecture-rule) · [FUTURE-MIGRATION-01](#future-architecture--long-term-roadmap) · [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md)
 
 ---
@@ -260,7 +272,7 @@ PostgreSQL
 | Phase | Status | Deliverable |
 |-------|--------|-------------|
 | **DSC-P1** | ✅ **Complete** | `ExternalSalesVerification` model · `services/daily_sales_close.py` · service/model tests · schema indexes |
-| **DSC-P2** | 📋 **Pending** | Minimal Streamlit under Closings · nav · UI contract tests |
+| **DSC-P2** | ✅ **Complete** | Minimal Streamlit under Closings · `ui/external_sales_verification.py` · UI contract tests |
 | **DSC-P3** | 📋 **Pending** | Attachment metadata · EOD warning hook · export |
 | **DSC-P4** | 📋 **Pending** | Optional per-provider import adapters (outside core) |
 

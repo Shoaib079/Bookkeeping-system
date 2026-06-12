@@ -15,7 +15,7 @@ No vendor-specific core architecture. Generic external sources: free-text `sourc
 
 ## MIGRATION-READINESS-01 (active)
 
-Design `services/` for future FastAPI/React: explicit `company_id`/`user_id`, serializable DTOs (`to_dict()`), no Streamlit in services, pure `validate_*`/`compute_*`, tests without Streamlit, contract scans. Log debt in `docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md`. Exemplar: DSC-P1 `services/daily_sales_close.py`. See `ROADMAP.md` § MIGRATION-READINESS-01.
+Design `services/` for future FastAPI/React: explicit `company_id`/`user_id`, serializable DTOs (`to_dict()`), no Streamlit in services, pure `validate_*`/`compute_*`, tests without Streamlit, contract scans. Log debt in `docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md`. Exemplar: DSC-P1 `services/daily_sales_close.py`. **End every implementation report with Migration Cleanup (5 sections)** — see TECH_DEBT template. See `ROADMAP.md` § MIGRATION-READINESS-01.
 
 No task is **complete** until the docs under `docs/` are updated when applicable.
 

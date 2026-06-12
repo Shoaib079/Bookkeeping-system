@@ -51,6 +51,7 @@ from registry.nav_keys import (
     NAV_CUSTOMERS,
     NAV_END_OF_DAY_CLOSE,
     NAV_EXPENSES,
+    NAV_EXTERNAL_SALES_VERIFICATION,
     NAV_FISCAL_PERIODS,
     NAV_GENERAL_LEDGER,
     NAV_HOME,
@@ -252,6 +253,7 @@ from ui.banking import (
     render_pos_settlement_preview_block as _render_pos_settlement_preview_block,
     render_unsettled_card_sales_list_block as _render_unsettled_card_sales_list_block,
 )
+from ui.external_sales_verification import render_external_sales_verification
 from ui.section import (
     aging_buckets_html,
     financial_section_header_html,
@@ -3109,6 +3111,10 @@ _PERMISSIONS: dict[str, set[str]] = {
     "close_day":                  {"owner", "manager"},
     "void_eod":                   {"owner"},
     "view_eod":                   {"owner", "manager", "cashier", "partner"},
+    # DSC-P2: External Sales Verification
+    "view_external_sales_verification": {"owner", "manager"},
+    "verify_external_sales":            {"owner", "manager"},
+    "void_external_sales_verification": {"owner", "manager"},
     # Phase 10: Management Reporting
     "view_management_reports":    {"owner", "manager", "partner"},
     # Phase 12: Partners & Profit Allocation
@@ -3484,6 +3490,7 @@ _MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
     "banking": [
         ("page", NAV_BANKING, None, None),
         ("page", NAV_CASH_RECONCILIATION, None, None),
+        ("page", NAV_EXTERNAL_SALES_VERIFICATION, None, None),
         ("page", NAV_END_OF_DAY_CLOSE, None, None),
         ("banking_import", "import", None, "nav.mobile.banking_import"),
     ],
@@ -3538,6 +3545,7 @@ _NAV_ACCORDION = [
     ]),
     ("close_day", "Closings", [
         (None, NAV_CASH_RECONCILIATION),
+        (None, NAV_EXTERNAL_SALES_VERIFICATION),
         (None, NAV_END_OF_DAY_CLOSE),
     ]),
     ("statements", "Financial Statements", [
@@ -3583,7 +3591,7 @@ _NAV_ROLE_PAGES = {
     "manager": [
         NAV_HOME,
         NAV_NEW_TRANSACTION, _TXN_LEDGER_PAGE_KEY, NAV_SALES, NAV_EXPENSES, NAV_RECURRING_EXPENSES, NAV_PURCHASES,
-        NAV_CASH_RECONCILIATION, NAV_END_OF_DAY_CLOSE,
+        NAV_CASH_RECONCILIATION, NAV_EXTERNAL_SALES_VERIFICATION, NAV_END_OF_DAY_CLOSE,
         NAV_CUSTOMERS, NAV_VENDORS, NAV_RECEIVABLES, NAV_PAYABLES,
         NAV_INVENTORY, NAV_BANKING,
         NAV_REPORTS,
@@ -3600,7 +3608,7 @@ _NAV_ROLE_PAGES = {
     "cashier": [
         NAV_HOME,
         NAV_NEW_TRANSACTION, _TXN_LEDGER_PAGE_KEY, NAV_SALES, NAV_EXPENSES, NAV_RECURRING_EXPENSES, NAV_PURCHASES,
-        NAV_CASH_RECONCILIATION, NAV_END_OF_DAY_CLOSE,
+        NAV_CASH_RECONCILIATION, NAV_EXTERNAL_SALES_VERIFICATION, NAV_END_OF_DAY_CLOSE,
         NAV_RECEIVABLES, NAV_PAYABLES,
         NAV_BANKING,
         NAV_REPORTS,
@@ -26234,6 +26242,7 @@ def main():
         NAV_RECURRING_EXPENSES: render_recurring_expenses,
         NAV_PURCHASES:         render_purchases,
         NAV_CASH_RECONCILIATION: render_cash_reconciliation,
+        NAV_EXTERNAL_SALES_VERIFICATION: render_external_sales_verification,
         NAV_END_OF_DAY_CLOSE:  render_end_of_day_close,
         NAV_CUSTOMERS:         render_customers,
         NAV_VENDORS:           render_vendors,

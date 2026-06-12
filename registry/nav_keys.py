@@ -12,6 +12,7 @@ NAV_EXPENSES = "Expenses"
 NAV_RECURRING_EXPENSES = "Recurring Expenses"
 NAV_PURCHASES = "Purchases"
 NAV_CASH_RECONCILIATION = "Cash Reconciliation"
+NAV_EXTERNAL_SALES_VERIFICATION = "External Sales Verification"
 NAV_END_OF_DAY_CLOSE = "End-of-Day Close"
 NAV_CUSTOMERS = "Customers"
 NAV_VENDORS = "Vendors"
@@ -51,6 +52,7 @@ ALL_NAV_PAGE_KEYS: frozenset[str] = frozenset(
         NAV_RECURRING_EXPENSES,
         NAV_PURCHASES,
         NAV_CASH_RECONCILIATION,
+        NAV_EXTERNAL_SALES_VERIFICATION,
         NAV_END_OF_DAY_CLOSE,
         NAV_CUSTOMERS,
         NAV_VENDORS,
@@ -93,6 +95,7 @@ LEGACY_NAV_ALIASES: dict[str, str] = {
     "🔁 Recurring Expenses": NAV_RECURRING_EXPENSES,
     "🛒 Purchases": NAV_PURCHASES,
     "💸 Cash Reconciliation": NAV_CASH_RECONCILIATION,
+    "External Sales Verification": NAV_EXTERNAL_SALES_VERIFICATION,
     "🌙 End-of-Day Close": NAV_END_OF_DAY_CLOSE,
     "👥 Customers": NAV_CUSTOMERS,
     "🏢 Vendors": NAV_VENDORS,

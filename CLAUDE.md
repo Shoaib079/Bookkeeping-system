@@ -111,7 +111,9 @@ Design every `services/` module for future **FastAPI + React** callers:
 - **Tests without Streamlit** — in-memory DB + explicit tenant context
 - **Log debt** — [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md)
 
-**Exemplar:** DSC-P1 — `services/daily_sales_close.py`.
+**Exemplar:** DSC-P1 — `services/daily_sales_close.py`. UI exemplar: DSC-P2 — `ui/external_sales_verification.py`.
+
+**Implementation reports:** End every completion report with the **Migration Cleanup** section (5 parts) — see [TECH_DEBT template](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#implementation-report--migration-cleanup-template).
 
 See [ROADMAP.md § MIGRATION-READINESS-01](./ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist) · [ROADMAP.md § FUTURE-MIGRATION-01](./ROADMAP.md#future-architecture--long-term-roadmap) · [ARCHITECTURE-PROTECTION-01](#architecture-protection-01-active).
 
