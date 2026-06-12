@@ -75,7 +75,8 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | Operational friction log (OBS-01) | 🟡 **Active** — record real-world UX friction; 3+ occurrences → roadmap candidate |
 | **ARCHITECTURE-PROTECTION-01** | 🟢 **Active immediately** — service-first, migration-safe development rule |
 | **VENDOR-NEUTRAL-01** | 🟢 **Active immediately** — no vendor-specific core architecture; generic external-source pattern |
-| **DAILY-SALES-CLOSE-01** | 📋 **Design approved** — source-neutral external sales verification (no posting); see [docs/DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md); OBS-gated |
+| **MIGRATION-READINESS-01** | 🟢 **Active immediately** — FastAPI/React-ready service design checklist; exemplar: DSC-P1 |
+| **DAILY-SALES-CLOSE-01** | ✅ **DSC-P1 complete** · 📋 **DSC-P2–P4 pending** — source-neutral external sales verification (no posting); see [docs/DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
 
 ---
 
@@ -163,7 +164,7 @@ SQLAlchemy
 PostgreSQL
 ```
 
-**Related:** [VENDOR-NEUTRAL-01](#vendor-neutral-01--vendor-neutral-architecture-rule) · [ARCHITECTURE-PROTECTION-01](#architecture-protection-01--service-first-development-rule)
+**Related:** [ARCHITECTURE-PROTECTION-01](#architecture-protection-01--service-first-development-rule) · [VENDOR-NEUTRAL-01](#vendor-neutral-01--vendor-neutral-architecture-rule) · [MIGRATION-READINESS-01](#migration-readiness-01--fastapireact-ready-service-checklist)
 
 ---
 
@@ -216,8 +217,54 @@ PostgreSQL
 | Rule | Relationship |
 |------|----------------|
 | [ARCHITECTURE-PROTECTION-01](#architecture-protection-01--service-first-development-rule) | Services must be reusable; vendor neutrality keeps them portable |
+| [MIGRATION-READINESS-01](#migration-readiness-01--fastapireact-ready-service-checklist) | Explicit DTOs and no Streamlit coupling prepare services for FastAPI |
 | [FUTURE-MIGRATION-01](#future-architecture--long-term-roadmap) | Generic services + optional adapters support FastAPI/React migration |
 | [DAILY-SALES-CLOSE-01](./docs/DAILY_SALES_CLOSE_01_SPEC.md) | First feature spec written under this rule |
+
+---
+
+## MIGRATION-READINESS-01 — FastAPI/React-Ready Service Checklist
+
+**Status:** Active immediately
+
+**Rule:** Every new `services/` module must be designed as if a **FastAPI route will call it next** — even while Streamlit remains the only UI.
+
+**Required properties:**
+
+| # | Property |
+|---|----------|
+| 1 | Business logic in `services/` (or `registry/` helpers), **not** `app.py` |
+| 2 | **No** Streamlit imports, `st.session_state`, `cq()`, or `_current_user()` in services |
+| 3 | **Explicit inputs** — `company_id`, `user_id`, dates, and request DTOs passed as parameters |
+| 4 | **Serializable outputs** — frozen dataclasses or typed records with `to_dict()` (no ORM rows at the public boundary) |
+| 5 | **Pure validation/math** separated from persistence (`validate_*`, `compute_*` with no DB) |
+| 6 | **Tests runnable without Streamlit** — in-memory SQLite + explicit `company_id` |
+| 7 | **Contract tests** — posting-guard scan; vendor-neutrality scan where applicable |
+| 8 | **Known debt logged** in [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
+
+**UI layers (Streamlit now, React later) may only:**
+
+- Read session/auth context
+- Map form state → service DTOs
+- Call service functions with explicit `company_id` / `user_id`
+- Render service return values (metrics, tables, errors)
+
+**Exemplar:** [DSC-P1](./docs/DAILY_SALES_CLOSE_01_SPEC.md) — `services/daily_sales_close.py` (`ExternalSalesVerification`).
+
+**Related:** [ARCHITECTURE-PROTECTION-01](#architecture-protection-01--service-first-development-rule) · [VENDOR-NEUTRAL-01](#vendor-neutral-01--vendor-neutral-architecture-rule) · [FUTURE-MIGRATION-01](#future-architecture--long-term-roadmap) · [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md)
+
+---
+
+## DAILY-SALES-CLOSE-01 — Implementation status
+
+| Phase | Status | Deliverable |
+|-------|--------|-------------|
+| **DSC-P1** | ✅ **Complete** | `ExternalSalesVerification` model · `services/daily_sales_close.py` · service/model tests · schema indexes |
+| **DSC-P2** | 📋 **Pending** | Minimal Streamlit under Closings · nav · UI contract tests |
+| **DSC-P3** | 📋 **Pending** | Attachment metadata · EOD warning hook · export |
+| **DSC-P4** | 📋 **Pending** | Optional per-provider import adapters (outside core) |
+
+Spec: [docs/DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md). Tech debt: [docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-DSC-*).
 
 ---
 
@@ -2135,7 +2182,7 @@ Current platform remains:
 
 Migration target is future-state only and does not change current development priorities.
 
-**Related:** [ARCHITECTURE-PROTECTION-01](#architecture-protection-01--service-first-development-rule) · [VENDOR-NEUTRAL-01](#vendor-neutral-01--vendor-neutral-architecture-rule)
+**Related:** [ARCHITECTURE-PROTECTION-01](#architecture-protection-01--service-first-development-rule) · [VENDOR-NEUTRAL-01](#vendor-neutral-01--vendor-neutral-architecture-rule) · [MIGRATION-READINESS-01](#migration-readiness-01--fastapireact-ready-service-checklist)
 
 ---
 
@@ -2226,6 +2273,8 @@ Migration target is future-state only and does not change current development pr
 | 2026-06-05 | **FUTURE-MIGRATION-01** approved as long-term direction only — React + FastAPI + service layer + PostgreSQL target stack. Streamlit remains primary until pre-migration requirements and decision gate are met. No change to active module priorities. |
 | 2026-06-05 | **ARCHITECTURE-PROTECTION-01** active immediately — all new modules service-first (models → services → tests → minimal UI). Streamlit must not own business logic; pause before deep UI for auth, staff portal, uploads, approval workflows. |
 | 2026-06-13 | **VENDOR-NEUTRAL-01** active immediately — core architecture must not depend on named POS/vendor products; generic External Sales Source pattern (`source_name` free text, optional `source_type` category). Vendor names allowed in documentation examples only; future adapters live outside core. Cross-links ARCHITECTURE-PROTECTION-01 and FUTURE-MIGRATION-01. Audit (2026-06-13): no vendor leakage in production code. |
+| 2026-06-05 | **MIGRATION-READINESS-01** active immediately — FastAPI/React-ready service checklist (explicit `company_id`, serializable DTOs, no Streamlit in `services/`, contract tests, tech-debt register). Exemplar: DSC-P1 (`services/daily_sales_close.py`). Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md). |
+| 2026-06-05 | **DAILY-SALES-CLOSE-01 DSC-P1 complete** — `ExternalSalesVerification` model, `services/daily_sales_close.py`, tests (`test_daily_sales_close_*`). DSC-P2–P4 pending. Host `pytest tests/` — **1394 passed, 2 xfailed**. |
 
 ---
 

@@ -101,6 +101,20 @@ Core code must **not** depend on named POS/vendor products. Use generic **Extern
 
 See [ROADMAP.md § VENDOR-NEUTRAL-01](./ROADMAP.md#vendor-neutral-01--vendor-neutral-architecture-rule) · [ARCHITECTURE-PROTECTION-01](#architecture-protection-01-active) · [DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md).
 
+## MIGRATION-READINESS-01 (active)
+
+Design every `services/` module for future **FastAPI + React** callers:
+
+- **Explicit inputs** — `company_id`, `user_id`, DTOs; no `cq()` or Streamlit in services
+- **Serializable outputs** — frozen dataclasses with `to_dict()`; no ORM at public boundary
+- **Validation separate from UI** — pure `validate_*` / `compute_*` functions
+- **Tests without Streamlit** — in-memory DB + explicit tenant context
+- **Log debt** — [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md)
+
+**Exemplar:** DSC-P1 — `services/daily_sales_close.py`.
+
+See [ROADMAP.md § MIGRATION-READINESS-01](./ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist) · [ROADMAP.md § FUTURE-MIGRATION-01](./ROADMAP.md#future-architecture--long-term-roadmap) · [ARCHITECTURE-PROTECTION-01](#architecture-protection-01-active).
+
 ## Project memory — documentation gate
 
 **No task is complete until documentation is updated** after every feature, bug fix, accounting change, audit, migration, or major test addition:
@@ -109,5 +123,6 @@ See [ROADMAP.md § VENDOR-NEUTRAL-01](./ROADMAP.md#vendor-neutral-01--vendor-neu
 2. `docs/AUDIT_HISTORY.md` — append a dated entry for every completed session
 3. `docs/ACCOUNTING_DECISIONS.md` — if accounting behavior changed
 4. `docs/TEST_COVERAGE_MAP.md` — if tests were added or modified
+5. `docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md` — if migration-prep or service-layer debt is identified or resolved
 
 Cursor rule: `.cursor/rules/erp-project-memory.mdc` (also under `registry/.cursor/rules/`).

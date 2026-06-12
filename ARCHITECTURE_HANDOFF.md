@@ -378,7 +378,30 @@ Full detail: [ROADMAP.md § ARCHITECTURE-PROTECTION-01](./ROADMAP.md#architectur
 - “POS Settlement” in banking = card-clearing workflow, not a named POS product.
 - Future vendor imports = optional adapters outside core (see [DAILY-SALES-CLOSE-01](./docs/DAILY_SALES_CLOSE_01_SPEC.md)).
 
-Full detail: [ROADMAP.md § VENDOR-NEUTRAL-01](./ROADMAP.md#vendor-neutral-01--vendor-neutral-architecture-rule). Works with [ARCHITECTURE-PROTECTION-01](#architecture-protection-01-active-now) and [FUTURE-MIGRATION-01](#future-architecture-long-term--not-active).
+Full detail: [ROADMAP.md § VENDOR-NEUTRAL-01](./ROADMAP.md#vendor-neutral-01--vendor-neutral-architecture-rule). Works with [ARCHITECTURE-PROTECTION-01](#architecture-protection-01-active-now), [MIGRATION-READINESS-01](#migration-readiness-01-fastapireact-ready-service-checklist), and [FUTURE-MIGRATION-01](#future-architecture-long-term--not-active).
+
+### MIGRATION-READINESS-01 (active now)
+
+**FastAPI/React-ready service checklist** — effective immediately for all new `services/` modules:
+
+- Explicit `company_id` / `user_id` inputs — no Streamlit session state in services
+- Serializable DTOs at the public boundary (`to_dict()`)
+- Pure `validate_*` / `compute_*` separated from persistence
+- Tests without Streamlit; contract scans for posting and vendor neutrality
+- Log known debt in [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md)
+
+**Exemplar:** DSC-P1 — `services/daily_sales_close.py`. Full detail: [ROADMAP.md § MIGRATION-READINESS-01](./ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist).
+
+### DAILY-SALES-CLOSE-01 (implementation status)
+
+| Phase | Status |
+|-------|--------|
+| DSC-P1 | ✅ Complete — model + service + tests |
+| DSC-P2 | 📋 Pending — Streamlit UI |
+| DSC-P3 | 📋 Pending — attachments + EOD hook |
+| DSC-P4 | 📋 Pending — optional import adapters |
+
+Spec: [DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md).
 
 ### Future Architecture (long-term — not active)
 

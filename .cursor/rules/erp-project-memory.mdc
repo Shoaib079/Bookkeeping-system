@@ -13,6 +13,10 @@ New modules: **models → services → tests → minimal Streamlit UI**. Busines
 
 No vendor-specific core architecture. Generic external sources: free-text `source_name`, optional `source_type` (`POS`/`ERP`/`MANUAL`/…). No vendor enums, `if wolvox` branches, or named modules in core. Doc examples OK; user-typed names OK. Banking “POS Settlement” ≠ POS product. See `ROADMAP.md` § VENDOR-NEUTRAL-01; exemplar `docs/DAILY_SALES_CLOSE_01_SPEC.md`.
 
+## MIGRATION-READINESS-01 (active)
+
+Design `services/` for future FastAPI/React: explicit `company_id`/`user_id`, serializable DTOs (`to_dict()`), no Streamlit in services, pure `validate_*`/`compute_*`, tests without Streamlit, contract scans. Log debt in `docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md`. Exemplar: DSC-P1 `services/daily_sales_close.py`. See `ROADMAP.md` § MIGRATION-READINESS-01.
+
 No task is **complete** until the docs under `docs/` are updated when applicable.
 
 ## When to update (required)
@@ -25,6 +29,7 @@ After every completed **feature**, **bug fix**, **accounting change**, **audit**
 | Any audit or fix session | `docs/AUDIT_HISTORY.md` (dated entry) |
 | Accounting behavior or frozen rule changed | `docs/ACCOUNTING_DECISIONS.md` |
 | Tests added, removed, or scope changed | `docs/TEST_COVERAGE_MAP.md` |
+| Migration-prep or service-layer debt identified or resolved | `docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md` |
 
 ## AUDIT_HISTORY entry template
 
@@ -42,6 +47,7 @@ After every completed **feature**, **bug fix**, **accounting change**, **audit**
 - Skip docs because the code change was "small"
 - Mark todos complete before doc updates
 - Change accounting behavior without recording decisions when behavior is intentional
+- Put business logic in `app.py` for new modules (use `services/` per MIGRATION-READINESS-01)
 
 ## Doc locations
 
@@ -49,3 +55,4 @@ After every completed **feature**, **bug fix**, **accounting change**, **audit**
 - `docs/AUDIT_HISTORY.md` — chronological log
 - `docs/ACCOUNTING_DECISIONS.md` — frozen rules (2110, 1150, Card vs Company CC, etc.)
 - `docs/TEST_COVERAGE_MAP.md` — test file → feature map
+- `docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md` — migration and service-layer tech debt register

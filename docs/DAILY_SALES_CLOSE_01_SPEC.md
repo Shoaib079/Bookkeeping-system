@@ -5,10 +5,10 @@
 impact. No bank impact. No calls to `create_journal_entry`, `post_*`, or cash
 reconciliation posting paths.
 
-**Architecture:** Follows **[ARCHITECTURE-PROTECTION-01](../ROADMAP.md#architecture-protection-01--service-first-development-rule)** —
+**Architecture:** Follows **[ARCHITECTURE-PROTECTION-01](../ROADMAP.md#architecture-protection-01--service-first-development-rule)** and **[MIGRATION-READINESS-01](../ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist)** —
 models → `services/` → tests → minimal Streamlit UI.
 
-**Companion docs:** [ROADMAP.md](../ROADMAP.md) · [ROADMAP § VENDOR-NEUTRAL-01](../ROADMAP.md#vendor-neutral-01--vendor-neutral-architecture-rule) · [USER_ACCESS_STAFF_CAPTURE_SPEC.md](./USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [ARCHITECTURE_HANDOFF.md](../ARCHITECTURE_HANDOFF.md)
+**Companion docs:** [ROADMAP.md](../ROADMAP.md) · [ROADMAP § VENDOR-NEUTRAL-01](../ROADMAP.md#vendor-neutral-01--vendor-neutral-architecture-rule) · [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./TECH_DEBT_AND_MIGRATION_CLEANUP.md) · [USER_ACCESS_STAFF_CAPTURE_SPEC.md](./USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [ARCHITECTURE_HANDOFF.md](../ARCHITECTURE_HANDOFF.md)
 
 ---
 
@@ -570,14 +570,14 @@ Mapped to owner + manager until USER-ACCESS-01.
 
 ## 10. Implementation phases
 
-| Phase | Deliverable | Gate |
-|-------|-------------|------|
-| **DSC-P1** | Models + service + tests (generic only) | Posting-guard + no-provider-branch tests pass |
-| **DSC-P2** | Minimal Streamlit + nav + UI contract | Manual verify with arbitrary `source_name` |
-| **DSC-P3** | Attachment metadata + EOD warning + export | |
-| **DSC-P4** | **Optional per-provider import adapters** (separate modules) | Each adapter tested in isolation; core unchanged |
+| Phase | Status | Deliverable | Gate |
+|-------|--------|-------------|------|
+| **DSC-P1** | ✅ **Complete** | Models + service + tests (generic only) | Posting-guard + no-provider-branch tests pass |
+| **DSC-P2** | 📋 **Pending** | Minimal Streamlit + nav + UI contract | Manual verify with arbitrary `source_name` |
+| **DSC-P3** | 📋 **Pending** | Attachment metadata + EOD warning + export | |
+| **DSC-P4** | 📋 **Pending** | **Optional per-provider import adapters** (separate modules) | Each adapter tested in isolation; core unchanged |
 
-**OBS-01 gate:** Schedule DSC-P1 after repeated friction or explicit owner approval.
+Roadmap: [ROADMAP.md § DAILY-SALES-CLOSE-01](../ROADMAP.md#daily-sales-close-01--implementation-status). Tech debt: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./TECH_DEBT_AND_MIGRATION_CLEANUP.md).
 
 ---
 
@@ -606,4 +606,4 @@ variances; `external_total` remains primary when both entered).
 | Logic location | `services/daily_sales_close.py` |
 | Future imports | Optional adapters in DSC-P4+, same record shape |
 
-*Update [ROADMAP.md](../ROADMAP.md) when DSC-P1 is scheduled.*
+*DSC-P1 complete — see [ROADMAP.md](../ROADMAP.md) and [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./TECH_DEBT_AND_MIGRATION_CLEANUP.md).*
