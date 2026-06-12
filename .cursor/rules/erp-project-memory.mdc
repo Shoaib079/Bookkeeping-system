@@ -1,0 +1,51 @@
+---
+description: Update ERP project memory docs when banking, reconciliation, or accounting work completes
+alwaysApply: true
+---
+
+# ERP project memory — documentation gate
+
+## ARCHITECTURE-PROTECTION-01 (active)
+
+New modules: **models → services → tests → minimal Streamlit UI**. Business/accounting logic must not live in `app.py`. Pause deep Streamlit UI for auth, staff portal, uploads, approval workflows. See `ROADMAP.md` § ARCHITECTURE-PROTECTION-01.
+
+## VENDOR-NEUTRAL-01 (active)
+
+No vendor-specific core architecture. Generic external sources: free-text `source_name`, optional `source_type` (`POS`/`ERP`/`MANUAL`/…). No vendor enums, `if wolvox` branches, or named modules in core. Doc examples OK; user-typed names OK. Banking “POS Settlement” ≠ POS product. See `ROADMAP.md` § VENDOR-NEUTRAL-01; exemplar `docs/DAILY_SALES_CLOSE_01_SPEC.md`.
+
+No task is **complete** until the docs under `docs/` are updated when applicable.
+
+## When to update (required)
+
+After every completed **feature**, **bug fix**, **accounting change**, **audit**, **migration**, or **major test addition** touching banking, reconciliation, company credit card, or related posting:
+
+| Trigger | Update |
+|---------|--------|
+| Feature status changed (built / partial / deferred) | `docs/BANKING_RECON_CC_STATUS.md` |
+| Any audit or fix session | `docs/AUDIT_HISTORY.md` (dated entry) |
+| Accounting behavior or frozen rule changed | `docs/ACCOUNTING_DECISIONS.md` |
+| Tests added, removed, or scope changed | `docs/TEST_COVERAGE_MAP.md` |
+
+## AUDIT_HISTORY entry template
+
+```markdown
+## YYYY-MM-DD — Short title
+
+**Audit / task:** …
+**Findings:** …
+**Actions taken:** …
+**Related tests:** …
+```
+
+## Do not
+
+- Skip docs because the code change was "small"
+- Mark todos complete before doc updates
+- Change accounting behavior without recording decisions when behavior is intentional
+
+## Doc locations
+
+- `docs/BANKING_RECON_CC_STATUS.md` — status matrix, risks, do-not-rebuild, next task
+- `docs/AUDIT_HISTORY.md` — chronological log
+- `docs/ACCOUNTING_DECISIONS.md` — frozen rules (2110, 1150, Card vs Company CC, etc.)
+- `docs/TEST_COVERAGE_MAP.md` — test file → feature map

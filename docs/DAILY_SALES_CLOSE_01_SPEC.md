@@ -8,7 +8,7 @@ reconciliation posting paths.
 **Architecture:** Follows **[ARCHITECTURE-PROTECTION-01](../ROADMAP.md#architecture-protection-01--service-first-development-rule)** —
 models → `services/` → tests → minimal Streamlit UI.
 
-**Companion docs:** [ROADMAP.md](../ROADMAP.md) · [USER_ACCESS_STAFF_CAPTURE_SPEC.md](./USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [ARCHITECTURE_HANDOFF.md](../ARCHITECTURE_HANDOFF.md)
+**Companion docs:** [ROADMAP.md](../ROADMAP.md) · [ROADMAP § VENDOR-NEUTRAL-01](../ROADMAP.md#vendor-neutral-01--vendor-neutral-architecture-rule) · [USER_ACCESS_STAFF_CAPTURE_SPEC.md](./USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [ARCHITECTURE_HANDOFF.md](../ARCHITECTURE_HANDOFF.md)
 
 ---
 

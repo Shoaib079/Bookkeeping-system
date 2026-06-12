@@ -95,6 +95,12 @@ All new modules must be **service-first** and **migration-safe**. Required order
 
 See [ROADMAP.md § ARCHITECTURE-PROTECTION-01](./ROADMAP.md#architecture-protection-01--service-first-development-rule) and [FUTURE-MIGRATION-01](./ROADMAP.md#future-architecture--long-term-roadmap).
 
+## VENDOR-NEUTRAL-01 (active)
+
+Core code must **not** depend on named POS/vendor products. Use generic **External Sales Source** fields: free-text `source_name`, optional `source_type` category, optional `branch_location`. No vendor enums, settings keys, or service branches in core. Vendor names in docs = examples only. Banking “POS Settlement” = card clearing, not a POS product. Optional vendor adapters live outside core later.
+
+See [ROADMAP.md § VENDOR-NEUTRAL-01](./ROADMAP.md#vendor-neutral-01--vendor-neutral-architecture-rule) · [ARCHITECTURE-PROTECTION-01](#architecture-protection-01-active) · [DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md).
+
 ## Project memory — documentation gate
 
 **No task is complete until documentation is updated** after every feature, bug fix, accounting change, audit, migration, or major test addition:

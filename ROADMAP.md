@@ -74,6 +74,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | UI architecture stability (UI-STAB) | 📋 **Planned** — header CSS consolidation remainder; avatar + banking presentation shipped |
 | Operational friction log (OBS-01) | 🟡 **Active** — record real-world UX friction; 3+ occurrences → roadmap candidate |
 | **ARCHITECTURE-PROTECTION-01** | 🟢 **Active immediately** — service-first, migration-safe development rule |
+| **VENDOR-NEUTRAL-01** | 🟢 **Active immediately** — no vendor-specific core architecture; generic external-source pattern |
 | **DAILY-SALES-CLOSE-01** | 📋 **Design approved** — source-neutral external sales verification (no posting); see [docs/DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md); OBS-gated |
 
 ---
@@ -126,7 +127,7 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 - Accounting logic must live in **reusable services**.
 - Tests are the authority.
 
-**Reason:** Future target is FastAPI + React ([FUTURE-MIGRATION-01](#future-architecture--long-term-roadmap)). Any logic built correctly now must be reusable later.
+**Reason:** Future target is FastAPI + React ([FUTURE-MIGRATION-01](#future-architecture--long-term-roadmap)). Any logic built correctly now must be reusable later. External systems must stay vendor-neutral ([VENDOR-NEUTRAL-01](#vendor-neutral-01--vendor-neutral-architecture-rule)).
 
 **Warning rule:** If a feature is mainly UI-heavy, multi-user, mobile, login/auth, permissions dashboard, staff portal, uploads, or approval workflow — **pause** before building it deeply in Streamlit.
 
@@ -161,6 +162,62 @@ SQLAlchemy
 ↓
 PostgreSQL
 ```
+
+**Related:** [VENDOR-NEUTRAL-01](#vendor-neutral-01--vendor-neutral-architecture-rule) · [ARCHITECTURE-PROTECTION-01](#architecture-protection-01--service-first-development-rule)
+
+---
+
+## VENDOR-NEUTRAL-01 — Vendor-Neutral Architecture Rule
+
+**Status:** Active immediately
+
+**Rule:** Core architecture must **not** depend on any named POS, restaurant, or external-system vendor. Integrations are **generic first**; vendor-specific code lives only in optional, pluggable adapters outside the core.
+
+**Applies to:** `models.py`, `services/`, `registry/` settings keys, enums, roadmap **requirements**, service function names, module names, and Streamlit dispatch — not user-typed data or documentation examples.
+
+### Required pattern — External Sales Source (and similar)
+
+| Field | Rule |
+|-------|------|
+| `source_name` | **Free text** — user or operator labels the system (any POS, ERP, or manual source) |
+| `source_type` | **Optional generic category** — e.g. `POS`, `ERP`, `MANUAL`, `Z_REPORT`, `EXCEL_UPLOAD`, `OTHER` |
+| `branch_location` | Optional text |
+| Totals / variance / status | Generic numeric and workflow fields — no vendor columns |
+
+**Do not** hardcode product names (e.g. Suitable, Wolvox, Square) in enums, model fields, service branches, or roadmap implementation requirements.
+
+### Allowed
+
+- **Documentation examples** — vendor names in specs, handoff, or training prose only, clearly as illustrations.
+- **User-entered text** — `source_name` may contain any string the operator types.
+- **Domain terminology** — “POS Settlement” in banking = card clearing workflow ([BANKING-UX-02](#banking-ux-02--pos-settlement-transparency--complete)), **not** a named POS product integration.
+- **Future per-provider adapters** — separate modules (e.g. DSC-P4), registered at runtime; core schema unchanged.
+
+### Forbidden in core (Phase 1 and ongoing)
+
+- `if source == "wolvox"` (or any named vendor) in services or `app.py`
+- Enum values or settings keys named after a vendor product
+- Service or model names embedding a vendor (`import_wolvox`, `SuitablePosTotals`, etc.)
+- Roadmap phases that **require** a specific vendor integration in core
+- Provider-specific columns on shared verification/import tables
+
+### Exemplar
+
+[DAILY-SALES-CLOSE-01](./docs/DAILY_SALES_CLOSE_01_SPEC.md) — External Sales Verification: manual entry, `source_name` text, optional `source_type`, no posting. Reference implementation of this rule.
+
+### Enforcement
+
+- New modules: comply with [ARCHITECTURE-PROTECTION-01](#architecture-protection-01--service-first-development-rule) **and** this rule.
+- Design reviews: reject vendor-specific core designs; defer adapters.
+- Tests (when built): contract scan — no vendor identifiers in `services/` source (see DAILY-SALES-CLOSE-01 test plan).
+
+### Related architecture rules
+
+| Rule | Relationship |
+|------|----------------|
+| [ARCHITECTURE-PROTECTION-01](#architecture-protection-01--service-first-development-rule) | Services must be reusable; vendor neutrality keeps them portable |
+| [FUTURE-MIGRATION-01](#future-architecture--long-term-roadmap) | Generic services + optional adapters support FastAPI/React migration |
+| [DAILY-SALES-CLOSE-01](./docs/DAILY_SALES_CLOSE_01_SPEC.md) | First feature spec written under this rule |
 
 ---
 
@@ -2078,6 +2135,8 @@ Current platform remains:
 
 Migration target is future-state only and does not change current development priorities.
 
+**Related:** [ARCHITECTURE-PROTECTION-01](#architecture-protection-01--service-first-development-rule) · [VENDOR-NEUTRAL-01](#vendor-neutral-01--vendor-neutral-architecture-rule)
+
 ---
 
 ## Module state vocabulary (frozen)
@@ -2166,6 +2225,7 @@ Migration target is future-state only and does not change current development pr
 | 2026-06-09 | **ERP Ownership Audit** complete (**AUDIT-01**). Critical conflicts identified: `--hdr-h` 4-way token split, `widgets.css` KPI catch-all, mobile ownership drift, sidebar triple-hide, notification active state duplication, reports internal duplicate. Architectural finding: Dashboard, Banking, and Mobile Reports are mostly clean; Company Picker and Desktop Reports have no CSS surface (future work). Five quick wins identified that can be executed before MOBILE-14. Decision: all future UI work must follow ownership-first planning; new features must not introduce additional ownership conflicts. |
 | 2026-06-05 | **FUTURE-MIGRATION-01** approved as long-term direction only — React + FastAPI + service layer + PostgreSQL target stack. Streamlit remains primary until pre-migration requirements and decision gate are met. No change to active module priorities. |
 | 2026-06-05 | **ARCHITECTURE-PROTECTION-01** active immediately — all new modules service-first (models → services → tests → minimal UI). Streamlit must not own business logic; pause before deep UI for auth, staff portal, uploads, approval workflows. |
+| 2026-06-13 | **VENDOR-NEUTRAL-01** active immediately — core architecture must not depend on named POS/vendor products; generic External Sales Source pattern (`source_name` free text, optional `source_type` category). Vendor names allowed in documentation examples only; future adapters live outside core. Cross-links ARCHITECTURE-PROTECTION-01 and FUTURE-MIGRATION-01. Audit (2026-06-13): no vendor leakage in production code. |
 
 ---
 

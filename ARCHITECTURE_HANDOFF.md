@@ -368,6 +368,18 @@ Registry is **validated at app startup** (`validate_on_load()` in `app.py`).
 
 Full detail: [ROADMAP.md § ARCHITECTURE-PROTECTION-01](./ROADMAP.md#architecture-protection-01--service-first-development-rule).
 
+### VENDOR-NEUTRAL-01 (active now)
+
+**Vendor-neutral architecture rule** — effective immediately:
+
+- Core models, services, enums, and roadmap requirements must **not** name or branch on specific POS/restaurant vendors.
+- External systems use a **generic source pattern**: free-text `source_name`, optional category `source_type` (`POS`, `ERP`, `MANUAL`, `Z_REPORT`, `EXCEL_UPLOAD`, `OTHER`), optional `branch_location`.
+- Vendor product names (e.g. Suitable, Wolvox) are **documentation examples only** — never enums, settings keys, or `if vendor` logic in core code.
+- “POS Settlement” in banking = card-clearing workflow, not a named POS product.
+- Future vendor imports = optional adapters outside core (see [DAILY-SALES-CLOSE-01](./docs/DAILY_SALES_CLOSE_01_SPEC.md)).
+
+Full detail: [ROADMAP.md § VENDOR-NEUTRAL-01](./ROADMAP.md#vendor-neutral-01--vendor-neutral-architecture-rule). Works with [ARCHITECTURE-PROTECTION-01](#architecture-protection-01-active-now) and [FUTURE-MIGRATION-01](#future-architecture-long-term--not-active).
+
 ### Future Architecture (long-term — not active)
 
 **FUTURE-MIGRATION-01** — Approved long-term direction: React frontend → FastAPI → service layer → SQLAlchemy → PostgreSQL. Streamlit + SQLite remain the current platform; migration is incremental and gated on pre-migration requirements (Daily Sales Close, Recipe Costing, User Access, Staff Capture, date system stabilization, service-layer extraction). Full detail: [ROADMAP.md § Future Architecture / Long-Term Roadmap](./ROADMAP.md#future-architecture--long-term-roadmap).
