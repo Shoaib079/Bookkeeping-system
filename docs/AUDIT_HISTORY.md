@@ -8,6 +8,26 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+---
+
+## 2026-06-05 — RECIPE-COSTING-01 RC-P1 (Ingredient & Recipe Costing)
+
+**Task:** Service-first recipe costing foundation — ingredients, recipes, sub-recipes via `RecipeLine.sub_recipe_id`, on-demand cost rollup. No inventory, menu, export, dashboard, or Streamlit UI in RC-P1.
+
+**RC-P1 delivered:**
+- Models: `Ingredient`, `Recipe`, `RecipeLine` (no `SubRecipe` table)
+- `services/recipe_costing.py` — unit conversion (weight/volume/count), validation, `compute_recipe_cost`, `where_used`, ingredient/recipe CRUD mutations
+- Schema indexes in `migrate_schema()`
+- Tests: `test_recipe_costing_service.py` (29), `test_recipe_costing_models.py` (3)
+
+**Deferred (RC-P1b–P3):** Design spec · list/read APIs · Streamlit UI · export · menu linkage · profitability views.
+
+**Unchanged:** Inventory tables · product stock · `create_journal_entry` / posting paths · menu modules.
+
+**Tests:** Full suite **1435 passed, 2 xfailed**.
+
+---
+
 ## 2026-06-05 — DAILY-SALES-CLOSE-01 DSC-P1 + DSC-P2 (External Sales Verification)
 
 **Task:** Source-neutral daily external-vs-ERP sales verification — service-first (P1), minimal Streamlit UI (P2). Verification only; no JE/GL/bank posting.

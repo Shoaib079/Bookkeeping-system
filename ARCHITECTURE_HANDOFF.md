@@ -390,7 +390,7 @@ Full detail: [ROADMAP.md § VENDOR-NEUTRAL-01](./ROADMAP.md#vendor-neutral-01--v
 - Tests without Streamlit; contract scans for posting and vendor neutrality
 - Log known debt in [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md)
 
-**Exemplar:** DSC-P1 — `services/daily_sales_close.py`; DSC-P2 — `ui/external_sales_verification.py`. Full detail: [ROADMAP.md § MIGRATION-READINESS-01](./ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist).
+**Exemplar:** DSC-P1 — `services/daily_sales_close.py`; DSC-P2 — `ui/external_sales_verification.py`; RC-P1 — `services/recipe_costing.py`. Full detail: [ROADMAP.md § MIGRATION-READINESS-01](./ROADMAP.md#migration-readiness-01--fastapireact-ready-service-checklist).
 
 ### DAILY-SALES-CLOSE-01 (implementation status)
 
@@ -402,6 +402,17 @@ Full detail: [ROADMAP.md § VENDOR-NEUTRAL-01](./ROADMAP.md#vendor-neutral-01--v
 | DSC-P4 | 📋 Pending — optional import adapters |
 
 Spec: [DAILY_SALES_CLOSE_01_SPEC.md](./docs/DAILY_SALES_CLOSE_01_SPEC.md).
+
+### RECIPE-COSTING-01 (implementation status)
+
+| Phase | Status |
+|-------|--------|
+| RC-P1 | ✅ Complete — `Ingredient` / `Recipe` / `RecipeLine` · `services/recipe_costing.py` · tests |
+| RC-P1b | 📋 Pending — design spec + list/read APIs |
+| RC-P2 | 📋 Pending — minimal Streamlit UI |
+| RC-P3 | 📋 Pending — export · menu linkage · profitability views |
+
+Tech debt: [TECH_DEBT_AND_MIGRATION_CLEANUP.md](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-RC-*).
 
 ### Future Architecture (long-term — not active)
 
@@ -485,4 +496,4 @@ Copy-paste this when starting work:
 
 ---
 
-*Last updated after Phase 14D-C, 14D-D, nav fix, Company Setup UI pass, and DAILY-SALES-CLOSE-01 DSC-P2 doc sync.*
+*Last updated after Phase 14D-C, 14D-D, nav fix, Company Setup UI pass, DAILY-SALES-CLOSE-01 DSC-P2 doc sync, and RECIPE-COSTING-01 RC-P1.*

@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-05 (DAILY-SALES-CLOSE-01 DSC-P1–P2)  
-**Full suite:** run `pytest tests/` — **1403 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
+**Last updated:** 2026-06-05 (RECIPE-COSTING-01 RC-P1)  
+**Full suite:** run `pytest tests/` — **1435 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -147,6 +147,32 @@ pytest tests/test_phase18_mvp1.py tests/test_phase18_mvp2.py \
 | Role permissions (cashier/manager/owner) | Authorization | **Medium** |
 
 *Not company CC — but part of daily banking/cash ops.*
+
+---
+
+### `tests/test_recipe_costing_service.py` (29 tests) — RC-P1
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| `to_base_units` / `from_base_units` | Canonical g/ml/each; same-dimension only | **High** |
+| `validate_ingredient` / `validate_recipe_lines` | Base-unit costs; ingredient/sub-recipe XOR | **High** |
+| `compute_recipe_cost` (pure + DB) | On-demand rollup; never stored; waste %; sub-recipe scale | **High** |
+| Cycle + recursion depth (max 3) | Sub-recipe graph safety | **Critical** |
+| `where_used` transitive | Ingredient/sub-recipe parent chain | **Medium** |
+| `bulk_update_costs` atomicity | All-or-nothing cost batch | **High** |
+| Deactivated ingredient warning | Breakdown continues with warning | **Medium** |
+| Explicit `company_id` API | No Streamlit in service | **High** |
+| Posting/inventory guard contract scan | No JE/inventory/menu imports in `services/` | **Critical** |
+
+---
+
+### `tests/test_recipe_costing_models.py` (3 tests) — RC-P1
+
+| Feature covered | Business rule protected | Risk if untested |
+|-----------------|-------------------------|------------------|
+| Company-scoped ingredient name uniqueness | Multi-tenant isolation | **High** |
+| Recipe line XOR via service validation | No dual ingredient + sub-recipe | **High** |
+| Recipe row has no stored computed cost | Cost always computed on demand | **High** |
 
 ---
 
