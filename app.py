@@ -65,6 +65,9 @@ from registry.nav_keys import (
     NAV_PAYABLES,
     NAV_PROFIT_LOSS,
     NAV_PURCHASES,
+    NAV_RC_COST_BREAKDOWN,
+    NAV_RC_INGREDIENTS,
+    NAV_RC_RECIPES,
     NAV_RECEIVABLES,
     NAV_RECON_HEALTH,
     NAV_RECURRING_EXPENSES,
@@ -254,6 +257,11 @@ from ui.banking import (
     render_unsettled_card_sales_list_block as _render_unsettled_card_sales_list_block,
 )
 from ui.external_sales_verification import render_external_sales_verification
+from ui.recipe_costing import (
+    render_recipe_cost_breakdown,
+    render_recipe_ingredients,
+    render_recipe_recipes,
+)
 from ui.section import (
     aging_buckets_html,
     financial_section_header_html,
@@ -3123,6 +3131,9 @@ _PERMISSIONS: dict[str, set[str]] = {
     "view_external_sales_verification": {"owner", "manager"},
     "verify_external_sales":            {"owner", "manager"},
     "void_external_sales_verification": {"owner", "manager"},
+    # RC-P1b: Recipe Costing
+    "view_recipe_costing":              {"owner", "manager"},
+    "manage_recipe_costing":            {"owner", "manager"},
     # Phase 10: Management Reporting
     "view_management_reports":    {"owner", "manager", "partner"},
     # Phase 12: Partners & Profit Allocation
@@ -3368,6 +3379,7 @@ _NAV_GROUP_KEYS = {
     "transactions": "nav.group.transactions",
     "people": "nav.group.people",
     "close_day": "nav.group.close_day",
+    "recipe_costing": "nav.group.recipe_costing",
     "statements": "nav.group.statements",
     "accounting": "nav.group.accounting",
     "team": "nav.group.team",
@@ -3556,6 +3568,11 @@ _NAV_ACCORDION = [
         (None, NAV_EXTERNAL_SALES_VERIFICATION),
         (None, NAV_END_OF_DAY_CLOSE),
     ]),
+    ("recipe_costing", "Recipe Costing", [
+        (None, NAV_RC_INGREDIENTS),
+        (None, NAV_RC_RECIPES),
+        (None, NAV_RC_COST_BREAKDOWN),
+    ]),
     ("statements", "Financial Statements", [
         (None, NAV_PROFIT_LOSS),
         (None, NAV_BALANCE_SHEET),
@@ -3600,6 +3617,7 @@ _NAV_ROLE_PAGES = {
         NAV_HOME,
         NAV_NEW_TRANSACTION, _TXN_LEDGER_PAGE_KEY, NAV_SALES, NAV_EXPENSES, NAV_RECURRING_EXPENSES, NAV_PURCHASES,
         NAV_CASH_RECONCILIATION, NAV_EXTERNAL_SALES_VERIFICATION, NAV_END_OF_DAY_CLOSE,
+        NAV_RC_INGREDIENTS, NAV_RC_RECIPES, NAV_RC_COST_BREAKDOWN,
         NAV_CUSTOMERS, NAV_VENDORS, NAV_RECEIVABLES, NAV_PAYABLES,
         NAV_INVENTORY, NAV_BANKING,
         NAV_REPORTS,
@@ -3726,6 +3744,7 @@ def _render_navigation_tree(
     _nav_direct(NAV_BANKING)
     _nav_group("people", accordion_by_key["people"][1])
     _nav_direct(NAV_INVENTORY)
+    _nav_group("recipe_costing", accordion_by_key["recipe_costing"][1])
     _nav_section_caption("nav.sidebar.section_reports")
     _nav_group("statements", accordion_by_key["statements"][1])
     _nav_direct(NAV_REPORTS)
@@ -26251,6 +26270,9 @@ def main():
         NAV_PURCHASES:         render_purchases,
         NAV_CASH_RECONCILIATION: render_cash_reconciliation,
         NAV_EXTERNAL_SALES_VERIFICATION: render_external_sales_verification,
+        NAV_RC_INGREDIENTS: render_recipe_ingredients,
+        NAV_RC_RECIPES: render_recipe_recipes,
+        NAV_RC_COST_BREAKDOWN: render_recipe_cost_breakdown,
         NAV_END_OF_DAY_CLOSE:  render_end_of_day_close,
         NAV_CUSTOMERS:         render_customers,
         NAV_VENDORS:           render_vendors,

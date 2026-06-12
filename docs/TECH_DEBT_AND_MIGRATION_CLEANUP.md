@@ -83,7 +83,34 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 | **TD-RC-03** | **Float money** — ingredient `cost_per_base_unit` and computed breakdown use `float`; migrate to `Decimal` with TD-MIG-04 | Low | Open | Global migration prep |
 | **TD-RC-04** | **Unit registry** — hardcoded `_UNIT_FACTORS` map; optional registry/settings for locale-specific units | Low | Open | RC-P2+ |
 | **TD-RC-05** | **Dual `compute_recipe_cost` dispatch** — pure graph vs DB via `isinstance(Session)`; split into `rollup_recipe_cost` + `compute_recipe_cost` at API migration | Low | Open | FastAPI Phase B |
-| **TD-RC-06** | **Roadmap / spec drift** — add `RECIPE_COSTING_01_SPEC.md` and ROADMAP phase table when RC-P2+ lands | Low | Open | RC-P1 complete 2026-06-05 |
+| **TD-RC-06** | **Roadmap / spec drift** — add `RECIPE_COSTING_01_SPEC.md` and ROADMAP phase table when RC-P2+ lands | Low | Open | RC-P1b UI shipped 2026-06-05; spec file still pending |
+| **TD-RC-09** | **Widget session keys** — `rc_*` draft line state and recipe editor keys are Streamlit-only; React form state replaces at API migration | Low | Open | RC-P1b UI |
+| **TD-RC-10** | **UI `_erp()` lazy import** — `ui/recipe_costing.py` reaches into `app.py` for `_t`, `_can`, `amount_input`, `current_company_required`; replace with injected context or `ui/context.py` | Medium | Open | FastAPI Phase D |
+
+### RC-P1b Migration Cleanup (2026-06-05)
+
+#### 1. Code to keep during FastAPI/React migration
+- All RC-P1 items (models, service, tests)
+- `ui/recipe_costing.py` — three thin renderers; restaurant-friendly tree display
+- Registry nav keys, permissions, EN/TR `rc.*` locales
+- `tests/test_recipe_costing_ui_contract.py`
+
+#### 2. Code likely to replace during FastAPI/React migration
+- `ui/recipe_costing.py` → React recipe/ingredient modules
+- `_erp()` lazy `app.py` import in UI — shared `ui/context.py` or API props
+- `rc_*` Streamlit session keys for draft recipe lines
+- Internal `session.commit()` in service (TD-RC-01)
+
+#### 3. Dead code found
+- None
+
+#### 4. Temporary Streamlit-only code
+- `ui/recipe_costing.py` entire module
+- `rc_draft_lines`, `rc_loaded_recipe_id`, `rc_recipe_pick` session keys
+- `_recipe_tree_markdown` presentation (reimplement in React)
+
+#### 5. Future cleanup items (registered above)
+- TD-RC-09, TD-RC-10 added this session
 
 ### RC-P1 Migration Cleanup (2026-06-05)
 

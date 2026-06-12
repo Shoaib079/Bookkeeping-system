@@ -542,6 +542,53 @@ class TestWhereUsed:
 # ── Contract / migration readiness ────────────────────────────────────────────
 
 
+class TestServiceReadApis:
+    def test_list_and_get_ingredient(self, session):
+        db, company_id, _, user_id = session
+        created = svc.create_ingredient(
+            db, company_id, "Salt", "weight", "g", 0.01, user_id
+        )
+        rows = svc.list_ingredients(db, company_id, search="Sal")
+        assert len(rows) == 1
+        got = svc.get_ingredient(db, company_id, created.record_id)
+        assert got is not None
+        assert got.name == "Salt"
+
+    def test_update_and_activate_ingredient(self, session):
+        db, company_id, _, user_id = session
+        created = svc.create_ingredient(
+            db, company_id, "Cream", "volume", "ml", 0.02, user_id
+        )
+        svc.deactivate_ingredient(db, company_id, created.record_id, user_id)
+        act = svc.activate_ingredient(db, company_id, created.record_id, user_id)
+        assert act.ok
+        upd = svc.update_ingredient(
+            db, company_id, created.record_id, "Fresh Cream", user_id, notes="cold"
+        )
+        assert upd.ok
+        got = svc.get_ingredient(db, company_id, created.record_id)
+        assert got.name == "Fresh Cream"
+        assert got.is_active is True
+
+    def test_list_and_get_recipe(self, session):
+        db, company_id, _, user_id = session
+        ing = svc.create_ingredient(db, company_id, "Flour", "weight", "g", 0.002, user_id)
+        saved = svc.save_recipe(
+            db,
+            company_id,
+            "Dough",
+            1.0,
+            "kg",
+            [svc.RecipeLineInput(quantity=500, unit="g", ingredient_id=ing.record_id)],
+            user_id,
+        )
+        summaries = svc.list_recipes(db, company_id, search="Dou")
+        assert len(summaries) == 1
+        detail = svc.get_recipe(db, company_id, saved.record_id)
+        assert detail is not None
+        assert detail.lines[0].display_name == "Flour"
+
+
 class TestMigrationReadinessContract:
     FORBIDDEN_IMPORT_TOKENS = (
         "import streamlit",
@@ -576,6 +623,12 @@ class TestMigrationReadinessContract:
             svc.deactivate_ingredient,
             svc.save_recipe,
             svc.where_used,
+            svc.list_ingredients,
+            svc.get_ingredient,
+            svc.update_ingredient,
+            svc.activate_ingredient,
+            svc.list_recipes,
+            svc.get_recipe,
         )
         for fn in db_funcs:
             params = list(inspect.signature(fn).parameters)

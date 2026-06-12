@@ -31,6 +31,9 @@ from registry.nav_keys import (
     NAV_PAYABLES,
     NAV_PROFIT_LOSS,
     NAV_PURCHASES,
+    NAV_RC_COST_BREAKDOWN,
+    NAV_RC_INGREDIENTS,
+    NAV_RC_RECIPES,
     NAV_RECEIVABLES,
     NAV_RECON_HEALTH,
     NAV_RECURRING_EXPENSES,
@@ -79,6 +82,8 @@ _ICON_PATHS: dict[str, str] = {
     "save": '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
     "zap": '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
     "hard-hat": '<path d="M2 18a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v2z"/><path d="M10 10V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5"/><path d="M4 15v-3a6 6 0 0 1 6-6h0"/><path d="M14 6h0a6 6 0 0 1 6 6v3"/>',
+    "utensils": '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+    "list": '<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>',
     "circle": '<circle cx="12" cy="12" r="10"/>',
 }
 
@@ -88,6 +93,7 @@ _ICON_SIZES_PX: dict[str, int] = {
     "tab": 15,
     "inline": 14,
 }
+
 
 PAGE_ICON: dict[str, str] = {
     NAV_HOME: "home",
@@ -101,6 +107,9 @@ PAGE_ICON: dict[str, str] = {
     NAV_CASH_RECONCILIATION: "wallet",
     NAV_EXTERNAL_SALES_VERIFICATION: "scale",
     NAV_END_OF_DAY_CLOSE: "moon",
+    NAV_RC_INGREDIENTS: "package",
+    NAV_RC_RECIPES: "utensils",
+    NAV_RC_COST_BREAKDOWN: "scale",
     NAV_CUSTOMERS: "users",
     NAV_VENDORS: "building",
     NAV_RECEIVABLES: "file",

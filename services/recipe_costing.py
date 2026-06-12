@@ -18,11 +18,28 @@ MAX_RECURSION_DEPTH = 3
 MAX_NAME_LEN = 200
 
 DIMENSIONS = frozenset({"weight", "volume", "count"})
+UNITS_BY_DIMENSION: dict[str, tuple[str, ...]] = {
+    "weight": ("g", "kg", "oz", "lb"),
+    "volume": ("ml", "l", "cl"),
+    "count": ("each", "dozen"),
+}
+
+
+def units_for_dimension(dimension: str) -> tuple[str, ...]:
+    """Return supported display units for a base dimension (UI + validation helper)."""
+    return UNITS_BY_DIMENSION.get(dimension.strip().lower(), ())
+
+
+def list_dimensions() -> tuple[str, ...]:
+    return tuple(sorted(DIMENSIONS))
+
+
 CANONICAL_BASE_UNIT = {
     "weight": "g",
     "volume": "ml",
     "count": "each",
 }
+
 
 # unit (normalized) -> (dimension, multiplier to canonical base)
 _UNIT_FACTORS: dict[str, tuple[str, float]] = {
@@ -173,6 +190,84 @@ class MutationResult:
 
     def to_dict(self) -> dict[str, Any]:
         return {"record_id": self.record_id, "error": self.error, "ok": self.ok}
+
+
+@dataclass(frozen=True)
+class RecipeSummary:
+    id: int
+    name: str
+    yield_quantity: float
+    yield_unit: str
+    is_active: bool
+    line_count: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "yield_quantity": self.yield_quantity,
+            "yield_unit": self.yield_unit,
+            "is_active": self.is_active,
+            "line_count": self.line_count,
+        }
+
+
+@dataclass(frozen=True)
+class RecipeLineView:
+    id: int | None
+    sort_order: int
+    ingredient_id: int | None
+    sub_recipe_id: int | None
+    display_name: str
+    quantity: float
+    unit: str
+    waste_percent: float
+    notes: str | None
+    line_kind: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "sort_order": self.sort_order,
+            "ingredient_id": self.ingredient_id,
+            "sub_recipe_id": self.sub_recipe_id,
+            "display_name": self.display_name,
+            "quantity": self.quantity,
+            "unit": self.unit,
+            "waste_percent": self.waste_percent,
+            "notes": self.notes,
+            "line_kind": self.line_kind,
+        }
+
+
+@dataclass(frozen=True)
+class RecipeDetail:
+    id: int
+    company_id: int
+    name: str
+    description: str | None
+    yield_quantity: float
+    yield_unit: str
+    yield_dimension: str
+    is_active: bool
+    lines: tuple[RecipeLineView, ...]
+    created_at: datetime.datetime
+    updated_at: datetime.datetime | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "company_id": self.company_id,
+            "name": self.name,
+            "description": self.description,
+            "yield_quantity": self.yield_quantity,
+            "yield_unit": self.yield_unit,
+            "yield_dimension": self.yield_dimension,
+            "is_active": self.is_active,
+            "lines": [ln.to_dict() for ln in self.lines],
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
 
 
 @dataclass(frozen=True)
@@ -769,6 +864,196 @@ def deactivate_ingredient(
     )
     session.commit()
     return MutationResult(record_id=row.id)
+
+
+def list_ingredients(
+    session: Session,
+    company_id: int,
+    *,
+    search: str | None = None,
+    active_only: bool | None = None,
+) -> list[IngredientView]:
+    query = session.query(Ingredient).filter(Ingredient.company_id == company_id)
+    if active_only is True:
+        query = query.filter(Ingredient.is_active.is_(True))
+    elif active_only is False:
+        query = query.filter(Ingredient.is_active.is_(False))
+    if search and search.strip():
+        query = query.filter(Ingredient.name.ilike(f"%{search.strip()}%"))
+    rows = query.order_by(Ingredient.name).all()
+    return [_ingredient_view(row) for row in rows]
+
+
+def get_ingredient(
+    session: Session,
+    company_id: int,
+    ingredient_id: int,
+) -> IngredientView | None:
+    row = _get_ingredient_row(session, company_id, ingredient_id)
+    return _ingredient_view(row) if row else None
+
+
+def update_ingredient(
+    session: Session,
+    company_id: int,
+    ingredient_id: int,
+    name: str,
+    user_id: int,
+    *,
+    notes: str | None = None,
+    performed_by: str | None = None,
+) -> MutationResult:
+    trimmed = (name or "").strip()
+    if not trimmed:
+        return MutationResult(record_id=None, error="Ingredient name is required.")
+
+    row = _get_ingredient_row(session, company_id, ingredient_id)
+    if row is None:
+        return MutationResult(record_id=None, error="Ingredient not found.")
+
+    dup = (
+        session.query(Ingredient.id)
+        .filter(
+            Ingredient.company_id == company_id,
+            Ingredient.name == trimmed,
+            Ingredient.id != ingredient_id,
+        )
+        .first()
+    )
+    if dup:
+        return MutationResult(record_id=None, error="An ingredient with this name already exists.")
+
+    row.name = trimmed
+    row.notes = notes
+    row.updated_at = datetime.datetime.now()
+    _write_audit(
+        session,
+        company_id=company_id,
+        action="update_ingredient",
+        entity_type="Ingredient",
+        entity_id=row.id,
+        description=f"Updated ingredient '{trimmed}'",
+        performed_by=performed_by,
+    )
+    session.commit()
+    return MutationResult(record_id=row.id)
+
+
+def activate_ingredient(
+    session: Session,
+    company_id: int,
+    ingredient_id: int,
+    user_id: int,
+    *,
+    performed_by: str | None = None,
+) -> MutationResult:
+    row = _get_ingredient_row(session, company_id, ingredient_id)
+    if row is None:
+        return MutationResult(record_id=None, error="Ingredient not found.")
+    if row.is_active:
+        return MutationResult(record_id=row.id)
+
+    row.is_active = True
+    row.updated_at = datetime.datetime.now()
+    _write_audit(
+        session,
+        company_id=company_id,
+        action="activate_ingredient",
+        entity_type="Ingredient",
+        entity_id=row.id,
+        description=f"Activated ingredient '{row.name}'",
+        performed_by=performed_by,
+    )
+    session.commit()
+    return MutationResult(record_id=row.id)
+
+
+def list_recipes(
+    session: Session,
+    company_id: int,
+    *,
+    search: str | None = None,
+    active_only: bool | None = None,
+) -> list[RecipeSummary]:
+    query = session.query(Recipe).filter(Recipe.company_id == company_id)
+    if active_only is True:
+        query = query.filter(Recipe.is_active.is_(True))
+    elif active_only is False:
+        query = query.filter(Recipe.is_active.is_(False))
+    if search and search.strip():
+        query = query.filter(Recipe.name.ilike(f"%{search.strip()}%"))
+    rows = query.order_by(Recipe.name).all()
+    summaries: list[RecipeSummary] = []
+    for row in rows:
+        line_count = (
+            session.query(RecipeLine.id)
+            .filter(RecipeLine.recipe_id == row.id)
+            .count()
+        )
+        summaries.append(
+            RecipeSummary(
+                id=row.id,
+                name=row.name,
+                yield_quantity=row.yield_quantity,
+                yield_unit=row.yield_unit,
+                is_active=row.is_active,
+                line_count=line_count,
+            )
+        )
+    return summaries
+
+
+def get_recipe(
+    session: Session,
+    company_id: int,
+    recipe_id: int,
+) -> RecipeDetail | None:
+    recipe = _get_recipe_row(session, company_id, recipe_id)
+    if recipe is None:
+        return None
+    lines = (
+        session.query(RecipeLine)
+        .filter(RecipeLine.recipe_id == recipe_id)
+        .order_by(RecipeLine.sort_order, RecipeLine.id)
+        .all()
+    )
+    line_views: list[RecipeLineView] = []
+    for line in lines:
+        if line.ingredient_id is not None:
+            ing = _get_ingredient_row(session, company_id, line.ingredient_id)
+            display = ing.name if ing else f"Ingredient #{line.ingredient_id}"
+            kind = "ingredient"
+        else:
+            sub = _get_recipe_row(session, company_id, line.sub_recipe_id)
+            display = sub.name if sub else f"Recipe #{line.sub_recipe_id}"
+            kind = "sub_recipe"
+        line_views.append(
+            RecipeLineView(
+                id=line.id,
+                sort_order=line.sort_order,
+                ingredient_id=line.ingredient_id,
+                sub_recipe_id=line.sub_recipe_id,
+                display_name=display,
+                quantity=line.quantity,
+                unit=line.unit,
+                waste_percent=line.waste_percent,
+                notes=line.notes,
+                line_kind=kind,
+            )
+        )
+    return RecipeDetail(
+        id=recipe.id,
+        company_id=recipe.company_id,
+        name=recipe.name,
+        description=recipe.description,
+        yield_quantity=recipe.yield_quantity,
+        yield_unit=recipe.yield_unit,
+        yield_dimension=recipe.yield_dimension,
+        is_active=recipe.is_active,
+        lines=tuple(line_views),
+        created_at=recipe.created_at,
+        updated_at=recipe.updated_at,
+    )
 
 
 def save_recipe(
