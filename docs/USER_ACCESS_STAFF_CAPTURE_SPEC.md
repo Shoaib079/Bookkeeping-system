@@ -7,6 +7,10 @@ functions only. Staff actions never create journal entries directly.
 Companion review: architecture critique (2026-06-11) — computed-not-materialized
 permissions, typed-not-generic drafts, allowlist portal routing.
 
+**USER-ACCESS-01 corrections applied (2026-06-13):** snake_case permission keys,
+flat effective-permission model (no inheritance), owner lockout guard, separation
+of duties, UA-P1 / UA-P1b scope split, migration cleanup notes.
+
 ---
 
 ## 1. Schema (all additive — `migrate_schema()` ALTER TABLE pattern)
@@ -35,6 +39,8 @@ from `{owner, manager, viewer}` to `{owner, manager, accountant, cashier, staff,
 Template definitions live in code (`PERMISSION_TEMPLATES`), not the DB — template
 improvements propagate to all users instantly because effective permissions are
 **computed at check time, never materialized**.
+
+**No custom DB-defined roles in v1** — deferred; templates are code-only.
 
 ### 1.3 Draft tables (typed — one per capture type)
 
@@ -78,25 +84,63 @@ closed (policy documented now, job built in SC-P3).
 
 ## 2. Permission keys (`PERMISSION_REGISTRY`)
 
-Existing `_PERMISSIONS` action names become registry keys **unchanged** (zero churn
-at the 135 `_can()` call sites). New keys are namespaced:
+### 2.1 Naming convention
+
+**All keys use existing project convention:** `snake_case` **`verb_object`** (or
+`verb_object_qualifier`). **No dotted namespaces** (e.g. ~~`capture.expense_draft`~~,
+~~`admin.permissions`~~).
+
+Examples (existing + new):
 
 | Key | Meaning |
 |---|---|
-| `capture.upload_receipt` | attach receipt photos to own drafts |
-| `capture.expense_draft` | create/submit cash expense drafts |
-| `capture.salary_draft` | create/submit worker-salary-paid drafts |
-| `capture.sales_total` | enter daily sales totals (+ Z-report photo attachment) |
-| `capture.cash_count` | enter daily cash counts |
-| `review.drafts` | see approval inbox; approve/return/reject |
-| `admin.permissions` | edit per-user overrides (owner-locked) |
+| `create_transaction` | (existing) |
+| `upload_receipts` | attach receipt photos to own drafts |
+| `submit_expense_drafts` | create/submit cash expense drafts |
+| `submit_salary_drafts` | create/submit worker-salary-paid drafts |
+| `submit_sales_totals` | enter daily sales totals (+ Z-report photo attachment) |
+| `submit_cash_count_drafts` | enter daily cash counts |
+| `approve_expense_drafts` | approve expense drafts in inbox |
+| `approve_salary_drafts` | approve salary drafts in inbox |
+| `approve_sales_verification` | approve external sales verification / sales-total drafts |
+| `approve_cash_count` | approve cash-count drafts |
+| `approve_pos_report` | approve POS / Z-report aligned sales submissions |
+| `manage_permissions` | edit per-user overrides (owner-locked) |
+
+Existing `_PERMISSIONS` action names become registry keys **unchanged** (zero churn
+at the 135 `_can()` call sites). New Staff Capture keys follow the table above.
 
 Registry entries carry: key, i18n label key, category (for the owner UI grouping),
 and `owner_locked: bool` (keys that overrides can never grant to non-owners:
-`admin.permissions`, `allocate_profit`, `void_profit_allocation`, year-end close).
+`manage_permissions`, `allocate_profit`, `void_profit_allocation`, year-end close).
 
 **Contract rule (enforced by test):** every nav page and every action handler
 declares a registry key. New pages without one fail CI — default-deny.
+
+### 2.2 No permission inheritance
+
+Permissions are **flat**. There is no role hierarchy and no implied access.
+
+```
+effective(user, company) = template_keys(role) ∪ grants − denies
+```
+
+Rules:
+
+1. **Deny wins** over grant and over template.
+2. **No role hierarchy** — `manager` does not inherit `owner`; each template lists
+   every key explicitly.
+3. **No wildcard permissions** — no `*`, no prefix globs, no category wildcards.
+4. **No implied permissions** — holding `approve_expense_drafts` does not grant
+   `submit_expense_drafts` or `upload_receipts` unless the template or a grant
+   row says so.
+5. **No `manage_*` pattern matching** — `manage_recipe_costing` grants only that
+   key; it does not unlock other `manage_*` keys.
+6. **Templates duplicate keys explicitly** — each `PERMISSION_TEMPLATES[role]` is
+   a complete flat set; nothing is derived from another role at runtime.
+
+`owner_locked` keys ignore grants for non-owner templates — enforced in the
+resolver, not just hidden in the UI.
 
 ---
 
@@ -105,37 +149,61 @@ declares a registry key. New pages without one fail CI — default-deny.
 | Key group | Owner | Manager | Accountant | Cashier | Staff | Viewer |
 |---|---|---|---|---|---|---|
 | Full ERP pages (existing perms) | ✅ | ✅ (minus owner-locked) | read-only reports + ledgers | — | — | read-only (existing) |
-| `capture.upload_receipt` | ✅ | ✅ | — | ✅ | ✅ | — |
-| `capture.expense_draft` | ✅ | ✅ | — | ✅ | — | — |
-| `capture.salary_draft` | ✅ | ✅ | — | — | — | — |
-| `capture.sales_total` | ✅ | ✅ | — | ✅ | — | — |
-| `capture.cash_count` | ✅ | ✅ | — | — (grantable) | — | — |
-| `review.drafts` | ✅ | ✅ | — (grantable) | — | — | — |
-| `admin.permissions` | ✅ | — | — | — | — | — |
+| `upload_receipts` | ✅ | ✅ | — | ✅ | ✅ | — |
+| `submit_expense_drafts` | ✅ | ✅ | — | ✅ | — | — |
+| `submit_salary_drafts` | ✅ | ✅ | — | — | — | — |
+| `submit_sales_totals` | ✅ | ✅ | — | ✅ | — | — |
+| `submit_cash_count_drafts` | ✅ | ✅ | — | — (grantable) | — | — |
+| `approve_expense_drafts` | ✅ | ✅ | — (grantable) | — | — | — |
+| `approve_salary_drafts` | ✅ | ✅ | — (grantable) | — | — | — |
+| `approve_sales_verification` | ✅ | ✅ | — (grantable) | — | — | — |
+| `approve_cash_count` | ✅ | ✅ | — (grantable) | — | — | — |
+| `approve_pos_report` | ✅ | ✅ | — (grantable) | — | — | — |
+| `manage_permissions` | ✅ | — | — | — | — | — |
 
 **Portal routing rule:** after auth, if a user's effective permissions contain only
-`capture.*` keys → render the Staff Portal **instead of** the ERP (allowlist
-dispatch at the top of `main()`; the ERP nav is never constructed). Owner/manager
-see capture features inside the full ERP.
+Staff Capture submit/upload keys (and no full-ERP page keys) → render the Staff
+Portal **instead of** the ERP (allowlist dispatch at the top of `main()`; the ERP
+nav is never constructed). Owner/manager see capture features inside the full ERP.
 
 ---
 
 ## 4. Override rules
 
-```
-effective(user, company) = (template_keys(CompanyUser.role) ∪ grants) − denies
-```
-
 1. **Deny beats grant** (explicit deny is final).
-2. `owner_locked` keys ignore grants for non-owner templates — enforced in the
-   resolver, not just hidden in the UI.
-3. Template switch keeps existing override rows; the permission screen shows a
+2. Template switch keeps existing override rows; the permission screen shows a
    "review overrides" prompt when they now duplicate or contradict the template.
-4. Overrides are per `(company, user)` — multi-company users have independent sets.
-5. `_can(action)` keeps its exact signature; internals change from
+3. Overrides are per `(company, user)` — multi-company users have independent sets.
+4. `_can(action)` keeps its exact signature; internals change from
    `role in _PERMISSIONS[action]` to `action in effective(...)` with a per-request
    cache. Existing owner/manager/viewer behavior must be byte-identical
    (regression-tested against the current `_PERMISSIONS` dict as template seed).
+
+### 4.1 Owner lockout guard
+
+The system **must reject** any permission change that would leave a company with
+**no active owner** able to `manage_permissions`.
+
+Reject (with plain error, no partial apply):
+
+- **Denying `manage_permissions`** to the last active owner (via deny override or
+  template change).
+- **Changing or removing the last owner's template** if the resulting effective set
+  would drop `manage_permissions`.
+- **Self-lockout** — the sole active owner cannot save a change that removes their
+  own `manage_permissions`.
+
+Enforced in `services/user_access.py` on every override/template mutation, not only
+in the UI.
+
+### 4.2 Separation of duties
+
+A user **cannot approve their own draft**, even if they hold the relevant
+`approve_*` permission.
+
+Applies to all Staff Capture approval flows (expense, salary, sales totals, cash
+count, POS report). The approval service checks `draft.created_by_id != reviewer_id`
+before posting. Owner emergency override is **not** in v1.
 
 ---
 
@@ -149,10 +217,10 @@ draft ──submit──▶ submitted ──approve──▶ approved (immutable
 ```
 
 - **Approve** (single transaction): re-validate payload (active category/worker,
-  parseable amounts) → call the mapped posting function → store posted-ref id(s)
-  → set `approved` → `log_audit`. **Idempotency:** approval first checks
-  posted-ref IS NULL inside the transaction; a double-tap or rerun cannot
-  double-post.
+  parseable amounts) → **separation-of-duties check** (§4.2) → call the mapped
+  posting function → store posted-ref id(s) → set `approved` → `log_audit`.
+  **Idempotency:** approval first checks posted-ref IS NULL inside the transaction;
+  a double-tap or rerun cannot double-post.
 - **Posting map:** expense → existing expense save path (`reference_type` Expense);
   salary → existing worker Salary movement posting; sales totals → existing
   `post_cash_sale` + `post_card_sale` (card path automatically respects the POS
@@ -174,9 +242,11 @@ draft ──submit──▶ submitted ──approve──▶ approved (immutable
 
 **`test_user_access01_permissions.py`** — resolver units: template-only, grant adds,
 deny removes, deny-beats-grant, owner-locked grant ignored, unknown key → False,
-multi-company isolation; `_can` backward-compat sweep (every existing
-`_PERMISSIONS` entry resolves identically for owner/manager/viewer); override CRUD
-writes AuditLog; registry contract (every nav page + action handler declares a key).
+no wildcard/implied/manage_* expansion, multi-company isolation; `_can` backward-compat
+sweep (every existing `_PERMISSIONS` entry resolves identically for
+owner/manager/viewer); override CRUD writes AuditLog; **owner lockout guard**
+(three reject cases in §4.1); registry contract (every nav page + action handler
+declares a key).
 
 **`test_staff_capture01_drafts.py`** — state machine per type (legal/illegal
 transitions); immutability after approval; staff-sees-own-only; company scoping;
@@ -186,9 +256,9 @@ UUID-based, traversal attempt rejected); attachment↔draft type/id integrity.
 **`test_staff_capture01_approval.py`** — posting-map per type with JE assertions
 (reuse existing posting test fixtures: expense → correct GL pair; sales totals →
 cash + card sales incl. clearing-ON 1150 routing; salary → worker movement;
-cash count → recon row); idempotent approve (second call no-ops); closed-period
-approve surfaces friendly error and leaves draft `submitted`; reject/return leave
-no posted refs; review_note required on return.
+cash count → recon row); idempotent approve (second call no-ops); **self-approval
+rejected** (§4.2); closed-period approve surfaces friendly error and leaves draft
+`submitted`; reject/return leave no posted refs; review_note required on return.
 
 **`test_staff_portal_gate.py`** — the security contract: capture-only session
 renders the portal and **cannot reach any ERP `render_*`** (allowlist assertion);
@@ -203,7 +273,8 @@ Plus: i18n completeness (EN/TR) for all new keys; locale sweep extension.
 
 | Phase | Contents | Gate to next |
 |---|---|---|
-| **UA-P1** | `user_permission_overrides` + registry + resolver inside `_can` + owner permission screen + audit logging. Ships alone — zero staff features, zero behavior change for existing roles (regression suite proves it). | Host suite green; manual: owner/manager/viewer behavior unchanged |
+| **UA-P1** | `user_permission_overrides` model · `PERMISSION_REGISTRY` · `PERMISSION_TEMPLATES` · `services/user_access.py` (effective resolver, override CRUD, owner lockout guard) · `_can()` resolver swap · tests. **No UI.** Zero staff features; existing owner/manager/viewer behavior unchanged (regression suite). | Host suite green; resolver parity with `_PERMISSIONS` seed |
+| **UA-P1b** | Thin owner permission UI — per-user override checkboxes, effective-permissions viewer, audit trail display. Uses `services/user_access.py` only; no permission logic in `app.py`. | Manual: owner can grant/deny; lockout guard surfaces errors |
 | **SC-P1** | Draft spine + `expense_drafts` + `draft_attachments` + portal (expense draft + receipt upload only) + approval inbox (expense only) + portal gate. | One real expense flows staff→approve→GL correctly on host data |
 | **SC-P2** | `sales_total_drafts` (+ Z-report attachment) + `salary_drafts` + `cash_count_drafts`; inbox grows the three types. | Each type's posting map verified against existing tests |
 | **SC-P3** | Returned-flow polish, staff submission feed, retention/archive job, OBS-01 review of real usage. | — |
@@ -215,4 +286,20 @@ portal.
 
 **Two-year maintenance commitments made now:** default-deny registry contract
 test; draft↔posting field-map contract tests; upload retention policy; the
-effective-permissions viewer ships **with** UA-P1, not later.
+effective-permissions viewer ships **with UA-P1b**, not later.
+
+---
+
+## 8. Migration cleanup (USER-ACCESS-01)
+
+Expected temporary and deferred items when UA-P1 / UA-P1b land:
+
+| Item | Treatment |
+|---|---|
+| `_PERMISSIONS` dict in `app.py` | **Retained temporarily** as the seed for `PERMISSION_TEMPLATES` until templates are fully extracted and regression-tested; then read-only reference, not runtime source |
+| Custom DB-defined roles | **Deferred** — templates stay code-only in v1 |
+| Streamlit per-request permission cache | **Temporary app-layer glue** inside `_can()` until FastAPI/React migration; replace with request-scoped context or API middleware |
+| Denied-attempt logging | **Deferred** — resolver returns `False` only; audit of failed `_can` checks is a follow-up (TD-UA) |
+
+Service layer (`services/user_access.py`) is the long-term owner of effective
+permission computation; UI and `_can()` are thin callers.
