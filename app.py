@@ -245,6 +245,7 @@ from reconciliation.match_post import (
     suggest_deposit_match_kind,
     suggest_withdrawal_match_kind,
 )
+from ui.avatar import render_user_avatar, user_initials
 from ui.section import (
     aging_buckets_html,
     financial_section_header_html,
@@ -265,7 +266,6 @@ from ui.theme import (
     render_themed_bar,
     render_themed_grouped_bar,
     render_themed_line,
-    role_accent_css_var,
 )
 
 _validate_settings_registry()
@@ -993,15 +993,11 @@ def _render_hdr_profile_panel_content(
 ) -> None:
     """Profile card + actions — desktop popover and mobile profile sheet."""
     _display = user.get("display_name") or user.get("username", "User")
-    _words = _display.split()
-    _initials = "".join(w[0].upper() for w in _words[:2]) or "U"
     _nav_role = _current_company_role() or user.get("role", "viewer")
-    _role_col = role_accent_css_var(_nav_role)
     _role_lbl = html.escape(_company_role_label(_nav_role))
     st.markdown(
         f'<div class="erp-hdr-profile-card">'
-        f'<span class="erp-hdr-profile-avatar" style="background:{_role_col};">'
-        f'{html.escape(_initials)}</span>'
+        f'{render_user_avatar(user, size="sm")}'
         f'<div class="erp-hdr-profile-text">'
         f'<div class="erp-hdr-profile-name">{html.escape(str(_display))}</div>'
         f'<div class="erp-hdr-profile-role">{_role_lbl}</div>'
@@ -1171,10 +1167,8 @@ def _render_hdr_toolbar(user: dict, *, slot: str) -> None:
     notif       = _notif_counts(user.get("id", 1))
     notif_total = notif["total"]
     _display    = user.get("display_name") or user.get("username", "User")
-    _words      = _display.split()
-    _initials   = "".join(w[0].upper() for w in _words[:2]) or "U"
+    _initials   = user_initials(user=user)
     _nav_role   = _current_company_role() or user.get("role", "viewer")
-    _role_col   = role_accent_css_var(_nav_role)
     _role_lbl   = html.escape(_company_role_label(_nav_role))
     _legacy_desktop = slot == "desktop_right"
     if _legacy_desktop:
@@ -5000,12 +4994,11 @@ def render_login(session):
             cols = st.columns(min(len(users), 3))
             for i, u in enumerate(users):
                 with cols[i % 3]:
-                    initials = "".join(w[0].upper() for w in (u.display_name or u.username).split()[:2]) or "U"
                     _uname = u.display_name or u.username
                     _role_cls = (u.role or "viewer").lower()
                     st.markdown(
                         f'<div class="erp-auth-user-card">'
-                        f'<div class="erp-mono-avatar">{html.escape(initials)}</div>'
+                        f'{render_user_avatar(u, size="md", element="div")}'
                         f'<div class="erp-auth-user-name">{html.escape(_uname)}</div>'
                         f'<span class="erp-auth-role-chip erp-auth-role-{_role_cls}">'
                         f'{html.escape(u.role.title())}</span></div>',
@@ -25402,11 +25395,9 @@ def render_my_account(session):
     ]
     tabs = st.tabs(tab_labels)
 
-    # ── Compute shared avatar HTML ────────────────────────────────────────────
-    _words    = (db_user.display_name or db_user.username or "U").split()
-    _initials = "".join(w[0].upper() for w in _words[:2]) or "U"
+    # ── Profile avatar (UI-STAB-01 shared renderer) ───────────────────────────
     _avatar_html = (
-        f'<div class="erp-mono-avatar">{_initials}</div>'
+        f'{render_user_avatar(db_user, size="lg", element="div")}'
         f'<div style="font-size:10px;color:var(--theme-muted);">{_t("account.profile_photo")}</div>'
         f'<div style="font-size:9px;color:var(--theme-muted);opacity:.7;">'
         f'{_t("account.photo_coming")}</div>'

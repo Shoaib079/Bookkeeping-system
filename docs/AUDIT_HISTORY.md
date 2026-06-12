@@ -8,6 +8,18 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-05 — UI-STAB-01 (Shared avatar renderer)
+
+**Task:** Stabilize initials avatars across header, mobile profile, My Account, and login tiles before PROFILE-PHOTO-01.
+
+**Delivered:** `ui/avatar.py` (`user_initials`, `render_user_avatar`, sizes sm/md/lg); `.erp-user-avatar--*` in `ui/theme.css`; all call sites in `app.py` use shared helper; design contract tests in `tests/test_ui_stab01_avatar.py`.
+
+**Unchanged:** Initials-only behavior; no `users.avatar_path`; no upload/storage; no auth or posting changes.
+
+**Next:** PROFILE-PHOTO-01 can extend `render_user_avatar` with optional photo URL when implemented.
+
+---
+
 ## 2026-06-05 — BANKING-UX-02 P1 (POS Settlement preview)
 
 **Task:** Show settlement preview before posting POS settlement on Statement Import → Card Sale Deposit.

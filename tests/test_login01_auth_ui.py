@@ -86,7 +86,7 @@ def test_login01_login_uses_flat_auth_header_not_gradient_banner():
 def test_login01_user_tiles_use_avatar_cards():
     login = inspect.getsource(erp.render_login)
     assert "erp-auth-user-card" in login
-    assert "erp-mono-avatar" in login
+    assert "render_user_avatar" in login
     assert "erp-auth-role-chip" in login
     assert 'key=f"select_user_{u.id}"' in login
     assert "_t(\"login.select\")" in login

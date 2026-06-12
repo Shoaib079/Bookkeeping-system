@@ -70,7 +70,8 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | **AUDIT-01** — ERP Ownership Audit | ✅ **Complete** — findings recorded; quick wins identified |
 | Future UX / navigation vision | 📋 **Low** — design direction only (MOBILE-07–12, DESIGN-05, DESKTOP-04) — implementation gated on MOBILE-11 system |
 | **PROFILE-PHOTO-01** — Profile photo / avatar upload | 📋 **Proposed** · Low — UX only; no accounting impact |
-| UI architecture stability (UI-STAB) | 📋 **Planned** — Desktop/Mobile audit findings recorded — **not approved for implementation** |
+| **UI-STAB-01** — Shared avatar renderer | ✅ **Complete** — `ui/avatar.py`; header, mobile profile, My Account, login tiles |
+| UI architecture stability (UI-STAB) | 📋 **Planned** — header CSS consolidation remainder; avatar portion shipped |
 | Operational friction log (OBS-01) | 🟡 **Active** — record real-world UX friction; 3+ occurrences → roadmap candidate |
 
 ---
@@ -777,19 +778,20 @@ These remain **future projects**. Current focus stays on accounting stability, d
 
 **Priority:** High
 
-**Current findings:**
+**Avatar renderer (June 2026):** ✅ **Complete** — `ui/avatar.py` (`user_initials`, `render_user_avatar`, sizes sm/md/lg). All initials avatars (header profile, mobile sheet, My Account, login tiles) use one renderer and `.erp-user-avatar--*` CSS. Prepares for [PROFILE-PHOTO-01](#profile-photo-01--profile-photo--avatar) without schema changes.
+
+**Remaining (header CSS — not started):**
 
 - Header styling is distributed across `theme.css`, `mobile_shell.css`, and `mobile_header.css`.
 - Multiple header-height definitions exist (`--hdr-h` conflicts across files and breakpoints).
 - Header behavior has historically been difficult to change consistently.
 - Dead toolbar slot branches (`primary` / `mobile_left`) in `_render_hdr_toolbar`; obsolete `hdr_mobile_title` popover CSS after company-switch sheet migration.
 
-**Goals:**
+**Goals (remainder):**
 
 - Single source of truth for header sizing.
 - Single source of truth for toolbar spacing.
 - Single source of truth for company selector styling.
-- Single source of truth for avatar rendering.
 
 **Constraints:** No redesign. Architecture cleanup only.
 

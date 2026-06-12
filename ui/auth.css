@@ -60,10 +60,7 @@
   padding: 4px 4px 0;
 }
 
-.erp-auth-user-card .erp-mono-avatar {
-  width: 56px;
-  height: 56px;
-  font-size: 18px;
+.erp-auth-user-card .erp-user-avatar--md {
   margin-bottom: 0;
 }
 

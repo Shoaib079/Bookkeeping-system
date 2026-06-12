@@ -697,6 +697,36 @@
   border-radius: 99px;
   white-space: nowrap;
 }
+/* UI-STAB-01 — shared initials avatar scale (PROFILE-PHOTO-01 prep) */
+.erp-user-avatar {
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--theme-info) 16%, var(--theme-card) 84%);
+  border: 2px solid var(--theme-border);
+  color: var(--theme-text);
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.erp-user-avatar--sm {
+  width: 38px;
+  height: 38px;
+  font-size: 12px;
+}
+.erp-user-avatar--md {
+  width: 56px;
+  height: 56px;
+  font-size: 18px;
+}
+.erp-user-avatar--lg {
+  width: 64px;
+  height: 64px;
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+/* Legacy alias — prefer erp-user-avatar--lg */
 .erp-mono-avatar {
   width: 64px;
   height: 64px;
@@ -1876,17 +1906,9 @@ section[data-testid="stSidebarContent"] {
   gap: 10px;
   padding: 4px 0 10px;
 }
-.erp-hdr-profile-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  color: var(--erp-on-primary);
-  font-size: 12px;
-  font-weight: 800;
-  flex-shrink: 0;
+/* Header profile card — UI-STAB-01 uses .erp-user-avatar--sm */
+.erp-hdr-profile-card .erp-user-avatar--sm {
+  color: var(--theme-text);
 }
 .erp-hdr-profile-name {
   font-weight: 700;
