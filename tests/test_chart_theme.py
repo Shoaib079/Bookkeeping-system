@@ -94,13 +94,14 @@ def test_chart_series_and_reference_delegate_to_tokens():
     assert chart_reference_color() == chart_theme_tokens()["border"]
 
 
-def test_apply_altair_theme_configures_background_and_axis():
+def test_apply_altair_theme_configures_transparent_background_and_axis():
     import pandas as pd
 
     chart = alt.Chart(pd.DataFrame({"x": [1], "y": [2]})).mark_bar().encode(x="x", y="y")
     themed = apply_altair_theme(chart, dark=False)
     cfg = themed.to_dict()["config"]
-    assert cfg["background"] == LIGHT_ROOT_VARS["--theme-card"]
+    assert cfg["background"] == "transparent"
+    assert cfg["view"]["fill"] == "transparent"
     assert cfg["axis"]["labelColor"] == LIGHT_ROOT_VARS["--theme-muted"]
     assert cfg["title"]["color"] == LIGHT_ROOT_VARS["--theme-text"]
 
@@ -124,4 +125,4 @@ def test_widgets_chart_container_uses_theme_card():
     assert "var(--theme-card)" in block
     assert "var(--theme-border)" in block
     assert "rect.background" in block
-    assert "prefers-color-scheme: dark" in block
+    assert "transparent" in block

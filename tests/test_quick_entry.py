@@ -90,10 +90,10 @@ def test_mob_at_apply_category_pick_resets_subcategory(monkeypatch):
     assert state["mob_at_cat_id"] == 3
     assert "mob_at_subcat_id" not in state
     assert "at_subcat" not in state
-    assert state["mob_at_last_cat_expense"] == 3
+    assert "mob_at_last_cat_expense" not in state
 
 
-def test_mob_at_last_category_memory_is_per_txn_type(monkeypatch):
+def test_mob_at_category_memory_disabled(monkeypatch):
     state = _FakeSessionState()
     monkeypatch.setattr(erp.st, "session_state", state)
     erp._mob_at_apply_category_pick(
@@ -102,12 +102,11 @@ def test_mob_at_last_category_memory_is_per_txn_type(monkeypatch):
     erp._mob_at_apply_category_pick(
         None, erp._MobAtGridPick("c2", "Rent", cat_id=2), txn_type="Expense"
     )
-    assert state["mob_at_last_cat_sale"] == 1
-    assert state["mob_at_last_cat_expense"] == 2
-    assert "mob_at_last_cat_purchase" not in state
+    assert "mob_at_last_cat_sale" not in state
+    assert "mob_at_last_cat_expense" not in state
 
 
-def test_mob_at_seed_visible_category_uses_last_used(monkeypatch):
+def test_mob_at_seed_visible_category_is_noop(monkeypatch):
     options = [
         erp._MobAtGridPick("c1", "Alpha", cat_id=1),
         erp._MobAtGridPick("c2", "Beta", cat_id=2),
@@ -124,17 +123,17 @@ def test_mob_at_seed_visible_category_uses_last_used(monkeypatch):
             return cat if cid == 2 else None
 
     erp._mob_at_seed_visible_category(_Session(), "Sale")
-    assert state["mob_at_cat_id"] == 2
+    assert "mob_at_cat_id" not in state
 
 
-def test_mob_at_seed_visible_category_single_category(monkeypatch):
+def test_mob_at_seed_visible_category_does_not_auto_pick(monkeypatch):
     options = [erp._MobAtGridPick("c9", "Only", cat_id=9)]
     state = _FakeSessionState()
     monkeypatch.setattr(erp.st, "session_state", state)
     monkeypatch.setattr(erp, "_mob_at_category_options", lambda _s, _t: options)
     erp._mob_at_seed_visible_category(None, "Purchase")
-    assert state["mob_at_cat_id"] == 9
-    assert state["mob_at_last_cat_purchase"] == 9
+    assert "mob_at_cat_id" not in state
+    assert "mob_at_last_cat_purchase" not in state
 
 
 def test_company_scoped_keys_include_last_category_memory():
@@ -161,9 +160,9 @@ def test_clear_company_scoped_session_state_clears_last_category_memory():
     assert "mob_at_last_cat_purchase" not in st
 
 
-def test_mobile_at_wires_quick_chips_for_sale_expense_purchase():
+def test_mobile_at_wires_quick_chips_for_expense_purchase_only():
     src = inspect.getsource(erp._render_add_transaction_mobile)
-    assert '_mob_at_render_quick_cat_chips(session, "Sale"' in src
+    assert '_mob_at_render_quick_cat_chips(session, "Sale"' not in src
     assert '_mob_at_render_quick_cat_chips(session, "Expense"' in src
     assert '_mob_at_render_quick_cat_chips(session, "Purchase"' in src
     assert src.count("_mob_at_render_c_cat_row(") == 0

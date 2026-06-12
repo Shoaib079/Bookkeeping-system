@@ -151,9 +151,9 @@ def test_mobile_at_renders_date_picker():
     assert '"at_date"' in picker_src
 
 
-def test_gather_submit_fields_reads_at_date():
+def test_gather_submit_fields_reads_entry_date():
     src = inspect.getsource(erp._at_gather_submit_fields)
-    assert 'st.session_state.get("at_date"' in src
+    assert "_at_resolve_entry_date()" in src
 
 
 # ── Fix 6: Card-bank picker gated by POS settlement ───────────────────────────

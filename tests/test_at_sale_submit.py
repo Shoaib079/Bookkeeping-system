@@ -115,8 +115,8 @@ def _journal_balanced(db) -> bool:
 
 
 def test_sale_cash_records_from_add_transaction(db):
-    _co, sale_cat = _setup_company(db)
-    _sale_session_state(sale_cat.id, pm="Cash")
+    _setup_company(db)
+    _minimal_sale_state(pm="Cash")
     erp._at_process_submit(
         db,
         currency_default="TRY",
@@ -129,14 +129,14 @@ def test_sale_cash_records_from_add_transaction(db):
     assert db.query(models.Sale).filter_by(sale_type="Cash", is_void=False).count() == 1
     sale = db.query(models.Sale).one()
     assert sale.amount == 100.0
-    assert sale.tx_category_id == sale_cat.id
-    assert sale.tx_subcategory_id is not None
+    assert sale.tx_category_id is None
+    assert sale.tx_subcategory_id is None
     assert _journal_balanced(db)
 
 
 def test_sale_card_records_from_add_transaction(db):
-    _co, sale_cat = _setup_company(db)
-    _sale_session_state(sale_cat.id, pm="Card")
+    _setup_company(db)
+    _minimal_sale_state(pm="Card")
     erp.st.session_state["at_card_bank_acct"] = "Main Bank"
     erp._at_process_submit(
         db,
@@ -195,25 +195,30 @@ def test_expense_cash_still_records(db):
     assert _journal_balanced(db)
 
 
-def test_seed_visible_category_applies_default_subcategory(db):
-    co, sale_cat = _setup_company(db)
+def test_seed_visible_category_is_noop(db):
+    _setup_company(db)
     erp._mob_at_seed_visible_category(db, "Sale")
-    assert erp.st.session_state.get("mob_at_cat_id") == sale_cat.id
-    assert erp.st.session_state.get("mob_at_subcat_id") is not None
-    assert erp.st.session_state.get("at_subcat")
+    assert "mob_at_cat_id" not in erp.st.session_state
+    assert "mob_at_subcat_id" not in erp.st.session_state
 
 
-def test_gather_submit_defaults_subcategory_for_seeded_sale_category(db):
-    co, sale_cat = _setup_company(db)
-    _sale_session_state(sale_cat.id)
-    ctx = erp._at_gather_submit_fields(db, "Sale", "TRY", [], [], [])
-    assert ctx["at_cat_id"] == sale_cat.id
-    assert ctx["at_subcat_name"] is not None
-
-
-def test_stale_expense_subcat_does_not_block_sale_default(db):
-    """Orphan mob_at_subcat_id from another type must not block Sale subcat default."""
+def test_gather_submit_sale_ignores_category_state(db):
     _co, sale_cat = _setup_company(db)
+    exp_cat = (
+        db.query(models.TransactionCategory)
+        .filter_by(company_id=_co.id, transaction_type="Expense")
+        .first()
+    )
+    _minimal_sale_state()
+    erp.st.session_state["mob_at_cat_id"] = exp_cat.id
+    erp.st.session_state["at_cat"] = exp_cat.name
+    ctx = erp._at_gather_submit_fields(db, "Sale", "TRY", [], [], [])
+    assert ctx["at_cat_id"] is None
+    assert ctx["at_subcat_name"] is None
+
+
+def test_stale_expense_subcat_ignored_for_sale(db):
+    _co, _sale_cat = _setup_company(db)
     exp_cat = (
         db.query(models.TransactionCategory)
         .filter_by(company_id=_co.id, transaction_type="Expense")
@@ -224,34 +229,23 @@ def test_stale_expense_subcat_does_not_block_sale_default(db):
         .filter_by(category_id=exp_cat.id)
         .first()
     )
-    _sale_session_state(sale_cat.id)
+    _minimal_sale_state()
     erp.st.session_state["mob_at_subcat_id"] = exp_sub.id
     ctx = erp._at_gather_submit_fields(db, "Sale", "TRY", [], [], [])
-    assert ctx["at_subcat_name"] is not None
-    assert ctx["at_subcat_name"] != exp_sub.name
+    assert ctx["at_subcat_name"] is None
 
 
-def test_desktop_sale_at_cat_session_records(db):
-    """Desktop AT: Sale branch must expose at_cat/at_subcat like Expense."""
-    _co, sale_cat = _setup_company(db)
+def test_desktop_sale_records_without_category(db):
+    _setup_company(db)
     erp.st.session_state.update(
         {
-            "active_company_id": _co.id,
             "at_type_idx": 0,
             "at_pm": "Cash",
             "at_amount_display": "75",
             "at_currency": "TRY",
             "at_date": datetime.date.today(),
-            "at_cat": sale_cat.name,
         }
     )
-    sub = (
-        db.query(models.TransactionSubcategory)
-        .filter_by(category_id=sale_cat.id, is_active=True)
-        .order_by(models.TransactionSubcategory.name)
-        .first()
-    )
-    erp.st.session_state["at_subcat"] = sub.name
     erp._at_process_submit(
         db,
         currency_default="TRY",
@@ -261,12 +255,13 @@ def test_desktop_sale_at_cat_session_records(db):
         txn_type="Sale",
         _TYPE_DISPLAY_MAP={},
     )
-    assert db.query(models.Sale).filter_by(sale_type="Cash", is_void=False).count() == 1
+    sale = db.query(models.Sale).filter_by(sale_type="Cash", is_void=False).one()
+    assert sale.tx_category_id is None
 
 
 def test_mobile_sale_cash_full_submit_path(db):
     """Integration: mobile save intent → effective type → process_submit (real wiring)."""
-    _co, sale_cat = _setup_company(db)
+    _setup_company(db)
     erp.st.session_state["_erp_mobile_ui"] = True
     erp.st.session_state.update(
         {
@@ -279,7 +274,6 @@ def test_mobile_sale_cash_full_submit_path(db):
             "at_cust": "Walk-in Customer",
         }
     )
-    erp._mob_at_seed_visible_category(db, "Sale")
     erp.st.session_state["_mob_at_submit_pending"] = True
     assert erp._at_consume_mobile_save_pending()
     submit_type = erp._at_effective_txn_type(
@@ -297,12 +291,12 @@ def test_mobile_sale_cash_full_submit_path(db):
     )
     sale = db.query(models.Sale).filter_by(sale_type="Cash", is_void=False).one()
     assert sale.amount == 120.0
-    assert sale.tx_category_id == sale_cat.id
-    assert sale.tx_subcategory_id is not None
+    assert sale.tx_category_id is None
+    assert sale.tx_subcategory_id is None
 
 
 def test_mobile_sale_card_full_submit_path(db):
-    _co, sale_cat = _setup_company(db)
+    _setup_company(db)
     erp.st.session_state["_erp_mobile_ui"] = True
     erp.st.session_state.update(
         {
@@ -312,11 +306,9 @@ def test_mobile_sale_card_full_submit_path(db):
             "at_amount_display": "80",
             "at_currency": "TRY",
             "at_date": datetime.date.today(),
-            "mob_at_cat_id": sale_cat.id,
             "at_card_bank_acct": "Main Bank",
         }
     )
-    erp._mob_at_apply_default_subcategory(db, sale_cat.id)
     erp.st.session_state["mob_at_save_clicked"] = True
     assert erp._at_consume_mobile_save_pending()
     erp._at_process_submit(

@@ -224,10 +224,13 @@ def test_backdated_css_contract():
 # ── Desktop unchanged ─────────────────────────────────────────────────────────
 
 
-def test_desktop_date_input_unchanged():
+def test_desktop_date_field_supports_manual_entry_and_calendar():
     src = inspect.getsource(erp.render_add_transaction)
     desktop_block = src.split("if not _is_mobile_at:")[-1]
-    assert 'st.date_input("📅 " + _t("col.date")' in desktop_block
+    assert "_at_render_desktop_date_field()" in desktop_block
+    date_helper = inspect.getsource(erp._at_render_desktop_date_field)
+    assert 'key="at_date_text"' in date_helper
+    assert 'key="at_date_picker"' in date_helper
     assert "_mob_at_apply_date_follow_today" not in desktop_block
     assert "_mob_at_render_date_picker_sheet" not in desktop_block
     mobile_src = inspect.getsource(erp._render_add_transaction_mobile)

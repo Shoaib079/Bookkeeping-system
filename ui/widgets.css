@@ -713,7 +713,7 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
   margin-bottom: 16px !important;
 }
 
-/* CHART-01 — chart shells inherit ERP card surface (Vega marks themed in ui/theme.py) */
+/* CHART-01 / THEME-AUTHORITY-01 — card shell owns surface; Vega chart bg stays transparent */
 [data-testid="stMain"] [data-testid="stVegaLiteChart"],
 [data-testid="stMain"] [data-testid="stArrowVegaLiteChart"],
 [data-testid="stMain"] [data-testid="stPlotlyChart"] {
@@ -724,14 +724,9 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
   border-radius: 8px !important;
 }
 
-/* System theme fallback — Vega .background rect tracks OS when cookie lags one request */
-@media (prefers-color-scheme: dark) {
-  html[data-erp-os-dark="1"] [data-testid="stMain"] [data-testid="stVegaLiteChart"] rect.background,
-  html[data-erp-os-dark="1"] [data-testid="stMain"] [data-testid="stArrowVegaLiteChart"] rect.background,
-  html:not([data-erp-os-dark="0"]) [data-testid="stMain"] [data-testid="stVegaLiteChart"] rect.background,
-  html:not([data-erp-os-dark="0"]) [data-testid="stMain"] [data-testid="stArrowVegaLiteChart"] rect.background {
-    fill: var(--theme-card) !important;
-  }
+[data-testid="stMain"] [data-testid="stVegaLiteChart"] rect.background,
+[data-testid="stMain"] [data-testid="stArrowVegaLiteChart"] rect.background {
+  fill: transparent !important;
 }
 
 /* ── Alerts / status messages — mono card (same in light and dark) ─────── */

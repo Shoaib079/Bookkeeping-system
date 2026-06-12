@@ -33,9 +33,12 @@ def test_filter_transaction_categories_drops_payment_labels():
 
 def test_supplier_payment_desktop_has_no_category_rows():
     src = inspect.getsource(erp.render_add_transaction)
-    marker = '_at_clear_category_session_state()\n                        vendor_name_val = _inline_vendor_row'
-    sp_start = src.index(marker)
-    sp_end = src.index('elif txn_type == "Customer Payment"', sp_start)
+    sp_start = src.index(
+        '                        elif txn_type == "Supplier Payment":\n'
+        '                            _at_clear_category_session_state()\n'
+        '                            vendor_name_val = _inline_vendor_row'
+    )
+    sp_end = src.index('                        elif txn_type == "Customer Payment"', sp_start)
     block = src[sp_start:sp_end]
     assert "_inline_cat_row" not in block
     assert "_inline_subcat_row" not in block

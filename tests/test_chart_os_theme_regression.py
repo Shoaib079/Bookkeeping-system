@@ -33,12 +33,17 @@ def test_viewport_detector_writes_os_dark_cookie():
     )
 
 
-def test_chart_dark_resolver_delegates_system_to_sync():
+def test_chart_dark_resolver_delegates_to_resolve_effective_dark():
     resolver = THEME_PY.split("def _resolve_chart_dark", 1)[1].split("\ndef ", 1)[0]
-    assert "sync_os_dark_flag_from_cookie" in resolver
+    assert "resolve_effective_dark" in resolver
+    effective = THEME_PY.split("def resolve_effective_dark", 1)[1].split("\ndef ", 1)[0]
+    assert "sync_os_dark_flag_from_cookie" in effective
     sync_src = THEME_PY.split("def sync_os_dark_flag_from_cookie", 1)[1].split("\ndef ", 1)[0]
     assert "erp_os_dark" in sync_src
-    assert "Sec-CH-Prefers-Color-Scheme" in sync_src or "_os_dark_from_client_hint" in sync_src
+    assert "dark_mode" not in sync_src
+    assert "_os_dark_preferred_signal" in sync_src
+    hint_src = THEME_PY.split("def _os_dark_preferred_signal", 1)[1].split("\ndef ", 1)[0]
+    assert "_os_dark_from_client_hint" in hint_src
 
 
 def test_dashboard_7day_trend_uses_render_themed_grouped_bar():
@@ -79,8 +84,8 @@ def theme_module():
             del sys.modules["ui.theme"]
 
 
-def test_dashboard_grouped_bar_dark_when_system_os_cookie(theme_module):
-    """render_themed_grouped_bar (Dashboard path) must emit dark Vega background."""
+def test_dashboard_grouped_bar_dark_axis_when_system_os_cookie(theme_module):
+    """render_themed_grouped_bar (Dashboard path) must use dark axis tokens; bg transparent."""
     theme, st = theme_module
     st.session_state["theme_mode"] = "system"
     st.session_state["dark_mode"] = False
@@ -93,8 +98,8 @@ def test_dashboard_grouped_bar_dark_when_system_os_cookie(theme_module):
     st.altair_chart.assert_called_once()
     chart = st.altair_chart.call_args[0][0]
     cfg = chart.to_dict()["config"]
-    assert cfg["background"].lower() not in ("#fff", "#ffffff")
-    assert cfg["background"] == theme.DARK_ROOT_VARS["--theme-card"]
+    assert cfg["background"] == "transparent"
+    assert cfg["axis"]["labelColor"] == theme.DARK_ROOT_VARS["--theme-muted"]
 
 
 def test_bootstrap_system_injects_only_when_os_scheme_known(theme_module):
@@ -105,17 +110,24 @@ def test_bootstrap_system_injects_only_when_os_scheme_known(theme_module):
     st.context = types.SimpleNamespace(cookies={}, headers={})
     st.markdown.reset_mock()
     theme.bootstrap_theme(lambda: MagicMock(), None)
-    assert st.markdown.call_count == 1, "global CSS only — no forced light :root injection"
+    inject_calls = [
+        c.args[0] for c in st.markdown.call_args_list if c.args and ":root{" in c.args[0]
+    ]
+    assert inject_calls == [], "system + unknown OS — no forced :root injection"
     st.session_state.clear()
     st.session_state["theme_mode"] = "system"
     st.context = types.SimpleNamespace(cookies={"erp_os_dark": "1"}, headers={})
     st.markdown.reset_mock()
     theme.bootstrap_theme(lambda: MagicMock(), None)
-    assert st.markdown.call_count == 2, "global CSS + dark :root injection when cookie known"
+    inject_calls = [
+        c.args[0] for c in st.markdown.call_args_list if c.args and ":root{" in c.args[0]
+    ]
+    assert len(inject_calls) == 1, "global CSS + marker + dark :root when cookie known"
+    assert theme.DARK_ROOT_VARS["--theme-bg"] in inject_calls[0]
 
 
 def test_chart_palettes_not_white_in_dark():
-    """Dark chart tokens must never resolve to a white background."""
+    """Dark chart axis tokens must never resolve to a white card (shell is CSS-owned)."""
     import sys, types, importlib.util
 
     stl = types.ModuleType("streamlit")

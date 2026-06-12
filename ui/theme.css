@@ -68,8 +68,10 @@
   margin: 0 0 4px;
 }
 
+/* THEME-AUTHORITY-01 — OS dark vars apply only in system mode (explicit light/dark use injection) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  html[data-erp-theme="system"] :root,
+  html:not([data-erp-theme]) :root {
     --hdr-bg: #1a2332;
     --theme-bg: #0b1220;
     --theme-card: #141c2b;

@@ -139,7 +139,7 @@ def test_expense_empty_search_add_applies_pick_and_memory(db, monkeypatch):
     assert erp._mob_at_expense_category_empty_search_add(db, "New Expense Cat") is True
     assert closed == ["closed"]
     assert "mob_at_cat_id" in state
-    assert state["mob_at_last_cat_expense"] == state["mob_at_cat_id"]
+    assert "mob_at_last_cat_expense" not in state
     assert "mob_at_subcat_id" not in state
 
 
@@ -157,20 +157,26 @@ def test_list_picker_cta_gated_by_permission_and_locale():
     assert "allow_empty_search_add" in src
 
 
-def test_sale_purchase_category_pickers_do_not_enable_cta():
+def test_purchase_category_picker_expense_only_cta():
     src = inspect.getsource(erp._mob_at_render_category_picker_sheet)
     assert 'expense_add = picker_kind == "expense_cat"' in src
     mobile = inspect.getsource(erp._render_add_transaction_mobile)
-    assert 'picker_kind="sale_cat"' in mobile
+    assert 'picker_kind="sale_cat"' not in mobile
     assert 'picker_kind="purchase_cat"' in mobile
     assert 'picker_kind="expense_cat"' in mobile
     assert src.count("allow_empty_search_add=expense_add") == 1
 
 
+def test_category_dialogs_use_small_width():
+    app_src = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert '@st.dialog("Add Category", width="small")' in app_src
+    assert '@st.dialog("Add Subcategory", width="small")' in app_src
+
+
 def test_cat_add_dialog_uses_shared_helper():
     app_src = (ROOT / "app.py").read_text(encoding="utf-8")
     start = app_src.index("def _cat_add_dialog")
-    end = app_src.index('@st.dialog("Manage Category")', start)
+    end = app_src.index('@st.dialog("Manage Category", width="small")', start)
     dlg = app_src[start:end]
     assert "_cat_create_or_reactivate" in dlg
     assert "TransactionCategory(" not in dlg

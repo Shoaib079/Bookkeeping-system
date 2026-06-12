@@ -59,21 +59,21 @@ def test_pm_memory_keys_in_company_scoped():
         assert key in erp._COMPANY_SCOPED_AT_KEYS
 
 
-def test_per_type_pm_memory_isolation(monkeypatch):
+def test_per_type_pm_memory_disabled(monkeypatch):
     state = _FakeSessionState()
     monkeypatch.setattr(erp.st, "session_state", state)
     erp._mob_at_remember_last_pm("Sale", "Card")
     erp._mob_at_remember_last_pm("Expense", "Bank")
     erp._mob_at_remember_last_pm("Purchase", "Credit")
-    assert state["mob_at_last_pm_sale"] == "Card"
-    assert state["mob_at_last_pm_expense"] == "Bank"
-    assert state["mob_at_last_pm_purchase"] == "Credit"
+    assert "mob_at_last_pm_sale" not in state
+    assert "mob_at_last_pm_expense" not in state
+    assert "mob_at_last_pm_purchase" not in state
 
 
-def test_default_pay_method_uses_memory_before_static(monkeypatch):
+def test_default_pay_method_ignores_stale_memory(monkeypatch):
     state = _FakeSessionState({"mob_at_last_pm_sale": "Credit"})
     monkeypatch.setattr(erp.st, "session_state", state)
-    assert erp._at_default_pay_method(MagicMock(), "Sale") == "Credit"
+    assert erp._at_default_pay_method(MagicMock(), "Sale") == "Cash"
 
 
 def test_invalid_remembered_pm_falls_back_when_cc_disabled(monkeypatch):
@@ -83,7 +83,7 @@ def test_invalid_remembered_pm_falls_back_when_cc_disabled(monkeypatch):
     assert erp._at_default_pay_method(MagicMock(), "Expense") == "Cash"
 
 
-def test_type_change_restores_valid_remembered_pm(monkeypatch):
+def test_type_change_does_not_restore_remembered_pm(monkeypatch):
     state = _FakeSessionState(
         {
             "at_pm": "Cash",
@@ -93,7 +93,7 @@ def test_type_change_restores_valid_remembered_pm(monkeypatch):
     )
     monkeypatch.setattr(erp.st, "session_state", state)
     erp._coerce_at_payment_method(MagicMock(), "Sale")
-    assert state["at_pm"] == "Card"
+    assert state["at_pm"] == "Cash"
 
 
 def test_company_switch_clears_pm_memory():
@@ -192,13 +192,18 @@ def test_pm_chip_tap_remembers_pm(monkeypatch):
     assert state["at_pm"] == "Card"
 
 
-def test_no_customer_vendor_worker_inference_added():
-    app_src = (ROOT / "app.py").read_text(encoding="utf-8")
-    block = app_src.split("UX-04C", 1)[1].split("def _at_invoice_choice_label", 1)[0]
-    assert "mob_at_last_vendor" not in block
-    assert "at_cust_sel" not in block
-    assert "mob_at_worker" not in block
-    assert "at_subcat" not in block
+def test_pm_memory_helpers_do_not_infer_customer_vendor():
+    for fn in (
+        erp._mob_at_recall_last_pm,
+        erp._mob_at_remember_last_pm,
+        erp._at_default_pay_method,
+        erp._at_apply_single_bank_auto_pick,
+    ):
+        src = inspect.getsource(fn)
+        assert "mob_at_last_vendor" not in src
+        assert "at_cust_sel" not in src
+        assert "mob_at_worker" not in src
+        assert "at_subcat" not in src
 
 
 def test_pm_chip_handler_calls_remember():

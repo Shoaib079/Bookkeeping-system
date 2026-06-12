@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import streamlit as st
@@ -246,8 +247,19 @@ def _os_dark_preferred_signal() -> bool | None:
     return _os_dark_from_client_hint()
 
 
+def get_theme_mode() -> str:
+    """User theme preference: light | dark | system (THEME-AUTHORITY-01)."""
+    mode = st.session_state.get("theme_mode", "system")
+    return mode if mode in ("light", "dark", "system") else "system"
+
+
+def sync_derived_dark_mode() -> None:
+    """Keep dark_mode aligned with theme_mode — never an independent authority."""
+    st.session_state["dark_mode"] = get_theme_mode() == "dark"
+
+
 def _system_theme_injection_dark() -> bool | None:
-    """Known OS scheme for CSS injection; None keeps @media (prefers-color-scheme) in charge."""
+    """Known OS scheme for system-mode CSS injection; None → @media only."""
     signal = _os_dark_preferred_signal()
     if signal is not None:
         return signal
@@ -258,11 +270,18 @@ def _system_theme_injection_dark() -> bool | None:
 
 
 def sync_os_dark_flag_from_cookie() -> bool:
-    """Mirror OS light/dark for server-side charts when theme_mode is system.
+    """Mirror OS scheme for system mode only (charts + server hints).
 
-    Order: erp_os_dark cookie → Sec-CH-Prefers-Color-Scheme → sticky cookie session →
-    dark_mode session fallback (charts only — never forces light CSS injection).
+    Explicit light/dark ignore erp_os_dark cookie and sticky OS session.
+    Order (system only): erp_os_dark cookie → Sec-CH hint → sticky session → light default.
     """
+    mode = get_theme_mode()
+    if mode == "light":
+        st.session_state["_erp_os_dark"] = False
+        return False
+    if mode == "dark":
+        st.session_state["_erp_os_dark"] = True
+        return True
     signal = _os_dark_preferred_signal()
     if signal is not None:
         st.session_state["_erp_os_dark_from_cookie"] = signal
@@ -270,26 +289,41 @@ def sync_os_dark_flag_from_cookie() -> bool:
     elif isinstance(st.session_state.get("_erp_os_dark_from_cookie"), bool):
         flag = st.session_state["_erp_os_dark_from_cookie"]
     else:
-        flag = bool(st.session_state.get("dark_mode", False))
+        flag = False
     st.session_state["_erp_os_dark"] = flag
     return flag
 
 
-def _resolve_chart_dark(dark: bool | None = None) -> bool:
-    """Resolve ERP chart palette: explicit light/dark; "system" follows the OS scheme.
-
-    CSS handles "system" via prefers-color-scheme, but charts render server-side
-    with palette hex — sync_os_dark_flag_from_cookie() mirrors the OS scheme from
-    the erp_os_dark cookie (viewport detector), client hints, or sticky session.
-    """
+def resolve_effective_dark(*, dark: bool | None = None) -> bool:
+    """Single authority: is the effective visual theme dark right now?"""
     if dark is not None:
         return dark
-    mode = st.session_state.get("theme_mode", "system")
-    if mode == "dark":
-        return True
+    mode = get_theme_mode()
     if mode == "light":
         return False
+    if mode == "dark":
+        return True
     return sync_os_dark_flag_from_cookie()
+
+
+def _resolve_chart_dark(dark: bool | None = None) -> bool:
+    """Chart palette resolver — delegates to resolve_effective_dark."""
+    return resolve_effective_dark(dark=dark)
+
+
+def inject_theme_authority_marker(theme_mode: str) -> None:
+    """Stamp html[data-erp-theme] so CSS @media cannot override explicit prefs."""
+    safe = theme_mode if theme_mode in ("light", "dark", "system") else "system"
+    mode_js = json.dumps(safe)
+    st.markdown(
+        f"""<script>
+        (function() {{
+          const root = (window.top || window.parent).document.documentElement;
+          root.setAttribute("data-erp-theme", {mode_js});
+        }})();
+        </script>""",
+        unsafe_allow_html=True,
+    )
 
 
 def chart_theme_tokens(*, dark: bool | None = None) -> dict[str, str]:
@@ -329,13 +363,13 @@ def chart_reference_color() -> str:
 
 
 def apply_altair_theme(chart, *, dark: bool | None = None):
-    """Apply ERP background, axis, title, and legend tokens to an Altair chart."""
+    """Apply ERP axis/title/legend tokens; background transparent (card shell in CSS)."""
     import altair as alt
 
     tokens = chart_theme_tokens(dark=dark)
     return chart.configure(
-        background=tokens["card"],
-        view=alt.ViewConfig(stroke=tokens["border"], fill=tokens["card"]),
+        background="transparent",
+        view=alt.ViewConfig(stroke=tokens["border"], fill="transparent"),
         axis=alt.AxisConfig(
             labelColor=tokens["muted"],
             titleColor=tokens["text"],
@@ -452,12 +486,12 @@ def apply_user_theme_from_db(session, user_id: int) -> str | None:
     if val not in ("light", "dark", "system"):
         val = "light"
     st.session_state["theme_mode"] = val
-    st.session_state["dark_mode"] = val == "dark"
+    sync_derived_dark_mode()
     return val
 
 
 def bootstrap_theme(session_factory, auth_user: dict | None) -> None:
-    """Call once at start of main(): base CSS + DB theme + injection."""
+    """Call once at start of main(): base CSS + DB theme + injection (THEME-AUTHORITY-01)."""
     render_global_style()
     inject_mobile_viewport_detector()
     if auth_user and auth_user.get("id"):
@@ -465,19 +499,21 @@ def bootstrap_theme(session_factory, auth_user: dict | None) -> None:
             with session_factory() as session:
                 if apply_user_theme_from_db(session, auth_user["id"]) is None:
                     st.session_state.setdefault("theme_mode", "system")
-                    st.session_state.setdefault("dark_mode", False)
         except Exception:
             st.session_state.setdefault("theme_mode", "system")
-            st.session_state.setdefault("dark_mode", False)
     else:
         st.session_state.setdefault("theme_mode", "system")
-        st.session_state.setdefault("dark_mode", False)
 
-    sync_os_dark_flag_from_cookie()
-    theme_mode = st.session_state.get("theme_mode", "system")
-    if theme_mode == "system":
+    sync_derived_dark_mode()
+    theme_mode = get_theme_mode()
+    inject_theme_authority_marker(theme_mode)
+
+    if theme_mode == "light":
+        inject_theme_css(False)
+    elif theme_mode == "dark":
+        inject_theme_css(True)
+    else:
         os_inject = _system_theme_injection_dark()
         if os_inject is not None:
             inject_theme_css(os_inject)
-    else:
-        inject_theme_css(bool(st.session_state.get("dark_mode", False)))
+    sync_os_dark_flag_from_cookie()
