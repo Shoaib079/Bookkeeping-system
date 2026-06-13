@@ -12,6 +12,7 @@ PS-P3-2b: `void_sale`.
 PS-P3-3a: `linked_purchase_payable`, `void_purchase_linked_payable`.
 PS-P3-3b: `void_purchase`.
 PS-P4-1: `post_bank_transaction`, `post_bank_transfer`.
+PS-P4-2: `void_bank_transaction`.
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -36,6 +37,8 @@ from __future__ import annotations
 import datetime
 
 from models import (
+    BankAccount,
+    BankTransaction,
     ChartOfAccounts,
     ExpenseRecord,
     FiscalPeriod,
@@ -52,6 +55,7 @@ from reconciliation.company_card import (
     post_cc_subledger_charge,
     resolve_company_credit_card_account_id,
     reverse_cc_subledgers_for_gl_reference,
+    reverse_account_balance_delta,
 )
 from registry.service import get_setting
 
@@ -890,5 +894,73 @@ def void_sale(
     sale.voided_at = datetime.date.today()
     sale.void_reason = void_reason
     sale.status = "Void"
+    session.commit()
+    return True
+
+
+def void_bank_transaction(
+    session,
+    txn_id,
+    void_reason,
+    *,
+    company_id: int | None = None,
+):
+    """Reverse bank GL refs, restore bank balances, and flag the transaction void.
+
+    PS-P4-2: verbatim reverse-and-flag core from app.py. Commits entity flags.
+    App shim writes the audit row only on ``True``.
+    """
+    txn = session.get(BankTransaction, txn_id)
+    if not txn or txn.is_void:
+        return False
+    if (txn.statement_ref or "").startswith("bsr:"):
+        raise ValueError(
+            "Statement-linked transactions must be unposted from Bank Reconciliation."
+        )
+    # Card-sale deposits are created by the Sale workflow and must be reversed
+    # by voiding the originating Sale — not through Banking.
+    if (txn.description or "").startswith("Card Sale "):
+        return False
+    # Equity movements must be reversed through Accounting → Equity Movements.
+    _desc = txn.description or ""
+    if _desc.startswith("Capital Contribution #") or _desc.startswith("Owner Drawing #"):
+        return False
+    for ref_type in ("BankDeposit", "BankWithdrawal", "BankTransfer"):
+        reverse_journal_entries_for(
+            session, ref_type, txn_id, void_reason, company_id=company_id
+        )
+    acct = session.get(BankAccount, txn.account_id)
+    if acct:
+        if txn.type in ("deposit", "withdrawal"):
+            reverse_account_balance_delta(acct, txn.type, txn.amount)
+        elif txn.type == "transfer":
+            if txn.description and txn.description.startswith("Transfer from"):
+                # This is the destination record: balance was increased, now reduce
+                acct.balance = (acct.balance or 0) - txn.amount
+            else:
+                # This is the source record: balance was reduced, now restore.
+                # Also void the paired destination record so its balance is reversed too.
+                acct.balance = (acct.balance or 0) + txn.amount
+                paired_q = session.query(BankTransaction).filter(
+                    BankTransaction.date == txn.date,
+                    BankTransaction.amount == txn.amount,
+                    BankTransaction.type == "transfer",
+                    BankTransaction.id != txn.id,
+                    BankTransaction.is_void == False,
+                    BankTransaction.description.like(f"Transfer from {acct.name}%"),
+                )
+                if company_id is not None:
+                    paired_q = paired_q.filter(BankTransaction.company_id == company_id)
+                paired = paired_q.first()
+                if paired:
+                    dest_acct = session.get(BankAccount, paired.account_id)
+                    if dest_acct:
+                        dest_acct.balance = (dest_acct.balance or 0) - paired.amount
+                    paired.is_void = True
+                    paired.voided_at = datetime.date.today()
+                    paired.void_reason = f"Paired with voided transfer TXN#{txn_id}: {void_reason}"
+    txn.is_void = True
+    txn.voided_at = datetime.date.today()
+    txn.void_reason = void_reason
     session.commit()
     return True

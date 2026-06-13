@@ -2485,64 +2485,17 @@ def void_payable(session, payable_id, void_reason):
 
 
 def void_bank_transaction(session, txn_id, void_reason):
-    txn = session.get(BankTransaction, txn_id)
-    if not txn or txn.is_void:
-        return False
-    if (txn.statement_ref or "").startswith("bsr:"):
-        raise ValueError(
-            "Statement-linked transactions must be unposted from Bank Reconciliation."
+    """PS-P4-2 compatibility shim — kernel lives in services/posting.py."""
+    ok = posting_service.void_bank_transaction(
+        session, txn_id, void_reason,
+        company_id=current_company_required(),
+    )
+    if ok:
+        log_audit(
+            session, "Void", "BankTransaction", txn_id,
+            f"Voided Bank Transaction #{txn_id}: {void_reason}",
         )
-    # Card-sale deposits are created by the Sale workflow and must be reversed
-    # by voiding the originating Sale — not through Banking.
-    if (txn.description or "").startswith("Card Sale "):
-        return False
-    # Equity movements must be reversed through Accounting → Equity Movements.
-    _desc = txn.description or ""
-    if _desc.startswith("Capital Contribution #") or _desc.startswith("Owner Drawing #"):
-        return False
-    # Reverse GL entries
-    for ref_type in ("BankDeposit", "BankWithdrawal", "BankTransfer"):
-        reverse_journal_entries_for(session, ref_type, txn_id, void_reason)
-    # Reverse BankAccount balance
-    from reconciliation.company_card import reverse_account_balance_delta
-
-    acct = session.get(BankAccount, txn.account_id)
-    if acct:
-        if txn.type in ("deposit", "withdrawal"):
-            reverse_account_balance_delta(acct, txn.type, txn.amount)
-        elif txn.type == "transfer":
-            if txn.description and txn.description.startswith("Transfer from"):
-                # This is the destination record: balance was increased, now reduce
-                acct.balance = (acct.balance or 0) - txn.amount
-            else:
-                # This is the source record: balance was reduced, now restore.
-                # Also void the paired destination record so its balance is reversed too.
-                acct.balance = (acct.balance or 0) + txn.amount
-                paired = (
-                    cq(session, BankTransaction)
-                    .filter(
-                        BankTransaction.date == txn.date,
-                        BankTransaction.amount == txn.amount,
-                        BankTransaction.type == "transfer",
-                        BankTransaction.id != txn.id,
-                        BankTransaction.is_void == False,
-                        BankTransaction.description.like(f"Transfer from {acct.name}%"),
-                    )
-                    .first()
-                )
-                if paired:
-                    dest_acct = session.get(BankAccount, paired.account_id)
-                    if dest_acct:
-                        dest_acct.balance = (dest_acct.balance or 0) - paired.amount
-                    paired.is_void = True
-                    paired.voided_at = datetime.date.today()
-                    paired.void_reason = f"Paired with voided transfer TXN#{txn_id}: {void_reason}"
-    txn.is_void = True
-    txn.voided_at = datetime.date.today()
-    txn.void_reason = void_reason
-    session.commit()
-    log_audit(session, "Void", "BankTransaction", txn_id, f"Voided Bank Transaction #{txn_id}: {void_reason}")
-    return True
+    return ok
 
 
 def void_inventory_transaction(session, txn_id, void_reason):
