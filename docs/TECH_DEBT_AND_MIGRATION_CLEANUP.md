@@ -78,7 +78,8 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 
 PS-P1 shipped 2026-06-13 — JE kernel verbatim in `services/posting.py`; app.py shims.  
 PS-P2a shipped 2026-06-05 — `get_account_by_name`, sales `post_*` trio, `card_settlement_on`; app.py shims.  
-PS-P2b shipped 2026-06-13 — `resolve_payment_credit_account`, `post_payable_creation`; app.py shims.
+PS-P2b shipped 2026-06-13 — `resolve_payment_credit_account`, `post_payable_creation`; app.py shims.  
+PS-P2c shipped 2026-06-13 — `sync_company_cc_subledger` (P2c-1), `post_expense` + `post_payable_payment` (P2c-2), `post_purchase` + `resolve_purchase_debit_account` + `purchase_ref_type` (P2c-3); app.py shims.
 
 | ID | Item | Priority | Status | When / trigger |
 |----|------|----------|--------|----------------|
@@ -88,6 +89,31 @@ PS-P2b shipped 2026-06-13 — `resolve_payment_credit_account`, `post_payable_cr
 | **TD-PS-04** | Kernel `rollback()` on validation failure also discards the **caller's** uncommitted work (pre-existing behaviour, preserved verbatim) — fix lands with TD-PS-01 boundary conversion | Low | Open | PS-P2+ |
 | **TD-PS-05** | **`get_account_by_name` partial extraction** — sales posting moved; ~50 app.py non-sales callers still use the shim; migrate incrementally or re-export from service at PS-P2b | Medium | Open | PS-P2b expense/purchase wave |
 | **TD-PS-06** | **`resolve_payment_credit_account` partial `company_id`** — on Credit Card branch, `company_id` gates `company_card_enabled(session, cid)` but Credit Card Payable GL lookup uses `gl_company_id` only (ambient via shim); preserved verbatim in PS-P2b extraction — unify at intentional cleanup pass, not during extraction | Medium | Open | Post PS-P2b / before FastAPI Phase B |
+| **TD-PS-07** | **`sync_company_cc_subledger` ambient fallback** — sink uses `company_id = company_id or ambient_company_id`; expense/purchase/payable-payment shims thread both `gl_company_id` and `ambient_company_id` from ambient session company; preserved verbatim in PS-P2c — unify with TD-PS-06 at intentional cleanup pass, not during extraction | Medium | Open | Post PS-P2c / before FastAPI Phase B |
+
+### PS-P2c Migration Cleanup (2026-06-13)
+
+#### 1. Code to keep during FastAPI/React migration
+- `services/posting.py` — `sync_company_cc_subledger`, `post_expense`, `post_payable_payment`, `post_purchase`, `resolve_purchase_debit_account`, `purchase_ref_type` (+ PS-P1/P2a/P2b kernels)
+- app.py shims: `_sync_company_cc_subledger`, `post_expense`, `post_payable_payment`, `post_purchase`, `_resolve_purchase_debit_account`, `_purchase_ref_type`
+- Tests: `tests/test_posting_service01_p2c_char.py` (unchanged), `tests/test_posting_service01_p2c1.py`, `tests/test_posting_service01_p2c2.py`, `tests/test_posting_service01_p2c3.py`
+
+#### 2. Code likely to replace during FastAPI/React migration
+- CC subledger + expense/purchase/payable-payment shims — direct service import at call sites
+- `gl_company_id` + `ambient_company_id` split parameters — single explicit `company_id` once TD-PS-06/-07 fixed
+- `_CC_NO_CARDS_MSG` and other pinned EN constants in service — i18n via API layer
+- `reconciliation/company_card.py` still owns `post_cc_subledger_charge` leaves — sink in service calls them directly (acyclic)
+
+#### 3. Dead code found
+- None in PS-P2c scope
+
+#### 4. Temporary Streamlit-only code
+- `_sync_company_cc_subledger` underscore shim — internal callers (`_save_and_post_*`, edit paths) unchanged
+- `_resolve_purchase_debit_account` / `_purchase_ref_type` shims — void/edit purchase paths still call underscore names
+- `NAV_INVENTORY` default on `post_purchase` shim — service uses `_DEFAULT_PURCHASE_GL_DEBIT = "Inventory"`
+
+#### 5. Future cleanup items (registered above)
+- TD-PS-07 added PS-P2c session; TD-PS-06 scope broadened to cover sink ambient fallback; TD-PS-01–05 unchanged
 
 ### PS-P2b Migration Cleanup (2026-06-13)
 

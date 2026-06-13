@@ -1782,6 +1782,34 @@ implementation — FUTURE-MIGRATION-01's decision gate still applies at that tim
 
 ---
 
+## 2026-06-13 — POSTING-SERVICE-01 PS-P2: write-path extraction complete
+
+**Preconditions verified:** clean tree; PS-P0 through PS-P2b committed; PS-P2c-1/-2/-3 committed (`44a92d8`).
+
+**Verdict:** **GO** — PS-P2 write-path extraction complete and faithful. **NO-GO** to start PS-P3 void extraction until PS-P3-CHAR lands (see `docs/POSTING_SERVICE_01_PS_P2_COMPLETION_AUDIT.md`).
+
+**Scope (PS-P2 waves):**
+
+| Wave | Moved to `services/posting.py` | app.py shim |
+|------|-------------------------------|-------------|
+| PS-P2a | `get_account_by_name`, sales trio, `card_settlement_on` | ✓ |
+| PS-P2b | `resolve_payment_credit_account`, `post_payable_creation` | ✓ |
+| PS-P2c-1 | `sync_company_cc_subledger` | `_sync_company_cc_subledger` |
+| PS-P2c-2 | `post_expense`, `post_payable_payment` | ✓ |
+| PS-P2c-3 | `post_purchase`, `resolve_purchase_debit_account`, `purchase_ref_type` | ✓ |
+
+**Not moved (PS-P3+ scope):** reversal primitives (`create_reversing_journal_entry`, `reverse_journal_entries_for`), all 13 `void_*`, balance calculators (`calculate_account_balance`, `sync_account_balances`), 8 remaining `post_*` (receivable payment, salary, bank txn/transfer, capital, drawing, partner/worker movement).
+
+**Tests:** PS-P2c-CHAR (19, unchanged), `p2b_char` (22), `p2b` (4), `p2c1` (3), `p2c2` (4), `p2c3` (5) + prior PS-P0/P1/P2a suites. Host `pytest tests/` — **1652 passed, 2 xfailed**.
+
+**Behavior preserved:** split-commit CC subledger; PayablePayment subledger `reference_id=je.id`; TD-PS-06 partial `company_id` on resolver; `ambient_company_id` threading on sink (TD-PS-07); void/reversal bodies untouched; kernel commit ownership unchanged (TD-PS-01).
+
+**Tech debt added:** TD-PS-07 (`sync_company_cc_subledger` ambient fallback / `ambient_company_id` threading). TD-PS-02 scope broadened (more ambient-carrying shims). Documentation reconciled in this session.
+
+**PS-P3 plan (approved, extraction blocked):** PS-P3-CHAR → reversal primitives → simple voids → cascade voids → defer movement/equity/close voids to PS-P4.
+
+---
+
 ## How to use this file
 
 1. Before a banking/CC task, read [BANKING_RECON_CC_STATUS.md](./BANKING_RECON_CC_STATUS.md) and the latest entry here.

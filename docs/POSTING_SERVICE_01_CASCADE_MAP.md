@@ -1,49 +1,65 @@
 # POSTING-SERVICE-01 — Posting / Void Cascade Map
 
-**Phase:** PS-P0 (characterization only — no extraction yet)  
-**Source of truth:** `app.py` posting engine as of PS-P0  
-**Purpose:** Freeze current behavior before moving GL posting into `services/posting.py`
+**Phase:** PS-P2 complete (PS-P0 characterization → PS-P1 kernel → PS-P2a sales → PS-P2b payable resolver → PS-P2c expense/purchase/payable + CC sink)  
+**Source of truth:** `services/posting.py` for extracted write paths; `app.py` shims + remaining surfaces below  
+**Purpose:** Track posting/void cascade as extraction proceeds toward PS-P3 (void/reversal)
 
 ---
 
-## Core primitives (`app.py`)
+## Core primitives
 
-| Function | Role | Commit behavior |
-|----------|------|-----------------|
-| `create_journal_entry` | Balanced JE writer; period/YEC guard via `_entry_date_posting_blocked` | **Commits internally** (`session.commit()` on success; `session.rollback()` + `ValueError` on guard/balance failure) |
-| `create_reversing_journal_entry` | Swaps debit/credit from `original_entry.lines`; posts `reference_type="Reversal"`, `reference_id=original_entry.id` | **Commits internally** (delegates to `create_journal_entry`) |
-| `reverse_journal_entries_for` | Finds all JEs for `(reference_type, reference_id)` and reverses each | **Commits internally** (per reversal via `create_journal_entry`) |
-| `calculate_account_balance` | Derives all-time net balance from journal lines (company-scoped when `active_company_id` set) | Does not commit |
-| `sync_account_balances` | Refreshes `ChartOfAccounts.balance` cache from `calculate_account_balance` for every account | **Commits internally** |
-| `_entry_date_posting_blocked` | Shared fiscal-period + year-end-close guard | Does not commit |
+| Function | Location | Role | Commit behavior |
+|----------|----------|------|-----------------|
+| `create_journal_entry` | `services/posting.py` (shim `app.py`) | Balanced JE writer; period/YEC guard via `entry_date_posting_blocked` | **Commits internally** (`session.commit()` on success; `session.rollback()` + `ValueError` on guard/balance failure) |
+| `entry_date_posting_blocked` | `services/posting.py` (shim `_entry_date_posting_blocked`) | Shared fiscal-period + year-end-close guard | Does not commit |
+| `create_reversing_journal_entry` | **`app.py` only** | Swaps debit/credit from `original_entry.lines`; posts `reference_type="Reversal"`, `reference_id=original_entry.id` | **Commits internally** (delegates to `create_journal_entry` shim → kernel) |
+| `reverse_journal_entries_for` | **`app.py` only** | Finds all JEs for `(reference_type, reference_id)` and reverses each | **Commits internally** (per reversal via `create_journal_entry`) |
+| `calculate_account_balance` | **`app.py` only** | Derives all-time net balance from journal lines (company-scoped when `active_company_id` set) | Does not commit |
+| `sync_account_balances` | **`app.py` only** | Refreshes `ChartOfAccounts.balance` cache from `calculate_account_balance` for every account | **Commits internally** |
+| `get_account_by_name` | `services/posting.py` (shim `app.py`) | GL account lookup by name/currency/company | Does not commit |
 
-**Balance cache rule (PS-P0):** `create_journal_entry` does **not** update `ChartOfAccounts.balance` in-place. Reads use `calculate_account_balance()`; startup calls `sync_account_balances()`.
+**Balance cache rule (PS-P0, unchanged):** `create_journal_entry` does **not** update `ChartOfAccounts.balance` in-place. Reads use `calculate_account_balance()`; startup calls `sync_account_balances()`.
 
 ---
 
-## Posting family — `app.py` convenience wrappers
+## `services/posting.py` — shipped write paths (PS-P1 through PS-P2c)
 
-All wrappers below ultimately call `create_journal_entry` unless noted. Commit column reflects the **outermost** caller visible to Streamlit/UI code.
+| Service function | Wave | `reference_type` / role | CC subledger | Commit behavior |
+|------------------|------|----------------------|--------------|-----------------|
+| `post_cash_sale` | PS-P2a | `CashSale` | — | Via `create_journal_entry` |
+| `post_card_sale` | PS-P2a | `CardSale` | — | Via `create_journal_entry` |
+| `post_credit_sale` | PS-P2a | `CreditSale` | — | Via `create_journal_entry` |
+| `resolve_payment_credit_account` | PS-P2b | resolver (Cash/Bank/CC Payable) | — | Does not commit |
+| `post_payable_creation` | PS-P2b | `PayableCreation` | — | Via `create_journal_entry` |
+| `sync_company_cc_subledger` | PS-P2c-1 | CC sink (no extra JE) | `post_cc_subledger_charge` | **No commit** — `flush()` only; split-commit with caller |
+| `post_expense` | PS-P2c-2 | `Expense` | calls `sync_company_cc_subledger` on Credit Card | Via `create_journal_entry` + optional sink |
+| `post_payable_payment` | PS-P2c-2 | `PayablePayment` | calls sink; subledger `reference_id` = **`je.id`** | Via `create_journal_entry` + optional sink |
+| `resolve_purchase_debit_account` | PS-P2c-3 | debit GL mapper | — | Does not commit |
+| `purchase_ref_type` | PS-P2c-3 | pure ref_type mapper | — | Does not commit |
+| `post_purchase` | PS-P2c-3 | `Purchase` / `CashPurchase` / `BankPurchase` / `CardPurchase` | calls sink on Credit Card; `ccc:CardPurchase:{purchase_id}` | Via `create_journal_entry` + optional sink |
+
+All above have **app.py compatibility shims** with identical public signatures. Ambient company threading: `company_id` / `gl_company_id` / `ambient_company_id` supplied by shims (TD-PS-02, TD-PS-06, TD-PS-07).
+
+---
+
+## Posting family — remaining in `app.py` (not yet extracted)
+
+All wrappers below ultimately call `create_journal_entry` (via shim) unless noted. Commit column reflects the **outermost** caller visible to Streamlit/UI code.
 
 | Function | `reference_type` | Typical debit / credit | Commit behavior |
 |----------|------------------|------------------------|-----------------|
-| `post_cash_sale` | `CashSale` | Dr Cash · Cr Sales Revenue | Via `create_journal_entry` |
-| `post_card_sale` | `CardSale` | Dr Bank (settlement OFF) or Dr Card Sales Clearing (settlement ON) · Cr Sales Revenue | Via `create_journal_entry` |
-| `post_credit_sale` | `CreditSale` | Dr Accounts Receivable · Cr Sales Revenue | Via `create_journal_entry` |
 | `post_receivable_payment` | `ReceivablePayment` | Dr Cash/Bank · Cr AR (+ optional FX Gain/Loss) | `create_journal_entry` + **additional `session.commit()`** for sale balance update |
-| `post_purchase` | `Purchase` / `CashPurchase` / `BankPurchase` / `CardPurchase` | Dr expense/inventory · Cr AP/Cash/Bank/CC Payable | Via `create_journal_entry`; may call `_sync_company_cc_subledger` (subledger — see reconciliation) |
-| `post_expense` | `Expense` | Dr expense category · Cr Cash/Bank/CC Payable | Via `create_journal_entry`; may call `_sync_company_cc_subledger` |
 | `post_salary` | `Salary` | Dr Salary Expense · Cr Cash | Via `create_journal_entry` |
 | `post_bank_transaction` | `BankDeposit` / `BankWithdrawal` | Dr/Cr Bank vs Cash | Via `create_journal_entry` |
-| `post_payable_creation` | `PayableCreation` | Dr expense · Cr Accounts Payable | Via `create_journal_entry` |
-| `post_payable_payment` | `PayablePayment` | Dr AP · Cr Cash/Bank/CC Payable | Via `create_journal_entry`; may call `_sync_company_cc_subledger` |
 | `post_bank_transfer` | `BankTransfer` | Dr dest GL · Cr src GL (skipped when same GL) | Via `create_journal_entry` or no-op |
 | `post_capital_contribution` | `CapitalContribution` | Dr Bank/Cash · Cr Owner Capital | Via `create_journal_entry` |
 | `post_owner_drawing` | `OwnerDrawing` | Dr Owner Drawings · Cr Bank/Cash | Via `create_journal_entry` |
 | `post_partner_movement` | Per `_PARTNER_REF_TYPES` | Movement-specific partner GL pairs | `create_journal_entry` + **`session.commit()`** + `log_audit` (audit commits again) |
 | `post_worker_movement` | Per `_WORKER_REF_TYPES` | Salary/advance/repayment lines | `create_journal_entry` + **`session.commit()`** + `log_audit` |
 
-### Period-close / allocation posting (also in `app.py`)
+**PS-P2 moved to service (shims only in app.py):** `post_cash_sale`, `post_card_sale`, `post_credit_sale`, `post_payable_creation`, `post_expense`, `post_payable_payment`, `post_purchase` — see table above.
+
+### Period-close / allocation posting (still in `app.py`)
 
 | Function | `reference_type` | Commit behavior |
 |----------|------------------|-----------------|
@@ -72,7 +88,7 @@ These modules lazy-import `app` via `_app()` and call `create_journal_entry` or 
 
 ---
 
-## Void family — `app.py`
+## Void family — `app.py` (PS-P3 scope — not extracted)
 
 | Function | GL reversal | Cascade / side effects | Commit behavior |
 |----------|-------------|------------------------|-----------------|
@@ -123,7 +139,7 @@ These modules lazy-import `app` via `_app()` and call `create_journal_entry` or 
 
 ---
 
-## PS-P0 characterization coverage
+## PS-P0 / PS-P2 characterization coverage
 
 **Characterized (tests in `tests/test_posting_service01_characterization.py`):**
 
@@ -133,13 +149,25 @@ These modules lazy-import `app` via `_app()` and call `create_journal_entry` or 
 - `post_expense`, `post_purchase` (Credit), `post_payable_creation`, `post_payable_payment`
 - `create_reversing_journal_entry`, `void_sale`
 
+**PS-P2c characterization (`tests/test_posting_service01_p2c_char.py`, 19 tests — unchanged through PS-P2c-3):**
+
+- CC `statement_ref` exact strings: `ccc:Expense:{id}`, `ccc:CardPurchase:{id}`, `ccc:PayablePayment:{je.id}`
+- `sync_company_cc_subledger` `company_id=None` path + ambient fallback
+- Split-commit (JE committed, subledger pending until caller commits)
+- `post_purchase` Cash/Bank JE tuples + ref_types
+- `post_expense` category debit mapping (Rent/Salary/Utility/Advertising/Fuel/fallback) + Bank path
+- Entry-point dedup + amount≤0 errors (`CompanyCardError` propagation from `post_cc_subledger_charge`)
+
+**Extraction proof tests:** `test_posting_service01_p2b.py`, `p2c1.py`, `p2c2.py`, `p2c3.py` (shim delegation + import purity).
+
 **Partially characterized elsewhere:**
 
 - YEC lock on `create_journal_entry` — `tests/test_year_end_close.py`
 - Period lock company isolation — `tests/test_phase14c_isolation.py`
 - Card purchase void/edit — `tests/test_card_purchase_void_edit.py`
+- CC subledger GL+card+record triangle — `tests/test_cc_subledger_sync.py`
 
-**Uncharacterized (PS-P1+):**
+**Uncharacterized (PS-P3-CHAR target):**
 
 - `post_receivable_payment` (incl. FX gain/loss lines)
 - `post_salary`, `post_bank_transaction`, `post_bank_transfer`
@@ -147,8 +175,9 @@ These modules lazy-import `app` via `_app()` and call `create_journal_entry` or 
 - `post_partner_movement`, `post_worker_movement`
 - All `reconciliation/` posting paths
 - `void_expense`, `void_purchase`, `void_payable`, `void_bank_transaction`, and remaining void workflows
+- `reverse_journal_entries_for` multi-JE behavior
 - Period close / profit allocation / year-end close posting chains
 
 ---
 
-*Update this map when posting code moves to `services/posting.py` (PS-P1+).*
+*Last updated PS-P2 completion (2026-06-13). Next update at PS-P3 extraction.*
