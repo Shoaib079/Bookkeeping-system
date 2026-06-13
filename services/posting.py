@@ -19,6 +19,7 @@ PS-P5-3: `post_capital_contribution`, `post_owner_drawing`, `post_salary`, `void
 PS-P5-4: `void_reconciliation`, `void_eod_close`, `void_year_end_close`.
 PS-P6-0a: `yec_block_message` (pure TD-POSTING-05 query helper; no callers yet).
 PS-P6-1: `post_partner_movement`, `void_partner_movement`.
+PS-P6-2: `post_worker_movement`, `void_worker_movement`.
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -59,6 +60,8 @@ from models import (
     Product,
     Purchase,
     Sale,
+    Worker,
+    WorkerMovement,
     YearEndClose,
 )
 from reconciliation.company_card import (
@@ -90,6 +93,29 @@ _PARTNER_REF_TYPES = {
     "Repayment":           "PartnerRepayment",
     "AdvanceOffset":       "PartnerAdvanceOffset",
 }
+
+_WORKER_REF_TYPES = {
+    "Salary": "WorkerSalary",
+    "Advance": "WorkerAdvance",
+    "Repayment": "WorkerRepayment",
+}
+
+
+def _get_worker_advance_balance(session, worker_id: int, *, company_id: int | None = None):
+    """Verbatim from app.py ``get_worker_advance_balance`` with explicit company_id."""
+    q = session.query(WorkerMovement).filter_by(worker_id=worker_id, is_void=False)
+    if company_id is not None:
+        q = q.filter(WorkerMovement.company_id == company_id)
+    movements = q.all()
+    bal = 0.0
+    for mv in movements:
+        if mv.movement_type == "Advance":
+            bal += float(mv.amount)
+        elif mv.movement_type == "Repayment":
+            bal -= float(mv.amount)
+        elif mv.movement_type == "Salary":
+            bal -= float(mv.advance_recovery or 0.0)
+    return round(bal, 2)
 
 
 def _calculate_account_balance(session, account, *, company_id: int | None = None):
@@ -1491,6 +1517,218 @@ def void_partner_movement(
     )
     if _yec5_msg:
         return _yec5_msg
+
+    if movement.journal_entry_id:
+        je = session.get(JournalEntry, movement.journal_entry_id)
+        if je:
+            create_reversing_journal_entry(session, je, reason, company_id=company_id)
+
+    if movement.bank_transaction_id:
+        btxn = session.get(BankTransaction, movement.bank_transaction_id)
+        if btxn and not btxn.is_void:
+            btxn.is_void = True
+            btxn.void_reason = reason
+            btxn.voided_at = datetime.datetime.now()
+            ba = session.get(BankAccount, btxn.account_id)
+            if ba:
+                ba.balance = (ba.balance or 0.0) + (
+                    btxn.amount if btxn.type == "withdrawal" else -btxn.amount
+                )
+
+    movement.is_void = True
+    movement.voided_by_id = voider_id
+    movement.voided_at = datetime.datetime.now()
+    movement.void_reason = reason
+    session.commit()
+    return ""
+
+
+def post_worker_movement(
+    session,
+    worker_id: int,
+    movement_type: str,
+    date: datetime.date,
+    *,
+    bank_account_id: int,
+    amount: float = None,
+    gross_salary: float = None,
+    deductions: float = None,
+    advance_recovery: float = None,
+    pay_period: str = None,
+    notes: str = None,
+    created_by_id: int = None,
+    company_id: int | None = None,
+):
+    """Post a worker salary, advance, or repayment.
+
+    PS-P6-2: verbatim from app.py. App shim writes the audit row on ``""`` success.
+    Returns (movement_id, error).
+    """
+    if movement_type not in _WORKER_REF_TYPES:
+        return None, f"Unknown movement type: {movement_type}"
+
+    worker = session.get(Worker, worker_id)
+    if not worker or not worker.is_active:
+        return None, "Worker not found or inactive."
+
+    _yec_msg = yec_block_message(session, date, mode="post", company_id=company_id)
+    if _yec_msg:
+        return None, _yec_msg
+
+    salary_exp = get_account_by_name(session, "Salary Expense", company_id=company_id)
+    adv_acct = get_account_by_name(session, "Employee Advances", company_id=company_id)
+    if movement_type == "Salary" and not salary_exp:
+        return None, "Salary Expense account missing."
+    if movement_type in ("Advance", "Repayment", "Salary") and not adv_acct:
+        return None, "Employee Advances account missing — restart the app to apply migration."
+
+    gross_salary = round(float(gross_salary or 0.0), 2)
+    deductions = round(float(deductions or 0.0), 2)
+    advance_recovery = round(float(advance_recovery or 0.0), 2)
+    net_salary = 0.0
+    net_paid = 0.0
+    mv_amount = 0.0
+
+    if movement_type == "Salary":
+        if gross_salary <= 0:
+            return None, "Gross salary must be greater than zero."
+        if deductions < 0 or advance_recovery < 0:
+            return None, "Deductions and advance recovery cannot be negative."
+        net_salary = round(gross_salary - deductions, 2)
+        if net_salary <= 0:
+            return None, "Net salary after deductions must be greater than zero."
+        net_paid = round(net_salary - advance_recovery, 2)
+        if net_paid < -0.01:
+            return None, "Advance recovery exceeds net salary."
+        if advance_recovery > 0:
+            adv_bal = _get_worker_advance_balance(session, worker_id, company_id=company_id)
+            if advance_recovery > adv_bal + 0.01:
+                return None, (
+                    f"Advance recovery {advance_recovery:,.2f} exceeds outstanding "
+                    f"advance {adv_bal:,.2f}."
+                )
+        mv_amount = net_salary
+        txn_type = "withdrawal"
+    else:
+        mv_amount = round(float(amount or 0.0), 2)
+        if mv_amount <= 0:
+            return None, "Amount must be greater than zero."
+        if movement_type == "Advance":
+            txn_type = "withdrawal"
+        else:
+            adv_bal = _get_worker_advance_balance(session, worker_id, company_id=company_id)
+            if mv_amount > adv_bal + 0.01:
+                return None, (
+                    f"Repayment {mv_amount:,.2f} exceeds outstanding advance {adv_bal:,.2f}."
+                )
+            txn_type = "deposit"
+
+    cash_out = mv_amount if movement_type != "Salary" else net_paid
+    ba_obj = gl_acct = None
+    if cash_out > 0.01:
+        if not bank_account_id:
+            return None, "Bank account is required."
+        ba_obj = session.get(BankAccount, bank_account_id)
+        if not ba_obj:
+            return None, "Bank account not found."
+        gl_name = "Cash" if "cash" in (ba_obj.name or "").lower() else "Bank"
+        gl_acct = get_account_by_name(
+            session, gl_name, currency=ba_obj.currency, company_id=company_id
+        )
+        if not gl_acct:
+            return None, f"GL account '{gl_name}' not found for currency '{ba_obj.currency}'."
+
+    if movement_type == "Salary":
+        lines = [(salary_exp.id, net_salary, 0)]
+        if advance_recovery > 0.01:
+            lines.append((adv_acct.id, 0, advance_recovery))
+        if net_paid > 0.01:
+            lines.append((gl_acct.id, 0, net_paid))
+    elif movement_type == "Advance":
+        lines = [(adv_acct.id, mv_amount, 0), (gl_acct.id, 0, mv_amount)]
+    else:
+        lines = [(gl_acct.id, mv_amount, 0), (adv_acct.id, 0, mv_amount)]
+
+    btxn = None
+    if cash_out > 0.01:
+        btxn = BankTransaction(
+            account_id=ba_obj.id,
+            date=date,
+            amount=cash_out,
+            type=txn_type,
+            description=f"Worker {movement_type} #TBD",
+        )
+        session.add(btxn)
+        session.flush()
+        btxn.description = f"Worker {movement_type} #{btxn.id}"
+        ba_obj.balance = (ba_obj.balance or 0.0) + (
+            btxn.amount if txn_type == "deposit" else -btxn.amount
+        )
+    elif movement_type == "Salary":
+        pass
+    else:
+        return None, "Amount must be greater than zero."
+
+    movement = WorkerMovement(
+        worker_id=worker_id,
+        movement_type=movement_type,
+        amount=mv_amount,
+        date=date,
+        pay_period=pay_period.strip() if pay_period else None,
+        gross_salary=gross_salary,
+        deductions=deductions,
+        advance_recovery=advance_recovery,
+        net_paid=net_paid,
+        bank_transaction_id=btxn.id if btxn else None,
+        notes=notes.strip() if notes else None,
+        is_void=False,
+        created_by_id=created_by_id,
+        created_at=datetime.datetime.now(),
+        company_id=company_id,
+    )
+    session.add(movement)
+    session.flush()
+
+    desc = f"Worker {movement_type}: {worker.name}"
+    if notes and notes.strip():
+        desc += f" — {notes.strip()}"
+    je = create_journal_entry(
+        session,
+        date,
+        desc,
+        _WORKER_REF_TYPES[movement_type],
+        movement.id,
+        lines,
+        company_id=company_id,
+    )
+    movement.journal_entry_id = je.id
+    session.commit()
+    return movement.id, ""
+
+
+def void_worker_movement(
+    session,
+    movement_id: int,
+    voider_id: int,
+    reason: str,
+    *,
+    company_id: int | None = None,
+) -> str:
+    """Void a worker movement and reverse its JE.
+
+    PS-P6-2: verbatim from app.py. App shim writes the audit row on ``""`` success.
+    """
+    movement = session.get(WorkerMovement, movement_id)
+    if not movement or movement.is_void:
+        return "Movement not found or already voided."
+    if not reason.strip():
+        return "Void reason is required."
+
+    _yec_msg = yec_block_message(
+        session, movement.date, mode="movement_void", company_id=company_id
+    )
+    if _yec_msg:
+        return _yec_msg
 
     if movement.journal_entry_id:
         je = session.get(JournalEntry, movement.journal_entry_id)
