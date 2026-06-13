@@ -395,6 +395,7 @@ from services.read_balances import (
 )
 from services import read_reports as _read_reports_svc
 from services import read_ledger as _read_ledger_svc
+from services import read_ar_ap as _read_ar_ap_svc
 
 # Initialize database
 Base.metadata.create_all(bind=engine)
@@ -961,34 +962,8 @@ def render_mobile_report_filters() -> None:
 
 
 def get_aging_summary(records, amount_field, due_date_field):
-    today = datetime.date.today()
-    buckets = {
-        "Current": 0.0,
-        "1-30 Days": 0.0,
-        "31-60 Days": 0.0,
-        "61-90 Days": 0.0,
-        "90+ Days": 0.0,
-    }
-
-    for record in records:
-        due_date = getattr(record, due_date_field)
-        amount = float(getattr(record, amount_field) or 0)
-        if not due_date:
-            buckets["Current"] += amount
-            continue
-        age = (today - due_date).days
-        if age < 0:
-            buckets["Current"] += amount
-        elif age <= 30:
-            buckets["1-30 Days"] += amount
-        elif age <= 60:
-            buckets["31-60 Days"] += amount
-        elif age <= 90:
-            buckets["61-90 Days"] += amount
-        else:
-            buckets["90+ Days"] += amount
-
-    return buckets
+    """AR/AP aging buckets — delegated to read service (FASTAPI-P0.2-E)."""
+    return _read_ar_ap_svc.get_aging_summary(records, amount_field, due_date_field)
 
 
 def render_paginated_table(df, key_prefix, default_page_size=10):
@@ -18570,8 +18545,11 @@ _PAYABLE_CATEGORIES = [
 
 def _payable_balance(record) -> float:
     """Return the outstanding balance on a payable, handling legacy records."""
-    paid_amt = record.paid_amount or 0.0
-    return max(round(record.amount - paid_amt, 2), 0.0)
+    return _read_ar_ap_svc.payable_balance(record)
+
+
+def _payable_status(record) -> str:
+    return _read_ar_ap_svc.payable_status(record)
 
 
 def _validate_payable_payment_amount(
@@ -18694,67 +18672,39 @@ def render_payables(session):
     )
     show_voided_pay = fc4.checkbox(_t("payable.show_voided"), value=False, key="payables_show_void")
 
-    def _payable_status(r):
-        bal = _payable_balance(r)
-        if r.paid or bal <= 0:
-            return "Paid"
-        if (r.paid_amount or 0) > 0:
-            return "Partial"
-        return "Open"
-
-    filtered = []
-    for record in all_payables:
-        if record.is_void and not show_voided_pay:
-            continue
-        vendor = session.get(Vendor, record.vendor_id)
-        vname = vendor.name if vendor else _t("form.unknown")
-        if search_text and search_text.lower() not in vname.lower() and search_text.lower() not in (record.description or "").lower():
-            continue
-        if vendor_filter != "all" and vname != vendor_filter:
-            continue
-        if paid_filter != "all" and _payable_status(record) != paid_filter:
-            continue
-        filtered.append((record, vname))
+    page = compute_payables_page(
+        session,
+        search_keyword=search_text or None,
+        vendor_filter=vendor_filter,
+        paid_filter=paid_filter,
+        show_voided=show_voided_pay,
+    )
+    filtered = [
+        (session.get(Payable, row.id), row.vendor_name)
+        for row in page.rows
+        if session.get(Payable, row.id) is not None
+    ]
 
     # ── Summary metrics + aging ───────────────────────────────────────────────
-    total_outstanding = sum(_payable_balance(r) for r, _ in filtered if not r.is_void and not r.paid)
-    overdue = sum(
-        _payable_balance(r) for r, _ in filtered
-        if not r.is_void and not r.paid and r.due_date < datetime.date.today()
-    )
+    total_outstanding = page.total_outstanding
+    overdue = page.overdue
     items = [
         {"label": _t("payable.metric.outstanding"), "value": f"{currency} {total_outstanding:,.2f}"},
         {"label": _t("payable.metric.overdue"), "value": f"{currency} {overdue:,.2f}"},
-        {"label": _t("payable.metric.showing"), "value": _t("payable.metric.showing_count", count=len(filtered))},
+        {"label": _t("payable.metric.showing"), "value": _t("payable.metric.showing_count", count=page.showing_count)},
     ]
     render_kpi_grid(items)
 
     # Aging buckets
-    _open_payables = [r for r, _ in filtered if not r.is_void and not r.paid]
-    if _open_payables:
-        _pay_aging = get_aging_summary(_open_payables, "amount", "due_date")
+    if page.aging and any(page.aging.values()):
         _aging_html = aging_buckets_html(
-            _pay_aging, currency, lambda b: _i18n_db(AGING_BUCKET_I18N, b),
+            page.aging, currency, lambda b: _i18n_db(AGING_BUCKET_I18N, b),
         )
         if _aging_html:
             st.markdown(_aging_html, unsafe_allow_html=True)
 
     # ── Table ─────────────────────────────────────────────────────────────────
-    data = []
-    for record, vname in filtered:
-        bal = _payable_balance(record)
-        status = "VOID" if record.is_void else _payable_status(record)
-        data.append({
-            "ID": record.id,
-            "Date": record.date,
-            "Vendor": vname,
-            "Invoice Amount": record.amount,
-            "Paid": record.paid_amount or 0.0,
-            "Balance": bal,
-            "Due Date": record.due_date,
-            "Status": status,
-            "Source": f"PUR#{record.purchase_id}" if record.purchase_id else "Manual",
-        })
+    data = _read_ar_ap_svc.payables_page_to_table_rows(page)
     df = pd.DataFrame(data)
     if not filtered:
         st.info(_t("search.no_results_table"))
@@ -21636,21 +21586,25 @@ def render_receivables(session):
         key="receivables_status_filter",
     )
 
+    page = compute_receivables_page(
+        session,
+        search_keyword=search_text or None,
+        customer_filter=customer_filter,
+        status_filter=status_filter,
+    )
     filtered = [
-        s for s in credit_sales
-        if (not search_text or search_text.lower() in s.customer_name.lower() or search_text.lower() in s.invoice_number.lower() or search_text.lower() in (s.description or "").lower())
-        and (customer_filter == "all" or s.customer_name == customer_filter)
-        and (status_filter == "all" or s.status == status_filter)
+        session.get(Sale, row.id)
+        for row in page.rows
+        if session.get(Sale, row.id) is not None
     ]
 
     if not filtered:
         st.info(_t("search.no_results_table"))
 
     # ── Summary KPIs ──────────────────────────────────────────────────────────
-    _open_filtered = [s for s in filtered if s.status != "Paid"]
-    _outstanding = sum(s.balance for s in _open_filtered)
-    _overdue     = sum(s.balance for s in filtered if s.status == "Overdue")
-    _count       = len(_open_filtered)
+    _outstanding = page.outstanding
+    _overdue = page.overdue
+    _count = page.open_count
     if _is_mobile_ui():
         st.markdown(
             mobile_kpi_grid_html(
@@ -21700,10 +21654,9 @@ def render_receivables(session):
     st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
 
     # ── Aging buckets ─────────────────────────────────────────────────────────
-    if _open_filtered:
-        _aging = get_aging_summary(_open_filtered, "balance", "due_date")
+    if page.aging and any(page.aging.values()):
         _aging_html = aging_buckets_html(
-            _aging, currency, lambda b: _i18n_db(AGING_BUCKET_I18N, b),
+            page.aging, currency, lambda b: _i18n_db(AGING_BUCKET_I18N, b),
         )
         if _aging_html:
             st.markdown(_aging_html, unsafe_allow_html=True)
@@ -21816,7 +21769,10 @@ def render_receivables(session):
         return
 
     st.markdown("---")
-    df = build_dataframe(filtered, ["id", "invoice_number", "customer_name", "date", "due_date", "amount", "paid_amount", "balance", "status"])
+    df = build_dataframe(
+        _read_ar_ap_svc.receivables_page_to_export_rows(page),
+        ["id", "invoice_number", "customer_name", "date", "due_date", "amount", "paid_amount", "balance", "status"],
+    )
     render_export_buttons(df, "Receivables")
 
 
@@ -24973,6 +24929,43 @@ def compute_cash_flow_report(session, start_date=None, end_date=None):
         company_id=current_company_required(),
         start_date=start_date,
         end_date=end_date,
+    )
+
+
+def compute_receivables_page(
+    session,
+    *,
+    search_keyword=None,
+    customer_filter="all",
+    status_filter="all",
+):
+    """FASTAPI-P0.2-E — Receivables DTO from ambient company context."""
+    return _read_ar_ap_svc.compute_receivables_page(
+        session,
+        company_id=current_company_required(),
+        search_keyword=search_keyword,
+        customer_filter=customer_filter,
+        status_filter=status_filter,
+    )
+
+
+def compute_payables_page(
+    session,
+    *,
+    search_keyword=None,
+    vendor_filter="all",
+    paid_filter="all",
+    show_voided=False,
+):
+    """FASTAPI-P0.2-E — Payables DTO from ambient company context."""
+    return _read_ar_ap_svc.compute_payables_page(
+        session,
+        company_id=current_company_required(),
+        search_keyword=search_keyword,
+        vendor_filter=vendor_filter,
+        paid_filter=paid_filter,
+        show_voided=show_voided,
+        unknown_vendor_label=_t("form.unknown"),
     )
 
 
