@@ -6619,6 +6619,44 @@ def _partner_stmt_breakdown_caption(
     )
 
 
+def _partner_stmt_account_kpi_items(stmt, currency: str) -> list[dict]:
+    """Closing account balances with opening sub-labels (PARTNER-STATEMENT-P2)."""
+    def _sub(opening_amt: float) -> str:
+        return _t(
+            "partner.stmt.kpi_opening_sub",
+            currency=currency,
+            amount=opening_amt,
+        )
+
+    return [
+        {
+            "label": _t("partner.stmt.kpi_capital"),
+            "value": f"{currency} {stmt.closing_capital:,.2f}",
+            "sub": _sub(stmt.opening_capital),
+        },
+        {
+            "label": _t("partner.stmt.kpi_current"),
+            "value": f"{currency} {stmt.closing_current:,.2f}",
+            "sub": _sub(stmt.opening_current),
+        },
+        {
+            "label": _t("partner.stmt.kpi_advances"),
+            "value": f"{currency} {stmt.closing_advances:,.2f}",
+            "sub": _sub(stmt.opening_advances),
+        },
+        {
+            "label": _t("partner.stmt.kpi_net_position"),
+            "value": f"{currency} {stmt.closing_position:,.2f}",
+            "sub": _sub(stmt.opening_position),
+            "variant": (
+                "positive" if stmt.closing_position > 0.01
+                else "negative" if stmt.closing_position < -0.01
+                else "text"
+            ),
+        },
+    ]
+
+
 def _render_partner_statement_exports(
     stmt,
     export_df: pd.DataFrame,
@@ -7135,6 +7173,14 @@ def _render_partner_statement(session, currency: str, today: datetime.date) -> N
     )
 
     st.markdown('<div class="erp-partner-stmt-body">', unsafe_allow_html=True)
+
+    st.markdown(
+        financial_section_header_html(
+            _t("partner.stmt.account_summary_title"), accent="info"
+        ),
+        unsafe_allow_html=True,
+    )
+    render_kpi_grid(_partner_stmt_account_kpi_items(stmt, currency))
 
     st.markdown(
         financial_section_header_html(

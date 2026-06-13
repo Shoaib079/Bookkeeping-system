@@ -60,6 +60,16 @@ class PartnerStatementWarning:
 
 
 @dataclass
+class PartnerAccountBreakdown:
+    """Capital / current / advances balances and derived net position."""
+
+    capital: float
+    current: float
+    advances: float
+    net_position: float
+
+
+@dataclass
 class PartnerStatementDetailLine:
     line_date: datetime.date | None
     section_key: str
@@ -125,6 +135,47 @@ def partner_position_from_balances(
 ) -> float:
     """Position = capital + current − advances (advances reduce net partner claim)."""
     return round(capital + current - advances, 2)
+
+
+def partner_account_breakdown(
+    capital: float, current: float, advances: float
+) -> PartnerAccountBreakdown:
+    """Build labeled account balances with net position derived from the formula."""
+    cap = round(capital, 2)
+    cur = round(current, 2)
+    adv = round(advances, 2)
+    return PartnerAccountBreakdown(
+        capital=cap,
+        current=cur,
+        advances=adv,
+        net_position=partner_position_from_balances(cap, cur, adv),
+    )
+
+
+def check_partner_account_breakdown(
+    capital: float,
+    current: float,
+    advances: float,
+    position: float,
+    tolerance: float = _POSITION_TOLERANCE,
+) -> bool:
+    """True when capital + current − advances equals the stored position."""
+    return (
+        abs(partner_position_from_balances(capital, current, advances) - position)
+        <= tolerance
+    )
+
+
+def partner_statement_opening_breakdown(stmt: PartnerStatementData) -> PartnerAccountBreakdown:
+    return partner_account_breakdown(
+        stmt.opening_capital, stmt.opening_current, stmt.opening_advances
+    )
+
+
+def partner_statement_closing_breakdown(stmt: PartnerStatementData) -> PartnerAccountBreakdown:
+    return partner_account_breakdown(
+        stmt.closing_capital, stmt.closing_current, stmt.closing_advances
+    )
 
 
 def partner_position_status(position: float) -> tuple[str, float]:
@@ -344,6 +395,38 @@ def build_partner_statement_detail_lines(
     return lines
 
 
+def partner_statement_account_breakdown_export_rows(
+    stmt: PartnerStatementData,
+) -> list[dict[str, object]]:
+    """Opening/closing account balances for export (stable English keys for tests)."""
+    return [
+        {"Section": "Opening accounts", "Line": "Capital", "Amount": stmt.opening_capital},
+        {
+            "Section": "Opening accounts",
+            "Line": "Current account",
+            "Amount": stmt.opening_current,
+        },
+        {"Section": "Opening accounts", "Line": "Advances", "Amount": stmt.opening_advances},
+        {
+            "Section": "Opening accounts",
+            "Line": "Net partner position",
+            "Amount": stmt.opening_position,
+        },
+        {"Section": "Closing accounts", "Line": "Capital", "Amount": stmt.closing_capital},
+        {
+            "Section": "Closing accounts",
+            "Line": "Current account",
+            "Amount": stmt.closing_current,
+        },
+        {"Section": "Closing accounts", "Line": "Advances", "Amount": stmt.closing_advances},
+        {
+            "Section": "Closing accounts",
+            "Line": "Net partner position",
+            "Amount": stmt.closing_position,
+        },
+    ]
+
+
 def partner_statement_summary_export_rows(stmt: PartnerStatementData) -> list[dict[str, object]]:
     """Summary rows for Excel export (stable English keys for tests)."""
     return [
@@ -384,18 +467,24 @@ def partner_statement_detail_export_rows(
 
 
 def partner_statement_to_export_df(stmt: PartnerStatementData) -> pd.DataFrame:
-    """Single-sheet export: summary block, blank row, then detail lines."""
+    """Single-sheet export: summary, account breakdown, blank, then detail lines."""
     summary = partner_statement_summary_export_rows(stmt)
+    breakdown = partner_statement_account_breakdown_export_rows(stmt)
     detail = partner_statement_detail_export_rows(stmt.detail_lines)
     df_summary = pd.DataFrame(summary)
-    df_detail = pd.DataFrame(detail)
-    if df_detail.empty:
-        return df_summary
+    df_breakdown = pd.DataFrame(breakdown)
     blank = pd.DataFrame([{"Section": "", "Line": "", "Amount": ""}])
+    breakdown_header = pd.DataFrame(
+        [{"Section": "— Account balances —", "Line": "", "Amount": ""}]
+    )
     detail_header = pd.DataFrame(
         [{"Section": "— Detail lines —", "Line": "", "Amount": ""}]
     )
-    return pd.concat([df_summary, blank, detail_header, df_detail], ignore_index=True)
+    parts = [df_summary, blank, breakdown_header, df_breakdown]
+    if detail:
+        df_detail = pd.DataFrame(detail)
+        parts.extend([blank, detail_header, df_detail])
+    return pd.concat(parts, ignore_index=True)
 
 
 def partner_statement_pdf_payload(
@@ -418,6 +507,7 @@ def partner_statement_pdf_payload(
         "opening_position": stmt.opening_position,
         "closing_position": stmt.closing_position,
         "summary_rows": partner_statement_summary_export_rows(stmt),
+        "account_breakdown_rows": partner_statement_account_breakdown_export_rows(stmt),
         "status_text": status_text,
         "warnings": list(warning_texts or []),
         "detail_rows": partner_statement_detail_export_rows(stmt.detail_lines),
