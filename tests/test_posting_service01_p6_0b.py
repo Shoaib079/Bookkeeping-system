@@ -48,10 +48,7 @@ def test_void_worker_movement_uses_yec_block_message():
 
 def test_void_profit_allocation_uses_yec_block_message():
     block = _fn_block("void_profit_allocation")
-    assert "posting_service.yec_block_message(" in block
-    assert "period.start_date" in block
-    assert "period_end_date=period.end_date" in block
-    assert 'mode="allocation_void"' in block
+    assert "posting_service.void_profit_allocation(" in block
     assert "company_id=current_company_required()" in block
-    assert "return _yec_msg" in block
     assert "cq(session, YearEndClose)" not in block
+    assert "posting_service.yec_block_message(" not in block

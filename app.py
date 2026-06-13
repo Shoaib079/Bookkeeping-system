@@ -7405,186 +7405,72 @@ def void_worker_movement(session, movement_id: int, voider_id: int, reason: str)
 
 
 def _validate_partner_shares(session):
-    """Check active partners sum to 100 ± 0.01%.
-
-    Returns (is_valid, total_pct, error_string).
-    """
-    active = cq(session, Partner).filter_by(is_active=True).all()
-    if not active:
-        return False, 0.0, "No active partners defined."
-    total = sum(p.profit_share_pct for p in active)
-    if not (99.99 <= total <= 100.01):
-        return False, total, f"Partner shares sum to {total:.2f}% — must equal 100%."
-    return True, total, ""
+    """PS-P6-3 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service._validate_partner_shares(
+        session, company_id=current_company_required()
+    )
 
 
 def _get_period_net_income_from_je(session, period) -> float:
-    """Read the exact net income posted to RE by the period's closing JE.
-
-    Returns credit − debit on the RE line: positive = profit, negative = loss.
-    Returns 0.0 if the period has no closing JE or no RE line.
-    """
-    if not period.closing_je_id:
-        return 0.0
-    closing_je = session.get(JournalEntry, period.closing_je_id)
-    if not closing_je:
-        return 0.0
-    re_acct = get_account_by_name(session, "Retained Earnings")
-    if not re_acct:
-        return 0.0
-    for line in closing_je.lines:
-        if line.account_id == re_acct.id:
-            return (line.credit or 0.0) - (line.debit or 0.0)
-    return 0.0
+    """PS-P6-3 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service._get_period_net_income_from_je(
+        session, period, company_id=current_company_required()
+    )
 
 
 def allocate_profit_to_partners(session, period_id: int, allocated_by_id: int,
                                   notes: str = None):
-    """Allocate a period's net income to partner current accounts (Option B).
-
-    Derives amount from the period's closing JE — never from the live RE balance.
-    Returns (allocation_id, error_string). Error is "" on success.
-    """
-    period = session.get(FiscalPeriod, period_id)
-    if not period:
-        return None, "Fiscal period not found."
-    if not period.is_closed:
-        return None, "Period must be closed before allocating profit."
-    if not period.closing_je_id:
-        return None, "Period has no closing JE. Close the period first."
-
-    existing = cq(session, PartnerProfitAllocation).filter_by(
-        fiscal_period_id=period_id, is_void=False
-    ).first()
-    if existing:
-        return None, f"Period '{period.name}' already has an active allocation (#{existing.id})."
-
-    valid, total_pct, err = _validate_partner_shares(session)
-    if not valid:
-        return None, err
-
-    net_income = _get_period_net_income_from_je(session, period)
-    if abs(net_income) < 0.005:
-        return None, f"Net income for '{period.name}' is zero — nothing to allocate."
-
-    re_acct = get_account_by_name(session, "Retained Earnings")
-    if not re_acct:
-        return None, "Retained Earnings account not found."
-
-    active_partners = (cq(session, Partner).filter_by(is_active=True)
-                       .order_by(Partner.id).all())
-
-    # Compute shares; last partner absorbs rounding remainder
-    abs_income = abs(net_income)
-    shares, running = [], 0.0
-    for i, p in enumerate(active_partners):
-        if i == len(active_partners) - 1:
-            share = round(abs_income - running, 2)
-        else:
-            share = round(abs_income * p.profit_share_pct / 100.0, 2)
-            running += share
-        shares.append(share)
-
-    # Build JE lines
-    if net_income > 0:
-        # Profit: Dr Retained Earnings / Cr partner current accounts
-        lines = [(re_acct.id, abs_income, 0)]
-        for p, s in zip(active_partners, shares):
-            lines.append((p.current_account_id, 0, s))
-    else:
-        # Loss: Dr partner current accounts / Cr Retained Earnings
-        lines = [(re_acct.id, 0, abs_income)]
-        for p, s in zip(active_partners, shares):
-            lines.append((p.current_account_id, s, 0))
-
-    allocation = PartnerProfitAllocation(
-        fiscal_period_id=period_id,
-        allocated_at=datetime.datetime.now(),
-        allocated_by_id=allocated_by_id,
-        total_net_income=net_income,
-        notes=notes.strip() if notes else None,
-        is_void=False,
-        created_at=datetime.datetime.now(),
+    """PS-P6-3 compatibility shim — kernel lives in services/posting.py."""
+    alloc_id, err = posting_service.allocate_profit_to_partners(
+        session,
+        period_id,
+        allocated_by_id,
+        notes=notes,
+        company_id=current_company_required(),
     )
-    session.add(allocation)
-    session.flush()
-
-    # Date the JE to today: the allocation is a management decision made now,
-    # not a retroactive entry. The period end_date is closed and cannot accept new JEs.
-    je = create_journal_entry(
-        session, datetime.date.today(),
-        f"Profit Allocation: {period.name}",
-        "ProfitAllocation", allocation.id, lines,
-    )
-    allocation.journal_entry_id = je.id
-
-    for p, s in zip(active_partners, shares):
-        session.add(PartnerProfitAllocationLine(
-            allocation_id=allocation.id,
-            partner_id=p.id,
-            share_pct=p.profit_share_pct,
-            amount=s if net_income > 0 else -s,
-        ))
-    session.commit()
-
-    log_audit(session, "ProfitAllocation", "PartnerProfitAllocation", allocation.id,
-              f"Allocated {period.name}: net {net_income:,.2f} → {len(active_partners)} partners")
-    return allocation.id, ""
+    if err == "":
+        period = session.get(FiscalPeriod, period_id)
+        allocation = session.get(PartnerProfitAllocation, alloc_id)
+        partner_count = len(
+            cq(session, Partner).filter_by(is_active=True).all()
+        )
+        log_audit(
+            session,
+            "ProfitAllocation",
+            "PartnerProfitAllocation",
+            alloc_id,
+            f"Allocated {period.name}: net {allocation.total_net_income:,.2f} → {partner_count} partners",
+        )
+    return alloc_id, err
 
 
 def void_profit_allocation(session, allocation_id: int, voider_id: int, reason: str) -> str:
-    """Void a profit allocation and reverse its JE. Returns error string or ""."""
+    """PS-P6-3 compatibility shim — kernel lives in services/posting.py."""
     allocation = session.get(PartnerProfitAllocation, allocation_id)
-    if not allocation or allocation.is_void:
-        return "Allocation not found or already voided."
-    if not reason.strip():
-        return "Void reason is required."
-
-    # Guard 3 — block void if the allocation's period falls inside a year-end-closed year
-    period = session.get(FiscalPeriod, allocation.fiscal_period_id)
-    if period:
-        _yec_msg = posting_service.yec_block_message(
+    fiscal_period_id = allocation.fiscal_period_id if allocation else None
+    err = posting_service.void_profit_allocation(
+        session,
+        allocation_id,
+        voider_id,
+        reason,
+        company_id=current_company_required(),
+    )
+    if err == "":
+        log_audit(
             session,
-            period.start_date,
-            mode="allocation_void",
-            company_id=current_company_required(),
-            period_end_date=period.end_date,
+            "Void",
+            "PartnerProfitAllocation",
+            allocation_id,
+            f"Voided profit allocation for period #{fiscal_period_id} — {reason}",
         )
-        if _yec_msg:
-            return _yec_msg
-
-    if allocation.journal_entry_id:
-        je = session.get(JournalEntry, allocation.journal_entry_id)
-        if je:
-            create_reversing_journal_entry(session, je, reason)
-
-    allocation.is_void      = True
-    allocation.voided_by_id = voider_id
-    allocation.voided_at    = datetime.datetime.now()
-    allocation.void_reason  = reason
-    session.commit()
-    log_audit(session, "Void", "PartnerProfitAllocation", allocation_id,
-              f"Voided profit allocation for period #{allocation.fiscal_period_id} — {reason}")
-    return ""
+    return err
 
 
 def _allocate_all_pending(session, allocated_by_id: int) -> list:
-    """Allocate all closed, unallocated periods in chronological order.
-
-    Returns list of (period_name, allocation_id_or_None, error_string).
-    """
-    periods = (cq(session, FiscalPeriod).filter_by(is_closed=True)
-               .order_by(FiscalPeriod.start_date).all())
-    results = []
-    for period in periods:
-        existing = cq(session, PartnerProfitAllocation).filter_by(
-            fiscal_period_id=period.id, is_void=False
-        ).first()
-        if existing:
-            continue
-        alloc_id, err = allocate_profit_to_partners(session, period.id, allocated_by_id)
-        results.append((period.name, alloc_id, err))
-    return results
+    """PS-P6-3 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service._allocate_all_pending(
+        session, allocated_by_id, company_id=current_company_required()
+    )
 
 
 # ─── Phase 13: Year-End Close ────────────────────────────────────────────────

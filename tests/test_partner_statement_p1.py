@@ -471,8 +471,8 @@ class TestPostingLogicUnchanged:
 
     def test_allocate_profit_to_partners_unchanged(self):
         src = inspect.getsource(app.allocate_profit_to_partners)
-        assert "PartnerProfitAllocationLine" in src
-        assert "create_journal_entry" in src
+        assert "def allocate_profit_to_partners" in src
+        assert "posting_service.allocate_profit_to_partners(" in src
 
 
 class TestPartnerStatementUI:
