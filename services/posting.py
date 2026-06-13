@@ -7,6 +7,7 @@ PS-P2c-1: `sync_company_cc_subledger`.
 PS-P2c-2: `post_expense`, `post_payable_payment`.
 PS-P2c-3: `post_purchase`, `resolve_purchase_debit_account`, `purchase_ref_type`.
 PS-P3-1: `create_reversing_journal_entry`, `reverse_journal_entries_for`.
+PS-P3-2a: `void_expense`, `void_payable`.
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -45,6 +46,7 @@ from reconciliation.company_card import (
     company_card_enabled,
     post_cc_subledger_charge,
     resolve_company_credit_card_account_id,
+    reverse_cc_subledgers_for_gl_reference,
 )
 from registry.service import get_setting
 
@@ -663,3 +665,62 @@ def reverse_journal_entries_for(
         create_reversing_journal_entry(
             session, entry, void_reason, company_id=company_id
         )
+
+
+def void_expense(
+    session,
+    expense_id,
+    void_reason,
+    *,
+    company_id: int | None = None,
+):
+    """Reverse CC subledger + Expense GL and flag the expense void.
+
+    PS-P3-2a: verbatim reverse-and-flag core from app.py. Commits entity flags.
+    App shim writes the audit row only on ``True``.
+    """
+    expense = session.get(ExpenseRecord, expense_id)
+    if not expense or expense.is_void:
+        return False
+    reverse_cc_subledgers_for_gl_reference(
+        session, "Expense", expense_id, void_reason
+    )
+    reverse_journal_entries_for(
+        session, "Expense", expense_id, void_reason, company_id=company_id
+    )
+    expense.is_void = True
+    expense.voided_at = datetime.date.today()
+    expense.void_reason = void_reason
+    session.commit()
+    return True
+
+
+def void_payable(
+    session,
+    payable_id,
+    void_reason,
+    *,
+    company_id: int | None = None,
+):
+    """Reverse CC subledger + PayableCreation/PayablePayment GL and flag void.
+
+    PS-P3-2a: verbatim reverse-and-flag core from app.py. Commits entity flags.
+    App shim writes the audit row only on ``True``.
+    """
+    payable = session.get(Payable, payable_id)
+    if not payable or payable.is_void:
+        return False
+    reverse_cc_subledgers_for_gl_reference(
+        session, "PayablePayment", payable_id, void_reason
+    )
+    reverse_journal_entries_for(
+        session, "PayableCreation", payable_id, void_reason, company_id=company_id
+    )
+    reverse_journal_entries_for(
+        session, "PayablePayment", payable_id, void_reason, company_id=company_id
+    )
+    payable.is_void = True
+    payable.voided_at = datetime.date.today()
+    payable.void_reason = void_reason
+    session.commit()
+    return True

@@ -2368,17 +2368,17 @@ def void_sale(session, sale_id, void_reason):
 
 
 def void_expense(session, expense_id, void_reason):
-    expense = session.get(ExpenseRecord, expense_id)
-    if not expense or expense.is_void:
-        return False
-    reverse_cc_subledgers_for_gl_reference(session, "Expense", expense_id, void_reason)
-    reverse_journal_entries_for(session, "Expense", expense_id, void_reason)
-    expense.is_void = True
-    expense.voided_at = datetime.date.today()
-    expense.void_reason = void_reason
-    session.commit()
-    log_audit(session, "Void", "ExpenseRecord", expense_id, f"Voided Expense #{expense_id}: {void_reason}")
-    return True
+    """PS-P3-2a compatibility shim — kernel lives in services/posting.py."""
+    ok = posting_service.void_expense(
+        session, expense_id, void_reason,
+        company_id=current_company_required(),
+    )
+    if ok:
+        log_audit(
+            session, "Void", "ExpenseRecord", expense_id,
+            f"Voided Expense #{expense_id}: {void_reason}",
+        )
+    return ok
 
 
 def void_purchase(session, purchase_id, void_reason):
@@ -2484,18 +2484,17 @@ def _sync_purchase_payable_lifecycle(
 
 
 def void_payable(session, payable_id, void_reason):
-    payable = session.get(Payable, payable_id)
-    if not payable or payable.is_void:
-        return False
-    reverse_cc_subledgers_for_gl_reference(session, "PayablePayment", payable_id, void_reason)
-    reverse_journal_entries_for(session, "PayableCreation", payable_id, void_reason)
-    reverse_journal_entries_for(session, "PayablePayment", payable_id, void_reason)
-    payable.is_void = True
-    payable.voided_at = datetime.date.today()
-    payable.void_reason = void_reason
-    session.commit()
-    log_audit(session, "Void", "Payable", payable_id, f"Voided Payable #{payable_id}: {void_reason}")
-    return True
+    """PS-P3-2a compatibility shim — kernel lives in services/posting.py."""
+    ok = posting_service.void_payable(
+        session, payable_id, void_reason,
+        company_id=current_company_required(),
+    )
+    if ok:
+        log_audit(
+            session, "Void", "Payable", payable_id,
+            f"Voided Payable #{payable_id}: {void_reason}",
+        )
+    return ok
 
 
 def void_bank_transaction(session, txn_id, void_reason):
