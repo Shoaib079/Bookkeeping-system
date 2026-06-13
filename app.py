@@ -2576,19 +2576,8 @@ def calculate_account_balance(session, account):
 
 
 def compute_sale_balance_status(amount, paid_amount, due_date):
-    balance = round(amount - paid_amount, 2)
-    today = datetime.date.today()
-
-    if balance <= 0:
-        status = "Paid"
-    elif due_date and due_date < today:
-        status = "Overdue"
-    elif paid_amount > 0:
-        status = "Partial"
-    else:
-        status = "Open"
-
-    return max(balance, 0.0), status
+    """PS-P5-1 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.compute_sale_balance_status(amount, paid_amount, due_date)
 
 
 def migrate_sales(session):
@@ -5095,67 +5084,12 @@ def _load_cat_lookup(session):
 
 def post_receivable_payment(session, sale_id, payment_amount, payment_date,
                             payment_method="Cash", currency=None, payment_fx_rate: float = 1.0):
-    """Post a customer payment against a credit sale (Step 7.6 / 7.7).
-
-    payment_fx_rate: units of reporting currency per 1 unit of payment currency.
-    When the sale was originally booked in a foreign currency (sale.fx_rate != 1.0),
-    the difference between the booked AR value and the payment value is posted to
-    FX Gain (4200) or FX Loss (5600).
-
-    Returns an error string on failure, otherwise None.
-    """
-    sale = session.get(Sale, sale_id)
-    if not sale or sale.sale_type != "Credit":
-        return "Sale not found or is not a credit sale."
-    if sale.is_void:
-        return "Cannot record payment on a voided sale."
-    if sale.balance <= 0:
-        return "This invoice is already fully paid."
-    if payment_amount <= 0:
-        return "Payment amount must be greater than zero."
-    if payment_amount > sale.balance:
-        return "Payment amount exceeds the remaining balance."
-
-    sale.paid_amount = round(sale.paid_amount + payment_amount, 2)
-    sale.balance, sale.status = compute_sale_balance_status(sale.amount, sale.paid_amount, sale.due_date)
-    sale.balance = max(sale.balance, 0.0)
-
-    bank_acct  = get_account_by_name(session, "Bank", currency=currency)
-    cash_acct  = get_account_by_name(session, "Cash", currency=currency)
-    debit_acct = bank_acct if payment_method == "Bank" and bank_acct else cash_acct
-    ar_acct    = get_account_by_name(session, "Accounts Receivable")
-
-    if debit_acct and ar_acct:
-        # Step 7.7 — FX gain/loss when sale was in a foreign currency
-        sale_fx   = sale.fx_rate or 1.0
-        booked_ar = round(payment_amount * sale_fx, 2)        # AR value at original booking rate
-        paid_in_reporting = round(payment_amount * payment_fx_rate, 2)  # actual cash received
-        fx_diff   = round(paid_in_reporting - booked_ar, 2)   # positive = gain, negative = loss
-
-        je_lines = [(debit_acct.id, paid_in_reporting, 0), (ar_acct.id, 0, booked_ar)]
-
-        if abs(fx_diff) >= 0.01:
-            fx_gain_acct = get_account_by_name(session, "FX Gain")
-            fx_loss_acct = get_account_by_name(session, "FX Loss")
-            if fx_diff > 0 and fx_gain_acct:
-                # Cash received > AR booked → FX Gain (Cr FX Gain)
-                je_lines.append((fx_gain_acct.id, 0, fx_diff))
-            elif fx_diff < 0 and fx_loss_acct:
-                # Cash received < AR booked → FX Loss (Dr FX Loss)
-                je_lines.append((fx_loss_acct.id, abs(fx_diff), 0))
-                je_lines[1] = (ar_acct.id, 0, booked_ar)  # unchanged
-
-        create_journal_entry(
-            session,
-            payment_date,
-            f"Payment for Invoice {sale.invoice_number} (Sale ID: {sale.id})"
-            + (f" FX rate {payment_fx_rate}" if payment_fx_rate != 1.0 else ""),
-            "ReceivablePayment",
-            sale.id,
-            je_lines,
-        )
-
-    session.commit()
+    """PS-P5-1 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.post_receivable_payment(
+        session, sale_id, payment_amount, payment_date,
+        payment_method=payment_method, currency=currency, payment_fx_rate=payment_fx_rate,
+        company_id=_current_company_id(),
+    )
 
 
 def post_cash_sale(session, sale_id, amount, sale_date, currency=None, fx_rate=1.0):
