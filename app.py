@@ -2409,20 +2409,17 @@ def _purchase_is_credit(purchase_type: str | None) -> bool:
 
 
 def _linked_purchase_payable(session, purchase_id: int):
-    return cq(session, Payable).filter_by(purchase_id=purchase_id).first()
+    """PS-P3-3a compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.linked_purchase_payable(
+        session, purchase_id, company_id=current_company_required(),
+    )
 
 
 def _void_purchase_linked_payable(session, purchase_id: int, reason: str) -> None:
-    """Void payable linked to a purchase; reverse PayablePayment GL if already paid."""
-    linked = _linked_purchase_payable(session, purchase_id)
-    if not linked or linked.is_void:
-        return
-    if linked.paid:
-        reverse_cc_subledgers_for_gl_reference(session, "PayablePayment", linked.id, reason)
-        reverse_journal_entries_for(session, "PayablePayment", linked.id, reason)
-    linked.is_void = True
-    linked.voided_at = datetime.date.today()
-    linked.void_reason = reason
+    """PS-P3-3a compatibility shim — kernel lives in services/posting.py."""
+    posting_service.void_purchase_linked_payable(
+        session, purchase_id, reason, company_id=current_company_required(),
+    )
 
 
 def _create_purchase_payable(session, purchase: Purchase) -> Payable:

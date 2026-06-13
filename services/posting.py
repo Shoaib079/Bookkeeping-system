@@ -8,6 +8,7 @@ PS-P2c-2: `post_expense`, `post_payable_payment`.
 PS-P2c-3: `post_purchase`, `resolve_purchase_debit_account`, `purchase_ref_type`.
 PS-P3-1: `create_reversing_journal_entry`, `reverse_journal_entries_for`.
 PS-P3-2a: `void_expense`, `void_payable`.
+PS-P3-3a: `linked_purchase_payable`, `void_purchase_linked_payable`.
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -724,3 +725,47 @@ def void_payable(
     payable.void_reason = void_reason
     session.commit()
     return True
+
+
+def linked_purchase_payable(
+    session,
+    purchase_id: int,
+    *,
+    company_id: int,
+):
+    """Return the Payable linked to a purchase, scoped to company.
+
+    PS-P3-3a: verbatim from app.py company-scoped Payable lookup by purchase_id.
+    Shim supplies ``company_id`` (legacy company-required scope).
+    """
+    return (
+        session.query(Payable)
+        .filter(Payable.company_id == company_id, Payable.purchase_id == purchase_id)
+        .first()
+    )
+
+
+def void_purchase_linked_payable(
+    session,
+    purchase_id: int,
+    reason: str,
+    *,
+    company_id: int | None = None,
+) -> None:
+    """Void payable linked to a purchase; reverse PayablePayment GL if paid.
+
+    PS-P3-3a: commit-free helper from app.py. No audit.
+    """
+    linked = linked_purchase_payable(session, purchase_id, company_id=company_id)
+    if not linked or linked.is_void:
+        return
+    if linked.paid:
+        reverse_cc_subledgers_for_gl_reference(
+            session, "PayablePayment", linked.id, reason
+        )
+        reverse_journal_entries_for(
+            session, "PayablePayment", linked.id, reason, company_id=company_id
+        )
+    linked.is_void = True
+    linked.voided_at = datetime.date.today()
+    linked.void_reason = reason
