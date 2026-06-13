@@ -16191,6 +16191,47 @@ def _postable_deposit_rows(session, cid: int) -> list:
     ]
 
 
+def _bsi_statement_post_error_key(exc: Exception) -> tuple[str, dict]:
+    """Map statement-post ValueError to a friendly locale key (BANKING-UX-03 P1.1)."""
+    if not isinstance(exc, ValueError):
+        raise exc
+    raw = str(exc)
+    if raw.startswith("Year ") and "is closed" in raw:
+        return "banking.import.post_error.closed_year", {}
+    if "Period '" in raw and "is closed" in raw:
+        return "banking.import.post_error.closed_period", {}
+    return "banking.import.post_error.blocked", {"detail": raw}
+
+
+def _bsi_statement_post_error_message(exc: Exception) -> str:
+    """Operator-facing text for statement post failures."""
+    if isinstance(exc, MatchPostError):
+        return str(exc)
+    key, kwargs = _bsi_statement_post_error_key(exc)
+    return _t(key, **kwargs)
+
+
+def _bsi_render_statement_post_error(exc: Exception) -> None:
+    st.error(_bsi_statement_post_error_message(exc))
+
+
+def _bsi_review_skip_row_label(row: BankStatementRow) -> str:
+    if row.credit_amount and not row.debit_amount:
+        sign = "+"
+    elif row.debit_amount and not row.credit_amount:
+        sign = "-"
+    else:
+        sign = "·"
+    return _t(
+        "banking.import.review.skip_row_label",
+        row=row.import_row_index,
+        date=str(row.date) if row.date else "—",
+        sign=sign,
+        amount=f"{row.amount:,.2f}",
+        description=(row.description or "")[:50],
+    )
+
+
 def _render_bsi_deposit_clearing_panel(session, sel_row, cid: int) -> None:
     """Line summary + card clearing match panel (single posting UI)."""
     _render_bsi_match_line_summary(sel_row)
@@ -16460,8 +16501,8 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
                 )
             )
             st.rerun()
-        except MatchPostError as exc:
-            st.error(str(exc))
+        except (MatchPostError, ValueError) as exc:
+            _bsi_render_statement_post_error(exc)
 
 
 def _render_bsi_other_deposit(session, sel_row, cid: int) -> None:
@@ -16514,8 +16555,8 @@ def _render_bsi_other_deposit(session, sel_row, cid: int) -> None:
                 )
             )
             st.rerun()
-        except MatchPostError as exc:
-            st.error(str(exc))
+        except (MatchPostError, ValueError) as exc:
+            _bsi_render_statement_post_error(exc)
 
 
 def _render_bsi_cc_bill(session, sel_row, cid: int, desc: str) -> None:
@@ -16561,8 +16602,8 @@ def _render_bsi_cc_bill(session, sel_row, cid: int, desc: str) -> None:
                 )
             )
             st.rerun()
-        except MatchPostError as exc:
-            st.error(str(exc))
+        except (MatchPostError, ValueError) as exc:
+            _bsi_render_statement_post_error(exc)
 
 
 def _render_bsi_vendor_payment(session, sel_row, cid: int) -> None:
@@ -16668,8 +16709,8 @@ def _render_bsi_vendor_payment(session, sel_row, cid: int) -> None:
                 )
             )
             st.rerun()
-        except MatchPostError as exc:
-            st.error(str(exc))
+        except (MatchPostError, ValueError) as exc:
+            _bsi_render_statement_post_error(exc)
 
 
 def _render_bsi_worker_payroll(session, sel_row, cid: int) -> None:
@@ -16800,8 +16841,8 @@ def _render_bsi_worker_payroll(session, sel_row, cid: int) -> None:
                     )
                 )
                 st.rerun()
-        except MatchPostError as exc:
-            st.error(str(exc))
+        except (MatchPostError, ValueError) as exc:
+            _bsi_render_statement_post_error(exc)
 
 
 def _render_bsi_bank_fee(session, sel_row, cid: int) -> None:
@@ -16852,8 +16893,8 @@ def _render_bsi_bank_fee(session, sel_row, cid: int) -> None:
                 )
             )
             st.rerun()
-        except MatchPostError as exc:
-            st.error(str(exc))
+        except (MatchPostError, ValueError) as exc:
+            _bsi_render_statement_post_error(exc)
 
 
 def _render_bsi_partner_owner_loan_match(
@@ -16926,8 +16967,8 @@ def _render_bsi_partner_owner_loan_match(
                         )
                     )
                     st.rerun()
-                except MatchPostError as exc:
-                    st.error(str(exc))
+                except (MatchPostError, ValueError) as exc:
+                    _bsi_render_statement_post_error(exc)
         else:
             st.caption(_t("banking.import.match.no_partners"))
     else:
@@ -16977,8 +17018,8 @@ def _render_bsi_partner_owner_loan_match(
                     )
                 )
                 st.rerun()
-            except MatchPostError as exc:
-                st.error(str(exc))
+            except (MatchPostError, ValueError) as exc:
+                _bsi_render_statement_post_error(exc)
 
     st.markdown(f"**{_t('banking.import.match.loan_section')}**")
     st.caption(_t("banking.import.match.loan_hint"))
@@ -17014,8 +17055,8 @@ def _render_bsi_partner_owner_loan_match(
                 )
             )
             st.rerun()
-        except MatchPostError as exc:
-            st.error(str(exc))
+        except (MatchPostError, ValueError) as exc:
+            _bsi_render_statement_post_error(exc)
 
 
 def render_bank_statement_import(session, *, embedded: bool = False):
@@ -17539,13 +17580,16 @@ def render_bank_statement_import(session, *, embedded: bool = False):
             if imp_rev:
                 _bsi_render_delete_import(session, imp_rev, cid)
 
-            skippable = [r.id for r in rows if r.status in ("staging", "duplicate_flagged")]
-            if can_import and skippable:
-                to_skip = st.multiselect(
-                    "Row IDs to skip",
-                    skippable,
-                    key="bsi_skip_ids",
-                )
+            skippable_rows = [r for r in rows if r.status in ("staging", "duplicate_flagged")]
+            if can_import and skippable_rows:
+                st.caption(_t("banking.import.review.skip_select_hint"))
+                to_skip: list[int] = []
+                for r in skippable_rows:
+                    if st.checkbox(
+                        _bsi_review_skip_row_label(r),
+                        key=f"bsi_skip_row_{r.id}",
+                    ):
+                        to_skip.append(r.id)
                 if st.button(_t("banking.import.skip_btn"), key="bsi_skip_btn"):
                     n = sum(1 for rid in to_skip if skip_statement_row(session, rid, cid))
                     st.success(_t("banking.import.skipped_ok", count=n))
@@ -17592,8 +17636,8 @@ def render_bank_statement_import(session, *, embedded: bool = False):
                             )
                             st.success(_t("banking.import.unposted_ok"))
                             st.rerun()
-                        except MatchPostError as exc:
-                            st.error(str(exc))
+                        except (MatchPostError, ValueError) as exc:
+                            _bsi_render_statement_post_error(exc)
 
     elif section == "match":
         st.markdown(
@@ -17633,7 +17677,7 @@ def render_bank_statement_import(session, *, embedded: bool = False):
                 elif is_withdrawal:
                     kind_options = _bsi_withdrawal_kind_options(session)
                 else:
-                    st.warning("Row has no clear deposit/withdrawal amount.")
+                    st.warning(_t("banking.import.match.unclear_amount"))
                     kind_options = []
 
                 if kind_options:
