@@ -17,6 +17,7 @@ PS-P5-1: `compute_sale_balance_status`, `post_receivable_payment`.
 PS-P5-2: `void_inventory_transaction`.
 PS-P5-3: `post_capital_contribution`, `post_owner_drawing`, `post_salary`, `void_equity_movement`.
 PS-P5-4: `void_reconciliation`, `void_eod_close`, `void_year_end_close`.
+PS-P6-0a: `yec_block_message` (pure TD-POSTING-05 query helper; no callers yet).
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -117,6 +118,66 @@ def entry_date_posting_blocked(
     locked_year = _yec_q.first()
     if locked_year:
         return f"Year {locked_year.fiscal_year} is closed. Cannot post entries to {entry_date}."
+    return None
+
+
+def yec_block_message(
+    session,
+    entry_date,
+    *,
+    mode: str,
+    company_id: int | None,
+    period_end_date: datetime.date | None = None,
+) -> str | None:
+    """Return TD-POSTING-05 inline YEC guard message, or None when not blocked.
+
+    PS-P6-0a: pure query helper — duplicates the five inline guard lookups in
+    app.py without changing any call sites yet. No commits or side effects.
+
+    ``mode`` selects the message variant:
+    - ``"post"`` — movement post guard (point date in closed year)
+    - ``"movement_void"`` — partner/worker void guard (original movement date)
+    - ``"allocation_void"`` — profit-allocation void guard (fiscal period span
+      contained in closed year); requires ``period_end_date``
+
+    Message strings are byte-identical to the inline guards pinned by
+    PS-P6-0a-CHAR.
+    """
+    if mode == "allocation_void":
+        if period_end_date is None:
+            return None
+        _start = entry_date
+        _end = period_end_date
+    else:
+        _start = entry_date
+        _end = entry_date
+
+    _yec_q = session.query(YearEndClose).filter(
+        YearEndClose.is_void == False,  # noqa: E712 — verbatim inline guard
+        YearEndClose.start_date <= _start,
+        YearEndClose.end_date >= _end,
+    )
+    if company_id is not None:
+        _yec_q = _yec_q.filter(YearEndClose.company_id == company_id)
+    locked = _yec_q.first()
+    if not locked:
+        return None
+
+    if mode == "post":
+        return (
+            f"Year {locked.fiscal_year} is closed. "
+            "Cannot post movements dated in that year."
+        )
+    if mode == "movement_void":
+        return (
+            f"Year {locked.fiscal_year} is closed. Void the year-end close before "
+            "voiding movements inside it."
+        )
+    if mode == "allocation_void":
+        return (
+            f"Year {locked.fiscal_year} is closed. Void the year-end close before "
+            "voiding allocations inside it."
+        )
     return None
 
 
