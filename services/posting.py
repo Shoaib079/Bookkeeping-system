@@ -1,29 +1,30 @@
-"""POSTING-SERVICE-01 PS-P1 — journal-entry kernel (verbatim extraction).
+"""POSTING-SERVICE-01 — GL posting kernel and incremental extraction.
 
-Scope (PS-P1 only): `create_journal_entry` and its period/year-end guard,
-moved verbatim from app.py. app.py keeps compatibility shims under the
-original names so all existing call sites (app.py + reconciliation/) are
-behaviourally untouched.
+PS-P1: `create_journal_entry` + period/year-end guard (verbatim from app.py).
+PS-P2a: `get_account_by_name`, sales `post_*` trio, `card_settlement_on`.
 
-Deliberate PS-P1 deviations from the MIGRATION-READINESS-01 end state —
-both preserved on purpose and logged in TECH_DEBT (TD-PS-01 / TD-PS-02):
+app.py keeps compatibility shims under the original names so all existing
+call sites remain behaviourally untouched.
+
+Deliberate deviations from the MIGRATION-READINESS-01 end state —
+preserved on purpose and logged in TECH_DEBT (TD-PS-01 / TD-PS-02):
 
 - **Commits internally** (`session.commit()` on success, `session.rollback()`
   before raising) — exactly as the app.py original did. Boundary-owned
   transactions arrive with PS-P2+; changing commit ownership is explicitly
-  out of PS-P1 scope.
-- **company_id is an explicit parameter** (the one non-verbatim change —
-  the original resolved the active company ambiently from session state).
-  The app.py shim supplies it, preserving company/session behaviour for
-  every legacy caller. `None` keeps the pre-14C unscoped behaviour
-  (startup/migration callers).
+  out of scope for extraction waves.
+- **company_id is an explicit parameter** on service functions. app.py shims
+  supply it from the ambient session helper, preserving company/session
+  behaviour for every legacy caller. `None` keeps the pre-14C unscoped
+  behaviour (startup/migration callers).
 
-No Streamlit, no app.py imports — enforced by contract test.
+No Streamlit, no app.py imports — enforced by contract tests.
 """
 
 from __future__ import annotations
 
-from models import FiscalPeriod, JournalEntry, JournalEntryLine, YearEndClose
+from models import ChartOfAccounts, FiscalPeriod, JournalEntry, JournalEntryLine, YearEndClose
+from registry.service import get_setting
 
 
 def entry_date_posting_blocked(
@@ -138,3 +139,111 @@ def create_journal_entry(
     # sync_account_balances() is called at startup to keep the cache current.
     session.commit()
     return entry
+
+
+def get_account_by_name(session, name, currency=None, *, company_id: int | None = None):
+    """Get a GL account by name, optionally filtered by currency (Step 3.1).
+
+    Phase 14C: when company_id is set, results are scoped to that company.
+    When None (startup/migration), no company filter is applied.
+
+    Resolution order:
+      1. Exact match on name AND currency (e.g. "Cash" + "USD" → finds "Cash USD")
+      2. The named account with the given currency stored on the row
+      3. Fall back to any account whose name matches (backward-compatible)
+    """
+    cid = company_id
+
+    def _apply_company(q):
+        return q.filter(ChartOfAccounts.company_id == cid) if cid is not None else q
+
+    if currency:
+        suffixed = _apply_company(
+            session.query(ChartOfAccounts).filter_by(
+                account_name=f"{name} {currency}", is_active=True
+            )
+        ).first()
+        if suffixed:
+            return suffixed
+        exact = _apply_company(
+            session.query(ChartOfAccounts).filter_by(
+                account_name=name, currency=currency, is_active=True
+            )
+        ).first()
+        if exact:
+            return exact
+    return _apply_company(
+        session.query(ChartOfAccounts).filter_by(account_name=name)
+    ).first()
+
+
+def card_settlement_on(session, company_id: int | None) -> bool:
+    """Phase 18-MVP-1: True when card sales route through Card Sales Clearing.
+
+    OFF when company_id is None (startup/migrations) or setting is disabled.
+    """
+    cid = company_id
+    if cid is None:
+        return False
+    try:
+        return bool(get_setting(session, "banking.card_settlement_enabled", company_id=cid))
+    except Exception:
+        return False
+
+
+def post_cash_sale(
+    session, sale_id, amount, sale_date, currency=None, fx_rate=1.0, *, company_id: int | None = None
+):
+    """Post cash sale: Debit Cash[currency], Credit Sales Revenue"""
+    cash_acct = get_account_by_name(session, "Cash", currency=currency, company_id=company_id)
+    sales_acct = get_account_by_name(session, "Sales Revenue", company_id=company_id)
+    if cash_acct and sales_acct:
+        create_journal_entry(
+            session, sale_date,
+            f"Cash Sale (ID: {sale_id})",
+            "CashSale", sale_id,
+            [(cash_acct.id, amount, 0), (sales_acct.id, 0, amount)],
+            currency=currency, fx_rate=fx_rate,
+            company_id=company_id,
+        )
+
+
+def post_card_sale(
+    session, sale_id, amount, sale_date, currency=None, fx_rate=1.0, *, company_id: int | None = None
+):
+    """Post card sale to the GL.
+
+    Default (settlement OFF): Debit Bank, Credit Sales Revenue.
+    Settlement ON: Debit Card Sales Clearing, Credit Sales Revenue.
+    """
+    if card_settlement_on(session, company_id):
+        debit_acct = get_account_by_name(session, "Card Sales Clearing", company_id=company_id)
+    else:
+        debit_acct = get_account_by_name(session, "Bank", company_id=company_id)
+    sales_acct = get_account_by_name(session, "Sales Revenue", company_id=company_id)
+    if debit_acct and sales_acct:
+        create_journal_entry(
+            session, sale_date,
+            f"Card Sale (ID: {sale_id})",
+            "CardSale", sale_id,
+            [(debit_acct.id, amount, 0), (sales_acct.id, 0, amount)],
+            currency=currency, fx_rate=fx_rate,
+            company_id=company_id,
+        )
+
+
+def post_credit_sale(
+    session, sale_id, amount, sale_date, currency=None, fx_rate=1.0, *, company_id: int | None = None
+):
+    """Post credit sale: Debit Accounts Receivable, Credit Sales Revenue"""
+    ar_acct = get_account_by_name(session, "Accounts Receivable", company_id=company_id)
+    sales_acct = get_account_by_name(session, "Sales Revenue", company_id=company_id)
+    if ar_acct and sales_acct:
+        create_journal_entry(
+            session, sale_date,
+            f"Credit Sale (ID: {sale_id})",
+            "CreditSale", sale_id,
+            [(ar_acct.id, amount, 0), (sales_acct.id, 0, amount)],
+            currency=currency, fx_rate=fx_rate,
+            company_id=company_id,
+        )

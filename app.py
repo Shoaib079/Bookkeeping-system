@@ -2589,40 +2589,10 @@ def void_inventory_transaction(session, txn_id, void_reason):
 
 
 def get_account_by_name(session, name, currency=None):
-    """Get a GL account by name, optionally filtered by currency (Step 3.1).
-
-    Phase 14C: when active_company_id is set (user session), results are scoped
-    to that company. When absent (startup/migration), no company filter is applied
-    so the function remains safe to call during boot.
-
-    Resolution order:
-      1. Exact match on name AND currency (e.g. "Cash" + "USD" → finds "Cash USD")
-      2. The named account with the given currency stored on the row
-      3. Fall back to any account whose name matches (backward-compatible)
-    """
-    cid = _current_company_id()
-
-    def _apply_company(q):
-        return q.filter(ChartOfAccounts.company_id == cid) if cid is not None else q
-
-    if currency:
-        suffixed = _apply_company(
-            session.query(ChartOfAccounts).filter_by(
-                account_name=f"{name} {currency}", is_active=True
-            )
-        ).first()
-        if suffixed:
-            return suffixed
-        exact = _apply_company(
-            session.query(ChartOfAccounts).filter_by(
-                account_name=name, currency=currency, is_active=True
-            )
-        ).first()
-        if exact:
-            return exact
-    return _apply_company(
-        session.query(ChartOfAccounts).filter_by(account_name=name)
-    ).first()
+    """PS-P2a compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.get_account_by_name(
+        session, name, currency=currency, company_id=_current_company_id(),
+    )
 
 
 def calculate_account_balance_for_period(session, account, start_date, end_date, exclude_refs=None):
@@ -5263,31 +5233,17 @@ def post_receivable_payment(session, sale_id, payment_amount, payment_date,
 
 
 def post_cash_sale(session, sale_id, amount, sale_date, currency=None, fx_rate=1.0):
-    """Post cash sale: Debit Cash[currency], Credit Sales Revenue"""
-    cash_acct  = get_account_by_name(session, "Cash", currency=currency)
-    sales_acct = get_account_by_name(session, "Sales Revenue")
-    if cash_acct and sales_acct:
-        create_journal_entry(
-            session, sale_date,
-            f"Cash Sale (ID: {sale_id})",
-            "CashSale", sale_id,
-            [(cash_acct.id, amount, 0), (sales_acct.id, 0, amount)],
-            currency=currency, fx_rate=fx_rate,
-        )
+    """PS-P2a compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.post_cash_sale(
+        session, sale_id, amount, sale_date,
+        currency=currency, fx_rate=fx_rate,
+        company_id=_current_company_id(),
+    )
 
 
 def _card_settlement_on(session) -> bool:
-    """Phase 18-MVP-1: True when card sales should route through Card Sales
-    Clearing instead of straight to Bank. OFF by default and whenever there is
-    no active company context (startup/migrations), so behaviour matches today.
-    """
-    cid = _current_company_id()
-    if cid is None:
-        return False
-    try:
-        return bool(get_setting(session, "banking.card_settlement_enabled", company_id=cid))
-    except Exception:
-        return False
+    """PS-P2a compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.card_settlement_on(session, _current_company_id())
 
 
 def _banking_reconciliation_on(session) -> bool:
@@ -6048,44 +6004,21 @@ def _transfer_fee_threshold(session) -> float:
 
 
 def post_card_sale(session, sale_id, amount, sale_date, currency=None, fx_rate=1.0):
-    """Post card sale to the GL.
-
-    Default (settlement OFF): Debit Bank, Credit Sales Revenue — card payments
-    settle directly to the bank account.
-
-    Phase 18-MVP-1 (banking.card_settlement_enabled ON): Debit Card Sales
-    Clearing, Credit Sales Revenue — the cash reaches Bank later at settlement.
-
-    Uses ref_type 'CardSale' either way so void/edit can reverse it independently
-    of cash sales.
-    """
-    if _card_settlement_on(session):
-        debit_acct = get_account_by_name(session, "Card Sales Clearing")
-    else:
-        debit_acct = get_account_by_name(session, "Bank")
-    sales_acct = get_account_by_name(session, "Sales Revenue")
-    if debit_acct and sales_acct:
-        create_journal_entry(
-            session, sale_date,
-            f"Card Sale (ID: {sale_id})",
-            "CardSale", sale_id,
-            [(debit_acct.id, amount, 0), (sales_acct.id, 0, amount)],
-            currency=currency, fx_rate=fx_rate,
-        )
+    """PS-P2a compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.post_card_sale(
+        session, sale_id, amount, sale_date,
+        currency=currency, fx_rate=fx_rate,
+        company_id=_current_company_id(),
+    )
 
 
 def post_credit_sale(session, sale_id, amount, sale_date, currency=None, fx_rate=1.0):
-    """Post credit sale: Debit Accounts Receivable, Credit Sales Revenue"""
-    ar_acct = get_account_by_name(session, "Accounts Receivable")
-    sales_acct = get_account_by_name(session, "Sales Revenue")
-    if ar_acct and sales_acct:
-        create_journal_entry(
-            session, sale_date,
-            f"Credit Sale (ID: {sale_id})",
-            "CreditSale", sale_id,
-            [(ar_acct.id, amount, 0), (sales_acct.id, 0, amount)],
-            currency=currency, fx_rate=fx_rate,
-        )
+    """PS-P2a compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.post_credit_sale(
+        session, sale_id, amount, sale_date,
+        currency=currency, fx_rate=fx_rate,
+        company_id=_current_company_id(),
+    )
 
 
 def _resolve_purchase_debit_account(session, gl_debit):

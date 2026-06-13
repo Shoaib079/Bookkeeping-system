@@ -1770,6 +1770,18 @@ implementation — FUTURE-MIGRATION-01's decision gate still applies at that tim
 
 ---
 
+## 2026-06-05 — POSTING-SERVICE-01 PS-P2a: sales posting family extracted
+
+**Preconditions verified:** clean tree; latest commit `2a639dd` (PS-P1).
+
+**Scope (strictly PS-P2a):** moved `get_account_by_name`, `post_cash_sale`, `post_card_sale`, `post_credit_sale`, and `card_settlement_on` into `services/posting.py`. app.py keeps all original names as pure shims — identical signatures, identical behaviour: currency resolution order (suffix → column → name fallback), cash sale → Cash, card sale settlement OFF → Bank / ON → Card Sales Clearing, credit sale → Accounts Receivable, `card_settlement_on` reads `banking.card_settlement_enabled` via `registry.service.get_setting`. **Not moved:** expense/purchase/payable posting, receivable payment, void/reversal, CC subledger.
+
+**Tests:** new `tests/test_posting_service01_p2a.py` (18): shim delegation contracts, `get_account_by_name` resolution + company scope, sales trio service-direct (incl. card settlement ON/OFF), shim/service equivalence. PS-P0 characterization (13) + PS-P1 (13) unchanged. Host `pytest tests/` — **1595 passed, 2 xfailed**.
+
+**Tech debt added:** TD-PS-05 (`get_account_by_name` partial extraction — non-sales callers still on shim).
+
+---
+
 ## How to use this file
 
 1. Before a banking/CC task, read [BANKING_RECON_CC_STATUS.md](./BANKING_RECON_CC_STATUS.md) and the latest entry here.

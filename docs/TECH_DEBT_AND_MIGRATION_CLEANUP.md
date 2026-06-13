@@ -76,7 +76,8 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 
 ## POSTING-SERVICE-01 (TD-PS)
 
-PS-P1 shipped 2026-06-13 — JE kernel verbatim in `services/posting.py`; app.py shims.
+PS-P1 shipped 2026-06-13 — JE kernel verbatim in `services/posting.py`; app.py shims.  
+PS-P2a shipped 2026-06-05 — `get_account_by_name`, sales `post_*` trio, `card_settlement_on`; app.py shims.
 
 | ID | Item | Priority | Status | When / trigger |
 |----|------|----------|--------|----------------|
@@ -84,6 +85,29 @@ PS-P1 shipped 2026-06-13 — JE kernel verbatim in `services/posting.py`; app.py
 | **TD-PS-02** | app.py shims carry **ambient company resolution** (session state → explicit `company_id`) — remove per call site as callers migrate to the service | Medium | Open | Per wave; gone when last legacy caller migrates |
 | **TD-PS-03** | Service returns **ORM `JournalEntry`** (legacy contract) — add `PostingResult` DTO for new consumers; deprecate ORM return | Medium | Open | First new consumer (SC approval, PS-P2); removal at FastAPI Phase B |
 | **TD-PS-04** | Kernel `rollback()` on validation failure also discards the **caller's** uncommitted work (pre-existing behaviour, preserved verbatim) — fix lands with TD-PS-01 boundary conversion | Low | Open | PS-P2+ |
+| **TD-PS-05** | **`get_account_by_name` partial extraction** — sales posting moved; ~50 app.py non-sales callers still use the shim; migrate incrementally or re-export from service at PS-P2b | Medium | Open | PS-P2b expense/purchase wave |
+
+### PS-P2a Migration Cleanup (2026-06-05)
+
+#### 1. Code to keep during FastAPI/React migration
+- `services/posting.py` — `get_account_by_name`, `card_settlement_on`, `post_cash_sale`, `post_card_sale`, `post_credit_sale` (+ PS-P1 kernel)
+- app.py shims for all five names (unchanged public signatures)
+- Tests: `tests/test_posting_service01_p2a.py`; PS-P0 characterization unchanged through shims
+
+#### 2. Code likely to replace during FastAPI/React migration
+- app.py `get_account_by_name` shim — direct service import at remaining call sites (TD-PS-05)
+- Internal `session.commit()` via `create_journal_entry` inside sales post_* (TD-PS-01)
+- `registry.service.get_setting` inside `card_settlement_on` — settings service at API layer
+
+#### 3. Dead code found
+- None in PS-P2a scope
+
+#### 4. Temporary Streamlit-only code
+- `_card_settlement_on` app.py shim — UI/banking toggles still call the underscore name
+- Sales post_* shims — Streamlit transaction pages unchanged
+
+#### 5. Future cleanup items (registered above)
+- TD-PS-05 added PS-P2a session; TD-PS-01–04 unchanged
 
 ---
 
@@ -96,7 +120,7 @@ Independent architectural review (Claude) — baseline FastAPI/React readiness a
 | Finding | Detail |
 |---------|--------|
 | **Strength** | New `services/` modules are **FastAPI-ready** — `daily_sales_close`, `recipe_costing`, `user_access`, `staff_capture` follow MIGRATION-READINESS-01 (explicit IDs, DTOs, no Streamlit, contract tests) |
-| **Main blocker** | **`app.py` posting engine** — journal creation, CoA balance updates, fiscal-period guard, void/reversal, and `post_*` wrappers remain in the monolith |
+| **Main blocker** | **`app.py` posting engine** — void/reversal and most `post_*` wrappers remain in the monolith; PS-P2a moved sales family only |
 | **Keystone next task** | **POSTING-SERVICE-01** — extract posting into shared `services/` module; prerequisite for API posting parity, Staff Capture `post_fn` (TD-SC-01), and FastAPI Phase B |
 
 ### Tracked migration tasks (FUTURE-MIGRATION-AUDIT-01)
