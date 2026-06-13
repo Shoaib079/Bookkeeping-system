@@ -74,6 +74,19 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 
 ---
 
+## POSTING-SERVICE-01 (TD-PS)
+
+PS-P1 shipped 2026-06-13 — JE kernel verbatim in `services/posting.py`; app.py shims.
+
+| ID | Item | Priority | Status | When / trigger |
+|----|------|----------|--------|----------------|
+| **TD-PS-01** | Kernel **commits internally** (`session.commit()` / `session.rollback()` moved verbatim) — convert to flush-only + boundary-owned transactions | High | Open | PS-P2+ per caller family; FastAPI Phase B hard requirement |
+| **TD-PS-02** | app.py shims carry **ambient company resolution** (session state → explicit `company_id`) — remove per call site as callers migrate to the service | Medium | Open | Per wave; gone when last legacy caller migrates |
+| **TD-PS-03** | Service returns **ORM `JournalEntry`** (legacy contract) — add `PostingResult` DTO for new consumers; deprecate ORM return | Medium | Open | First new consumer (SC approval, PS-P2); removal at FastAPI Phase B |
+| **TD-PS-04** | Kernel `rollback()` on validation failure also discards the **caller's** uncommitted work (pre-existing behaviour, preserved verbatim) — fix lands with TD-PS-01 boundary conversion | Low | Open | PS-P2+ |
+
+---
+
 ## FUTURE-MIGRATION-AUDIT-01 (2026-06-13)
 
 Independent architectural review (Claude) — baseline FastAPI/React readiness assessment. **Does not authorize migration implementation.**

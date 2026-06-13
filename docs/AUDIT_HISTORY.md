@@ -1758,6 +1758,18 @@ implementation — FUTURE-MIGRATION-01's decision gate still applies at that tim
 
 ---
 
+## 2026-06-13 — POSTING-SERVICE-01 PS-P1: JE kernel extracted
+
+**Preconditions verified:** clean tree; PS-P0 characterization committed (`fc15ce3`).
+
+**Scope (strictly PS-P1):** moved `create_journal_entry` + `_entry_date_posting_blocked` **verbatim** into `services/posting.py` (`create_journal_entry`, `entry_date_posting_blocked`). app.py keeps both names as pure shims — identical signatures, identical behaviour: commit-on-success / rollback-and-ValueError inside the kernel (commit ownership unchanged in PS-P1, conversion deferred to PS-P2+), ORM `JournalEntry` return, byte-identical message strings, same float order, same `round(net*fx_rate, 4)`. The one non-verbatim change: the service takes explicit `company_id`; the shim supplies it from the ambient session helper, preserving behaviour for all 30 app.py + 8 reconciliation call sites (none modified). **Not moved:** all `post_*`/`_save_and_post*` wrappers, all 13 `void_*`, reversing helpers — explicitly out of PS-P1 scope.
+
+**Tests:** new `tests/test_posting_service01_p1.py` (~14): service-direct functional (balanced persist + ORM return + kernel-commit proof, unbalanced exact-message + nothing persisted, closed-period exact-message, PeriodClose exemption, guard company-scoping incl. `None` legacy mode, FX rounding, no-currency native-None, balance-cache untouched), shim contracts (pure delegation, no kernel leftovers, signature regex, single import), import purity (no streamlit/app/ambient helper in service), message-string pins. Sandbox: 15/15 source-level contracts green; service functional tests + full suite (incl. PS-P0 characterization re-run, expected unchanged) require host pytest.
+
+**Tech debt added:** TD-PS-01 (service commits internally — boundary-owned transactions at PS-P2+), TD-PS-02 (shims carry ambient company resolution — removed when callers migrate), TD-PS-03 (ORM return at service boundary — DTO at FastAPI Phase B).
+
+---
+
 ## How to use this file
 
 1. Before a banking/CC task, read [BANKING_RECON_CC_STATUS.md](./BANKING_RECON_CC_STATUS.md) and the latest entry here.

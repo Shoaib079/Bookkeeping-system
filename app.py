@@ -357,6 +357,7 @@ from models import (
     YearEndClose,
 )
 
+from services import posting as posting_service
 from services import user_access as _user_access_svc
 
 # Initialize database
@@ -1573,92 +1574,33 @@ def log_audit(session, action, entity_type, entity_id, description):
 def _entry_date_posting_blocked(
     session, entry_date, *, reference_type: str = "Expense"
 ) -> str | None:
-    """Return posting-block message for entry_date (same guards as create_journal_entry)."""
-    _cje_cid = _current_company_id()
-    if reference_type != "PeriodClose":
-        _fp_q = session.query(FiscalPeriod).filter(
-            FiscalPeriod.is_closed == True,
-            FiscalPeriod.start_date <= entry_date,
-            FiscalPeriod.end_date >= entry_date,
-        )
-        if _cje_cid is not None:
-            _fp_q = _fp_q.filter(FiscalPeriod.company_id == _cje_cid)
-        locked = _fp_q.first()
-        if locked:
-            return (
-                f"Period '{locked.name}' ({locked.start_date} – {locked.end_date}) is closed. "
-                f"Cannot post entries to {entry_date}."
-            )
+    """PS-P1 compatibility shim — kernel lives in services/posting.py.
 
-    _yec_q = session.query(YearEndClose).filter(
-        YearEndClose.is_void == False,
-        YearEndClose.start_date <= entry_date,
-        YearEndClose.end_date >= entry_date,
+    Preserves ambient company resolution for all legacy callers; the service
+    takes company_id explicitly (MIGRATION-READINESS-01).
+    """
+    return posting_service.entry_date_posting_blocked(
+        session,
+        entry_date,
+        reference_type=reference_type,
+        company_id=_current_company_id(),
     )
-    if _cje_cid is not None:
-        _yec_q = _yec_q.filter(YearEndClose.company_id == _cje_cid)
-    locked_year = _yec_q.first()
-    if locked_year:
-        return f"Year {locked_year.fiscal_year} is closed. Cannot post entries to {entry_date}."
-    return None
 
 
 def create_journal_entry(session, entry_date, description, reference_type, reference_id, lines,
                          currency: str = None, fx_rate: float = 1.0):
+    """PS-P1 compatibility shim — kernel lives in services/posting.py.
+
+    Behaviour (commit on success, rollback + ValueError on failure, ORM
+    JournalEntry return, message strings) is identical: the kernel moved
+    verbatim and still owns commit/rollback in PS-P1. The shim adds only
+    ambient company resolution, exactly as the original did.
     """
-    Create a journal entry with debit/credit pairs.
-
-    lines: list of tuples (account_id, debit, credit)
-    currency: transaction currency code (e.g. "USD"). None means reporting currency.
-    fx_rate: units of reporting currency per 1 unit of transaction currency.
-             Used to store amount_native on each line for multi-currency reporting.
-
-    Raises ValueError if entry_date falls within a closed fiscal period.
-    """
-    _block_msg = _entry_date_posting_blocked(session, entry_date, reference_type=reference_type)
-    if _block_msg:
-        session.rollback()
-        raise ValueError(_block_msg)
-
-    _cje_cid = _current_company_id()
-    entry = JournalEntry(
-        entry_date=entry_date,
-        description=description,
-        reference_type=reference_type,
-        reference_id=reference_id,
-        company_id=_cje_cid,
+    return posting_service.create_journal_entry(
+        session, entry_date, description, reference_type, reference_id, lines,
+        currency=currency, fx_rate=fx_rate,
+        company_id=_current_company_id(),
     )
-    session.add(entry)
-    session.flush()
-
-    total_debit = 0
-    total_credit = 0
-
-    for account_id, debit, credit in lines:
-        net = debit - credit  # positive = debit-side, negative = credit-side
-        line = JournalEntryLine(
-            journal_entry_id=entry.id,
-            account_id=account_id,
-            debit=debit,
-            credit=credit,
-            currency=currency,
-            amount_native=round(net * fx_rate, 4) if currency else None,
-            company_id=_cje_cid,
-        )
-        session.add(line)
-        total_debit += debit
-        total_credit += credit
-
-    if abs(total_debit - total_credit) > 0.01:
-        session.rollback()
-        raise ValueError(f"Journal entry is not balanced: Debit ${total_debit:.2f} vs Credit ${total_credit:.2f}")
-
-    # NOTE: ChartOfAccounts.balance is NOT updated here.
-    # All balance reads must go through calculate_account_balance() which
-    # derives the correct value from journal lines — the true source of truth.
-    # sync_account_balances() is called at startup to keep the cache current.
-    session.commit()
-    return entry
 
 
 def _column_exists(session, table_name: str, column_name: str) -> bool:

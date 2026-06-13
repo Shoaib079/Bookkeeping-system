@@ -2317,7 +2317,7 @@ service-first screen-light phases, thin UI over existing services. See
 #### POSTING-SERVICE-01 — Keystone migration task
 
 **Priority:** Critical (migration prep)  
-**Status:** Open — not started
+**Status:** 🟢 **PS-P1 shipped** (2026-06-13) — JE kernel (`create_journal_entry` + period/year-end guard) extracted verbatim to `services/posting.py`; app.py keeps byte-compatible shims (same signature, commit/rollback, ORM return, message strings; ambient company resolution stays in the shim, service takes explicit `company_id`). PS-P0 characterization committed prior (`fc15ce3`). Next: PS-P2 (sales/expense/purchase `post_*` wave + SC approval direct-service wiring) — not started.
 
 Extract the accounting posting engine from `app.py` into a reusable service (e.g. `services/posting.py`):
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime
 import inspect
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -172,8 +173,18 @@ def test_entry_date_posting_blocked_matches_journal_guard(db):
     msg = erp._entry_date_posting_blocked(db, blocked)
     assert msg is not None
     assert "closed" in msg.lower()
+    # PS-P1: guard kernel lives in services/posting.py; app.py shims delegate.
+    guard_src = inspect.getsource(erp._entry_date_posting_blocked)
     je_src = inspect.getsource(erp.create_journal_entry)
-    assert "_entry_date_posting_blocked" in je_src
+    assert "posting_service.entry_date_posting_blocked(" in guard_src
+    assert "company_id=_current_company_id()" in guard_src
+    assert "posting_service.create_journal_entry(" in je_src
+    assert "company_id=_current_company_id()" in je_src
+    posting_src = (Path(__file__).resolve().parents[1] / "services" / "posting.py").read_text(
+        encoding="utf-8"
+    )
+    assert "def entry_date_posting_blocked(" in posting_src
+    assert "FiscalPeriod" in posting_src and "YearEndClose" in posting_src
 
 
 def test_date_picker_uses_posting_blocked_helper():
