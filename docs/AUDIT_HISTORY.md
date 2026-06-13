@@ -8,6 +8,37 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-13 — POSTING-SERVICE-01 PS-P5: self-contained equity/receivables/inventory/close voids complete
+
+**Preconditions verified:** clean tree; PS-P4 complete; PS-P5-CHAR committed (`f82c5fb`); final extraction `e2293e3` (`void_reconciliation`, `void_eod_close`, `void_year_end_close`).
+
+**Verdict:** **GO** — PS-P5 self-contained posting/void wave complete and faithful. **Next:** PS-P6 planning (movement/year-end family — gated on **TD-POSTING-05**).
+
+**Scope (PS-P5 waves):**
+
+| Wave | Moved to `services/posting.py` | app.py shim |
+|------|-------------------------------|-------------|
+| PS-P5-CHAR | — (characterization only) | — |
+| PS-P5-1 | `compute_sale_balance_status`, `post_receivable_payment` | ✓ |
+| PS-P5-2 | `void_inventory_transaction` | ✓ (`log_audit` on `True`) |
+| PS-P5-3 | `post_capital_contribution`, `post_owner_drawing`, `post_salary`, `void_equity_movement` | ✓ |
+| PS-P5-4-CHAR | — (close void characterization) | — |
+| PS-P5-4 | `void_reconciliation`, `void_eod_close`, `void_year_end_close` | ✓ (`log_audit` on `if not err:`) |
+
+**Intentionally not moved (PS-P6 scope):** `post_partner_movement`, `post_worker_movement`, `void_partner_movement`, `void_worker_movement`, `void_profit_allocation`, `allocate_profit_to_partners`; period-close / year-end close **posting** chains; `reconciliation/match_post.py` paths. **TD-POSTING-05** blocks clean extraction of the movement/year-end family until duplicate inline YEC guards are centralized.
+
+**Not moved (adjacent):** `calculate_account_balance`, `sync_account_balances`; `log_audit` (stays app-side); forward banking balance callers (TD-PS-08).
+
+**Tests:** PS-P5-CHAR (23) + PS-P5-4-CHAR (13) + extraction proof `p5_1.py`, `p5_2.py`, `p5_3.py`, `p5_4.py`. Host `pytest tests/` — **1767 passed, 2 xfailed**.
+
+**Behavior preserved:** receivable payment 2-commit JE + sale mutation; FX gain/loss branches; inventory void no-GL quantity reversal; equity posters GL-only; `void_equity_movement` 3-commit GL + bank balance; close voids `str` return contract (empty reason succeeds for reconciliation/eod, fails for year-end); pinned commit counts per PS-P5-CHAR / PS-P5-4-CHAR; TD-PS-01 through TD-PS-07 untouched.
+
+**Tech debt:** No TD-PS or TD-POSTING cleanup performed in PS-P5. **TD-POSTING-05** remains primary blocker for PS-P6.
+
+**Files changed:** `services/posting.py`, `app.py`, `tests/test_posting_service01_p5_char.py`, `tests/test_posting_service01_p5_1.py`, `tests/test_posting_service01_p5_2.py`, `tests/test_posting_service01_p5_3.py`, `tests/test_posting_service01_p5_4_char.py`, `tests/test_posting_service01_p5_4.py`, `docs/POSTING_SERVICE_01_CASCADE_MAP.md`, `docs/AUDIT_HISTORY.md`, `docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md`.
+
+---
+
 ## 2026-06-13 — POSTING-SERVICE-01 PS-P4: banking family extraction complete
 
 **Preconditions verified:** clean tree; PS-P3 complete; PS-P4-CHAR committed (`378af80`); final extraction `e66f0f4` (`void_bank_transaction`).

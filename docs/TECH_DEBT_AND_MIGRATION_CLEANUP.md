@@ -81,18 +81,48 @@ PS-P2a shipped 2026-06-05 — `get_account_by_name`, sales `post_*` trio, `card_
 PS-P2b shipped 2026-06-13 — `resolve_payment_credit_account`, `post_payable_creation`; app.py shims.  
 PS-P2c shipped 2026-06-13 — `sync_company_cc_subledger` (P2c-1), `post_expense` + `post_payable_payment` (P2c-2), `post_purchase` + `resolve_purchase_debit_account` + `purchase_ref_type` (P2c-3); app.py shims.  
 PS-P3 shipped 2026-06-13 — reversal primitives (P3-1), `void_expense` + `void_payable` (P3-2a), `void_sale` (P3-2b), purchase cascade helpers (P3-3a), `void_purchase` (P3-3b); app.py shims; `log_audit` remains app-side.  
-PS-P4 shipped 2026-06-13 — `post_bank_transaction` + `post_bank_transfer` (P4-1), `void_bank_transaction` (P4-2); app.py shims; forward balance mutation callers remain in app.py; `void_reconciliation` deferred to PS-P5.
+PS-P4 shipped 2026-06-13 — `post_bank_transaction` + `post_bank_transfer` (P4-1), `void_bank_transaction` (P4-2); app.py shims; forward balance mutation callers remain in app.py; `void_reconciliation` deferred to PS-P5.  
+PS-P5 shipped 2026-06-13 — `compute_sale_balance_status` + `post_receivable_payment` (P5-1), `void_inventory_transaction` (P5-2), `post_capital_contribution` + `post_owner_drawing` + `post_salary` + `void_equity_movement` (P5-3), `void_reconciliation` + `void_eod_close` + `void_year_end_close` (P5-4); app.py shims; movement/year-end family deferred to PS-P6 (**TD-POSTING-05**).
 
 | ID | Item | Priority | Status | When / trigger |
 |----|------|----------|--------|----------------|
-| **TD-PS-01** | Kernel **commits internally** (`session.commit()` / `session.rollback()` moved verbatim) — includes reversal primitives and **void service post-flag commits** — convert to flush-only + boundary-owned transactions | High | Open | PS-P5+ per caller family; FastAPI Phase B hard requirement |
+| **TD-PS-01** | Kernel **commits internally** (`session.commit()` / `session.rollback()` moved verbatim) — includes reversal primitives and **void service post-flag commits** — convert to flush-only + boundary-owned transactions | High | Open | PS-P6+ per caller family; FastAPI Phase B hard requirement |
 | **TD-PS-02** | app.py shims carry **ambient company resolution** (session state → explicit `company_id`) — remove per call site as callers migrate to the service | Medium | Open | Per wave; gone when last legacy caller migrates |
 | **TD-PS-03** | Service returns **ORM `JournalEntry`** (legacy contract) — add `PostingResult` DTO for new consumers; deprecate ORM return | Medium | Open | First new consumer (SC approval, PS-P2); removal at FastAPI Phase B |
 | **TD-PS-04** | Kernel `rollback()` on validation failure also discards the **caller's** uncommitted work (pre-existing behaviour, preserved verbatim) — fix lands with TD-PS-01 boundary conversion | Low | Open | PS-P2+ |
 | **TD-PS-05** | **`get_account_by_name` partial extraction** — sales posting moved; ~50 app.py non-sales callers still use the shim; migrate incrementally or re-export from service at PS-P2b | Medium | Open | PS-P2b expense/purchase wave |
 | **TD-PS-06** | **`resolve_payment_credit_account` partial `company_id`** — on Credit Card branch, `company_id` gates `company_card_enabled(session, cid)` but Credit Card Payable GL lookup uses `gl_company_id` only (ambient via shim); preserved verbatim in PS-P2b extraction — unify at intentional cleanup pass, not during extraction | Medium | Open | Post PS-P2b / before FastAPI Phase B |
 | **TD-PS-07** | **`sync_company_cc_subledger` ambient fallback** — sink uses `company_id = company_id or ambient_company_id`; expense/purchase/payable-payment shims thread both `gl_company_id` and `ambient_company_id` from ambient session company; preserved verbatim in PS-P2c — unify with TD-PS-06 at intentional cleanup pass, not during extraction | Medium | Open | Post PS-P2c / before FastAPI Phase B |
-| **TD-PS-08** | **Banking balance ownership asymmetry** — `post_bank_transaction` / `post_bank_transfer` are GL-only (no `BankAccount.balance` mutation); forward balance deltas applied by Streamlit banking UI callers in `app.py` via `apply_account_balance_delta`; `void_bank_transaction` owns balance reversal (`reverse_account_balance_delta` for deposit/withdrawal + direct transfer balance math). Intentionally preserved in PS-P4 — unify at BANKING-SERVICE-01 or deliberate balance-ownership pass | Medium | Open | BANKING-SERVICE-01 or post-PS-P5 cleanup |
+| **TD-PS-08** | **Banking balance ownership asymmetry** — `post_bank_transaction` / `post_bank_transfer` are GL-only (no `BankAccount.balance` mutation); forward balance deltas applied by Streamlit banking UI callers in `app.py` via `apply_account_balance_delta`; `void_bank_transaction` owns balance reversal (`reverse_account_balance_delta` for deposit/withdrawal + direct transfer balance math). Intentionally preserved in PS-P4 — unify at BANKING-SERVICE-01 or deliberate balance-ownership pass | Medium | Open | BANKING-SERVICE-01 or post-PS-P6 cleanup |
+
+### PS-P5 Migration Cleanup (2026-06-13)
+
+#### 1. Code to keep during FastAPI/React migration
+- `services/posting.py` — PS-P5 kernels: `compute_sale_balance_status`, `post_receivable_payment`, `void_inventory_transaction`, `post_capital_contribution`, `post_owner_drawing`, `post_salary`, `void_equity_movement`, `void_reconciliation`, `void_eod_close`, `void_year_end_close` (+ all PS-P1/P2/P3/P4 kernels)
+- app.py shims for all moved names
+- **`log_audit` stays in app.py** — bool void shims on `True`; close-family shims on `if not err:` (empty string = success)
+- Tests: `p5_char.py` (23), `p5_4_char.py` (13) + `p5_1.py` through `p5_4.py` extraction proof
+
+#### 2. Code likely to replace during FastAPI/React migration
+- PS-P5 post/void shims — API layer supplies explicit `company_id` + `user_id`; audit write becomes boundary-owned
+- `post_receivable_payment` service extra `session.commit()` for sale mutation — flush-only once TD-PS-01 lands
+- Close void `str` return contract — may become structured result DTO at FastAPI boundary
+
+#### 3. Remaining app.py real posting surfaces (not extracted — PS-P6 target)
+- **Movement family:** `post_partner_movement`, `post_worker_movement`, `void_partner_movement`, `void_worker_movement` — **TD-POSTING-05** (duplicate inline YEC guards)
+- **Profit allocation:** `allocate_profit_to_partners`, `void_profit_allocation` — **TD-POSTING-05**
+- **Period/year-end posting chains:** `perform_year_end_close` workflow and related close posting paths
+- **Reconciliation posting:** `reconciliation/match_post.py` lazy `_app()` paths — **TD-POSTING-06**
+- **Balance (adjacent):** `calculate_account_balance`, `sync_account_balances`
+- **Edit lifecycle (purchase):** `_create_purchase_payable`, `_update_purchase_payable`, `_sync_purchase_payable_lifecycle`
+- **Balance mutation (banking UI):** `apply_account_balance_delta` callers in Streamlit banking flows (TD-PS-08)
+
+#### 4. Dead code found
+- None in PS-P5 scope
+
+#### 5. Future cleanup items (registered above)
+- **TD-POSTING-05** — primary remaining extraction blocker for PS-P6 movement/year-end family; duplicate inline YEC guards in movement paths must be centralized before service extraction
+- TD-PS-01 through TD-PS-08 unchanged; **no TD cleanup performed in PS-P5**
 
 ### PS-P4 Migration Cleanup (2026-06-13)
 
@@ -478,7 +508,7 @@ Independent architectural review (Claude) — baseline FastAPI/React readiness a
 | **TD-POSTING-02** | **Internal commit behavior** — `create_journal_entry`, most `void_*`, `sync_account_balances`, `log_audit`, and several `post_*` paths call `session.commit()` internally; refactor to `flush()` + caller-owned transaction for FastAPI | **Critical** | Open | PS-P1 / FastAPI Phase B |
 | **TD-POSTING-03** | **ORM return deprecation** — posting helpers return ORM objects (`JournalEntry`, movement rows) or bare IDs inconsistently; introduce frozen DTOs (`JournalEntryView`, `PostingResult`) at service boundary | Medium | Open | PS-P1 API surface |
 | **TD-POSTING-04** | **Rollback semantics difference** — `create_journal_entry` rolls back on guard/balance failure; outer `post_*` / `void_*` callers may leave partial flushes; document and unify transaction boundaries during extraction | High | Open | PS-P1 extraction |
-| **TD-POSTING-05** | **Year-end guard location** — YEC lock centralized in `_entry_date_posting_blocked` for JE posting but duplicated inline in `post_partner_movement`, `post_worker_movement`, and related void guards; consolidate in posting service | Medium | Open | PS-P1 extraction |
+| **TD-POSTING-05** | **Year-end guard location** — YEC lock centralized in `_entry_date_posting_blocked` for JE posting but duplicated inline in `post_partner_movement`, `post_worker_movement`, and related void guards; consolidate in posting service before PS-P6 extraction | Medium | Open | PS-P6 planning / pre-extraction |
 | **TD-POSTING-06** | **Reconciliation `_app` imports** — `reconciliation/company_card.py` and `reconciliation/match_post.py` lazy-import `app` for `create_journal_entry`; replace with `services/posting.py` import to break circular dependency | High | Open | PS-P1 / BANKING-SERVICE-01 |
 
 ### PS-P0 Migration Cleanup (2026-06-05)
