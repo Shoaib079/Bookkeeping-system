@@ -4,6 +4,7 @@ PS-P1: `create_journal_entry` + period/year-end guard (verbatim from app.py).
 PS-P2a: `get_account_by_name`, sales `post_*` trio, `card_settlement_on`.
 PS-P2b: `resolve_payment_credit_account`, `post_payable_creation`.
 PS-P2c-1: `sync_company_cc_subledger`.
+PS-P2c-2: `post_expense`, `post_payable_payment`.
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -25,7 +26,15 @@ No Streamlit, no app.py imports — enforced by contract tests.
 
 from __future__ import annotations
 
-from models import ChartOfAccounts, FiscalPeriod, JournalEntry, JournalEntryLine, YearEndClose
+from models import (
+    ChartOfAccounts,
+    ExpenseRecord,
+    FiscalPeriod,
+    JournalEntry,
+    JournalEntryLine,
+    Payable,
+    YearEndClose,
+)
 from reconciliation.company_card import (
     CompanyCardError,
     company_card_enabled,
@@ -380,3 +389,120 @@ def sync_company_cc_subledger(
         reference_id=reference_id,
         company_id=company_id,
     )
+
+
+def post_expense(
+    session,
+    expense_id,
+    amount,
+    expense_date,
+    category,
+    payment_method="Cash",
+    currency=None,
+    credit_card_account_id=None,
+    *,
+    gl_company_id: int | None = None,
+    ambient_company_id: int | None = None,
+):
+    """Post expense: Debit Expense Account, Credit Cash/Bank/Credit Card Payable.
+
+    PS-P2c-2: verbatim from app.py. Shim supplies ``gl_company_id`` and
+    ``ambient_company_id`` from the session company (legacy ambient GL scope
+    and CC subledger fallback). Record ``company_id`` gates CC enablement via
+    ``resolve_payment_credit_account`` — see TD-PS-06.
+    """
+    expense = session.get(ExpenseRecord, expense_id)
+    cid = expense.company_id if expense else None
+    credit_acct = resolve_payment_credit_account(
+        session, payment_method, currency=currency, company_id=cid, gl_company_id=gl_company_id
+    )
+    if not credit_acct:
+        return
+
+    expense_acct = None
+    if "rent" in category.lower():
+        expense_acct = get_account_by_name(session, "Rent Expense", company_id=gl_company_id)
+    elif "salary" in category.lower():
+        expense_acct = get_account_by_name(session, "Salary Expense", company_id=gl_company_id)
+    elif "utility" in category.lower():
+        expense_acct = get_account_by_name(session, "Utility Expense", company_id=gl_company_id)
+    elif "advertising" in category.lower():
+        expense_acct = get_account_by_name(session, "Advertising Expense", company_id=gl_company_id)
+    elif "fuel" in category.lower():
+        expense_acct = get_account_by_name(session, "Fuel Expense", company_id=gl_company_id)
+    elif "office" in category.lower() or "other" in category.lower():
+        expense_acct = get_account_by_name(session, "Office Expense", company_id=gl_company_id)
+    else:
+        expense_acct = get_account_by_name(session, "Office Expense", company_id=gl_company_id)
+
+    if expense_acct:
+        create_journal_entry(
+            session, expense_date,
+            f"{category} Expense (ID: {expense_id})",
+            "Expense", expense_id,
+            [(expense_acct.id, amount, 0), (credit_acct.id, 0, amount)],
+            currency=currency,
+            company_id=gl_company_id,
+        )
+        sync_company_cc_subledger(
+            session,
+            payment_method,
+            company_id=cid,
+            credit_card_account_id=credit_card_account_id
+            or (expense.credit_card_account_id if expense else None),
+            amount=amount,
+            txn_date=expense_date,
+            description=f"CC expense EXP#{expense_id} — {category}",
+            reference_type="Expense",
+            reference_id=expense_id,
+            record=expense,
+            ambient_company_id=ambient_company_id,
+        )
+
+
+def post_payable_payment(
+    session,
+    payable_id,
+    amount,
+    date,
+    payment_method="Cash",
+    currency=None,
+    credit_card_account_id=None,
+    *,
+    gl_company_id: int | None = None,
+    ambient_company_id: int | None = None,
+):
+    """Post payable payment: Debit AP, Credit Cash/Bank/Credit Card Payable.
+
+    PS-P2c-2: verbatim from app.py. Subledger ``reference_id`` is ``je.id``,
+    not ``payable_id``. Shim supplies ambient GL/CC scope — see TD-PS-06.
+    """
+    ap_acct = get_account_by_name(session, "Accounts Payable", company_id=gl_company_id)
+    payable = session.get(Payable, payable_id)
+    cid = payable.company_id if payable else None
+    credit_acct = resolve_payment_credit_account(
+        session, payment_method, currency=currency, company_id=cid, gl_company_id=gl_company_id
+    )
+    if ap_acct and credit_acct:
+        je = create_journal_entry(
+            session, date,
+            f"Payable Payment (ID: {payable_id})",
+            "PayablePayment", payable_id,
+            [(ap_acct.id, amount, 0), (credit_acct.id, 0, amount)],
+            currency=currency,
+            company_id=gl_company_id,
+        )
+        sync_company_cc_subledger(
+            session,
+            payment_method,
+            company_id=cid,
+            credit_card_account_id=credit_card_account_id
+            or (payable.credit_card_account_id if payable else None),
+            amount=amount,
+            txn_date=date,
+            description=f"CC payable payment PAY#{payable_id}",
+            reference_type="PayablePayment",
+            reference_id=je.id,
+            record=payable,
+            ambient_company_id=ambient_company_id,
+        )

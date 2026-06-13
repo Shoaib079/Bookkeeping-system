@@ -6083,52 +6083,14 @@ def post_purchase(session, purchase_id, amount, purchase_date, purchase_type="Cr
 
 def post_expense(session, expense_id, amount, expense_date, category, payment_method="Cash", currency=None,
                  credit_card_account_id=None):
-    """Post expense: Debit Expense Account, Credit Cash/Bank/Credit Card Payable."""
-    expense = session.get(ExpenseRecord, expense_id)
-    cid = expense.company_id if expense else None
-    credit_acct = _resolve_payment_credit_account(
-        session, payment_method, currency=currency, company_id=cid
+    """PS-P2c-2 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.post_expense(
+        session, expense_id, amount, expense_date, category,
+        payment_method=payment_method, currency=currency,
+        credit_card_account_id=credit_card_account_id,
+        gl_company_id=_current_company_id(),
+        ambient_company_id=_current_company_id(),
     )
-    if not credit_acct:
-        return
-
-    expense_acct = None
-    if "rent" in category.lower():
-        expense_acct = get_account_by_name(session, "Rent Expense")
-    elif "salary" in category.lower():
-        expense_acct = get_account_by_name(session, "Salary Expense")
-    elif "utility" in category.lower():
-        expense_acct = get_account_by_name(session, "Utility Expense")
-    elif "advertising" in category.lower():
-        expense_acct = get_account_by_name(session, "Advertising Expense")
-    elif "fuel" in category.lower():
-        expense_acct = get_account_by_name(session, "Fuel Expense")
-    elif "office" in category.lower() or "other" in category.lower():
-        expense_acct = get_account_by_name(session, "Office Expense")
-    else:
-        expense_acct = get_account_by_name(session, "Office Expense")
-
-    if expense_acct:
-        create_journal_entry(
-            session, expense_date,
-            f"{category} Expense (ID: {expense_id})",
-            "Expense", expense_id,
-            [(expense_acct.id, amount, 0), (credit_acct.id, 0, amount)],
-            currency=currency,
-        )
-        _sync_company_cc_subledger(
-            session,
-            payment_method,
-            company_id=cid,
-            credit_card_account_id=credit_card_account_id
-            or (expense.credit_card_account_id if expense else None),
-            amount=amount,
-            txn_date=expense_date,
-            description=f"CC expense EXP#{expense_id} — {category}",
-            reference_type="Expense",
-            reference_id=expense_id,
-            record=expense,
-        )
 
 
 def post_salary(session, salary_id, amount, salary_date, currency=None):
@@ -6179,34 +6141,14 @@ def post_payable_creation(session, payable_id, amount, date, expense_category="R
 
 def post_payable_payment(session, payable_id, amount, date, payment_method="Cash", currency=None,
                          credit_card_account_id=None):
-    """Post payable payment: Debit AP, Credit Cash/Bank/Credit Card Payable."""
-    ap_acct = get_account_by_name(session, "Accounts Payable")
-    payable = session.get(Payable, payable_id)
-    cid = payable.company_id if payable else None
-    credit_acct = _resolve_payment_credit_account(
-        session, payment_method, currency=currency, company_id=cid
+    """PS-P2c-2 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.post_payable_payment(
+        session, payable_id, amount, date,
+        payment_method=payment_method, currency=currency,
+        credit_card_account_id=credit_card_account_id,
+        gl_company_id=_current_company_id(),
+        ambient_company_id=_current_company_id(),
     )
-    if ap_acct and credit_acct:
-        je = create_journal_entry(
-            session, date,
-            f"Payable Payment (ID: {payable_id})",
-            "PayablePayment", payable_id,
-            [(ap_acct.id, amount, 0), (credit_acct.id, 0, amount)],
-            currency=currency,
-        )
-        _sync_company_cc_subledger(
-            session,
-            payment_method,
-            company_id=cid,
-            credit_card_account_id=credit_card_account_id
-            or (payable.credit_card_account_id if payable else None),
-            amount=amount,
-            txn_date=date,
-            description=f"CC payable payment PAY#{payable_id}",
-            reference_type="PayablePayment",
-            reference_id=je.id,
-            record=payable,
-        )
 
 
 def payable_payment_already_posted(session, payable_id):
