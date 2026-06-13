@@ -6518,17 +6518,11 @@ def post_partner_movement(session, partner_id: int, movement_type: str, amount: 
         return None, f"Unknown movement type: {movement_type}"
 
     # Guard 4 — block posting into a year-end-closed year
-    _yec4 = (
-        cq(session, YearEndClose)
-        .filter(
-            YearEndClose.is_void == False,
-            YearEndClose.start_date <= date,
-            YearEndClose.end_date >= date,
-        )
-        .first()
+    _yec4_msg = posting_service.yec_block_message(
+        session, date, mode="post", company_id=current_company_required()
     )
-    if _yec4:
-        return None, f"Year {_yec4.fiscal_year} is closed. Cannot post movements dated in that year."
+    if _yec4_msg:
+        return None, _yec4_msg
 
     partner = session.get(Partner, partner_id)
     if not partner or not partner.is_active:
@@ -6619,17 +6613,14 @@ def void_partner_movement(session, movement_id: int, voider_id: int, reason: str
         return "Void reason is required."
 
     # Guard 5 — block void if movement date falls inside a year-end-closed year
-    _yec5 = (
-        cq(session, YearEndClose)
-        .filter(
-            YearEndClose.is_void == False,
-            YearEndClose.start_date <= movement.date,
-            YearEndClose.end_date >= movement.date,
-        )
-        .first()
+    _yec5_msg = posting_service.yec_block_message(
+        session,
+        movement.date,
+        mode="movement_void",
+        company_id=current_company_required(),
     )
-    if _yec5:
-        return f"Year {_yec5.fiscal_year} is closed. Void the year-end close before voiding movements inside it."
+    if _yec5_msg:
+        return _yec5_msg
 
     if movement.journal_entry_id:
         je = session.get(JournalEntry, movement.journal_entry_id)
@@ -7464,17 +7455,11 @@ def post_worker_movement(
     if not worker or not worker.is_active:
         return None, "Worker not found or inactive."
 
-    _yec = (
-        cq(session, YearEndClose)
-        .filter(
-            YearEndClose.is_void == False,
-            YearEndClose.start_date <= date,
-            YearEndClose.end_date >= date,
-        )
-        .first()
+    _yec_msg = posting_service.yec_block_message(
+        session, date, mode="post", company_id=current_company_required()
     )
-    if _yec:
-        return None, f"Year {_yec.fiscal_year} is closed. Cannot post movements dated in that year."
+    if _yec_msg:
+        return None, _yec_msg
 
     salary_exp = get_account_by_name(session, "Salary Expense")
     adv_acct = get_account_by_name(session, "Employee Advances")
@@ -7620,20 +7605,14 @@ def void_worker_movement(session, movement_id: int, voider_id: int, reason: str)
     if not reason.strip():
         return "Void reason is required."
 
-    _yec = (
-        cq(session, YearEndClose)
-        .filter(
-            YearEndClose.is_void == False,
-            YearEndClose.start_date <= movement.date,
-            YearEndClose.end_date >= movement.date,
-        )
-        .first()
+    _yec_msg = posting_service.yec_block_message(
+        session,
+        movement.date,
+        mode="movement_void",
+        company_id=current_company_required(),
     )
-    if _yec:
-        return (
-            f"Year {_yec.fiscal_year} is closed. Void the year-end close before "
-            "voiding movements inside it."
-        )
+    if _yec_msg:
+        return _yec_msg
 
     if movement.journal_entry_id:
         je = session.get(JournalEntry, movement.journal_entry_id)
@@ -7806,17 +7785,15 @@ def void_profit_allocation(session, allocation_id: int, voider_id: int, reason: 
     # Guard 3 — block void if the allocation's period falls inside a year-end-closed year
     period = session.get(FiscalPeriod, allocation.fiscal_period_id)
     if period:
-        _yec = (
-            cq(session, YearEndClose)
-            .filter(
-                YearEndClose.is_void == False,
-                YearEndClose.start_date <= period.start_date,
-                YearEndClose.end_date >= period.end_date,
-            )
-            .first()
+        _yec_msg = posting_service.yec_block_message(
+            session,
+            period.start_date,
+            mode="allocation_void",
+            company_id=current_company_required(),
+            period_end_date=period.end_date,
         )
-        if _yec:
-            return f"Year {_yec.fiscal_year} is closed. Void the year-end close before voiding allocations inside it."
+        if _yec_msg:
+            return _yec_msg
 
     if allocation.journal_entry_id:
         je = session.get(JournalEntry, allocation.journal_entry_id)
