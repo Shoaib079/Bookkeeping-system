@@ -2337,32 +2337,19 @@ def sync_account_balances(session):
 # ---------------------------------------------------------------------------
 
 def create_reversing_journal_entry(session, original_entry, void_reason):
-    """Swap every debit/credit in original_entry and post as a new entry."""
-    reversed_lines = [
-        (line.account_id, line.credit or 0, line.debit or 0)
-        for line in original_entry.lines
-    ]
-    if not reversed_lines:
-        return None
-    return create_journal_entry(
-        session,
-        datetime.date.today(),
-        f"VOID: {original_entry.description} — {void_reason}",
-        "Reversal",
-        original_entry.id,
-        reversed_lines,
+    """PS-P3-1 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.create_reversing_journal_entry(
+        session, original_entry, void_reason,
+        company_id=_current_company_id(),
     )
 
 
 def reverse_journal_entries_for(session, reference_type, reference_id, void_reason):
-    """Find all journal entries for a reference and create reversals."""
-    entries = (
-        cq(session, JournalEntry)
-        .filter_by(reference_type=reference_type, reference_id=reference_id)
-        .all()
+    """PS-P3-1 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.reverse_journal_entries_for(
+        session, reference_type, reference_id, void_reason,
+        company_id=current_company_required(),
     )
-    for entry in entries:
-        create_reversing_journal_entry(session, entry, void_reason)
 
 
 def void_sale(session, sale_id, void_reason):

@@ -6,6 +6,7 @@ PS-P2b: `resolve_payment_credit_account`, `post_payable_creation`.
 PS-P2c-1: `sync_company_cc_subledger`.
 PS-P2c-2: `post_expense`, `post_payable_payment`.
 PS-P2c-3: `post_purchase`, `resolve_purchase_debit_account`, `purchase_ref_type`.
+PS-P3-1: `create_reversing_journal_entry`, `reverse_journal_entries_for`.
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -26,6 +27,8 @@ No Streamlit, no app.py imports — enforced by contract tests.
 """
 
 from __future__ import annotations
+
+import datetime
 
 from models import (
     ChartOfAccounts,
@@ -606,3 +609,57 @@ def post_purchase(
                 record=purchase,
                 ambient_company_id=ambient_company_id,
             )
+
+
+def create_reversing_journal_entry(
+    session,
+    original_entry,
+    void_reason,
+    *,
+    company_id: int | None = None,
+):
+    """Swap every debit/credit in original_entry and post as a new entry.
+
+    PS-P3-1: verbatim from app.py. Shim supplies ``company_id`` for
+    ``create_journal_entry`` (legacy ambient GL scope).
+    """
+    reversed_lines = [
+        (line.account_id, line.credit or 0, line.debit or 0)
+        for line in original_entry.lines
+    ]
+    if not reversed_lines:
+        return None
+    return create_journal_entry(
+        session,
+        datetime.date.today(),
+        f"VOID: {original_entry.description} — {void_reason}",
+        "Reversal",
+        original_entry.id,
+        reversed_lines,
+        company_id=company_id,
+    )
+
+
+def reverse_journal_entries_for(
+    session,
+    reference_type,
+    reference_id,
+    void_reason,
+    *,
+    company_id: int | None = None,
+):
+    """Find all journal entries for a reference and create reversals.
+
+    PS-P3-1: verbatim from app.py company-scoped JournalEntry query. The shim
+    supplies ``company_id`` for legacy ambient company scope.
+    """
+    q = session.query(JournalEntry).filter_by(
+        reference_type=reference_type, reference_id=reference_id
+    )
+    if company_id is not None:
+        q = q.filter(JournalEntry.company_id == company_id)
+    entries = q.all()
+    for entry in entries:
+        create_reversing_journal_entry(
+            session, entry, void_reason, company_id=company_id
+        )
