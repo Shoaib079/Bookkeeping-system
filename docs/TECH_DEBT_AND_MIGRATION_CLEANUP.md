@@ -79,17 +79,47 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 PS-P1 shipped 2026-06-13 — JE kernel verbatim in `services/posting.py`; app.py shims.  
 PS-P2a shipped 2026-06-05 — `get_account_by_name`, sales `post_*` trio, `card_settlement_on`; app.py shims.  
 PS-P2b shipped 2026-06-13 — `resolve_payment_credit_account`, `post_payable_creation`; app.py shims.  
-PS-P2c shipped 2026-06-13 — `sync_company_cc_subledger` (P2c-1), `post_expense` + `post_payable_payment` (P2c-2), `post_purchase` + `resolve_purchase_debit_account` + `purchase_ref_type` (P2c-3); app.py shims.
+PS-P2c shipped 2026-06-13 — `sync_company_cc_subledger` (P2c-1), `post_expense` + `post_payable_payment` (P2c-2), `post_purchase` + `resolve_purchase_debit_account` + `purchase_ref_type` (P2c-3); app.py shims.  
+PS-P3 shipped 2026-06-13 — reversal primitives (P3-1), `void_expense` + `void_payable` (P3-2a), `void_sale` (P3-2b), purchase cascade helpers (P3-3a), `void_purchase` (P3-3b); app.py shims; `log_audit` remains app-side.
 
 | ID | Item | Priority | Status | When / trigger |
 |----|------|----------|--------|----------------|
-| **TD-PS-01** | Kernel **commits internally** (`session.commit()` / `session.rollback()` moved verbatim) — convert to flush-only + boundary-owned transactions | High | Open | PS-P2+ per caller family; FastAPI Phase B hard requirement |
+| **TD-PS-01** | Kernel **commits internally** (`session.commit()` / `session.rollback()` moved verbatim) — includes reversal primitives and **void service post-flag commits** — convert to flush-only + boundary-owned transactions | High | Open | PS-P4+ per caller family; FastAPI Phase B hard requirement |
 | **TD-PS-02** | app.py shims carry **ambient company resolution** (session state → explicit `company_id`) — remove per call site as callers migrate to the service | Medium | Open | Per wave; gone when last legacy caller migrates |
 | **TD-PS-03** | Service returns **ORM `JournalEntry`** (legacy contract) — add `PostingResult` DTO for new consumers; deprecate ORM return | Medium | Open | First new consumer (SC approval, PS-P2); removal at FastAPI Phase B |
 | **TD-PS-04** | Kernel `rollback()` on validation failure also discards the **caller's** uncommitted work (pre-existing behaviour, preserved verbatim) — fix lands with TD-PS-01 boundary conversion | Low | Open | PS-P2+ |
 | **TD-PS-05** | **`get_account_by_name` partial extraction** — sales posting moved; ~50 app.py non-sales callers still use the shim; migrate incrementally or re-export from service at PS-P2b | Medium | Open | PS-P2b expense/purchase wave |
 | **TD-PS-06** | **`resolve_payment_credit_account` partial `company_id`** — on Credit Card branch, `company_id` gates `company_card_enabled(session, cid)` but Credit Card Payable GL lookup uses `gl_company_id` only (ambient via shim); preserved verbatim in PS-P2b extraction — unify at intentional cleanup pass, not during extraction | Medium | Open | Post PS-P2b / before FastAPI Phase B |
 | **TD-PS-07** | **`sync_company_cc_subledger` ambient fallback** — sink uses `company_id = company_id or ambient_company_id`; expense/purchase/payable-payment shims thread both `gl_company_id` and `ambient_company_id` from ambient session company; preserved verbatim in PS-P2c — unify with TD-PS-06 at intentional cleanup pass, not during extraction | Medium | Open | Post PS-P2c / before FastAPI Phase B |
+
+### PS-P3 Migration Cleanup (2026-06-13)
+
+#### 1. Code to keep during FastAPI/React migration
+- `services/posting.py` — reversal + void kernels: `create_reversing_journal_entry`, `reverse_journal_entries_for`, `void_expense`, `void_payable`, `void_sale`, `linked_purchase_payable`, `void_purchase_linked_payable`, `void_purchase` (+ all PS-P1/P2 kernels)
+- app.py shims for all moved names; edit-lifecycle helpers `_create_purchase_payable`, `_update_purchase_payable`, `_sync_purchase_payable_lifecycle` (still in app.py, call `_linked_*` / `_void_purchase_linked_payable` shims)
+- **`log_audit` stays in app.py`** — void shims call it only on `True`; stamps ambient `_current_user()`; owns the final audit commit
+- Tests: `p3_char.py`, `p3_2a_char.py`, `p3_2b_char.py`, `p3_3a_char.py` (unchanged) + `p3_1.py` through `p3_3b.py` extraction proof
+
+#### 2. Code likely to replace during FastAPI/React migration
+- All void shims — API layer supplies explicit `company_id` + `user_id`; audit write becomes boundary-owned (not ambient `log_audit`)
+- `_linked_purchase_payable` / `_void_purchase_linked_payable` shims — edit lifecycle callers migrate to direct service import
+- Void service post-flag `session.commit()` — flush-only once TD-PS-01 lands
+
+#### 3. Remaining app.py real posting surfaces (not extracted)
+- **PS-P4 banking:** `post_bank_transaction`, `post_bank_transfer`, `void_bank_transaction`, `void_reconciliation`
+- **PS-P5 equity/movement/close:** `post_partner_movement`, `post_worker_movement`, `post_salary`, `post_capital_contribution`, `post_owner_drawing`, `void_partner_movement`, `void_worker_movement`, `void_equity_movement`, `void_profit_allocation`, `void_year_end_close`, `void_eod_close`
+- **Receivables mini-wave:** `post_receivable_payment` (FX gain/loss)
+- **Inventory mini-wave:** `void_inventory_transaction`
+- **Balance (adjacent):** `calculate_account_balance`, `sync_account_balances`
+- **Edit lifecycle (purchase):** `_create_purchase_payable`, `_update_purchase_payable`, `_sync_purchase_payable_lifecycle`
+
+#### 4. Dead code found
+- None in PS-P3 scope
+
+#### 5. Future cleanup items (registered above)
+- TD-PS-01 scope broadened: void services now own post-flag `session.commit()` in addition to kernel commits
+- TD-PS-02 scope broadened: void/reversal shims add `current_company_required()`
+- TD-PS-06/-07 unchanged; no new TD items in PS-P3
 
 ### PS-P2c Migration Cleanup (2026-06-13)
 

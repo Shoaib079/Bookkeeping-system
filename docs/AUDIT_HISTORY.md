@@ -1810,6 +1810,34 @@ implementation — FUTURE-MIGRATION-01's decision gate still applies at that tim
 
 ---
 
+## 2026-06-13 — POSTING-SERVICE-01 PS-P3: void/reversal extraction complete
+
+**Preconditions verified:** clean tree; PS-P2 complete; PS-P3-CHAR through PS-P3-2b-CHAR committed; final extraction `5a4fab8` (`void_sale`).
+
+**Verdict:** **GO** — PS-P3 document-void wave complete and faithful. **Next:** PS-P4 banking family (`post_bank_transaction`, `post_bank_transfer`, `void_bank_transaction`, `void_reconciliation`).
+
+**Scope (PS-P3 waves):**
+
+| Wave | Moved to `services/posting.py` | app.py shim |
+|------|-------------------------------|-------------|
+| PS-P3-1 | `create_reversing_journal_entry`, `reverse_journal_entries_for` | ✓ |
+| PS-P3-2a | `void_expense`, `void_payable` | ✓ (`log_audit` on `True`) |
+| PS-P3-2b | `void_sale` | ✓ (`log_audit` on `True`) |
+| PS-P3-3a | `linked_purchase_payable`, `void_purchase_linked_payable` | `_linked_*` shims |
+| PS-P3-3b | `void_purchase` | ✓ (`log_audit` on `True`) |
+
+**Edit-lifecycle helpers intentionally left in app.py:** `_create_purchase_payable`, `_update_purchase_payable`, `_sync_purchase_payable_lifecycle` (reach moved helpers via shims).
+
+**Not moved (PS-P4+ scope):** `void_bank_transaction`, `void_reconciliation` (PS-P4 banking); `void_partner_movement`, `void_worker_movement`, `void_equity_movement`, `void_profit_allocation`, `void_year_end_close`, `void_eod_close` (PS-P5); `void_inventory_transaction` (inventory mini-wave); `post_receivable_payment` and remaining `post_*` surfaces; `calculate_account_balance`, `sync_account_balances`; `log_audit` (stays app-side).
+
+**Tests:** PS-P3-CHAR (13), PS-P3-2a-CHAR (3), PS-P3-2b-CHAR (4), PS-P3-3a-CHAR (3) + extraction proof suites `p3_1` through `p3_3b`. Host `pytest tests/` — **1693 passed, 2 xfailed**.
+
+**Behavior preserved:** commit boundaries verbatim (TD-PS-01); void service owns reversal commits + post-flag `session.commit()`; app shim owns `log_audit` commit only on `True`; `company_id=current_company_required()` on all void/reversal shims; purchase cascade commit-free helpers; pinned commit counts (Cash sale void = 3, paid credit sale = 4, unpaid purchase = 3, paid purchase = 4).
+
+**Tech debt:** TD-PS-01 scope broadened (void kernels now also `session.commit()` post-flag). TD-PS-02 scope broadened (void shims add `current_company_required()`). No new TD items.
+
+---
+
 ## How to use this file
 
 1. Before a banking/CC task, read [BANKING_RECON_CC_STATUS.md](./BANKING_RECON_CC_STATUS.md) and the latest entry here.
