@@ -30,29 +30,12 @@
     padding: 0 !important;
   }
 
-  /* Cash flow KPI row */
-  [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] [data-testid="stHorizontalBlock"] {
-    display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 6px !important;
-    width: 100% !important;
-    margin: 0 0 10px !important;
+  /* Cash flow KPI row — shared erp-mob-kpi-grid */
+  [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] .erp-mob-kpi-grid {
+    margin: 0 0 var(--mob-space-3) !important;
   }
 
-  [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] [data-testid="stColumn"] {
-    width: auto !important;
-    min-width: 0 !important;
-    flex: unset !important;
-    max-width: none !important;
-    padding: 0 !important;
-  }
-
-  [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] .card {
-    padding: 8px 10px !important;
-    margin: 0 !important;
-  }
-
-  [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] .table-amount {
+  [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] .erp-mob-kpi-value {
     font-size: 14px !important;
   }
 
@@ -112,7 +95,6 @@
 }
 
 html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] [data-testid="stHorizontalBlock"],
-html.erp-mobile [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] [data-testid="stHorizontalBlock"],
 html.erp-mobile [data-testid="stMain"] [class*="st-key-erp_mob_rpt_filters"] [data-testid="stHorizontalBlock"] {
   display: grid !important;
 }

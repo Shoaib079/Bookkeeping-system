@@ -33,7 +33,6 @@ _MOBILE_COLUMN_ROW_KEYS = frozenset({
     "mob_hub_hdr",
     "erp_mob_rpt_filters",
     "mob_at_topbar",
-    "mob_rpt_cf_kpi",
     "txh_filter_row1",
     "txh_filter_row2",
     "txh_result_hdr",
@@ -47,6 +46,7 @@ _MOBILE_COLUMN_ROW_PREFIXES = (
 )
 
 _CSS_FILES = (
+    ROOT / "ui" / "mobile_components.css",
     ROOT / "ui" / "mobile_shell.css",
     ROOT / "ui" / "mobile_txn.css",
     ROOT / "ui" / "mobile_txn_history.css",

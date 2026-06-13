@@ -95,64 +95,10 @@
   color: color-mix(in srgb, var(--theme-muted) 88%, var(--theme-text) 12%);
 }
 
-.erp-txh-row-pills {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-}
-
-.erp-txh-pill {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 99px;
-  white-space: nowrap;
-}
-
-.erp-txh-pill--success {
-  background: color-mix(in srgb, var(--theme-success) 14%, var(--theme-card) 86%);
-  color: var(--theme-success-text);
-}
-
-.erp-txh-pill--warning {
-  background: color-mix(in srgb, var(--theme-warning) 14%, var(--theme-card) 86%);
-  color: var(--theme-warning-text);
-}
-
-.erp-txh-pill--danger {
-  background: color-mix(in srgb, var(--theme-danger) 14%, var(--theme-card) 86%);
-  color: var(--theme-danger);
-}
-
-.erp-txh-pill--info {
-  background: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%);
-  color: var(--theme-info);
-}
-
-.erp-txh-pill--neutral {
-  background: color-mix(in srgb, var(--theme-muted) 12%, var(--theme-card) 88%);
-  color: var(--theme-muted);
-}
-
-.erp-txh-pill--void {
-  background: color-mix(in srgb, var(--theme-muted) 10%, var(--theme-card) 90%);
-  color: var(--theme-muted);
-  text-decoration: line-through;
-}
-
-.erp-txh-pill--corrected {
-  background: color-mix(in srgb, var(--theme-warning) 12%, var(--theme-card) 88%);
-  color: var(--theme-warning-text);
-}
+/* Status pills — shared grammar in mobile_components.css (erp-mob-status-pill) */
 
 .erp-txh-filters-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--theme-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 10px;
+  margin-bottom: var(--mob-space-3, 10px);
 }
 
 .erp-txh-result-count {

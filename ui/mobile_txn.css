@@ -121,16 +121,6 @@
     font-size: 13px !important;
   }
 
-  .erp-mob-at-screen-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--theme-muted);
-    padding: 8px 4px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
   /* Mobile screen scroll area */
   [data-testid="stMain"] [class*="st-key-erp_at_mobile_screen"] {
     display: block !important;
@@ -144,64 +134,12 @@
     padding: 0 !important;
   }
 
-  /* Today KPI row — reuse dashboard chip styles */
-  [data-testid="stMain"] [class*="st-key-erp_at_mobile_screen"] .erp-mob-at-kpi-scroll {
+  /* Today KPI row — shared erp-mob-kpi-grid (mobile_components.css) */
+  [data-testid="stMain"] [class*="st-key-erp_at_mobile_screen"] .erp-mob-kpi-grid {
     display: grid !important;
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 8px !important;
-    margin: 0 0 10px !important;
-  }
-
-  .erp-mob-at-kpi-chip {
-    background: var(--theme-card);
-    border: 1px solid var(--theme-border);
-    border-radius: 10px;
-    padding: 8px 10px;
-    min-width: 0;
-  }
-
-  .erp-mob-at-kpi-label {
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--theme-muted);
-    margin-bottom: 2px;
-  }
-
-  .erp-mob-at-kpi-value {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--theme-text);
-    white-space: normal;
-    word-break: break-word;
-    overflow: visible;
-    text-overflow: unset;
-    line-height: 1.25;
-  }
-
-  .erp-mob-at-kpi-value.kpi-success { color: var(--theme-success-text); }
-  .erp-mob-at-kpi-value.kpi-danger { color: var(--theme-danger); }
-
-  /* Today list */
-  .erp-mob-at-list-title {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--theme-muted);
-    margin: 4px 0 8px;
-  }
-
-  .erp-mob-at-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    border-radius: 10px;
-    border: 1px solid var(--theme-border);
-    margin-bottom: 6px;
-    background: var(--theme-card);
+    gap: var(--mob-space-2) !important;
+    margin: 0 0 var(--mob-space-3) !important;
   }
 
   .erp-mob-at-row-icon {
@@ -213,40 +151,6 @@
     justify-content: center;
     font-size: 13px;
     flex-shrink: 0;
-  }
-
-  .erp-mob-at-row-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .erp-mob-at-row-party {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--theme-text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .erp-mob-at-row-sub {
-    font-size: 10px;
-    color: var(--theme-muted);
-    margin-top: 1px;
-  }
-
-  .erp-mob-at-row-amt {
-    text-align: right;
-    flex-shrink: 0;
-    font-size: 13px;
-    font-weight: 700;
-  }
-
-  .erp-mob-at-empty {
-    font-size: 12px;
-    color: var(--theme-muted);
-    padding: 12px 0;
-    text-align: center;
   }
 
   /* Fixed bottom entry panel */
