@@ -388,6 +388,7 @@ from models import (
 
 from services import posting as posting_service
 from services import user_access as _user_access_svc
+from services.context import RequestContext, build_request_context
 
 # Initialize database
 Base.metadata.create_all(bind=engine)
@@ -3077,6 +3078,20 @@ def _can(action: str) -> bool:
         finally:
             sess.close()
     return action in st.session_state[cache_key]
+
+
+def build_streamlit_request_context(session) -> RequestContext | None:
+    """FASTAPI-P0.1 — build explicit context from ambient Streamlit session helpers."""
+    u = _current_user()
+    if u is None:
+        return None
+    return build_request_context(
+        session,
+        user_id=u["id"],
+        company_id=_current_company_id(),
+        membership_role=_current_company_role(),
+        fallback_role=u.get("role"),
+    )
 
 
 # ─── User preference helpers (AppSetting, namespaced per user) ────────────────
