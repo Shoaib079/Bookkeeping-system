@@ -254,6 +254,7 @@ from ui.banking import (
     banking_pos_settlement_route_keys as _banking_pos_settlement_route_keys,
     banking_section_select as _banking_section_select,
     render_banking_match_suggestion_chip as _render_banking_match_suggestion_chip,
+    render_banking_match_queue_list as _render_banking_match_queue_list,
     render_banking_pos_settlement_entry as _render_banking_pos_settlement_entry,
     render_banking_pos_settlement_section as _render_banking_pos_settlement_section,
     render_card_sales_clearing_visibility_block as _render_card_sales_clearing_visibility_block,
@@ -16313,6 +16314,157 @@ def _bsi_default_match_kind(session, sel_row, *, is_deposit: bool) -> str:
     return default if default in valid else "vendor"
 
 
+def _bsi_widget_key(base: str, row_id: int) -> str:
+    """Row-scoped Streamlit widget key for Match queue (prevents cross-row leakage)."""
+    return f"{base}_{row_id}"
+
+
+def _bsi_init_match_kind(
+    session,
+    sel_row,
+    *,
+    is_deposit: bool,
+    kind_ids: list[str],
+) -> str:
+    key = _bsi_widget_key("bsi_match_kind", sel_row.id)
+    if key not in st.session_state:
+        st.session_state[key] = _bsi_default_match_kind(
+            session,
+            sel_row,
+            is_deposit=is_deposit,
+        )
+    if st.session_state[key] not in kind_ids:
+        st.session_state[key] = kind_ids[0]
+    return st.session_state[key]
+
+
+def _bsi_queue_row_summaries(session, postable) -> list[dict]:
+    """Per-row queue metadata: id, summary line, kind label, confidence band."""
+    rows: list[dict] = []
+    for row in postable:
+        is_deposit = bool(row.credit_amount and not row.debit_amount)
+        is_withdrawal = bool(row.debit_amount and not row.credit_amount)
+        sign = "+" if is_deposit else "-"
+        summary = (
+            f"#{row.import_row_index} · {row.date} · "
+            f"{sign}{row.amount:,.2f} · {(row.description or '')[:40]}"
+        )
+        if is_deposit:
+            kind_options = _bsi_deposit_kind_options(session)
+        elif is_withdrawal:
+            kind_options = _bsi_withdrawal_kind_options(session)
+        else:
+            rows.append(
+                {
+                    "row_id": row.id,
+                    "summary": summary,
+                    "kind_label": "—",
+                    "confidence": "low",
+                }
+            )
+            continue
+        kind_labels = {k: _t(label_key) for k, label_key in kind_options}
+        detected = _bsi_default_match_kind(session, row, is_deposit=is_deposit)
+        kind_label = kind_labels.get(detected, kind_labels[kind_options[0][0]])
+        confidence = _banking_match_kind_confidence(
+            detected,
+            row.description or "",
+            is_deposit=is_deposit,
+        )
+        rows.append(
+            {
+                "row_id": row.id,
+                "summary": summary,
+                "kind_label": kind_label,
+                "confidence": confidence,
+            }
+        )
+    return rows
+
+
+@st.fragment
+def _bsi_match_queue_detail_fragment(session, cid: int, sel_row) -> None:
+    """Fragment wrapper — body is testable without Streamlit fragment decorator."""
+    _bsi_match_queue_detail_body(session, cid, sel_row)
+
+
+def _bsi_match_queue_detail_body(session, cid: int, sel_row) -> None:
+    is_deposit = bool(sel_row.credit_amount and not sel_row.debit_amount)
+    is_withdrawal = bool(sel_row.debit_amount and not sel_row.credit_amount)
+
+    st.markdown(f"**{_t('banking.import.match.queue_detail')}**")
+    _render_bsi_match_line_summary(sel_row)
+
+    if is_deposit:
+        kind_options = _bsi_deposit_kind_options(session)
+    elif is_withdrawal:
+        kind_options = _bsi_withdrawal_kind_options(session)
+    else:
+        st.warning(_t("banking.import.match.unclear_amount"))
+        return
+
+    kind_ids = [k for k, _ in kind_options]
+    kind_labels = {k: _t(label_key) for k, label_key in kind_options}
+    match_kind = _bsi_init_match_kind(
+        session,
+        sel_row,
+        is_deposit=is_deposit,
+        kind_ids=kind_ids,
+    )
+
+    detected_kind = _bsi_default_match_kind(
+        session,
+        sel_row,
+        is_deposit=is_deposit,
+    )
+    if detected_kind in kind_labels:
+        kind_key = _bsi_widget_key("bsi_match_kind", sel_row.id)
+        _render_banking_match_suggestion_chip(
+            detected_kind=detected_kind,
+            kind_label=kind_labels[detected_kind],
+            confidence=_banking_match_kind_confidence(
+                detected_kind,
+                sel_row.description or "",
+                is_deposit=is_deposit,
+            ),
+            accept_key=f"bsi_accept_kind_{sel_row.id}",
+            kind_state_key=kind_key,
+        )
+
+    match_kind = st.radio(
+        _t("banking.import.match.what_is_this"),
+        options=kind_ids,
+        format_func=lambda k: kind_labels[k],
+        key=_bsi_widget_key("bsi_match_kind", sel_row.id),
+        horizontal=True,
+    )
+    st.divider()
+    if match_kind == "card_clearing":
+        _render_bsi_deposit_clearing(session, sel_row, cid)
+    elif match_kind == "other_income":
+        _render_bsi_other_deposit(session, sel_row, cid)
+    elif match_kind == "equity_loan":
+        _render_bsi_partner_owner_loan_match(
+            session,
+            sel_row=sel_row,
+            cid=cid,
+            is_deposit=is_deposit,
+        )
+    elif match_kind == "vendor":
+        _render_bsi_vendor_payment(session, sel_row, cid)
+    elif match_kind == "worker_payroll":
+        _render_bsi_worker_payroll(session, sel_row, cid)
+    elif match_kind == "cc_bill":
+        _render_bsi_cc_bill(
+            session,
+            sel_row,
+            cid,
+            sel_row.description or "",
+        )
+    elif match_kind == "bank_fee":
+        _render_bsi_bank_fee(session, sel_row, cid)
+
+
 def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
     if not _card_settlement_on(session):
         st.caption(_t("banking.import.match.needs_settlement"))
@@ -16365,7 +16517,7 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
             _t("banking.import.match.clearing_sales"),
             options=list(sale_labels.keys()),
             format_func=lambda i: sale_labels[i],
-            key="bsi_match_sales",
+            key=_bsi_widget_key("bsi_match_sales", sel_row.id),
         )
         sel_total = sum(c["amount"] for c in clearing if c["sale_id"] in picked_sales)
         sel_total_r = round(sel_total, 2)
@@ -16403,7 +16555,7 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
                             if i is None
                             else stl_labels[i]
                         ),
-                        key="bsi_match_settlement",
+                        key=_bsi_widget_key("bsi_match_settlement", sel_row.id),
                     )
                     if settlement_row_id:
                         stl_row = session.get(SettlementStatementRow, settlement_row_id)
@@ -16415,7 +16567,7 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
                             "banking.import.match.confirm_fee",
                             fee=f"{fee_gap:,.2f}",
                         ),
-                        key="bsi_confirm_fee",
+                        key=_bsi_widget_key("bsi_confirm_fee", sel_row.id),
                     )
             else:
                 st.caption(_t("banking.import.match.needs_bank_charges"))
@@ -16476,7 +16628,7 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
     if st.button(
         _t("banking.import.match.post_clearing"),
         type="primary",
-        key="bsi_post_clearing",
+        key=_bsi_widget_key("bsi_post_clearing", sel_row.id),
     ):
         uid = (_current_user() or {}).get("id")
         try:
@@ -16516,13 +16668,13 @@ def _render_bsi_other_deposit(session, sel_row, cid: int) -> None:
     credit_acct = st.selectbox(
         _t("banking.import.match.credit_account"),
         _common_credit_opts,
-        key="bsi_match_credit_acct",
+        key=_bsi_widget_key("bsi_match_credit_acct", sel_row.id),
     )
     with st.expander(_t("banking.import.match.other_income.advanced")):
         st.caption(_t("banking.import.match.other_income.advanced_hint"))
         use_sales_revenue = st.checkbox(
             _t("banking.import.match.other_income.use_sales_revenue"),
-            key="bsi_other_income_use_sales_revenue",
+            key=_bsi_widget_key("bsi_other_income_use_sales_revenue", sel_row.id),
         )
     if use_sales_revenue:
         credit_acct = "Sales Revenue"
@@ -16532,7 +16684,7 @@ def _render_bsi_other_deposit(session, sel_row, cid: int) -> None:
     if st.button(
         _t("banking.import.match.post_deposit"),
         type="primary",
-        key="bsi_post_deposit",
+        key=_bsi_widget_key("bsi_post_deposit", sel_row.id),
     ):
         uid = (_current_user() or {}).get("id")
         try:
@@ -16574,12 +16726,12 @@ def _render_bsi_cc_bill(session, sel_row, cid: int, desc: str) -> None:
         _t("banking.import.match.cc_bill_card"),
         options=list(cc_labels.keys()),
         format_func=lambda i: cc_labels[i],
-        key="bsi_match_cc_acct",
+        key=_bsi_widget_key("bsi_match_cc_acct", sel_row.id),
     )
     if st.button(
         _t("banking.import.match.post_cc_bill"),
         type="primary",
-        key="bsi_post_cc_bill",
+        key=_bsi_widget_key("bsi_post_cc_bill", sel_row.id),
     ):
         uid = (_current_user() or {}).get("id")
         try:
@@ -16642,7 +16794,7 @@ def _render_bsi_vendor_payment(session, sel_row, cid: int) -> None:
         _t("banking.import.match.vendor"),
         options=list(v_labels.keys()),
         format_func=lambda i: v_labels[i],
-        key="bsi_match_vendor",
+        key=_bsi_widget_key("bsi_match_vendor", sel_row.id),
     )
     open_payables = (
         cq(session, Payable)
@@ -16659,11 +16811,11 @@ def _render_bsi_vendor_payment(session, sel_row, cid: int) -> None:
         _t("banking.import.match.payable"),
         list(payable_labels.keys()),
         format_func=lambda i: payable_labels[i],
-        key="bsi_match_payable",
+        key=_bsi_widget_key("bsi_match_payable", sel_row.id),
     )
     adhoc = st.checkbox(
         _t("banking.import.match.adhoc_expense"),
-        key="bsi_match_adhoc",
+        key=_bsi_widget_key("bsi_match_adhoc", sel_row.id),
         disabled=payable_id is not None,
     )
     exp_cats = [
@@ -16677,13 +16829,13 @@ def _render_bsi_vendor_payment(session, sel_row, cid: int) -> None:
     exp_cat = st.selectbox(
         _t("banking.import.match.expense_category"),
         exp_cats,
-        key="bsi_match_exp_cat",
+        key=_bsi_widget_key("bsi_match_exp_cat", sel_row.id),
         disabled=not adhoc,
     )
     if st.button(
         _t("banking.import.match.post_payment"),
         type="primary",
-        key="bsi_post_payment",
+        key=_bsi_widget_key("bsi_post_payment", sel_row.id),
     ):
         uid = (_current_user() or {}).get("id")
         try:
@@ -16734,13 +16886,13 @@ def _render_bsi_worker_payroll(session, sel_row, cid: int) -> None:
         _t("banking.import.match.worker"),
         options=list(w_labels.keys()),
         format_func=lambda i: w_labels[i],
-        key="bsi_match_worker",
+        key=_bsi_widget_key("bsi_match_worker", sel_row.id),
     )
     wm_type = st.selectbox(
         _t("banking.import.match.worker_movement"),
         ["Salary", "Advance"],
         format_func=lambda v: _i18n_db(_WORKER_MOVEMENT_TYPE_I18N, v),
-        key="bsi_match_worker_type",
+        key=_bsi_widget_key("bsi_match_worker_type", sel_row.id),
     )
 
     adv_bal = get_worker_advance_balance(session, worker_id)
@@ -16751,19 +16903,19 @@ def _render_bsi_worker_payroll(session, sel_row, cid: int) -> None:
 
     gross = ded = adv_rec = period = None
     if wm_type == "Salary":
-        period = st.text_input(_t("worker.pay_period"), key="bsi_worker_period")
+        period = st.text_input(_t("worker.pay_period"), key=_bsi_widget_key("bsi_worker_period", sel_row.id))
         sc1, sc2 = st.columns(2)
         gross = amount_input(
             _t("worker.gross"),
-            key="bsi_worker_gross",
+            key=_bsi_widget_key("bsi_worker_gross", sel_row.id),
             default=bank_amt,
             container=sc1,
         )
         ded = amount_input(
-            _t("worker.deductions"), key="bsi_worker_ded", default=0.0, container=sc2,
+            _t("worker.deductions"), key=_bsi_widget_key("bsi_worker_ded", sel_row.id), default=0.0, container=sc2,
         )
         adv_rec = amount_input(
-            _t("worker.advance_recovery"), key="bsi_worker_adv_rec", default=0.0,
+            _t("worker.advance_recovery"), key=_bsi_widget_key("bsi_worker_adv_rec", sel_row.id), default=0.0,
         )
         if adv_bal > 0.01:
             st.caption(
@@ -16786,7 +16938,7 @@ def _render_bsi_worker_payroll(session, sel_row, cid: int) -> None:
     if st.button(
         _t("banking.import.match.post_worker_payroll"),
         type="primary",
-        key="bsi_post_worker_payroll",
+        key=_bsi_widget_key("bsi_post_worker_payroll", sel_row.id),
     ):
         uid = (_current_user() or {}).get("id")
         try:
@@ -16871,7 +17023,7 @@ def _render_bsi_bank_fee(session, sel_row, cid: int) -> None:
     if st.button(
         _t("banking.import.match.post_bank_charge"),
         type="primary",
-        key="bsi_post_bank_charge",
+        key=_bsi_widget_key("bsi_post_bank_charge", sel_row.id),
     ):
         uid = (_current_user() or {}).get("id")
         try:
@@ -16928,7 +17080,10 @@ def _render_bsi_partner_owner_loan_match(
                 _t("banking.import.match.partner"),
                 options=list(p_labels.keys()),
                 format_func=lambda i: p_labels[i],
-                key="bsi_pm_partner_dep" if is_deposit else "bsi_pm_partner_wd",
+                key=_bsi_widget_key(
+                    "bsi_pm_partner_dep" if is_deposit else "bsi_pm_partner_wd",
+                    sel_row.id,
+                ),
             )
             pm_types = (
                 ["CapitalContribution", "Repayment"]
@@ -16939,11 +17094,17 @@ def _render_bsi_partner_owner_loan_match(
                 _t("banking.import.match.partner_movement"),
                 pm_types,
                 format_func=lambda v: _i18n_db(PARTNER_MOVEMENT_TYPE_I18N, v),
-                key="bsi_pm_type_dep" if is_deposit else "bsi_pm_type_wd",
+                key=_bsi_widget_key(
+                    "bsi_pm_type_dep" if is_deposit else "bsi_pm_type_wd",
+                    sel_row.id,
+                ),
             )
             if st.button(
                 _t("banking.import.match.post_partner"),
-                key="bsi_post_partner_dep" if is_deposit else "bsi_post_partner_wd",
+                key=_bsi_widget_key(
+                    "bsi_post_partner_dep" if is_deposit else "bsi_post_partner_wd",
+                    sel_row.id,
+                ),
             ):
                 uid = (_current_user() or {}).get("id")
                 try:
@@ -16986,7 +17147,10 @@ def _render_bsi_partner_owner_loan_match(
             _t("banking.import.match.owner_kind"),
             [owner_kind],
             format_func=lambda k: _t(f"banking.import.match.eq.{k}"),
-            key="bsi_owner_kind_dep" if is_deposit else "bsi_owner_kind_wd",
+            key=_bsi_widget_key(
+                "bsi_owner_kind_dep" if is_deposit else "bsi_owner_kind_wd",
+                sel_row.id,
+            ),
             disabled=True,
         )
         if st.button(
@@ -16995,7 +17159,10 @@ def _render_bsi_partner_owner_loan_match(
                 if is_deposit
                 else "banking.import.match.post_owner_drawing"
             ),
-            key="bsi_post_owner_dep" if is_deposit else "bsi_post_owner_wd",
+            key=_bsi_widget_key(
+                "bsi_post_owner_dep" if is_deposit else "bsi_post_owner_wd",
+                sel_row.id,
+            ),
         ):
             uid = (_current_user() or {}).get("id")
             try:
@@ -17032,7 +17199,10 @@ def _render_bsi_partner_owner_loan_match(
             if is_deposit
             else "banking.import.match.post_loan_payment"
         ),
-        key="bsi_post_loan_dep" if is_deposit else "bsi_post_loan_wd",
+        key=_bsi_widget_key(
+            "bsi_post_loan_dep" if is_deposit else "bsi_post_loan_wd",
+            sel_row.id,
+        ),
     ):
         uid = (_current_user() or {}).get("id")
         try:
@@ -17654,100 +17824,30 @@ def render_bank_statement_import(session, *, embedded: bool = False):
             if not postable:
                 st.info(_t("banking.import.match.no_rows"))
             else:
-                row_labels = {
-                    r.id: (
-                        f"#{r.import_row_index} · {r.date} · "
-                        f"{'+' if r.credit_amount else '-'}{r.amount:,.2f} · "
-                        f"{(r.description or '')[:40]}"
-                    )
-                    for r in postable
-                }
-                sel_row_id = st.selectbox(
-                    _t("banking.import.match.select_row"),
-                    options=list(row_labels.keys()),
-                    format_func=lambda i: row_labels[i],
-                    key="bsi_match_row",
+                row_ids = [r.id for r in postable]
+                if st.session_state.pop("bsi_pos_entry", False):
+                    dep_rows = [
+                        r
+                        for r in postable
+                        if r.credit_amount and not r.debit_amount
+                    ]
+                    target = dep_rows[0] if dep_rows else postable[0]
+                    st.session_state["bsi_queue_sel_row"] = target.id
+                    if _card_settlement_on(session):
+                        st.session_state[
+                            _bsi_widget_key("bsi_match_kind", target.id)
+                        ] = "card_clearing"
+                if st.session_state.get("bsi_queue_sel_row") not in row_ids:
+                    st.session_state["bsi_queue_sel_row"] = row_ids[0]
+                sel_row_id = st.session_state["bsi_queue_sel_row"]
+                queue_rows = _bsi_queue_row_summaries(session, postable)
+                _render_banking_match_queue_list(
+                    queue_rows,
+                    selected_row_id=sel_row_id,
                 )
                 sel_row = session.get(BankStatementRow, sel_row_id)
-                is_deposit = bool(sel_row and sel_row.credit_amount and not sel_row.debit_amount)
-                is_withdrawal = bool(sel_row and sel_row.debit_amount and not sel_row.credit_amount)
-
-                _render_bsi_match_line_summary(sel_row)
-
-                if is_deposit:
-                    kind_options = _bsi_deposit_kind_options(session)
-                elif is_withdrawal:
-                    kind_options = _bsi_withdrawal_kind_options(session)
-                else:
-                    st.warning(_t("banking.import.match.unclear_amount"))
-                    kind_options = []
-
-                if kind_options:
-                    kind_ids = [k for k, _ in kind_options]
-                    kind_labels = {k: _t(label_key) for k, label_key in kind_options}
-                    if st.session_state.pop("bsi_pos_entry", False):
-                        if "card_clearing" in kind_ids:
-                            st.session_state["bsi_match_kind"] = "card_clearing"
-                        st.session_state["bsi_match_kind_row"] = sel_row_id
-                    elif st.session_state.get("bsi_match_kind_row") != sel_row_id:
-                        st.session_state["bsi_match_kind_row"] = sel_row_id
-                        st.session_state["bsi_match_kind"] = _bsi_default_match_kind(
-                            session,
-                            sel_row,
-                            is_deposit=is_deposit,
-                        )
-                    elif st.session_state.get("bsi_match_kind") not in kind_ids:
-                        st.session_state["bsi_match_kind"] = kind_ids[0]
-
-                    detected_kind = _bsi_default_match_kind(
-                        session,
-                        sel_row,
-                        is_deposit=is_deposit,
-                    )
-                    if detected_kind in kind_labels:
-                        _render_banking_match_suggestion_chip(
-                            detected_kind=detected_kind,
-                            kind_label=kind_labels[detected_kind],
-                            confidence=_banking_match_kind_confidence(
-                                detected_kind,
-                                sel_row.description or "",
-                                is_deposit=is_deposit,
-                            ),
-                            accept_key=f"bsi_accept_kind_{sel_row_id}",
-                        )
-
-                    match_kind = st.radio(
-                        _t("banking.import.match.what_is_this"),
-                        options=kind_ids,
-                        format_func=lambda k: kind_labels[k],
-                        key="bsi_match_kind",
-                        horizontal=True,
-                    )
-                    st.divider()
-                    if match_kind == "card_clearing":
-                        _render_bsi_deposit_clearing(session, sel_row, cid)
-                    elif match_kind == "other_income":
-                        _render_bsi_other_deposit(session, sel_row, cid)
-                    elif match_kind == "equity_loan":
-                        _render_bsi_partner_owner_loan_match(
-                            session,
-                            sel_row=sel_row,
-                            cid=cid,
-                            is_deposit=is_deposit,
-                        )
-                    elif match_kind == "vendor":
-                        _render_bsi_vendor_payment(session, sel_row, cid)
-                    elif match_kind == "worker_payroll":
-                        _render_bsi_worker_payroll(session, sel_row, cid)
-                    elif match_kind == "cc_bill":
-                        _render_bsi_cc_bill(
-                            session,
-                            sel_row,
-                            cid,
-                            sel_row.description or "",
-                        )
-                    elif match_kind == "bank_fee":
-                        _render_bsi_bank_fee(session, sel_row, cid)
+                if sel_row:
+                    _bsi_match_queue_detail_fragment(session, cid, sel_row)
 
     elif section == "history":
         st.markdown(

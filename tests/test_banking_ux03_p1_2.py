@@ -143,13 +143,14 @@ class TestConfidenceBanding:
 
 class TestUiContract:
     def test_match_section_renders_suggestion_chip(self):
-        src = inspect.getsource(erp_app.render_bank_statement_import)
+        src = inspect.getsource(erp_app._bsi_match_queue_detail_body)
         assert "render_banking_match_suggestion_chip" in src
         assert "banking_match_kind_confidence" in src
 
     def test_accept_sets_session_state_only(self):
         src = inspect.getsource(render_banking_match_suggestion_chip)
-        assert 'st.session_state["bsi_match_kind"]' in src
+        assert "kind_state_key" in src
+        assert "st.session_state[kind_state_key]" in src
         assert "post_deposit_clearing_match" not in src
         assert "post_generic_deposit" not in src
         assert "post_vendor_outflow" not in src

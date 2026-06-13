@@ -138,14 +138,15 @@ class TestRouteSessionKeys:
     def test_import_match_workflow_unchanged(self):
         src = inspect.getsource(erp.render_bank_statement_import)
         assert 'section == "match"' in src
-        assert "_render_bsi_deposit_clearing(session, sel_row, cid)" in src
+        frag_src = inspect.getsource(erp._bsi_match_queue_detail_body)
+        assert "_render_bsi_deposit_clearing(session, sel_row, cid)" in frag_src
 
     def test_match_section_honours_pos_entry_before_row_default(self):
         src = inspect.getsource(erp.render_bank_statement_import)
         match_block = src.split('elif section == "match":', 1)[1]
         assert 'st.session_state.pop("bsi_pos_entry", False)' in match_block
         assert match_block.index("bsi_pos_entry") < match_block.index(
-            "bsi_match_kind_row"
+            "bsi_queue_sel_row"
         )
 
 

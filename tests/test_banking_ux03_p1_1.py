@@ -270,7 +270,7 @@ class TestSkipControlLabels:
 
 class TestUnclearAmountLiteral:
     def test_match_section_uses_locale_key(self):
-        src = inspect.getsource(erp_app.render_bank_statement_import)
+        src = inspect.getsource(erp_app._bsi_match_queue_detail_body)
         assert "banking.import.match.unclear_amount" in src
         assert "Row has no clear deposit/withdrawal amount." not in src
 

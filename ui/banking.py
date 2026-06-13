@@ -94,8 +94,9 @@ def render_banking_match_suggestion_chip(
     kind_label: str,
     confidence: str,
     accept_key: str,
+    kind_state_key: str,
 ) -> None:
-    """Detected match kind + confidence — Accept only updates bsi_match_kind."""
+    """Detected match kind + confidence — Accept only updates per-row kind state."""
     erp = _erp()
     conf_text = erp._t(f"banking.import.match.confidence.{confidence}")
     detected = erp._t("banking.import.match.detected_kind", kind=kind_label)
@@ -109,8 +110,39 @@ def render_banking_match_suggestion_chip(
             key=accept_key,
             use_container_width=True,
         ):
-            st.session_state["bsi_match_kind"] = detected_kind
+            st.session_state[kind_state_key] = detected_kind
             st.rerun()
+
+
+def render_banking_match_queue_list(
+    queue_rows: list[dict],
+    *,
+    selected_row_id: int,
+) -> None:
+    """Scannable postable-row list — selecting a row opens the detail fragment."""
+    erp = _erp()
+    st.markdown(f"**{erp._t('banking.import.match.queue_heading')}**")
+    for item in queue_rows:
+        row_id = item["row_id"]
+        is_sel = row_id == selected_row_id
+        conf_text = erp._t(f"banking.import.match.confidence.{item['confidence']}")
+        c_line, c_kind, c_btn = st.columns([4, 2, 1])
+        with c_line:
+            prefix = "**" if is_sel else ""
+            suffix = "**" if is_sel else ""
+            st.markdown(f"{prefix}{item['summary']}{suffix}")
+        with c_kind:
+            st.caption(f"{item['kind_label']} · {conf_text}")
+        with c_btn:
+            if st.button(
+                erp._t("banking.import.match.queue_review"),
+                key=f"bsi_queue_pick_{row_id}",
+                type="primary" if is_sel else "secondary",
+                use_container_width=True,
+            ):
+                st.session_state["bsi_queue_sel_row"] = row_id
+                st.rerun()
+    st.divider()
 
 
 def banking_pos_settlement_route_keys() -> dict[str, Any]:
