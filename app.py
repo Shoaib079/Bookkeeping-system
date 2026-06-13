@@ -393,6 +393,7 @@ from services.read_balances import (
     calculate_account_balance as _read_calculate_account_balance,
     calculate_account_balance_for_period as _read_calculate_account_balance_for_period,
 )
+from services import read_reports as _read_reports_svc
 
 # Initialize database
 Base.metadata.create_all(bind=engine)
@@ -24945,6 +24946,47 @@ def render_transaction_ledger_page(session):
     render_transaction_history(session)
 
 
+def compute_profit_loss_report(session, start_date=None, end_date=None):
+    """FASTAPI-P0.2-B — P&L DTO from ambient company context."""
+    today = datetime.date.today()
+    if start_date is None:
+        start_date = datetime.date(today.year, 1, 1)
+    if end_date is None:
+        end_date = today
+    return _read_reports_svc.compute_profit_loss(
+        session,
+        company_id=current_company_required(),
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+
+def compute_balance_sheet_report(session, end_date=None):
+    """FASTAPI-P0.2-B — Balance Sheet DTO from ambient company context."""
+    today = datetime.date.today()
+    as_of = end_date if end_date is not None else today
+    return _read_reports_svc.compute_balance_sheet(
+        session,
+        company_id=current_company_required(),
+        as_of=as_of,
+    )
+
+
+def compute_cash_flow_report(session, start_date=None, end_date=None):
+    """FASTAPI-P0.2-B — Cash Flow DTO from ambient company context."""
+    today = datetime.date.today()
+    if start_date is None:
+        start_date = datetime.date(today.year, 1, 1)
+    if end_date is None:
+        end_date = today
+    return _read_reports_svc.compute_cash_flow(
+        session,
+        company_id=current_company_required(),
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+
 def render_profit_loss_page(session):
     """AD-UI-001 D1 — thin route wrapper; calculation in render_profit_loss()."""
     today = datetime.date.today()
@@ -24984,30 +25026,20 @@ def render_profit_loss(session, start_date=None, end_date=None):
     if end_date is None:
         end_date = today
 
-    accounts        = cq(session, ChartOfAccounts).filter_by(is_active=True).order_by(ChartOfAccounts.account_code).all()
-    income_accounts = [a for a in accounts if a.account_type == "Income"]
-    expense_accounts = [a for a in accounts if a.account_type == "Expense"]
-    _excl = ["PeriodClose"]
-
-    income_rows = []
-    total_income = 0.0
-    for acct in income_accounts:
-        bal = calculate_account_balance_for_period(session, acct, start_date, end_date, exclude_refs=_excl)
-        if bal != 0:
-            income_rows.append({"Code": acct.account_code, "Account": acct.account_name, "Amount": round(bal, 2)})
-            total_income += bal
-
-    expense_rows = []
-    total_expenses = 0.0
-    for acct in expense_accounts:
-        bal = calculate_account_balance_for_period(session, acct, start_date, end_date, exclude_refs=_excl)
-        if bal != 0:
-            expense_rows.append({"Code": acct.account_code, "Account": acct.account_name, "Amount": round(bal, 2)})
-            total_expenses += bal
-
-    net        = round(total_income - total_expenses, 2)
-    margin_pct = (net / total_income * 100) if total_income else 0.0
-    is_profit  = net >= 0
+    stmt = compute_profit_loss_report(session, start_date=start_date, end_date=end_date)
+    income_rows = [
+        {"Code": ln.code, "Account": ln.account_name, "Amount": ln.amount}
+        for ln in stmt.income_lines
+    ]
+    expense_rows = [
+        {"Code": ln.code, "Account": ln.account_name, "Amount": ln.amount}
+        for ln in stmt.expense_lines
+    ]
+    total_income = stmt.total_income
+    total_expenses = stmt.total_expenses
+    net = stmt.net
+    margin_pct = stmt.margin_pct
+    is_profit = stmt.is_profit
 
     # ── Banner ────────────────────────────────────────────────────────────────
     st.markdown(
@@ -25091,33 +25123,26 @@ def render_balance_sheet(session, end_date=None):
 
     today = datetime.date.today()
     as_of = end_date if end_date is not None else today
-    epoch = datetime.date(2000, 1, 1)
-    accounts = cq(session, ChartOfAccounts).filter_by(is_active=True).order_by(ChartOfAccounts.account_code).all()
+    stmt = compute_balance_sheet_report(session, end_date=as_of)
 
-    def period_bal(acct):
-        return calculate_account_balance_for_period(session, acct, epoch, as_of)
-
-    asset_rows     = [{"Code": a.account_code, "Account": a.account_name, "Amount": round(period_bal(a), 2)} for a in accounts if a.account_type == "Asset"]
-    liability_rows = [{"Code": a.account_code, "Account": a.account_name, "Amount": round(period_bal(a), 2)} for a in accounts if a.account_type == "Liability"]
-    equity_rows    = [{"Code": a.account_code, "Account": a.account_name, "Amount": round(period_bal(a), 2)} for a in accounts if a.account_type == "Equity"]
-
-    # Net income excludes PeriodClose entries: those already moved to Retained Earnings (GL Equity).
-    # Including them would double-count net income from closed periods.
-    _excl = ["PeriodClose"]
-    income_total  = sum(calculate_account_balance_for_period(session, a, epoch, as_of, exclude_refs=_excl) for a in accounts if a.account_type == "Income")
-    expense_total = sum(calculate_account_balance_for_period(session, a, epoch, as_of, exclude_refs=_excl) for a in accounts if a.account_type == "Expense")
-    net_income = income_total - expense_total
-
-    raw_assets      = sum(calculate_account_balance_for_period(session, a, epoch, as_of) for a in accounts if a.account_type == "Asset")
-    raw_liabilities = sum(calculate_account_balance_for_period(session, a, epoch, as_of) for a in accounts if a.account_type == "Liability")
-    raw_equity      = sum(calculate_account_balance_for_period(session, a, epoch, as_of) for a in accounts if a.account_type == "Equity")
-
-    total_assets      = round(raw_assets, 2)
-    total_liabilities = round(raw_liabilities, 2)
-    base_equity       = round(raw_equity, 2)
-    total_equity      = round(raw_equity + net_income, 2)
-    raw_rhs = raw_liabilities + raw_equity + net_income
-    diff    = abs(raw_assets - raw_rhs)
+    asset_rows = [
+        {"Code": ln.code, "Account": ln.account_name, "Amount": ln.amount}
+        for ln in stmt.asset_lines
+    ]
+    liability_rows = [
+        {"Code": ln.code, "Account": ln.account_name, "Amount": ln.amount}
+        for ln in stmt.liability_lines
+    ]
+    equity_rows = [
+        {"Code": ln.code, "Account": ln.account_name, "Amount": ln.amount}
+        for ln in stmt.equity_lines
+    ]
+    net_income = stmt.net_income
+    total_assets = stmt.total_assets
+    total_liabilities = stmt.total_liabilities
+    total_equity = stmt.total_equity
+    diff = stmt.imbalance
+    balanced = stmt.balanced
 
     # ── Banner ────────────────────────────────────────────────────────────────
     st.markdown(
@@ -25161,7 +25186,6 @@ def render_balance_sheet(session, end_date=None):
         _bs_section("info", _t("bs.equity_ni"), total_equity, equity_display)
 
     # ── Balanced badge ────────────────────────────────────────────────────────
-    balanced = diff < 0.01
     badge_style = (
         "background:color-mix(in srgb,var(--theme-success) 16%,var(--theme-card) 84%);color:var(--theme-success-text);"
         if balanced else
@@ -25201,50 +25225,38 @@ def render_cash_flow(session, start_date=None, end_date=None):
     if end_date is None:
         end_date = today
 
-    cash_acct = get_account_by_name(session, "Cash")
-    bank_acct = get_account_by_name(session, "Bank")
-    cash_ids  = {a.id for a in [cash_acct, bank_acct] if a}
-
-    if not cash_ids:
+    stmt = compute_cash_flow_report(session, start_date=start_date, end_date=end_date)
+    if not stmt.has_cash_accounts:
         st.warning(_t("cf.no_cash_bank"))
         return
 
-    financing_refs = {"BankDeposit", "BankWithdrawal", "BankTransfer"}
-    entries = (
-        cq(session, JournalEntry)
-        .filter(JournalEntry.entry_date >= start_date, JournalEntry.entry_date <= end_date)
-        .order_by(JournalEntry.entry_date)
-        .all()
-    )
-
-    operating_rows = []
-    financing_rows = []
-    for entry in entries:
-        for line in entry.lines:
-            if line.account_id not in cash_ids:
-                continue
-            net = round((line.debit or 0) - (line.credit or 0), 2)
-            if net == 0:
-                continue
-            row = {
-                "Date": entry.entry_date,
-                "Description": entry.description,
-                "Type": entry.reference_type or "Manual",
-                "Inflow":  net if net > 0 else 0.0,
-                "Outflow": round(-net, 2) if net < 0 else 0.0,
-            }
-            if (entry.reference_type or "") in financing_refs:
-                financing_rows.append(row)
-            else:
-                operating_rows.append(row)
-
-    op_in    = round(sum(r["Inflow"]  for r in operating_rows), 2)
-    op_out   = round(sum(r["Outflow"] for r in operating_rows), 2)
-    fin_in   = round(sum(r["Inflow"]  for r in financing_rows), 2)
-    fin_out  = round(sum(r["Outflow"] for r in financing_rows), 2)
-    net_op   = round(op_in - op_out, 2)
-    net_fin  = round(fin_in - fin_out, 2)
-    net_total = round(net_op + net_fin, 2)
+    operating_rows = [
+        {
+            "Date": r.date,
+            "Description": r.description,
+            "Type": r.type,
+            "Inflow": r.inflow,
+            "Outflow": r.outflow,
+        }
+        for r in stmt.operating_rows
+    ]
+    financing_rows = [
+        {
+            "Date": r.date,
+            "Description": r.description,
+            "Type": r.type,
+            "Inflow": r.inflow,
+            "Outflow": r.outflow,
+        }
+        for r in stmt.financing_rows
+    ]
+    op_in = stmt.op_in
+    op_out = stmt.op_out
+    fin_in = stmt.fin_in
+    fin_out = stmt.fin_out
+    net_op = stmt.net_op
+    net_fin = stmt.net_fin
+    net_total = stmt.net_total
 
     # ── Banner ────────────────────────────────────────────────────────────────
     st.markdown(
