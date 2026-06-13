@@ -1,8 +1,8 @@
 # POSTING-SERVICE-01 — Posting / Void Cascade Map
 
-**Phase:** PS-P3 complete (PS-P0 characterization → PS-P1 kernel → PS-P2 write paths → PS-P3 void/reversal extraction)  
+**Phase:** PS-P4 complete (PS-P0 characterization → PS-P1 kernel → PS-P2 write paths → PS-P3 void/reversal → PS-P4 banking family)  
 **Source of truth:** `services/posting.py` for extracted write + void paths; `app.py` shims + remaining surfaces below  
-**Purpose:** Track posting/void cascade as extraction proceeds toward PS-P4 (banking family)
+**Purpose:** Track posting/void cascade as extraction proceeds toward PS-P5 (equity/movement/close + reconciliation void)
 
 ---
 
@@ -37,8 +37,10 @@
 | `resolve_purchase_debit_account` | PS-P2c-3 | debit GL mapper | — | Does not commit |
 | `purchase_ref_type` | PS-P2c-3 | pure ref_type mapper | — | Does not commit |
 | `post_purchase` | PS-P2c-3 | `Purchase` / `CashPurchase` / `BankPurchase` / `CardPurchase` | calls sink on Credit Card; `ccc:CardPurchase:{purchase_id}` | Via `create_journal_entry` + optional sink |
+| `post_bank_transaction` | PS-P4-1 | `BankDeposit` / `BankWithdrawal` | — | Via `create_journal_entry`; **GL-only** (no `BankAccount.balance` mutation) |
+| `post_bank_transfer` | PS-P4-1 | `BankTransfer` (skipped when same GL) | — | Via `create_journal_entry` or no-op; **GL-only** |
 
-### Reversal + void paths (PS-P3 — shipped)
+### Reversal + void paths (PS-P3 + PS-P4 — shipped)
 
 | Service function | Wave | Role | Commit behavior |
 |------------------|------|------|-----------------|
@@ -50,8 +52,9 @@
 | `linked_purchase_payable` | PS-P3-3a | Company-scoped payable lookup by `purchase_id` | **Commit-free** |
 | `void_purchase_linked_payable` | PS-P3-3a | Void linked payable; reverse `PayablePayment` GL if paid | **Commit-free** |
 | `void_purchase` | PS-P3-3b | Purchase GL reverse + cascade linked payable + purchase flags | Reversal commits + service commit + shim audit |
+| `void_bank_transaction` | PS-P4-2 | Loops `BankDeposit`/`BankWithdrawal`/`BankTransfer` reversals + `BankAccount.balance` restore | Paired-transfer cascade on source leg; statement/card/equity guards | Reversal commits + service commit + shim `log_audit` |
 
-All PS-P2 and PS-P3 paths above have **app.py compatibility shims** with identical public signatures. Ambient company threading: `company_id` / `gl_company_id` / `ambient_company_id` supplied by shims (TD-PS-02, TD-PS-06, TD-PS-07). Void shims pass `company_id=current_company_required()` and call `log_audit` only on `True` return (audit commit stays app-side).
+All PS-P2, PS-P3, and PS-P4 paths above have **app.py compatibility shims** with identical public signatures. Ambient company threading: `company_id` / `gl_company_id` / `ambient_company_id` supplied by shims (TD-PS-02, TD-PS-06, TD-PS-07). Void shims pass `company_id=current_company_required()` and call `log_audit` only on `True` return (audit commit stays app-side).
 
 ---
 
@@ -63,14 +66,16 @@ All wrappers below ultimately call `create_journal_entry` (via shim) unless note
 |----------|------------------|------------------------|-----------------|
 | `post_receivable_payment` | `ReceivablePayment` | Dr Cash/Bank · Cr AR (+ optional FX Gain/Loss) | `create_journal_entry` + **additional `session.commit()`** for sale balance update |
 | `post_salary` | `Salary` | Dr Salary Expense · Cr Cash | Via `create_journal_entry` |
-| `post_bank_transaction` | `BankDeposit` / `BankWithdrawal` | Dr/Cr Bank vs Cash | Via `create_journal_entry` |
-| `post_bank_transfer` | `BankTransfer` | Dr dest GL · Cr src GL (skipped when same GL) | Via `create_journal_entry` or no-op |
 | `post_capital_contribution` | `CapitalContribution` | Dr Bank/Cash · Cr Owner Capital | Via `create_journal_entry` |
 | `post_owner_drawing` | `OwnerDrawing` | Dr Owner Drawings · Cr Bank/Cash | Via `create_journal_entry` |
 | `post_partner_movement` | Per `_PARTNER_REF_TYPES` | Movement-specific partner GL pairs | `create_journal_entry` + **`session.commit()`** + `log_audit` (audit commits again) |
 | `post_worker_movement` | Per `_WORKER_REF_TYPES` | Salary/advance/repayment lines | `create_journal_entry` + **`session.commit()`** + `log_audit` |
 
 **PS-P2 moved to service (shims only in app.py):** `post_cash_sale`, `post_card_sale`, `post_credit_sale`, `post_payable_creation`, `post_expense`, `post_payable_payment`, `post_purchase` — see table above.
+
+**PS-P4 moved to service (shims only in app.py):** `post_bank_transaction`, `post_bank_transfer`, `void_bank_transaction` — see tables above.
+
+**PS-P4 balance ownership (intentional asymmetry — TD-PS-08):** Forward bank posters are **GL-only**; Streamlit banking UI callers in `app.py` still apply `apply_account_balance_delta` when recording deposits/withdrawals/transfers. `void_bank_transaction` owns balance reversal (`reverse_account_balance_delta` for deposit/withdrawal; direct `BankAccount.balance` math for transfer legs). Not unified in PS-P4.
 
 ### Period-close / allocation posting (still in `app.py`)
 
@@ -101,7 +106,7 @@ These modules lazy-import `app` via `_app()` and call `create_journal_entry` or 
 
 ---
 
-## Void family — extracted (PS-P3 complete; shims in `app.py`)
+## Void family — extracted (PS-P3 + PS-P4 banking; shims in `app.py`)
 
 | Function | Service location | GL reversal | Cascade / side effects | Commit behavior |
 |----------|------------------|-------------|------------------------|-----------------|
@@ -109,17 +114,19 @@ These modules lazy-import `app` via `_app()` and call `create_journal_entry` or 
 | `void_expense` | PS-P3-2a | CC subledger + `Expense` reversal | Sets `ExpenseRecord.is_void` | Service commit + shim `log_audit` |
 | `void_payable` | PS-P3-2a | CC subledger + `PayableCreation`/`PayablePayment` | Sets `Payable.is_void` | Service commit + shim `log_audit` |
 | `void_purchase` | PS-P3-3b | CC subledger + purchase ref + cascade | Sets `Purchase.is_void`; `_void_purchase_linked_payable` shim | Service commit + shim `log_audit` |
+| `void_bank_transaction` | PS-P4-2 | `BankDeposit`/`BankWithdrawal`/`BankTransfer` reversals | `BankAccount.balance` restore; paired-transfer cascade on source leg; bsr/card/equity guards | Service commit + shim `log_audit` |
 | `_linked_purchase_payable` | PS-P3-3a | — | Company-scoped payable lookup | Commit-free (shim only) |
 | `_void_purchase_linked_payable` | PS-P3-3a | `PayablePayment` if paid | Flags linked payable void | Commit-free (shim only) |
 
 **Pinned commit counts (PS-P3-CHAR):** Cash sale void = 3; paid credit sale void = 4; unpaid purchase void = 3; paid credit purchase void = 4; void_payable scales with JE count (+2 for flag + audit).
 
+**Pinned commit counts (PS-P4-CHAR):** Deposit void = 3; withdrawal void = 3; cross-GL transfer source void = 3.
+
 ## Void family — remaining in `app.py` (future waves)
 
 | Function | Planned wave | Notes |
 |----------|--------------|-------|
-| `void_bank_transaction` | **PS-P4** (banking) | `BankAccount.balance` cache, paired-transfer cascade, statement/card/equity guards |
-| `void_reconciliation` | **PS-P4** (banking) | Reconciliation workspace state |
+| `void_reconciliation` | **PS-P5** (close/reconciliation family) | Reconciliation workspace state — **deferred from PS-P4** |
 | `void_partner_movement` | **PS-P5** (equity/movement/close) | YEC guard (Guard 5); bank txn + balance |
 | `void_worker_movement` | **PS-P5** | YEC guard; bank txn + balance |
 | `void_equity_movement` | **PS-P5** | Bank txn + balance |
@@ -157,7 +164,7 @@ These modules lazy-import `app` via `_app()` and call `create_journal_entry` or 
 |----------|-----------|-------|
 | **Commits internally** | `create_journal_entry`, `create_reversing_journal_entry`, extracted `void_*` kernels, `sync_account_balances`, remaining `void_*` in app.py, `post_partner_movement`, `post_worker_movement`, `log_audit` | Primary extraction risk (TD-PS-01) |
 | **Does not commit internally** | `calculate_account_balance`, `entry_date_posting_blocked`, `linked_purchase_payable`, `void_purchase_linked_payable`, `post_bank_transfer` (no-op path only), `payable_payment_already_posted` | Read-only or commit-free helpers |
-| **Unknown / needs confirmation** | `reconciliation/*` match posting error paths; `void_reconciliation`; `void_eod_close`; `void_year_end_close` full multi-step commit boundaries | Confirm during PS-P4 extraction |
+| **Unknown / needs confirmation** | `reconciliation/*` match posting error paths; `void_reconciliation`; `void_eod_close`; `void_year_end_close` full multi-step commit boundaries | Confirm during PS-P5 extraction |
 
 ---
 
@@ -190,6 +197,11 @@ These modules lazy-import `app` via `_app()` and call `create_journal_entry` or 
 
 **Extraction proof tests:** `test_posting_service01_p2b.py`, `p2c1.py`, `p2c2.py`, `p2c3.py` (shim delegation + import purity).
 
+**PS-P4 characterization (banking family — commit counts + cascade pins):**
+
+- `tests/test_posting_service01_p4_char.py` (13) — `post_bank_transaction` JE tuples, `post_bank_transfer` cross-GL/same-GL, `void_bank_transaction` balance/transfer cascade/guards/commit-audit
+- Extraction proof: `p4_1.py` (posters), `p4_2.py` (`void_bank_transaction`)
+
 **Partially characterized elsewhere:**
 
 - YEC lock on `create_journal_entry` — `tests/test_year_end_close.py`
@@ -197,16 +209,15 @@ These modules lazy-import `app` via `_app()` and call `create_journal_entry` or 
 - Card purchase void/edit — `tests/test_card_purchase_void_edit.py`
 - CC subledger GL+card+record triangle — `tests/test_cc_subledger_sync.py`
 
-**Uncharacterized (PS-P4+ target):**
+**Uncharacterized (PS-P5+ target):**
 
 - `post_receivable_payment` (incl. FX gain/loss lines) — receivables mini-wave
-- `post_salary`, `post_bank_transaction`, `post_bank_transfer` — **PS-P4 banking**
 - `post_capital_contribution`, `post_owner_drawing`
 - `post_partner_movement`, `post_worker_movement` — **PS-P5**
 - All `reconciliation/` posting paths
-- Remaining `void_*` workflows (banking PS-P4, equity/movement/close PS-P5, inventory mini-wave)
+- Remaining `void_*` workflows (close/reconciliation PS-P5, inventory mini-wave)
 - Period close / profit allocation / year-end close posting chains
 
 ---
 
-*Last updated PS-P3 completion (2026-06-13). Next update at PS-P4 banking extraction.*
+*Last updated PS-P4 completion (2026-06-13). Next update at PS-P5 equity/movement/close extraction.*

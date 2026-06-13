@@ -8,6 +8,34 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-13 — POSTING-SERVICE-01 PS-P4: banking family extraction complete
+
+**Preconditions verified:** clean tree; PS-P3 complete; PS-P4-CHAR committed (`378af80`); final extraction `e66f0f4` (`void_bank_transaction`).
+
+**Verdict:** **GO** — PS-P4 banking posting/void wave complete and faithful. **Next:** PS-P5 planning (equity/movement/close family + `void_reconciliation`).
+
+**Scope (PS-P4 waves):**
+
+| Wave | Moved to `services/posting.py` | app.py shim |
+|------|-------------------------------|-------------|
+| PS-P4-CHAR | — (characterization only) | — |
+| PS-P4-1 | `post_bank_transaction`, `post_bank_transfer` | ✓ |
+| PS-P4-2 | `void_bank_transaction` | ✓ (`log_audit` on `True`) |
+
+**Intentionally not moved:** `void_reconciliation` — deferred to **PS-P5** close/reconciliation family. Forward `BankAccount.balance` mutation callers (`apply_account_balance_delta` in Streamlit banking UI) remain in `app.py` by design. Balance ownership asymmetry registered as **TD-PS-08** (posters GL-only; void owns reversal).
+
+**Not moved (PS-P5+ scope):** `void_reconciliation` (PS-P5); `void_partner_movement`, `void_worker_movement`, `void_equity_movement`, `void_profit_allocation`, `void_year_end_close`, `void_eod_close` (PS-P5 equity/movement/close); `void_inventory_transaction` (inventory mini-wave); `post_receivable_payment` and remaining `post_*` surfaces (`post_salary`, `post_capital_contribution`, `post_owner_drawing`, `post_partner_movement`, `post_worker_movement`); `calculate_account_balance`, `sync_account_balances`; `log_audit` (stays app-side).
+
+**Tests:** PS-P4-CHAR (13) + extraction proof `p4_1.py` (4), `p4_2.py` (3). Host `pytest tests/` — **1713 passed, 2 xfailed**.
+
+**Behavior preserved:** deposit `BankDeposit` Dr Bank/Cr Cash; withdrawal `BankWithdrawal` Dr Cash/Cr Bank; cross-GL `BankTransfer` Dr dest/Cr src; same-GL transfer no-op; `void_bank_transaction` paired-transfer cascade, guards, commit counts (deposit/withdrawal/cross-GL source = 3); TD-PS-01/03/06/07 untouched.
+
+**Tech debt:** TD-PS-08 added (banking balance ownership asymmetry). No TD-PS-01 through TD-PS-07 cleanup performed.
+
+**Files changed:** `services/posting.py`, `app.py`, `tests/test_posting_service01_p4_char.py`, `tests/test_posting_service01_p4_1.py`, `tests/test_posting_service01_p4_2.py`, `docs/POSTING_SERVICE_01_CASCADE_MAP.md`, `docs/AUDIT_HISTORY.md`, `docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md`.
+
+---
+
 ## 2026-06-13 — STAFF-CAPTURE-01 SC-P1b (Staff Expense Capture UI)
 
 **Task:** Thin Streamlit UI over SC-P1 service — expense submission, receipt upload, my submissions feed, approval inbox (expense only). No portal gate, no SC-P2 draft types.
