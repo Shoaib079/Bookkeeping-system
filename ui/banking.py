@@ -32,6 +32,7 @@ from registry.banking_config import (
     banking_resolve_landing,
 )
 from registry.nav_keys import NAV_BANKING
+from services import read_reconciliation as _read_recon_svc
 from ui.section import financial_section_header_html
 
 
@@ -337,24 +338,18 @@ def banking_cockpit_drill_to(section: str) -> None:
     st.rerun()
 
 
-BANKING_STATEMENT_TIE_OUT_TOLERANCE = 0.01
-_BANKING_TERMINAL_ROW_STATUSES = frozenset({"posted", "skipped", "voided"})
-_BANKING_NON_TERMINAL_ROW_STATUSES = frozenset(
-    {"staging", "duplicate_flagged", "parse_error"}
-)
+BANKING_STATEMENT_TIE_OUT_TOLERANCE = _read_recon_svc.TIE_OUT_TOLERANCE
+_BANKING_TERMINAL_ROW_STATUSES = _read_recon_svc.TERMINAL_ROW_STATUSES
+_BANKING_NON_TERMINAL_ROW_STATUSES = _read_recon_svc.NON_TERMINAL_ROW_STATUSES
 
 
 def banking_statement_row_signed_amount(row) -> float:
     """Credits increase balance; debits decrease (signed movement)."""
-    if row.credit_amount:
-        return round(float(row.credit_amount), 2)
-    if row.debit_amount:
-        return round(-float(row.debit_amount), 2)
-    return 0.0
+    return _read_recon_svc.statement_row_signed_amount(row)
 
 
 def banking_statement_row_signed_total(rows) -> float:
-    return round(sum(banking_statement_row_signed_amount(r) for r in rows), 2)
+    return _read_recon_svc.statement_row_signed_total(rows)
 
 
 def _banking_readiness_tri_label(erp, tri: str) -> str:
@@ -369,95 +364,27 @@ def compute_banking_statement_readiness(
     rows: list | None = None,
 ) -> dict[str, Any]:
     """Read-only per-statement workflow + tie-out readiness (advisory only)."""
-    erp = _erp()
-    imp = import_record
-    if rows is None:
-        rows = (
-            session.query(erp.BankStatementRow)
-            .filter_by(bank_statement_import_id=imp.id)
-            .order_by(erp.BankStatementRow.import_row_index)
-            .all()
-        )
-    by_status: dict[str, int] = {}
-    for row in rows:
-        by_status[row.status] = by_status.get(row.status, 0) + 1
-
-    non_terminal = sum(by_status.get(s, 0) for s in _BANKING_NON_TERMINAL_ROW_STATUSES)
-    complete = non_terminal == 0
-    remaining_rows = by_status.get("staging", 0) + by_status.get("duplicate_flagged", 0)
-    review_pending = by_status.get("duplicate_flagged", 0)
-    failed_blocked = by_status.get("parse_error", 0)
-
-    has_start = imp.starting_balance is not None
-    has_end = imp.ending_balance is not None
-    tie_out_available = has_start and has_end
-    row_signed_total = banking_statement_row_signed_total(rows)
-    declared_movement: float | None = None
-    tie_out_delta: float | None = None
-    if tie_out_available:
-        declared_movement = round(
-            float(imp.ending_balance) - float(imp.starting_balance), 2
-        )
-        tie_out_delta = round(declared_movement - row_signed_total, 2)
-        tie_out = (
-            "ok"
-            if abs(tie_out_delta) < BANKING_STATEMENT_TIE_OUT_TOLERANCE
-            else "mismatch"
-        )
-    else:
-        tie_out = "unavailable"
-
-    reconciled = complete and tie_out_available and tie_out == "ok"
-    if not tie_out_available:
-        reconciled_tri = "unavailable"
-    elif reconciled:
-        reconciled_tri = "ok"
-    else:
-        reconciled_tri = "attention"
-
-    period = ""
-    if imp.start_date and imp.end_date:
-        period = f"{imp.start_date} – {imp.end_date}"
-    elif imp.start_date:
-        period = str(imp.start_date)
-
-    drill_section = "review" if (review_pending or failed_blocked) else "match"
-
-    return {
-        "import_id": imp.id,
-        "file_name": imp.file_name,
-        "period": period,
-        "complete": complete,
-        "complete_tri": "ok" if complete else "attention",
-        "reconciled": reconciled,
-        "reconciled_tri": reconciled_tri,
-        "tie_out": tie_out,
-        "tie_out_available": tie_out_available,
-        "declared_movement": declared_movement,
-        "row_signed_total": row_signed_total,
-        "tie_out_delta": tie_out_delta,
-        "remaining_rows": remaining_rows,
-        "review_pending": review_pending,
-        "failed_blocked": failed_blocked,
-        "row_counts_by_status": by_status,
-        "drill_section": drill_section,
-        "company_id": imp.company_id,
-    }
+    readiness = _read_recon_svc.compute_statement_readiness(
+        session,
+        import_record,
+        company_id=import_record.company_id,
+        rows=rows,
+    )
+    if readiness is None:
+        return {}
+    return readiness.to_dict()
 
 
 def banking_company_statement_readiness(
     session, company_id: int, *, limit: int = 10
 ) -> list[dict[str, Any]]:
     """Recent imports with per-statement readiness (company-scoped)."""
-    erp = _erp()
-    imports = (
-        session.query(erp.BankStatementImport)
-        .filter(erp.BankStatementImport.company_id == company_id)
-        .order_by(erp.BankStatementImport.created_at.desc())
-        .limit(limit)
-        .all()
-    )
-    return [compute_banking_statement_readiness(session, imp) for imp in imports]
+    return [
+        dto.to_dict()
+        for dto in _read_recon_svc.compute_company_statement_readiness(
+            session, company_id, limit=limit,
+        )
+    ]
 
 
 def banking_readiness_drill_to(section: str, import_id: int | None = None) -> None:
