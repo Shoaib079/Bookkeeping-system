@@ -5890,17 +5890,12 @@ def post_expense(session, expense_id, amount, expense_date, category, payment_me
 
 
 def post_salary(session, salary_id, amount, salary_date, currency=None):
-    """Post salary: Debit Salary Expense, Credit Cash[currency]"""
-    salary_exp = get_account_by_name(session, "Salary Expense")
-    cash_acct  = get_account_by_name(session, "Cash", currency=currency)
-    if salary_exp and cash_acct:
-        create_journal_entry(
-            session, salary_date,
-            f"Salary Payment (ID: {salary_id})",
-            "Salary", salary_id,
-            [(salary_exp.id, amount, 0), (cash_acct.id, 0, amount)],
-            currency=currency,
-        )
+    """PS-P5-3 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.post_salary(
+        session, salary_id, amount, salary_date,
+        currency=currency,
+        company_id=_current_company_id(),
+    )
 
 
 def post_bank_transaction(session, bank_txn_id, amount, txn_date, txn_type, currency=None):
@@ -5951,50 +5946,33 @@ def post_bank_transfer(session, txn_id, amount, txn_date, src_name, dest_name):
 
 
 def post_capital_contribution(session, btxn_id, amount, date, gl_name, currency=None, notes=""):
-    """Dr Bank/Cash  Cr Owner Capital.  gl_name is 'Bank' or 'Cash'."""
-    gl_acct  = get_account_by_name(session, gl_name, currency=currency)
-    cap_acct = get_account_by_name(session, "Owner Capital")
-    if gl_acct and cap_acct:
-        create_journal_entry(
-            session, date,
-            f"Capital Contribution #{btxn_id}" + (f" — {notes}" if notes else ""),
-            "CapitalContribution", btxn_id,
-            [(gl_acct.id, amount, 0), (cap_acct.id, 0, amount)],
-            currency=currency,
-        )
+    """PS-P5-3 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.post_capital_contribution(
+        session, btxn_id, amount, date, gl_name,
+        currency=currency, notes=notes,
+        company_id=_current_company_id(),
+    )
 
 
 def post_owner_drawing(session, btxn_id, amount, date, gl_name, currency=None, notes=""):
-    """Dr Owner Drawings  Cr Bank/Cash.  gl_name is 'Bank' or 'Cash'."""
-    draw_acct = get_account_by_name(session, "Owner Drawings")
-    gl_acct   = get_account_by_name(session, gl_name, currency=currency)
-    if draw_acct and gl_acct:
-        create_journal_entry(
-            session, date,
-            f"Owner Drawing #{btxn_id}" + (f" — {notes}" if notes else ""),
-            "OwnerDrawing", btxn_id,
-            [(draw_acct.id, amount, 0), (gl_acct.id, 0, amount)],
-            currency=currency,
-        )
+    """PS-P5-3 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.post_owner_drawing(
+        session, btxn_id, amount, date, gl_name,
+        currency=currency, notes=notes,
+        company_id=_current_company_id(),
+    )
 
 
 def void_equity_movement(session, ref_type, btxn_id, void_reason):
-    """Reverse an equity movement: reverse GL entries and void the BankTransaction."""
-    reverse_journal_entries_for(session, ref_type, btxn_id, void_reason)
-    btxn = session.get(BankTransaction, btxn_id)
-    if btxn and not btxn.is_void:
-        acct = session.get(BankAccount, btxn.account_id)
-        if acct:
-            if btxn.type == "deposit":
-                acct.balance = (acct.balance or 0) - btxn.amount
-            elif btxn.type == "withdrawal":
-                acct.balance = (acct.balance or 0) + btxn.amount
-        btxn.is_void    = True
-        btxn.voided_at  = datetime.date.today()
-        btxn.void_reason = void_reason
-    session.commit()
-    log_audit(session, "Void", "EquityMovement", btxn_id,
-              f"Voided {ref_type} #{btxn_id}: {void_reason}")
+    """PS-P5-3 compatibility shim — kernel lives in services/posting.py."""
+    posting_service.void_equity_movement(
+        session, ref_type, btxn_id, void_reason,
+        company_id=current_company_required(),
+    )
+    log_audit(
+        session, "Void", "EquityMovement", btxn_id,
+        f"Voided {ref_type} #{btxn_id}: {void_reason}",
+    )
 
 
 # ── Phase 9C: Cash Reconciliation ─────────────────────────────────────────────

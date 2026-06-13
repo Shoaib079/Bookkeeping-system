@@ -15,6 +15,7 @@ PS-P4-1: `post_bank_transaction`, `post_bank_transfer`.
 PS-P4-2: `void_bank_transaction`.
 PS-P5-1: `compute_sale_balance_status`, `post_receivable_payment`.
 PS-P5-2: `void_inventory_transaction`.
+PS-P5-3: `post_capital_contribution`, `post_owner_drawing`, `post_salary`, `void_equity_movement`.
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -772,6 +773,66 @@ def post_bank_transfer(
     )
 
 
+def post_salary(
+    session, salary_id, amount, salary_date, currency=None, *, company_id: int | None = None
+):
+    """Post salary: Debit Salary Expense, Credit Cash[currency].
+
+    PS-P5-3: verbatim from app.py. GL-only.
+    """
+    salary_exp = get_account_by_name(session, "Salary Expense", company_id=company_id)
+    cash_acct = get_account_by_name(session, "Cash", currency=currency, company_id=company_id)
+    if salary_exp and cash_acct:
+        create_journal_entry(
+            session, salary_date,
+            f"Salary Payment (ID: {salary_id})",
+            "Salary", salary_id,
+            [(salary_exp.id, amount, 0), (cash_acct.id, 0, amount)],
+            currency=currency,
+            company_id=company_id,
+        )
+
+
+def post_capital_contribution(
+    session, btxn_id, amount, date, gl_name, currency=None, notes="", *, company_id: int | None = None
+):
+    """Dr Bank/Cash  Cr Owner Capital.  gl_name is 'Bank' or 'Cash'.
+
+    PS-P5-3: verbatim from app.py. No BankAccount.balance mutation.
+    """
+    gl_acct = get_account_by_name(session, gl_name, currency=currency, company_id=company_id)
+    cap_acct = get_account_by_name(session, "Owner Capital", company_id=company_id)
+    if gl_acct and cap_acct:
+        create_journal_entry(
+            session, date,
+            f"Capital Contribution #{btxn_id}" + (f" — {notes}" if notes else ""),
+            "CapitalContribution", btxn_id,
+            [(gl_acct.id, amount, 0), (cap_acct.id, 0, amount)],
+            currency=currency,
+            company_id=company_id,
+        )
+
+
+def post_owner_drawing(
+    session, btxn_id, amount, date, gl_name, currency=None, notes="", *, company_id: int | None = None
+):
+    """Dr Owner Drawings  Cr Bank/Cash.  gl_name is 'Bank' or 'Cash'.
+
+    PS-P5-3: verbatim from app.py. No BankAccount.balance mutation.
+    """
+    draw_acct = get_account_by_name(session, "Owner Drawings", company_id=company_id)
+    gl_acct = get_account_by_name(session, gl_name, currency=currency, company_id=company_id)
+    if draw_acct and gl_acct:
+        create_journal_entry(
+            session, date,
+            f"Owner Drawing #{btxn_id}" + (f" — {notes}" if notes else ""),
+            "OwnerDrawing", btxn_id,
+            [(draw_acct.id, amount, 0), (gl_acct.id, 0, amount)],
+            currency=currency,
+            company_id=company_id,
+        )
+
+
 def create_reversing_journal_entry(
     session,
     original_entry,
@@ -1076,3 +1137,32 @@ def void_inventory_transaction(session, txn_id, void_reason):
     txn.void_reason = void_reason
     session.commit()
     return True
+
+
+def void_equity_movement(
+    session,
+    ref_type,
+    btxn_id,
+    void_reason,
+    *,
+    company_id: int | None = None,
+):
+    """Reverse an equity movement GL entry and void the linked BankTransaction.
+
+    PS-P5-3: verbatim from app.py. App shim writes the audit row after success.
+    """
+    reverse_journal_entries_for(
+        session, ref_type, btxn_id, void_reason, company_id=company_id
+    )
+    btxn = session.get(BankTransaction, btxn_id)
+    if btxn and not btxn.is_void:
+        acct = session.get(BankAccount, btxn.account_id)
+        if acct:
+            if btxn.type == "deposit":
+                acct.balance = (acct.balance or 0) - btxn.amount
+            elif btxn.type == "withdrawal":
+                acct.balance = (acct.balance or 0) + btxn.amount
+        btxn.is_void = True
+        btxn.voided_at = datetime.date.today()
+        btxn.void_reason = void_reason
+    session.commit()
