@@ -14,6 +14,7 @@ PS-P3-3b: `void_purchase`.
 PS-P4-1: `post_bank_transaction`, `post_bank_transfer`.
 PS-P4-2: `void_bank_transaction`.
 PS-P5-1: `compute_sale_balance_status`, `post_receivable_payment`.
+PS-P5-2: `void_inventory_transaction`.
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -43,9 +44,11 @@ from models import (
     ChartOfAccounts,
     ExpenseRecord,
     FiscalPeriod,
+    InventoryTransaction,
     JournalEntry,
     JournalEntryLine,
     Payable,
+    Product,
     Purchase,
     Sale,
     YearEndClose,
@@ -1049,6 +1052,25 @@ def void_bank_transaction(
                     paired.is_void = True
                     paired.voided_at = datetime.date.today()
                     paired.void_reason = f"Paired with voided transfer TXN#{txn_id}: {void_reason}"
+    txn.is_void = True
+    txn.voided_at = datetime.date.today()
+    txn.void_reason = void_reason
+    session.commit()
+    return True
+
+
+def void_inventory_transaction(session, txn_id, void_reason):
+    """Reverse product quantity and flag an inventory adjustment void.
+
+    PS-P5-2: verbatim reverse-and-flag core from app.py. No GL reversal.
+    App shim writes the audit row only on ``True``.
+    """
+    txn = session.get(InventoryTransaction, txn_id)
+    if not txn or txn.is_void:
+        return False
+    product = session.get(Product, txn.product_id)
+    if product:
+        product.quantity = (product.quantity or 0) - txn.change
     txn.is_void = True
     txn.voided_at = datetime.date.today()
     txn.void_reason = void_reason

@@ -2499,19 +2499,15 @@ def void_bank_transaction(session, txn_id, void_reason):
 
 
 def void_inventory_transaction(session, txn_id, void_reason):
+    """PS-P5-2 compatibility shim — kernel lives in services/posting.py."""
     txn = session.get(InventoryTransaction, txn_id)
-    if not txn or txn.is_void:
-        return False
-    product = session.get(Product, txn.product_id)
-    if product:
-        product.quantity = (product.quantity or 0) - txn.change
-    txn.is_void = True
-    txn.voided_at = datetime.date.today()
-    txn.void_reason = void_reason
-    session.commit()
-    log_audit(session, "Void", "InventoryTransaction", txn_id,
-              f"Voided inventory adjustment #{txn_id} for product #{txn.product_id}: {void_reason}")
-    return True
+    ok = posting_service.void_inventory_transaction(session, txn_id, void_reason)
+    if ok:
+        log_audit(
+            session, "Void", "InventoryTransaction", txn_id,
+            f"Voided inventory adjustment #{txn_id} for product #{txn.product_id}: {void_reason}",
+        )
+    return ok
 
 
 def get_account_by_name(session, name, currency=None):
