@@ -18,6 +18,7 @@ PS-P5-2: `void_inventory_transaction`.
 PS-P5-3: `post_capital_contribution`, `post_owner_drawing`, `post_salary`, `void_equity_movement`.
 PS-P5-4: `void_reconciliation`, `void_eod_close`, `void_year_end_close`.
 PS-P6-0a: `yec_block_message` (pure TD-POSTING-05 query helper; no callers yet).
+PS-P6-1: `post_partner_movement`, `void_partner_movement`.
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -53,6 +54,8 @@ from models import (
     JournalEntry,
     JournalEntryLine,
     Payable,
+    Partner,
+    PartnerMovement,
     Product,
     Purchase,
     Sale,
@@ -78,6 +81,34 @@ _CC_NO_CARDS_MSG = (
 )
 _COMPANY_CC_METHOD = "Credit Card"
 _DEFAULT_PURCHASE_GL_DEBIT = "Inventory"  # app.py NAV_INVENTORY default
+
+_PARTNER_REF_TYPES = {
+    "CapitalContribution": "PartnerCapital",
+    "Drawing":             "PartnerDrawing",
+    "Salary":              "PartnerSalary",
+    "Advance":             "PartnerAdvance",
+    "Repayment":           "PartnerRepayment",
+    "AdvanceOffset":       "PartnerAdvanceOffset",
+}
+
+
+def _calculate_account_balance(session, account, *, company_id: int | None = None):
+    """Verbatim from app.py ``calculate_account_balance`` with explicit company_id."""
+    if company_id is not None:
+        q = (
+            session.query(JournalEntryLine)
+            .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
+            .filter(
+                JournalEntryLine.account_id == account.id,
+                JournalEntry.company_id == company_id,
+            )
+        )
+    else:
+        q = session.query(JournalEntryLine).filter_by(account_id=account.id)
+    lines = q.all()
+    if account.account_type in ["Asset", "Expense"]:
+        return sum((line.debit or 0) - (line.credit or 0) for line in lines)
+    return sum((line.credit or 0) - (line.debit or 0) for line in lines)
 
 
 def entry_date_posting_blocked(
@@ -1313,5 +1344,174 @@ def void_year_end_close(session, yec_id: int, voider_id: int, reason: str) -> st
     yec.voided_by_id = voider_id
     yec.voided_at = datetime.datetime.now()
     yec.void_reason = reason
+    session.commit()
+    return ""
+
+
+def post_partner_movement(
+    session,
+    partner_id: int,
+    movement_type: str,
+    amount: float,
+    date: datetime.date,
+    bank_account_id: int = None,
+    notes: str = None,
+    created_by_id: int = None,
+    *,
+    company_id: int | None = None,
+):
+    """Post a partner movement and its GL journal entry.
+
+    PS-P6-1: verbatim from app.py. App shim writes the audit row on ``""`` success.
+    Returns (movement_id, error_string). Error is "" on success.
+    AdvanceOffset requires no bank_account_id; all other types require one.
+    """
+    if amount <= 0:
+        return None, "Amount must be greater than zero."
+    if movement_type not in _PARTNER_REF_TYPES:
+        return None, f"Unknown movement type: {movement_type}"
+
+    _yec4_msg = yec_block_message(session, date, mode="post", company_id=company_id)
+    if _yec4_msg:
+        return None, _yec4_msg
+
+    partner = session.get(Partner, partner_id)
+    if not partner or not partner.is_active:
+        return None, "Partner not found or inactive."
+
+    cap_acct = session.get(ChartOfAccounts, partner.capital_account_id)
+    cur_acct = session.get(ChartOfAccounts, partner.current_account_id)
+    adv_acct = session.get(ChartOfAccounts, partner.advance_account_id)
+    if not all([cap_acct, cur_acct, adv_acct]):
+        return None, "Partner CoA accounts missing — re-create the partner."
+
+    if movement_type == "AdvanceOffset":
+        adv_bal = _calculate_account_balance(session, adv_acct, company_id=company_id)
+        if amount > adv_bal + 0.01:
+            return None, (
+                f"Offset amount {amount:,.2f} exceeds outstanding advance "
+                f"balance {adv_bal:,.2f}."
+            )
+
+    needs_bank = movement_type != "AdvanceOffset"
+    ba_obj, gl_acct, btxn = None, None, None
+    if needs_bank:
+        if not bank_account_id:
+            return None, "Bank account is required for this movement type."
+        ba_obj = session.get(BankAccount, bank_account_id)
+        if not ba_obj:
+            return None, "Bank account not found."
+        gl_name = "Cash" if "cash" in (ba_obj.name or "").lower() else "Bank"
+        gl_acct = get_account_by_name(
+            session, gl_name, currency=ba_obj.currency, company_id=company_id
+        )
+        if not gl_acct:
+            return None, f"GL account '{gl_name}' not found for currency '{ba_obj.currency}'."
+
+        txn_type = (
+            "deposit" if movement_type in ("CapitalContribution", "Repayment") else "withdrawal"
+        )
+        btxn = BankTransaction(
+            account_id=ba_obj.id,
+            date=date,
+            amount=amount,
+            type=txn_type,
+            description=f"Partner {movement_type} #TBD",
+        )
+        session.add(btxn)
+        session.flush()
+        btxn.description = f"Partner {movement_type} #{btxn.id}"
+        ba_obj.balance = (ba_obj.balance or 0.0) + (
+            amount if txn_type == "deposit" else -amount
+        )
+
+    movement = PartnerMovement(
+        partner_id=partner_id,
+        movement_type=movement_type,
+        amount=amount,
+        date=date,
+        bank_transaction_id=btxn.id if btxn else None,
+        notes=notes.strip() if notes else None,
+        is_void=False,
+        created_by_id=created_by_id,
+        created_at=datetime.datetime.now(),
+    )
+    session.add(movement)
+    session.flush()
+
+    if movement_type == "CapitalContribution":
+        lines = [(gl_acct.id, amount, 0), (cap_acct.id, 0, amount)]
+    elif movement_type in ("Drawing", "Salary"):
+        lines = [(cur_acct.id, amount, 0), (gl_acct.id, 0, amount)]
+    elif movement_type == "Advance":
+        lines = [(adv_acct.id, amount, 0), (gl_acct.id, 0, amount)]
+    elif movement_type == "Repayment":
+        lines = [(gl_acct.id, amount, 0), (adv_acct.id, 0, amount)]
+    else:
+        lines = [(cur_acct.id, amount, 0), (adv_acct.id, 0, amount)]
+
+    desc = f"Partner {movement_type}: {partner.name}"
+    if notes and notes.strip():
+        desc += f" — {notes.strip()}"
+
+    je = create_journal_entry(
+        session,
+        date,
+        desc,
+        _PARTNER_REF_TYPES[movement_type],
+        movement.id,
+        lines,
+        company_id=company_id,
+    )
+    movement.journal_entry_id = je.id
+    session.commit()
+    return movement.id, ""
+
+
+def void_partner_movement(
+    session,
+    movement_id: int,
+    voider_id: int,
+    reason: str,
+    *,
+    company_id: int | None = None,
+) -> str:
+    """Void a partner movement and reverse its JE.
+
+    PS-P6-1: verbatim from app.py. App shim writes the audit row on ``""`` success.
+    """
+    movement = session.get(PartnerMovement, movement_id)
+    if not movement or movement.is_void:
+        return "Movement not found or already voided."
+    if not reason.strip():
+        return "Void reason is required."
+
+    _yec5_msg = yec_block_message(
+        session, movement.date, mode="movement_void", company_id=company_id
+    )
+    if _yec5_msg:
+        return _yec5_msg
+
+    if movement.journal_entry_id:
+        je = session.get(JournalEntry, movement.journal_entry_id)
+        if je:
+            create_reversing_journal_entry(session, je, reason, company_id=company_id)
+
+    if movement.bank_transaction_id:
+        btxn = session.get(BankTransaction, movement.bank_transaction_id)
+        if btxn and not btxn.is_void:
+            btxn.is_void = True
+            btxn.void_reason = reason
+            btxn.voided_at = datetime.datetime.now()
+            ba = session.get(BankAccount, btxn.account_id)
+            if ba:
+                ba.balance = (ba.balance or 0.0) + (
+                    btxn.amount if btxn.type == "withdrawal" else -btxn.amount
+                )
+
+    movement.is_void = True
+    movement.voided_by_id = voider_id
+    movement.voided_at = datetime.datetime.now()
+    movement.void_reason = reason
     session.commit()
     return ""

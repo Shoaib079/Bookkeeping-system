@@ -16,21 +16,18 @@ def _fn_block(name: str) -> str:
 
 def test_post_partner_movement_uses_yec_block_message():
     block = _fn_block("post_partner_movement")
-    assert "posting_service.yec_block_message(" in block
-    assert 'mode="post"' in block
+    assert "posting_service.post_partner_movement(" in block
     assert "company_id=current_company_required()" in block
-    assert "return None, _yec4_msg" in block
     assert "cq(session, YearEndClose)" not in block
+    assert "posting_service.yec_block_message(" not in block
 
 
 def test_void_partner_movement_uses_yec_block_message():
     block = _fn_block("void_partner_movement")
-    assert "posting_service.yec_block_message(" in block
-    assert "movement.date" in block
-    assert 'mode="movement_void"' in block
+    assert "posting_service.void_partner_movement(" in block
     assert "company_id=current_company_required()" in block
-    assert "return _yec5_msg" in block
     assert "cq(session, YearEndClose)" not in block
+    assert "posting_service.yec_block_message(" not in block
 
 
 def test_post_worker_movement_uses_yec_block_message():

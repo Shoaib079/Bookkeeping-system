@@ -303,7 +303,7 @@ class TestPostingUnchanged:
     def test_post_partner_movement_unchanged(self):
         src = inspect.getsource(app.post_partner_movement)
         assert "def post_partner_movement" in src
-        assert "create_journal_entry" in src
+        assert "posting_service.post_partner_movement(" in src
 
     def test_ui_has_detail_expander_and_export(self):
         src = inspect.getsource(app._render_partner_statement)

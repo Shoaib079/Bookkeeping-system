@@ -467,8 +467,7 @@ class TestPostingLogicUnchanged:
     def test_post_partner_movement_unchanged(self):
         src = inspect.getsource(app.post_partner_movement)
         assert "def post_partner_movement" in src
-        assert "create_journal_entry" in src
-        assert "AdvanceOffset" in src
+        assert "posting_service.post_partner_movement(" in src
 
     def test_allocate_profit_to_partners_unchanged(self):
         src = inspect.getsource(app.allocate_profit_to_partners)

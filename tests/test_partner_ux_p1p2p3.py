@@ -122,6 +122,5 @@ def test_summary_tab_plain_language_labels():
 def test_post_partner_movement_logic_unchanged():
     src = inspect.getsource(erp.post_partner_movement)
     assert "def post_partner_movement" in src
-    assert "create_journal_entry" in src
-    assert "AdvanceOffset" in src
-    assert "calculate_account_balance(session, adv_acct)" in src
+    assert "posting_service.post_partner_movement(" in src
+    assert 'if err == "":' in src
