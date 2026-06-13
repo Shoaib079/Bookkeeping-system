@@ -7476,56 +7476,17 @@ def _allocate_all_pending(session, allocated_by_id: int) -> list:
 # ─── Phase 13: Year-End Close ────────────────────────────────────────────────
 
 def _get_year_bounds(fiscal_year: str) -> tuple["datetime.date", "datetime.date"]:
-    """Return (Jan 1, Dec 31) for the given fiscal_year string (e.g. '2026')."""
-    year = int(fiscal_year)
-    return datetime.date(year, 1, 1), datetime.date(year, 12, 31)
+    """PS-P6-4 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service._get_year_bounds(fiscal_year)
 
 
 def _check_period_continuity(
     session, year_start: "datetime.date", year_end: "datetime.date"
 ) -> str:
-    """Check that fiscal periods fully and continuously cover [year_start, year_end].
-
-    Returns "" if coverage is complete, or a descriptive error string identifying
-    the first gap or boundary mismatch.
-    """
-    periods = (
-        cq(session, FiscalPeriod)
-        .filter(
-            FiscalPeriod.start_date >= year_start,
-            FiscalPeriod.end_date <= year_end,
-        )
-        .order_by(FiscalPeriod.start_date)
-        .all()
+    """PS-P6-4 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service._check_period_continuity(
+        session, year_start, year_end, company_id=current_company_required()
     )
-    if not periods:
-        return f"No fiscal periods exist for this year ({year_start} – {year_end})."
-
-    if periods[0].start_date != year_start:
-        return (
-            f"Gap at start of year: {year_start} to "
-            f"{periods[0].start_date - datetime.timedelta(days=1)} "
-            "is not covered by any fiscal period."
-        )
-
-    for i in range(len(periods) - 1):
-        expected_next = periods[i].end_date + datetime.timedelta(days=1)
-        if periods[i + 1].start_date != expected_next:
-            gap_start = periods[i].end_date + datetime.timedelta(days=1)
-            gap_end = periods[i + 1].start_date - datetime.timedelta(days=1)
-            return (
-                f"Gap detected: {gap_start} to {gap_end} "
-                "is not covered by any fiscal period."
-            )
-
-    if periods[-1].end_date != year_end:
-        return (
-            f"Gap at end of year: "
-            f"{periods[-1].end_date + datetime.timedelta(days=1)} to {year_end} "
-            "is not covered by any fiscal period."
-        )
-
-    return ""
 
 
 def perform_year_end_close(
@@ -7535,197 +7496,26 @@ def perform_year_end_close(
     notes: str = None,
     acknowledged_warnings: list = None,
 ) -> tuple[int | None, list, str]:
-    """Validate and close a fiscal year.
-
-    Hard blocks stop close immediately. Soft warnings must be acknowledged by the
-    caller (pass their keys in acknowledged_warnings).
-
-    Returns (yec_id, warnings_list, error_string).
-      yec_id        — None on failure
-      warnings_list — list of (key, message) soft warnings detected
-      error_string  — "" on success; non-empty on hard-block failure
-    """
-    if acknowledged_warnings is None:
-        acknowledged_warnings = []
-
-    year_start, year_end = _get_year_bounds(fiscal_year)
-
-    # ── Hard Block 1: period continuity / gap detection ───────────────────────
-    gap_err = _check_period_continuity(session, year_start, year_end)
-    if gap_err:
-        return None, [], gap_err
-
-    # ── Hard Block 2: duplicate close ─────────────────────────────────────────
-    existing = (
-        cq(session, YearEndClose)
-        .filter(YearEndClose.fiscal_year == fiscal_year, YearEndClose.is_void == False)
-        .first()
+    """PS-P6-4 compatibility shim — kernel lives in services/posting.py."""
+    yec_id, warnings, err = posting_service.perform_year_end_close(
+        session,
+        fiscal_year,
+        closed_by_id=closed_by_id,
+        notes=notes,
+        acknowledged_warnings=acknowledged_warnings,
+        company_id=current_company_required(),
     )
-    if existing:
-        return None, [], f"Year {fiscal_year} is already closed (Year-End Close #{existing.id})."
-
-    # ── Hard Block 3: all periods in year must be closed ─────────────────────
-    periods_in_year = (
-        cq(session, FiscalPeriod)
-        .filter(
-            FiscalPeriod.start_date >= year_start,
-            FiscalPeriod.end_date <= year_end,
+    if err == "" and yec_id is not None:
+        yec = session.get(YearEndClose, yec_id)
+        log_audit(
+            session,
+            "YearEndClose",
+            "YearEndClose",
+            yec_id,
+            f"Year {fiscal_year} closed. {yec.period_count} periods, "
+            f"net income {yec.net_income_snapshot:,.2f}, RE at close {yec.re_balance_at_close:,.2f}.",
         )
-        .order_by(FiscalPeriod.start_date)
-        .all()
-    )
-    open_periods = [p for p in periods_in_year if not p.is_closed]
-    if open_periods:
-        names = ", ".join(p.name for p in open_periods[:3])
-        suffix = f" (and {len(open_periods) - 3} more)" if len(open_periods) > 3 else ""
-        return None, [], f"Not all periods are closed. Open: {names}{suffix}."
-
-    # ── Hard Block 4: all closed periods must have profit allocation ──────────
-    unallocated = []
-    for p in periods_in_year:
-        alloc = cq(session, PartnerProfitAllocation).filter_by(
-            fiscal_period_id=p.id, is_void=False
-        ).first()
-        if not alloc:
-            unallocated.append(p.name)
-    if unallocated:
-        names = ", ".join(unallocated[:3])
-        suffix = f" (and {len(unallocated) - 3} more)" if len(unallocated) > 3 else ""
-        return None, [], f"Periods missing profit allocation: {names}{suffix}."
-
-    # ── Hard Block 5: partner shares must sum to 100% ─────────────────────────
-    valid, total_pct, share_err = _validate_partner_shares(session)
-    if not valid:
-        return None, [], f"Partner shares invalid: {share_err}"
-
-    # ── Hard Block 6: Trial Balance must balance ──────────────────────────────
-    from sqlalchemy import func as _func
-    tb = (
-        cq(session, JournalEntryLine).with_entities(
-            _func.sum(JournalEntryLine.debit).label("total_debit"),
-            _func.sum(JournalEntryLine.credit).label("total_credit"),
-        )
-        .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
-        .filter(
-            JournalEntry.entry_date >= year_start,
-            JournalEntry.entry_date <= year_end,
-        )
-        .one()
-    )
-    total_debit  = tb.total_debit  or 0.0
-    total_credit = tb.total_credit or 0.0
-    if abs(total_debit - total_credit) > 0.01:
-        return None, [], (
-            f"Trial Balance is not balanced for year {fiscal_year}: "
-            f"Debit {total_debit:,.2f} vs Credit {total_credit:,.2f}."
-        )
-
-    # ── Soft warnings ─────────────────────────────────────────────────────────
-    warnings = []
-
-    re_acct = get_account_by_name(session, "Retained Earnings")
-    re_balance = calculate_account_balance(session, re_acct) if re_acct else 0.0
-    if abs(re_balance) > 0.01:
-        warnings.append(("re_residual",
-            f"Retained Earnings has a residual balance of {re_balance:,.2f}. "
-            "This may indicate rounding or an unallocated amount."))
-
-    obe_acct = get_account_by_name(session, "Opening Balance Equity")
-    obe_balance = calculate_account_balance(session, obe_acct) if obe_acct else 0.0
-    if abs(obe_balance) > 0.01:
-        warnings.append(("obe_balance",
-            f"Opening Balance Equity (3900) has a non-zero balance of {obe_balance:,.2f}. "
-            "It should be zero once all opening balances are entered."))
-
-    partners_with_advances = (
-        cq(session, Partner)
-        .filter(Partner.is_active == True, Partner.advance_account_id != None)
-        .all()
-    )
-    for p in partners_with_advances:
-        adv_acct = session.get(ChartOfAccounts, p.advance_account_id)
-        if adv_acct:
-            adv_bal = calculate_account_balance(session, adv_acct)
-            if abs(adv_bal) > 0.01:
-                warnings.append((f"advance_{p.id}",
-                    f"Partner '{p.name}' has an outstanding advance balance of {adv_bal:,.2f}."))
-
-    legacy_3000 = get_account_by_name(session, "Owner Capital")
-    legacy_3200 = get_account_by_name(session, "Owner Drawings")
-    for legacy_acct, key in [(legacy_3000, "legacy_capital"), (legacy_3200, "legacy_drawings")]:
-        if legacy_acct:
-            bal = calculate_account_balance(session, legacy_acct)
-            if abs(bal) > 0.01:
-                warnings.append((key,
-                    f"Legacy account '{legacy_acct.account_name}' ({legacy_acct.account_code}) "
-                    f"has a non-zero balance of {bal:,.2f}."))
-
-    unresolved_recons = (
-        cq(session, DailyCashReconciliation)
-        .filter(
-            DailyCashReconciliation.is_void == False,
-            DailyCashReconciliation.status.in_(["pending_approval", "rejected"]),
-            DailyCashReconciliation.date >= year_start,
-            DailyCashReconciliation.date <= year_end,
-        )
-        .count()
-    )
-    if unresolved_recons > 0:
-        warnings.append(("unresolved_recons",
-            f"{unresolved_recons} cash reconciliation(s) in this year are unresolved "
-            "(pending approval or rejected)."))
-
-    # Check for days in year where EOD close is missing (sample: check the last 30 days only
-    # to avoid O(n) day-by-day queries on large years).
-    eod_count = (
-        cq(session, EndOfDayClose)
-        .filter(
-            EndOfDayClose.is_void == False,
-            EndOfDayClose.date >= year_start,
-            EndOfDayClose.date <= year_end,
-        )
-        .count()
-    )
-    if eod_count == 0:
-        warnings.append(("stale_eod",
-            "No End-of-Day closes recorded for this year."))
-
-    # ── Check unacknowledged warnings ─────────────────────────────────────────
-    unacked = [w for w in warnings if w[0] not in acknowledged_warnings]
-    if unacked:
-        return None, warnings, ""   # caller must re-submit with acknowledged keys
-
-    # ── All checks passed — create the YearEndClose record ───────────────────
-    net_income_snapshot = sum(
-        _get_period_net_income_from_je(session, p) for p in periods_in_year
-    )
-
-    import json as _json
-    yec = YearEndClose(
-        fiscal_year                 = fiscal_year,
-        start_date                  = year_start,
-        end_date                    = year_end,
-        status                      = "closed",
-        closed_by_id                = closed_by_id,
-        closed_at                   = datetime.datetime.now(),
-        notes                       = notes.strip() if notes else None,
-        period_count                = len(periods_in_year),
-        allocation_count            = len(periods_in_year),
-        net_income_snapshot         = net_income_snapshot,
-        re_balance_at_close         = re_balance,
-        warnings_acknowledged_json  = _json.dumps(acknowledged_warnings) if acknowledged_warnings else None,
-        is_void                     = False,
-        created_at                  = datetime.datetime.now(),
-    )
-    session.add(yec)
-    session.commit()
-
-    log_audit(
-        session, "YearEndClose", "YearEndClose", yec.id,
-        f"Year {fiscal_year} closed. {len(periods_in_year)} periods, "
-        f"net income {net_income_snapshot:,.2f}, RE at close {re_balance:,.2f}.",
-    )
-    return yec.id, warnings, ""
+    return yec_id, warnings, err
 
 
 def void_year_end_close(
@@ -8105,67 +7895,17 @@ def delete_record(session, model, record_id):
 
 
 def close_fiscal_period(session, period_id):
-    """Post closing entries for the period and mark it locked.
-
-    Closing JE:
-      Dr each Income account (zeroes its credit balance)
-      Cr each Expense account (zeroes its debit balance)
-      Net difference → Dr/Cr Retained Earnings
-    """
-    period = session.get(FiscalPeriod, period_id)
-    if not period or period.is_closed:
-        raise ValueError("Period not found or already closed.")
-
-    re_acct = get_account_by_name(session, "Retained Earnings")
-    if not re_acct:
-        raise ValueError("Retained Earnings account not found in Chart of Accounts.")
-
-    accounts = cq(session, ChartOfAccounts).filter_by(is_active=True).all()
-    lines = []
-    total_income = 0.0
-    total_expense = 0.0
-
-    for acct in accounts:
-        if acct.account_type == "Income":
-            bal = calculate_account_balance_for_period(
-                session, acct, period.start_date, period.end_date, exclude_refs=["PeriodClose"]
-            )
-            if bal > 0.005:
-                lines.append((acct.id, bal, 0))  # Dr Income → zeroes out credit balance
-                total_income += bal
-        elif acct.account_type == "Expense":
-            bal = calculate_account_balance_for_period(
-                session, acct, period.start_date, period.end_date, exclude_refs=["PeriodClose"]
-            )
-            if bal > 0.005:
-                lines.append((acct.id, 0, bal))  # Cr Expense → zeroes out debit balance
-                total_expense += bal
-
-    if not lines:
-        raise ValueError("No income or expense activity in this period. Nothing to close.")
-
-    net_income = total_income - total_expense
-    if net_income > 0.005:
-        lines.append((re_acct.id, 0, net_income))  # Cr Retained Earnings (profit)
-    elif net_income < -0.005:
-        lines.append((re_acct.id, abs(net_income), 0))  # Dr Retained Earnings (loss)
-
-    je = create_journal_entry(
-        session,
-        period.end_date,
-        f"Period Close: {period.name}",
-        "PeriodClose",
-        period_id,
-        lines,
+    """PS-P6-4 compatibility shim — kernel lives in services/posting.py."""
+    je = posting_service.close_fiscal_period(
+        session, period_id, company_id=current_company_required()
     )
-
-    period.is_closed = True
-    period.closed_at = datetime.date.today()
-    period.closing_je_id = je.id
-    session.commit()
-
+    period = session.get(FiscalPeriod, period_id)
+    net_income = _get_period_net_income_from_je(session, period)
     log_audit(
-        session, "PeriodClose", "FiscalPeriod", period_id,
+        session,
+        "PeriodClose",
+        "FiscalPeriod",
+        period_id,
         f"Closed period '{period.name}' ({period.start_date}–{period.end_date}). "
         f"Net income: ${net_income:,.2f}. Closing JE #{je.id}.",
     )
