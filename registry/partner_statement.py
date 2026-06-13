@@ -114,6 +114,7 @@ class PartnerStatementData:
     warnings: list[PartnerStatementWarning] = field(default_factory=list)
     reconciliation_ok: bool = True
     detail_lines: list[PartnerStatementDetailLine] = field(default_factory=list)
+    company_id: int | None = None
 
 
 def partner_statement_preset_range(
@@ -239,9 +240,14 @@ def _line_flow_amounts(gross_amount: float, net_effect: float) -> tuple[float, f
 
 
 def _allocation_lines_in_range(
-    session, partner_id: int, from_date: datetime.date, to_date: datetime.date
+    session,
+    partner_id: int,
+    from_date: datetime.date,
+    to_date: datetime.date,
+    *,
+    company_id: int | None = None,
 ):
-    return (
+    q = (
         session.query(PartnerProfitAllocationLine, PartnerProfitAllocation, FiscalPeriod)
         .join(
             PartnerProfitAllocation,
@@ -254,12 +260,22 @@ def _allocation_lines_in_range(
             FiscalPeriod.end_date >= from_date,
             FiscalPeriod.end_date <= to_date,
         )
-        .all()
     )
+    if company_id is not None:
+        q = q.filter(
+            PartnerProfitAllocation.company_id == company_id,
+            FiscalPeriod.company_id == company_id,
+        )
+    return q.all()
 
 
 def _collect_detail_events(
-    session, partner_id: int, from_date: datetime.date, to_date: datetime.date
+    session,
+    partner_id: int,
+    from_date: datetime.date,
+    to_date: datetime.date,
+    *,
+    company_id: int | None = None,
 ) -> list[dict]:
     events: list[dict] = []
     movements = (
@@ -291,7 +307,9 @@ def _collect_detail_events(
             }
         )
 
-    for line, alloc, fp in _allocation_lines_in_range(session, partner_id, from_date, to_date):
+    for line, alloc, fp in _allocation_lines_in_range(
+        session, partner_id, from_date, to_date, company_id=company_id
+    ):
         amt = round(line.amount, 2)
         if amt > 0:
             type_key = "ProfitAllocated"
@@ -588,11 +606,16 @@ def _movement_totals(session, partner_id: int, from_date: datetime.date, to_date
 
 
 def _allocation_totals(
-    session, partner_id: int, from_date: datetime.date, to_date: datetime.date
+    session,
+    partner_id: int,
+    from_date: datetime.date,
+    to_date: datetime.date,
+    *,
+    company_id: int | None = None,
 ) -> tuple[float, float]:
     """Profit/loss allocated by fiscal period end_date in range (not JE posting date)."""
     profit, loss = 0.0, 0.0
-    rows = (
+    q = (
         session.query(PartnerProfitAllocationLine, FiscalPeriod)
         .join(
             PartnerProfitAllocation,
@@ -605,8 +628,13 @@ def _allocation_totals(
             FiscalPeriod.end_date >= from_date,
             FiscalPeriod.end_date <= to_date,
         )
-        .all()
     )
+    if company_id is not None:
+        q = q.filter(
+            PartnerProfitAllocation.company_id == company_id,
+            FiscalPeriod.company_id == company_id,
+        )
+    rows = q.all()
     for line, _fp in rows:
         amt = round(line.amount, 2)
         if amt > 0:
@@ -617,19 +645,24 @@ def _allocation_totals(
 
 
 def _closed_periods_without_allocation(
-    session, from_date: datetime.date, to_date: datetime.date
+    session,
+    from_date: datetime.date,
+    to_date: datetime.date,
+    *,
+    company_id: int | None = None,
 ) -> list[FiscalPeriod]:
     missing: list[FiscalPeriod] = []
-    periods = (
+    q = (
         session.query(FiscalPeriod)
         .filter(
             FiscalPeriod.is_closed == True,
             FiscalPeriod.end_date >= from_date,
             FiscalPeriod.end_date <= to_date,
         )
-        .order_by(FiscalPeriod.end_date)
-        .all()
     )
+    if company_id is not None:
+        q = q.filter(FiscalPeriod.company_id == company_id)
+    periods = q.order_by(FiscalPeriod.end_date).all()
     for fp in periods:
         alloc = (
             session.query(PartnerProfitAllocation)
@@ -647,9 +680,13 @@ def build_partner_statement(
     from_date: datetime.date,
     to_date: datetime.date,
     balance_for_period: BalanceForPeriodFn,
+    *,
+    company_id: int | None = None,
 ) -> PartnerStatementData | None:
     partner = session.get(Partner, partner_id)
     if not partner:
+        return None
+    if company_id is not None and partner.company_id != company_id:
         return None
 
     opening_as_of = from_date - datetime.timedelta(days=1)
@@ -664,7 +701,9 @@ def build_partner_statement(
     closing_pos = partner_position_from_balances(c_cap, c_cur, c_adv)
 
     mv = _movement_totals(session, partner_id, from_date, to_date)
-    profit_alloc, loss_alloc = _allocation_totals(session, partner_id, from_date, to_date)
+    profit_alloc, loss_alloc = _allocation_totals(
+        session, partner_id, from_date, to_date, company_id=company_id
+    )
 
     net_change = partner_statement_net_change(
         capital_contributions=mv["CapitalContribution"],
@@ -687,7 +726,9 @@ def build_partner_statement(
                 {"amount": c_adv},
             )
         )
-    for fp in _closed_periods_without_allocation(session, from_date, to_date):
+    for fp in _closed_periods_without_allocation(
+        session, from_date, to_date, company_id=company_id
+    ):
         warnings.append(
             PartnerStatementWarning(
                 "partner.stmt.warn_closed_period_no_alloc",
@@ -706,7 +747,9 @@ def build_partner_statement(
             )
         )
 
-    events = _collect_detail_events(session, partner_id, from_date, to_date)
+    events = _collect_detail_events(
+        session, partner_id, from_date, to_date, company_id=company_id
+    )
     detail_lines = build_partner_statement_detail_lines(
         opening_pos, closing_pos, opening_as_of, events
     )
@@ -739,6 +782,7 @@ def build_partner_statement(
         warnings=warnings,
         reconciliation_ok=recon_ok,
         detail_lines=detail_lines,
+        company_id=company_id,
     )
 
 
@@ -793,6 +837,7 @@ class AllPartnersSettlementSummary:
     rows: list[AllPartnersSettlementRow]
     footer: AllPartnersSettlementFooter
     statements_by_partner_id: dict[int, PartnerStatementData]
+    company_id: int | None = None
 
 
 def _warning_flags_from_statement(stmt: PartnerStatementData) -> list[str]:
@@ -886,13 +931,17 @@ def build_all_partners_settlement_summary(
     to_date: datetime.date,
     balance_for_period: BalanceForPeriodFn,
     *,
+    company_id: int | None = None,
     include_inactive: bool = True,
     hide_settled: bool = False,
 ) -> AllPartnersSettlementSummary | None:
     """P4 rollup — one build_partner_statement call per partner (no parallel math)."""
-    partners = (
-        session.query(Partner).order_by(Partner.is_active.desc(), Partner.name, Partner.id).all()
+    q = session.query(Partner).order_by(
+        Partner.is_active.desc(), Partner.name, Partner.id
     )
+    if company_id is not None:
+        q = q.filter(Partner.company_id == company_id)
+    partners = q.all()
     if not partners:
         return None
 
@@ -906,6 +955,7 @@ def build_all_partners_settlement_summary(
             from_date,
             to_date,
             balance_for_period,
+            company_id=company_id,
         )
         if not stmt:
             continue
@@ -925,6 +975,7 @@ def build_all_partners_settlement_summary(
         rows=all_rows,
         footer=footer,
         statements_by_partner_id=statements_by_partner_id,
+        company_id=company_id,
     )
 
 

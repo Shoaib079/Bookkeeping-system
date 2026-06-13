@@ -396,6 +396,7 @@ from services.read_balances import (
 from services import read_reports as _read_reports_svc
 from services import read_ledger as _read_ledger_svc
 from services import read_ar_ap as _read_ar_ap_svc
+from services import read_partner_statement as _read_pstmt_svc
 
 # Initialize database
 Base.metadata.create_all(bind=engine)
@@ -7120,11 +7121,10 @@ def _render_partner_statement(session, currency: str, today: datetime.date) -> N
             key="partner_stmt_all_hide_settled",
         )
 
-    summary = build_all_partners_settlement_summary(
+    summary = compute_all_partners_settlement_summary(
         session,
-        from_date,
-        to_date,
-        calculate_account_balance_for_period,
+        from_date=from_date,
+        to_date=to_date,
         include_inactive=not hide_inactive,
         hide_settled=hide_settled,
     )
@@ -7163,12 +7163,11 @@ def _render_partner_statement(session, currency: str, today: datetime.date) -> N
 
     stmt = summary.statements_by_partner_id.get(stmt_partner.id)
     if stmt is None:
-        stmt = build_partner_statement(
+        stmt = compute_partner_statement(
             session,
-            stmt_partner.id,
-            from_date,
-            to_date,
-            calculate_account_balance_for_period,
+            partner_id=stmt_partner.id,
+            from_date=from_date,
+            to_date=to_date,
         )
     if not stmt:
         st.error(_t("partner.stmt.no_partners"))
@@ -24966,6 +24965,42 @@ def compute_payables_page(
         paid_filter=paid_filter,
         show_voided=show_voided,
         unknown_vendor_label=_t("form.unknown"),
+    )
+
+
+def compute_partner_statement(
+    session,
+    *,
+    partner_id: int,
+    from_date: datetime.date,
+    to_date: datetime.date,
+):
+    """FASTAPI-P0.2-F — Partner statement DTO from ambient company context."""
+    return _read_pstmt_svc.compute_partner_statement(
+        session,
+        company_id=current_company_required(),
+        partner_id=partner_id,
+        from_date=from_date,
+        to_date=to_date,
+    )
+
+
+def compute_all_partners_settlement_summary(
+    session,
+    *,
+    from_date: datetime.date,
+    to_date: datetime.date,
+    include_inactive: bool = True,
+    hide_settled: bool = False,
+):
+    """FASTAPI-P0.2-F — All-partners settlement summary from ambient company context."""
+    return _read_pstmt_svc.compute_all_partners_settlement_summary(
+        session,
+        company_id=current_company_required(),
+        from_date=from_date,
+        to_date=to_date,
+        include_inactive=include_inactive,
+        hide_settled=hide_settled,
     )
 
 
