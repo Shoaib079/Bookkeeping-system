@@ -394,6 +394,7 @@ from services.read_balances import (
     calculate_account_balance_for_period as _read_calculate_account_balance_for_period,
 )
 from services import read_reports as _read_reports_svc
+from services import read_ledger as _read_ledger_svc
 
 # Initialize database
 Base.metadata.create_all(bind=engine)
@@ -21236,36 +21237,24 @@ def render_general_ledger(session):
         account = accounts[account_idx]
 
         st.markdown(f"### {account.account_code} - {account.account_name}")
-        current_balance = calculate_account_balance(session, account)
+        page = compute_general_ledger_page(session, account.id)
+        current_balance = page.current_balance
         st.markdown(
             f"{_t('gl.account_type')}: **{account.account_type}** | "
             f"{_t('gl.current_balance')}: **${current_balance:,.2f}**"
         )
 
-        lines = (
-            cq(session, JournalEntryLine)
-            .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
-            .filter(JournalEntryLine.account_id == account.id)
-            .order_by(JournalEntry.entry_date, JournalEntry.id)
-            .all()
-        )
-        if lines:
-            data = []
-            running_balance = 0
-            for line in lines:
-                entry = session.get(JournalEntry, line.journal_entry_id)
-                if account.account_type in ["Asset", "Expense"]:
-                    balance_change = (line.debit or 0) - (line.credit or 0)
-                else:
-                    balance_change = (line.credit or 0) - (line.debit or 0)
-                running_balance += balance_change
-                data.append({
-                    "Date": entry.entry_date if entry else _t("form.unknown"),
-                    "Description": entry.description if entry else _t("form.unknown"),
-                    "Debit": line.debit if line.debit > 0 else "",
-                    "Credit": line.credit if line.credit > 0 else "",
-                    "Balance": running_balance,
-                })
+        if page.rows:
+            data = [
+                {
+                    "Date": row.date,
+                    "Description": row.description,
+                    "Debit": row.debit if row.debit > 0 else "",
+                    "Credit": row.credit if row.credit > 0 else "",
+                    "Balance": row.running_balance,
+                }
+                for row in page.rows
+            ]
             st.markdown(
                 financial_statement_table_html(
                     [
@@ -24984,6 +24973,25 @@ def compute_cash_flow_report(session, start_date=None, end_date=None):
         company_id=current_company_required(),
         start_date=start_date,
         end_date=end_date,
+    )
+
+
+def compute_general_ledger_page(
+    session,
+    account_id: int,
+    *,
+    start_date=None,
+    end_date=None,
+    search_keyword=None,
+):
+    """FASTAPI-P0.2-C — General Ledger DTO from ambient company context."""
+    return _read_ledger_svc.compute_ledger_page(
+        session,
+        company_id=current_company_required(),
+        account_id=account_id,
+        start_date=start_date,
+        end_date=end_date,
+        search_keyword=search_keyword,
     )
 
 
