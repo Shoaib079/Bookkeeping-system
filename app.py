@@ -2353,18 +2353,17 @@ def reverse_journal_entries_for(session, reference_type, reference_id, void_reas
 
 
 def void_sale(session, sale_id, void_reason):
-    sale = session.get(Sale, sale_id)
-    if not sale or sale.is_void:
-        return False
-    for ref_type in ("CashSale", "CardSale", "CreditSale", "ReceivablePayment"):
-        reverse_journal_entries_for(session, ref_type, sale_id, void_reason)
-    sale.is_void = True
-    sale.voided_at = datetime.date.today()
-    sale.void_reason = void_reason
-    sale.status = "Void"
-    session.commit()
-    log_audit(session, "Void", "Sale", sale_id, f"Voided Sale #{sale_id}: {void_reason}")
-    return True
+    """PS-P3-2b compatibility shim — kernel lives in services/posting.py."""
+    ok = posting_service.void_sale(
+        session, sale_id, void_reason,
+        company_id=current_company_required(),
+    )
+    if ok:
+        log_audit(
+            session, "Void", "Sale", sale_id,
+            f"Voided Sale #{sale_id}: {void_reason}",
+        )
+    return ok
 
 
 def void_expense(session, expense_id, void_reason):

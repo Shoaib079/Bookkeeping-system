@@ -8,6 +8,7 @@ PS-P2c-2: `post_expense`, `post_payable_payment`.
 PS-P2c-3: `post_purchase`, `resolve_purchase_debit_account`, `purchase_ref_type`.
 PS-P3-1: `create_reversing_journal_entry`, `reverse_journal_entries_for`.
 PS-P3-2a: `void_expense`, `void_payable`.
+PS-P3-2b: `void_sale`.
 PS-P3-3a: `linked_purchase_payable`, `void_purchase_linked_payable`.
 PS-P3-3b: `void_purchase`.
 
@@ -41,6 +42,7 @@ from models import (
     JournalEntryLine,
     Payable,
     Purchase,
+    Sale,
     YearEndClose,
 )
 from reconciliation.company_card import (
@@ -803,5 +805,32 @@ def void_purchase(
         f"Purchase #{purchase_id} voided: {void_reason}",
         company_id=company_id,
     )
+    session.commit()
+    return True
+
+
+def void_sale(
+    session,
+    sale_id,
+    void_reason,
+    *,
+    company_id: int | None = None,
+):
+    """Reverse sale GL refs and flag the sale void.
+
+    PS-P3-2b: verbatim reverse-and-flag core from app.py. Commits sale flags.
+    App shim writes the audit row only on ``True``.
+    """
+    sale = session.get(Sale, sale_id)
+    if not sale or sale.is_void:
+        return False
+    for ref_type in ("CashSale", "CardSale", "CreditSale", "ReceivablePayment"):
+        reverse_journal_entries_for(
+            session, ref_type, sale_id, void_reason, company_id=company_id
+        )
+    sale.is_void = True
+    sale.voided_at = datetime.date.today()
+    sale.void_reason = void_reason
+    sale.status = "Void"
     session.commit()
     return True
