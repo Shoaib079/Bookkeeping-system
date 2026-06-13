@@ -6021,26 +6021,12 @@ def post_salary(session, salary_id, amount, salary_date, currency=None):
 
 
 def post_bank_transaction(session, bank_txn_id, amount, txn_date, txn_type, currency=None):
-    """Post bank transaction"""
-    cash_acct = get_account_by_name(session, "Cash", currency=currency)
-    bank_acct = get_account_by_name(session, "Bank", currency=currency)
-    if cash_acct and bank_acct:
-        if txn_type == "deposit":
-            create_journal_entry(
-                session, txn_date,
-                f"Bank Deposit (ID: {bank_txn_id})",
-                "BankDeposit", bank_txn_id,
-                [(bank_acct.id, amount, 0), (cash_acct.id, 0, amount)],
-                currency=currency,
-            )
-        elif txn_type == "withdrawal":
-            create_journal_entry(
-                session, txn_date,
-                f"Bank Withdrawal (ID: {bank_txn_id})",
-                "BankWithdrawal", bank_txn_id,
-                [(cash_acct.id, amount, 0), (bank_acct.id, 0, amount)],
-                currency=currency,
-            )
+    """PS-P4-1 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.post_bank_transaction(
+        session, bank_txn_id, amount, txn_date, txn_type,
+        currency=currency,
+        company_id=_current_company_id(),
+    )
 
 
 def post_payable_creation(session, payable_id, amount, date, expense_category="Rent", currency=None):
@@ -6074,23 +6060,10 @@ def payable_payment_already_posted(session, payable_id):
 
 
 def post_bank_transfer(session, txn_id, amount, txn_date, src_name, dest_name):
-    """Post GL for a bank transfer only when source and destination use different GL accounts.
-    With a single 'Bank' GL account, same-GL transfers are internal and have no GL impact.
-    """
-    def gl_for(name):
-        if "cash" in name.lower():
-            return get_account_by_name(session, "Cash")
-        return get_account_by_name(session, "Bank")
-
-    src_gl = gl_for(src_name)
-    dest_gl = gl_for(dest_name)
-    if not src_gl or not dest_gl or src_gl.id == dest_gl.id:
-        return  # Same GL account — internal sub-account movement; no journal needed
-    create_journal_entry(
-        session, txn_date,
-        f"Bank Transfer (TXN {txn_id}): {src_name} → {dest_name}",
-        "BankTransfer", txn_id,
-        [(dest_gl.id, amount, 0), (src_gl.id, 0, amount)],
+    """PS-P4-1 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.post_bank_transfer(
+        session, txn_id, amount, txn_date, src_name, dest_name,
+        company_id=_current_company_id(),
     )
 
 
