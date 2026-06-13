@@ -389,6 +389,10 @@ from models import (
 from services import posting as posting_service
 from services import user_access as _user_access_svc
 from services.context import RequestContext, build_request_context
+from services.read_balances import (
+    calculate_account_balance as _read_calculate_account_balance,
+    calculate_account_balance_for_period as _read_calculate_account_balance_for_period,
+)
 
 # Initialize database
 Base.metadata.create_all(bind=engine)
@@ -2556,24 +2560,14 @@ def calculate_account_balance_for_period(session, account, start_date, end_date,
 
     exclude_refs: optional list of reference_type values to exclude (e.g. ["PeriodClose"]).
     """
-    cid = _current_company_id()
-    q = (
-        session.query(JournalEntryLine)
-        .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
-        .filter(
-            JournalEntryLine.account_id == account.id,
-            JournalEntry.entry_date >= start_date,
-            JournalEntry.entry_date <= end_date,
-        )
+    return _read_calculate_account_balance_for_period(
+        session,
+        account,
+        start_date,
+        end_date,
+        exclude_refs,
+        company_id=_current_company_id(),
     )
-    if cid is not None:
-        q = q.filter(JournalEntry.company_id == cid)
-    if exclude_refs:
-        q = q.filter(~JournalEntry.reference_type.in_(exclude_refs))
-    lines = q.all()
-    if account.account_type in ["Asset", "Expense"]:
-        return sum((line.debit or 0) - (line.credit or 0) for line in lines)
-    return sum((line.credit or 0) - (line.debit or 0) for line in lines)
 
 
 def calculate_account_balance(session, account):
@@ -2583,22 +2577,11 @@ def calculate_account_balance(session, account):
     Startup/migration callers (no context) receive unfiltered totals, which
     is correct because all data belongs to company_1 at that point.
     """
-    cid = _current_company_id()
-    if cid is not None:
-        q = (
-            session.query(JournalEntryLine)
-            .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
-            .filter(
-                JournalEntryLine.account_id == account.id,
-                JournalEntry.company_id == cid,
-            )
-        )
-    else:
-        q = session.query(JournalEntryLine).filter_by(account_id=account.id)
-    lines = q.all()
-    if account.account_type in ["Asset", "Expense"]:
-        return sum((line.debit or 0) - (line.credit or 0) for line in lines)
-    return sum((line.credit or 0) - (line.debit or 0) for line in lines)
+    return _read_calculate_account_balance(
+        session,
+        account,
+        company_id=_current_company_id(),
+    )
 
 
 def compute_sale_balance_status(amount, paid_amount, due_date):
