@@ -145,6 +145,344 @@ def render_banking_match_queue_list(
     st.divider()
 
 
+def banking_bank_fee_batch_candidates(
+    session, company_id: int, postable
+) -> list[dict]:
+    """High-confidence bank_fee rows only."""
+    return _erp()._bsi_bank_fee_batch_candidates(session, company_id, postable)
+
+
+def banking_bank_fee_batch_partition(
+    session, company_id: int, postable
+) -> dict:
+    """Eligible vs needs-review rows for conservative batch posting."""
+    return _erp()._bsi_bank_fee_batch_partition(session, company_id, postable)
+
+
+def banking_bank_fee_batch_review_reason(session, company_id: int, row) -> str | None:
+    """Expose eligibility check for tests."""
+    return _erp()._bsi_bank_fee_batch_review_reason(session, company_id, row)
+
+
+def render_banking_bank_fee_batch_panel(
+    session,
+    company_id: int,
+    partition: dict,
+) -> None:
+    """Confirm + batch-post high-confidence bank fees only (P2.2-A)."""
+    erp = _erp()
+    eligible = partition.get("eligible") or []
+    needs_review = partition.get("needs_review") or []
+    if not eligible and not needs_review:
+        return
+
+    results_key = "bsi_bank_fee_batch_results"
+    skipped_key = "bsi_bank_fee_batch_skipped_count"
+    if results_key in st.session_state:
+        results = st.session_state[results_key]
+        posted = sum(1 for r in results if r["status"] == "posted")
+        failed = sum(1 for r in results if r["status"] == "failed")
+        already = sum(1 for r in results if r["status"] == "already_posted")
+        skipped = st.session_state.get(skipped_key, 0) + sum(
+            1 for r in results if r["status"] == "skipped"
+        )
+        st.markdown(f"**{erp._t('banking.batch.bank_fee.results_title')}**")
+        st.caption(
+            erp._t(
+                "banking.batch.bank_fee.summary",
+                posted=posted,
+                failed=failed,
+                already=already,
+                skipped=skipped,
+            )
+        )
+        for row in results:
+            if row["status"] == "posted":
+                status = erp._t("banking.batch.bank_fee.status.posted")
+            elif row["status"] == "already_posted":
+                status = erp._t("banking.batch.bank_fee.status.already_posted")
+            elif row["status"] == "skipped":
+                reason_key = f"banking.batch.bank_fee.reason.{row.get('error', '')}"
+                reason = erp._t(reason_key) if row.get("error") else ""
+                status = erp._t("banking.import.status.skipped")
+                detail = f" — {reason}" if reason else ""
+                st.caption(f"{row['label']}: {status}{detail}")
+                continue
+            else:
+                status = erp._t("banking.batch.bank_fee.status.failed")
+            detail = f" — {row['error']}" if row.get("error") else ""
+            st.caption(f"{row['label']}: {status}{detail}")
+        if st.button(
+            erp._t("banking.batch.bank_fee.dismiss"),
+            key="bsi_bank_fee_batch_dismiss",
+        ):
+            del st.session_state[results_key]
+            st.session_state.pop(skipped_key, None)
+            st.rerun()
+        st.divider()
+        return
+
+    if needs_review:
+        st.markdown(f"**{erp._t('banking.batch.bank_fee.needs_review_title')}**")
+        st.caption(
+            erp._t(
+                "banking.batch.bank_fee.needs_review_desc",
+                count=len(needs_review),
+            )
+        )
+        for item in needs_review:
+            reason_key = f"banking.batch.bank_fee.reason.{item['review_reason']}"
+            reason = erp._t(reason_key)
+            st.caption(
+                erp._t(
+                    "banking.batch.bank_fee.needs_review_line",
+                    label=item["label"],
+                    reason=reason,
+                )
+            )
+
+    if not eligible:
+        st.divider()
+        return
+
+    with st.container(border=True):
+        st.markdown(f"**{erp._t('banking.batch.bank_fee.title')}**")
+        st.caption(
+            erp._t(
+                "banking.batch.bank_fee.desc",
+                count=len(eligible),
+            )
+        )
+        for item in eligible:
+            st.caption(
+                erp._t(
+                    "banking.batch.bank_fee.confirm_detail",
+                    date=item["date"],
+                    amount=f"{item['amount']:,.2f}",
+                    description=(item["description"] or "")[:60],
+                    subtype=item["subtype_label"],
+                    impact=item["account_impact"],
+                )
+            )
+        if st.button(
+            erp._t("banking.batch.bank_fee.confirm"),
+            key="bsi_bank_fee_batch_confirm",
+            type="primary",
+        ):
+            uid = (erp._current_user() or {}).get("id")
+            st.session_state[results_key] = erp._bsi_execute_bank_fee_batch_post(
+                session,
+                company_id,
+                [c["row_id"] for c in eligible],
+                uid,
+            )
+            st.session_state[skipped_key] = len(needs_review)
+            st.rerun()
+    st.divider()
+
+
+def banking_cockpit_drill_to(section: str) -> None:
+    """Drill-through to Statement import sub-section (match | review | history)."""
+    st.session_state["banking_section"] = "import"
+    st.session_state["bsi_section"] = section
+    st.rerun()
+
+
+def banking_recon_cockpit_summary(session, company_id: int) -> dict[str, Any]:
+    """Read-only aggregate for Reconciliation Cockpit (company-scoped)."""
+    from reconciliation.company_card import compute_cc_payable_recon_health
+    from reconciliation.match_post import get_postable_rows
+
+    erp = _erp()
+    postable_count = len(get_postable_rows(session, company_id))
+    imports = (
+        erp.cq(session, erp.BankStatementImport)
+        .order_by(erp.BankStatementImport.created_at.desc())
+        .limit(5)
+        .all()
+    )
+    recent_imports = [
+        {
+            "id": imp.id,
+            "file_name": imp.file_name,
+            "valid_count": imp.valid_count or 0,
+            "error_count": imp.error_count or 0,
+            "flagged_count": imp.flagged_count or 0,
+            "created_at": imp.created_at,
+        }
+        for imp in imports
+    ]
+    import_totals = {
+        "valid": sum(r["valid_count"] for r in recent_imports),
+        "error": sum(r["error_count"] for r in recent_imports),
+        "flagged": sum(r["flagged_count"] for r in recent_imports),
+        "import_count": len(recent_imports),
+    }
+    bank_accounts = (
+        erp.cq(session, erp.BankAccount)
+        .filter_by(is_active=True)
+        .order_by(erp.BankAccount.name)
+        .all()
+    )
+    bank_rows: list[dict[str, Any]] = []
+    total_stored = 0.0
+    for ba in bank_accounts:
+        if erp.is_credit_card_account(ba):
+            continue
+        stored = round(ba.balance or 0.0, 2)
+        total_stored += stored
+        bank_rows.append(
+            {
+                "id": ba.id,
+                "name": ba.name,
+                "currency": ba.currency or "TRY",
+                "stored_balance": stored,
+            }
+        )
+    show_settlement = erp._card_settlement_on(session) and erp._company_card_on(
+        session
+    )
+    settlement: dict[str, Any] | None = None
+    if show_settlement:
+        cc_health = compute_cc_payable_recon_health(session, company_id)
+        clearing_acct = erp.get_account_by_name(session, "Card Sales Clearing")
+        clearing_balance = (
+            round(erp.calculate_account_balance(session, clearing_acct), 2)
+            if clearing_acct
+            else 0.0
+        )
+        unsettled = fetch_unsettled_card_sales_for_visibility(
+            session,
+            company_id,
+            get_unsettled_card_sales=erp.get_unsettled_card_sales,
+            get_account_by_name=erp.get_account_by_name,
+        )
+        settlement = {
+            "cc_health": cc_health,
+            "clearing_balance": clearing_balance,
+            "unsettled_count": len(unsettled),
+            "unsettled_total": round(sum_unsettled_card_sales(unsettled), 2),
+        }
+    return {
+        "company_id": company_id,
+        "reconciliation_enabled": erp._banking_reconciliation_on(session),
+        "postable_count": postable_count,
+        "recent_imports": recent_imports,
+        "import_totals": import_totals,
+        "bank_accounts": bank_rows,
+        "bank_total_stored": round(total_stored, 2),
+        "settlement": settlement,
+        "show_settlement_tile": show_settlement,
+    }
+
+
+def render_banking_recon_cockpit(session, company_id: int) -> None:
+    """Read-only Banking landing — tiles drill into Queue / Review / History."""
+    erp = _erp()
+    if not erp._banking_reconciliation_on(session):
+        st.info(erp._t("banking.cockpit.gate_disabled"))
+        return
+    if not erp._can("view_bank_statement_import"):
+        st.caption(erp._t("form.access_denied"))
+        return
+
+    summary = banking_recon_cockpit_summary(session, company_id)
+    settings = erp.load_settings()
+    currency = settings.get("currency", "TRY")
+    totals = summary["import_totals"]
+
+    st.markdown(
+        financial_section_header_html(erp._t("banking.cockpit.title"), accent="info"),
+        unsafe_allow_html=True,
+    )
+    st.caption(erp._t("banking.cockpit.desc"))
+
+    c_import, c_queue = st.columns(2)
+    with c_import:
+        with st.container(border=True):
+            st.markdown(f"**{erp._t('banking.cockpit.tile.import_health')}**")
+            m1, m2, m3 = st.columns(3)
+            m1.metric(erp._t("banking.cockpit.valid_rows"), totals["valid"])
+            m2.metric(erp._t("banking.cockpit.error_rows"), totals["error"])
+            m3.metric(erp._t("banking.cockpit.flagged_rows"), totals["flagged"])
+            if st.button(
+                erp._t("banking.cockpit.open_review"),
+                key="cockpit_drill_review",
+                use_container_width=True,
+            ):
+                banking_cockpit_drill_to("review")
+
+    with c_queue:
+        with st.container(border=True):
+            st.markdown(f"**{erp._t('banking.cockpit.tile.postable_queue')}**")
+            st.metric(
+                erp._t("banking.cockpit.postable_count"),
+                summary["postable_count"],
+            )
+            if st.button(
+                erp._t("banking.cockpit.open_queue"),
+                key="cockpit_drill_match",
+                use_container_width=True,
+                type="primary",
+            ):
+                banking_cockpit_drill_to("match")
+
+    c_recent, c_bank = st.columns(2)
+    with c_recent:
+        with st.container(border=True):
+            st.markdown(f"**{erp._t('banking.cockpit.tile.recent_imports')}**")
+            if summary["recent_imports"]:
+                for imp in summary["recent_imports"]:
+                    st.caption(
+                        erp._t(
+                            "banking.cockpit.recent_import_line",
+                            file=imp["file_name"],
+                            valid=imp["valid_count"],
+                            error=imp["error_count"],
+                            flagged=imp["flagged_count"],
+                        )
+                    )
+            else:
+                st.caption(erp._t("banking.cockpit.no_imports"))
+            if st.button(
+                erp._t("banking.cockpit.open_history"),
+                key="cockpit_drill_history",
+                use_container_width=True,
+            ):
+                banking_cockpit_drill_to("history")
+
+    with c_bank:
+        with st.container(border=True):
+            st.markdown(f"**{erp._t('banking.cockpit.tile.bank_balance')}**")
+            st.metric(
+                erp._t("banking.cockpit.bank_total"),
+                f"{currency} {summary['bank_total_stored']:,.2f}",
+            )
+            for row in summary["bank_accounts"][:4]:
+                st.caption(
+                    f"{row['name']}: {row['currency']} {row['stored_balance']:,.2f}"
+                )
+
+    if summary["show_settlement_tile"] and summary["settlement"]:
+        stl = summary["settlement"]
+        cc = stl["cc_health"]
+        with st.container(border=True):
+            st.markdown(f"**{erp._t('banking.cockpit.tile.settlement')}**")
+            s1, s2, s3 = st.columns(3)
+            s1.metric(
+                erp._t("banking.cockpit.clearing_balance"),
+                f"{currency} {stl['clearing_balance']:,.2f}",
+            )
+            s2.metric(
+                erp._t("banking.cockpit.unsettled_sales"),
+                stl["unsettled_count"],
+            )
+            s3.metric(
+                erp._t("banking.cockpit.cc_difference"),
+                f"{currency} {cc['difference']:,.2f}",
+            )
+
+
 def banking_pos_settlement_route_keys() -> dict[str, Any]:
     """Session keys for BANKING-UX-02 P1B → focused POS settlement section."""
     return {

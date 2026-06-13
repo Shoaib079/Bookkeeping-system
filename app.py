@@ -255,6 +255,8 @@ from ui.banking import (
     banking_section_select as _banking_section_select,
     render_banking_match_suggestion_chip as _render_banking_match_suggestion_chip,
     render_banking_match_queue_list as _render_banking_match_queue_list,
+    render_banking_recon_cockpit as _render_banking_recon_cockpit,
+    render_banking_bank_fee_batch_panel as _render_banking_bank_fee_batch_panel,
     render_banking_pos_settlement_entry as _render_banking_pos_settlement_entry,
     render_banking_pos_settlement_section as _render_banking_pos_settlement_section,
     render_card_sales_clearing_visibility_block as _render_card_sales_clearing_visibility_block,
@@ -16382,6 +16384,212 @@ def _bsi_queue_row_summaries(session, postable) -> list[dict]:
     return rows
 
 
+def _bsi_bank_fee_subtype_is_unambiguous(description: str) -> bool:
+    """Subtype must match an explicit looks_like_* heuristic (not infer fallback alone)."""
+    from reconciliation.match_post import (
+        infer_bank_charge_subtype,
+        looks_like_commission,
+        looks_like_credit_card_account_fee,
+        looks_like_interest,
+        looks_like_transfer_fee,
+    )
+
+    desc = description or ""
+    subtype = infer_bank_charge_subtype(desc)
+    if subtype == "interest":
+        return looks_like_interest(desc)
+    if subtype == "credit_card_fee":
+        return looks_like_credit_card_account_fee(desc)
+    if subtype == "card_settlement_fee":
+        return looks_like_commission(desc)
+    if subtype == "transfer_fee":
+        return looks_like_transfer_fee(desc)
+    return False
+
+
+def _bsi_bank_fee_description_is_mixed(description: str) -> bool:
+    """Fee-like line that also matches another withdrawal classification."""
+    from reconciliation.match_post import (
+        looks_like_credit_card_bill_payment,
+        looks_like_statement_bank_fee,
+        looks_like_worker_payroll,
+    )
+
+    desc = description or ""
+    if not looks_like_statement_bank_fee(desc):
+        return False
+    return looks_like_credit_card_bill_payment(desc) or looks_like_worker_payroll(desc)
+
+
+def _bsi_bank_fee_batch_gl_ready(session, row) -> bool:
+    imp = session.get(BankStatementImport, row.bank_statement_import_id)
+    currency = imp.currency if imp else None
+    charges = get_account_by_name(session, "Bank Charges")
+    bank = get_account_by_name(session, "Bank", currency=currency)
+    return bool(charges and bank)
+
+
+def _bsi_bank_fee_batch_row_dict(session, row, *, review_reason: str | None = None) -> dict:
+    from reconciliation.match_post import bank_charge_fee_label, infer_bank_charge_subtype
+
+    desc = row.description or ""
+    subtype = infer_bank_charge_subtype(desc)
+    amt = round(float(row.amount), 2)
+    return {
+        "row_id": row.id,
+        "import_row_index": row.import_row_index,
+        "date": row.date,
+        "description": desc,
+        "amount": amt,
+        "subtype": subtype,
+        "subtype_label": bank_charge_fee_label(subtype),
+        "account_impact": "Dr Bank Charges / Cr Bank",
+        "label": (
+            f"#{row.import_row_index} · {row.date} · "
+            f"-{amt:,.2f} · {desc[:40]}"
+        ),
+        "review_reason": review_reason,
+    }
+
+
+def _bsi_bank_fee_batch_review_reason(session, cid: int, row) -> str | None:
+    """None when batch-eligible; otherwise a stable review-reason code."""
+    if not _bank_charges_on(session):
+        return "bank_charges_disabled"
+    if not (row.debit_amount and not row.credit_amount):
+        return "not_withdrawal"
+    if round(float(row.amount), 2) <= 0:
+        return "invalid_amount"
+    if row.status not in ("staging", "duplicate_flagged") or not row.parsed_successfully:
+        return "not_postable"
+    if _bsi_default_match_kind(session, row, is_deposit=False) != "bank_fee":
+        return "not_bank_fee"
+    desc = row.description or ""
+    if _bsi_bank_fee_description_is_mixed(desc):
+        return "mixed_description"
+    if _banking_match_kind_confidence("bank_fee", desc, is_deposit=False) != "high":
+        return "low_confidence"
+    if not _bsi_bank_fee_subtype_is_unambiguous(desc):
+        return "ambiguous_subtype"
+    if not _bsi_bank_fee_batch_gl_ready(session, row):
+        return "missing_gl_accounts"
+    return None
+
+
+def _bsi_bank_fee_batch_partition(session, cid, postable) -> dict:
+    """Split postable rows into batch-eligible vs needs-review (conservative)."""
+    eligible: list[dict] = []
+    needs_review: list[dict] = []
+    for row in postable:
+        reason = _bsi_bank_fee_batch_review_reason(session, cid, row)
+        entry = _bsi_bank_fee_batch_row_dict(session, row, review_reason=reason)
+        if reason:
+            needs_review.append(entry)
+        else:
+            eligible.append(entry)
+    return {"eligible": eligible, "needs_review": needs_review}
+
+
+def _bsi_bank_fee_batch_candidates(session, cid, postable) -> list[dict]:
+    """High-confidence bank_fee rows only — safe for unattended batch."""
+    return _bsi_bank_fee_batch_partition(session, cid, postable)["eligible"]
+
+
+def _bsi_execute_bank_fee_batch_post(
+    session,
+    cid: int,
+    row_ids: list[int],
+    user_id: int | None,
+) -> list[dict]:
+    """Loop post_bank_charge_outflow + log_audit; continue on per-row errors."""
+    results: list[dict] = []
+    for row_id in row_ids:
+        row = session.get(BankStatementRow, row_id)
+        label = f"#{row.import_row_index}" if row else str(row_id)
+        if row is None:
+            results.append(
+                {
+                    "row_id": row_id,
+                    "label": label,
+                    "status": "skipped",
+                    "journal_entry_id": None,
+                    "error": "not_postable",
+                }
+            )
+            continue
+        if row.status == "posted" or row.posted_journal_entry_id:
+            results.append(
+                {
+                    "row_id": row_id,
+                    "label": label,
+                    "status": "already_posted",
+                    "journal_entry_id": row.posted_journal_entry_id,
+                    "error": None,
+                }
+            )
+            continue
+        review_reason = _bsi_bank_fee_batch_review_reason(session, cid, row)
+        if review_reason:
+            results.append(
+                {
+                    "row_id": row_id,
+                    "label": label,
+                    "status": "skipped",
+                    "journal_entry_id": None,
+                    "error": review_reason,
+                }
+            )
+            continue
+        try:
+            result = post_bank_charge_outflow(
+                session,
+                row_id=row_id,
+                company_id=cid,
+                user_id=user_id,
+            )
+            log_audit(
+                session,
+                "Post",
+                "BankStatementRow",
+                row_id,
+                f"Bank charge · {result['amount']:,.2f}",
+            )
+            results.append(
+                {
+                    "row_id": row_id,
+                    "label": label,
+                    "status": "posted",
+                    "journal_entry_id": result.get("journal_entry_id"),
+                    "error": None,
+                }
+            )
+        except MatchPostError as exc:
+            msg = str(exc)
+            status = (
+                "already_posted" if "already posted" in msg.lower() else "failed"
+            )
+            results.append(
+                {
+                    "row_id": row_id,
+                    "label": label,
+                    "status": status,
+                    "journal_entry_id": None,
+                    "error": msg,
+                }
+            )
+        except ValueError as exc:
+            results.append(
+                {
+                    "row_id": row_id,
+                    "label": label,
+                    "status": "failed",
+                    "journal_entry_id": None,
+                    "error": str(exc),
+                }
+            )
+    return results
+
+
 @st.fragment
 def _bsi_match_queue_detail_fragment(session, cid: int, sel_row) -> None:
     """Fragment wrapper — body is testable without Streamlit fragment decorator."""
@@ -17840,6 +18048,13 @@ def render_bank_statement_import(session, *, embedded: bool = False):
                 if st.session_state.get("bsi_queue_sel_row") not in row_ids:
                     st.session_state["bsi_queue_sel_row"] = row_ids[0]
                 sel_row_id = st.session_state["bsi_queue_sel_row"]
+                if _bank_charges_on(session):
+                    fee_partition = _bsi_bank_fee_batch_partition(
+                        session, cid, postable
+                    )
+                    _render_banking_bank_fee_batch_panel(
+                        session, cid, fee_partition
+                    )
                 queue_rows = _bsi_queue_row_summaries(session, postable)
                 _render_banking_match_queue_list(
                     queue_rows,
@@ -20518,9 +20733,13 @@ def render_banking(session):
 
     _render_banking_pos_settlement_entry(session)
 
-    _bank_opts: list[tuple[str, str]] = [
-        ("accounts", "bank.section.accounts"),
-    ]
+    _bank_opts: list[tuple[str, str]] = []
+    if (
+        _banking_reconciliation_on(session)
+        and _can("view_bank_statement_import")
+    ):
+        _bank_opts.append(("cockpit", "bank.section.cockpit"))
+    _bank_opts.append(("accounts", "bank.section.accounts"))
     if _banking_pos_settlement_enabled(session):
         _bank_opts.append(("pos_settlement", "banking.pos_entry.title"))
     _bank_opts.append(("import", "bank.section.import"))
@@ -20528,6 +20747,9 @@ def render_banking(session):
         _bank_opts.append(("settings", "bank.section.settings"))
     section = _banking_section_select("banking_section", _bank_opts)
     st.divider()
+    if section == "cockpit":
+        _render_banking_recon_cockpit(session, current_company_required())
+        return
     if section == "pos_settlement":
         _render_banking_pos_settlement_section(session)
         return
