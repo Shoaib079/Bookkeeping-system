@@ -337,6 +337,222 @@ def banking_cockpit_drill_to(section: str) -> None:
     st.rerun()
 
 
+BANKING_STATEMENT_TIE_OUT_TOLERANCE = 0.01
+_BANKING_TERMINAL_ROW_STATUSES = frozenset({"posted", "skipped", "voided"})
+_BANKING_NON_TERMINAL_ROW_STATUSES = frozenset(
+    {"staging", "duplicate_flagged", "parse_error"}
+)
+
+
+def banking_statement_row_signed_amount(row) -> float:
+    """Credits increase balance; debits decrease (signed movement)."""
+    if row.credit_amount:
+        return round(float(row.credit_amount), 2)
+    if row.debit_amount:
+        return round(-float(row.debit_amount), 2)
+    return 0.0
+
+
+def banking_statement_row_signed_total(rows) -> float:
+    return round(sum(banking_statement_row_signed_amount(r) for r in rows), 2)
+
+
+def _banking_readiness_tri_label(erp, tri: str) -> str:
+    key = f"banking.readiness.tri.{tri}"
+    return erp._t(key) if tri in ("ok", "attention", "unavailable") else tri
+
+
+def compute_banking_statement_readiness(
+    session,
+    import_record,
+    *,
+    rows: list | None = None,
+) -> dict[str, Any]:
+    """Read-only per-statement workflow + tie-out readiness (advisory only)."""
+    erp = _erp()
+    imp = import_record
+    if rows is None:
+        rows = (
+            session.query(erp.BankStatementRow)
+            .filter_by(bank_statement_import_id=imp.id)
+            .order_by(erp.BankStatementRow.import_row_index)
+            .all()
+        )
+    by_status: dict[str, int] = {}
+    for row in rows:
+        by_status[row.status] = by_status.get(row.status, 0) + 1
+
+    non_terminal = sum(by_status.get(s, 0) for s in _BANKING_NON_TERMINAL_ROW_STATUSES)
+    complete = non_terminal == 0
+    remaining_rows = by_status.get("staging", 0) + by_status.get("duplicate_flagged", 0)
+    review_pending = by_status.get("duplicate_flagged", 0)
+    failed_blocked = by_status.get("parse_error", 0)
+
+    has_start = imp.starting_balance is not None
+    has_end = imp.ending_balance is not None
+    tie_out_available = has_start and has_end
+    row_signed_total = banking_statement_row_signed_total(rows)
+    declared_movement: float | None = None
+    tie_out_delta: float | None = None
+    if tie_out_available:
+        declared_movement = round(
+            float(imp.ending_balance) - float(imp.starting_balance), 2
+        )
+        tie_out_delta = round(declared_movement - row_signed_total, 2)
+        tie_out = (
+            "ok"
+            if abs(tie_out_delta) < BANKING_STATEMENT_TIE_OUT_TOLERANCE
+            else "mismatch"
+        )
+    else:
+        tie_out = "unavailable"
+
+    reconciled = complete and tie_out_available and tie_out == "ok"
+    if not tie_out_available:
+        reconciled_tri = "unavailable"
+    elif reconciled:
+        reconciled_tri = "ok"
+    else:
+        reconciled_tri = "attention"
+
+    period = ""
+    if imp.start_date and imp.end_date:
+        period = f"{imp.start_date} – {imp.end_date}"
+    elif imp.start_date:
+        period = str(imp.start_date)
+
+    drill_section = "review" if (review_pending or failed_blocked) else "match"
+
+    return {
+        "import_id": imp.id,
+        "file_name": imp.file_name,
+        "period": period,
+        "complete": complete,
+        "complete_tri": "ok" if complete else "attention",
+        "reconciled": reconciled,
+        "reconciled_tri": reconciled_tri,
+        "tie_out": tie_out,
+        "tie_out_available": tie_out_available,
+        "declared_movement": declared_movement,
+        "row_signed_total": row_signed_total,
+        "tie_out_delta": tie_out_delta,
+        "remaining_rows": remaining_rows,
+        "review_pending": review_pending,
+        "failed_blocked": failed_blocked,
+        "row_counts_by_status": by_status,
+        "drill_section": drill_section,
+        "company_id": imp.company_id,
+    }
+
+
+def banking_company_statement_readiness(
+    session, company_id: int, *, limit: int = 10
+) -> list[dict[str, Any]]:
+    """Recent imports with per-statement readiness (company-scoped)."""
+    erp = _erp()
+    imports = (
+        session.query(erp.BankStatementImport)
+        .filter(erp.BankStatementImport.company_id == company_id)
+        .order_by(erp.BankStatementImport.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [compute_banking_statement_readiness(session, imp) for imp in imports]
+
+
+def banking_readiness_drill_to(section: str, import_id: int | None = None) -> None:
+    """Drill-through to Review or Match queue; optionally pre-select import on Review."""
+    st.session_state["banking_section"] = "import"
+    st.session_state["bsi_section"] = section
+    if import_id is not None and section == "review":
+        st.session_state["bsi_review_import"] = import_id
+    st.rerun()
+
+
+def render_banking_statement_readiness_panel(
+    session,
+    company_id: int,
+    *,
+    import_id: int | None = None,
+    limit: int = 5,
+) -> None:
+    """Read-only statement readiness / tie-out (OK · Attention · Unavailable)."""
+    erp = _erp()
+    st.markdown(
+        financial_section_header_html(erp._t("banking.readiness.title"), accent="info"),
+        unsafe_allow_html=True,
+    )
+    st.caption(erp._t("banking.readiness.desc"))
+
+    if import_id is not None:
+        imp = session.get(erp.BankStatementImport, import_id)
+        if not imp or imp.company_id != company_id:
+            return
+        items = [compute_banking_statement_readiness(session, imp)]
+    else:
+        items = banking_company_statement_readiness(session, company_id, limit=limit)
+
+    if not items:
+        st.caption(erp._t("banking.readiness.no_imports"))
+        return
+
+    for item in items:
+        with st.container(border=True):
+            title = item["file_name"]
+            if item["period"]:
+                title = f"{title} · {item['period']}"
+            st.markdown(f"**{title}**")
+            c1, c2, c3 = st.columns(3)
+            c1.caption(
+                f"{erp._t('banking.readiness.complete')}: "
+                f"{_banking_readiness_tri_label(erp, item['complete_tri'])}"
+            )
+            c2.caption(
+                f"{erp._t('banking.readiness.reconciled')}: "
+                f"{_banking_readiness_tri_label(erp, item['reconciled_tri'])}"
+            )
+            tie_tri = item["tie_out"]
+            if tie_tri == "unavailable":
+                tie_label = erp._t("banking.readiness.tie_out.unavailable_msg")
+            else:
+                tie_label = _banking_readiness_tri_label(
+                    erp, "ok" if tie_tri == "ok" else "attention"
+                )
+            c3.caption(f"{erp._t('banking.readiness.tie_out')}: {tie_label}")
+            m1, m2, m3 = st.columns(3)
+            m1.metric(erp._t("banking.readiness.remaining"), item["remaining_rows"])
+            m2.metric(
+                erp._t("banking.readiness.review_pending"), item["review_pending"]
+            )
+            m3.metric(
+                erp._t("banking.readiness.failed_blocked"), item["failed_blocked"]
+            )
+            if item["tie_out_available"] and item["tie_out_delta"] is not None:
+                st.caption(
+                    erp._t(
+                        "banking.readiness.tie_out_detail",
+                        declared=f"{item['declared_movement']:,.2f}",
+                        rows=f"{item['row_signed_total']:,.2f}",
+                        delta=f"{item['tie_out_delta']:,.2f}",
+                    )
+                )
+            b1, b2 = st.columns(2)
+            with b1:
+                if st.button(
+                    erp._t("banking.readiness.drill_queue"),
+                    key=f"readiness_drill_match_{item['import_id']}",
+                    use_container_width=True,
+                ):
+                    banking_readiness_drill_to("match")
+            with b2:
+                if st.button(
+                    erp._t("banking.readiness.drill_review"),
+                    key=f"readiness_drill_review_{item['import_id']}",
+                    use_container_width=True,
+                ):
+                    banking_readiness_drill_to("review", import_id=item["import_id"])
+
+
 def banking_recon_cockpit_summary(session, company_id: int) -> dict[str, Any]:
     """Read-only aggregate for Reconciliation Cockpit (company-scoped)."""
     from reconciliation.company_card import compute_cc_payable_recon_health
@@ -530,6 +746,8 @@ def render_banking_recon_cockpit(session, company_id: int) -> None:
                 erp._t("banking.cockpit.cc_difference"),
                 f"{currency} {cc['difference']:,.2f}",
             )
+
+    render_banking_statement_readiness_panel(session, company_id)
 
 
 def banking_pos_settlement_route_keys() -> dict[str, Any]:

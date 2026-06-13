@@ -271,6 +271,7 @@ from ui.banking import (
     render_banking_match_suggestion_chip as _render_banking_match_suggestion_chip,
     render_banking_match_queue_list as _render_banking_match_queue_list,
     render_banking_recon_cockpit as _render_banking_recon_cockpit,
+    render_banking_statement_readiness_panel as _render_banking_statement_readiness_panel,
     render_banking_bank_fee_batch_panel as _render_banking_bank_fee_batch_panel,
     render_banking_pos_settlement_entry as _render_banking_pos_settlement_entry,
     render_banking_pos_settlement_section as _render_banking_pos_settlement_section,
@@ -18148,6 +18149,9 @@ def render_bank_statement_import(session, *, embedded: bool = False):
             )
             imp_dl = session.get(BankStatementImport, dl_id)
             if imp_dl:
+                _render_banking_statement_readiness_panel(
+                    session, cid, import_id=imp_dl.id
+                )
                 if resolve_data_path(imp_dl.file_path).is_file():
                     with open(resolve_data_path(imp_dl.file_path), "rb") as fh:
                         st.download_button(
