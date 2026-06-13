@@ -250,8 +250,10 @@ from ui.avatar import render_user_avatar, user_initials
 from ui.banking import (
     apply_banking_pos_settlement_route as _apply_banking_pos_settlement_route,
     banking_match_failure_label as _banking_match_failure_label,
+    banking_match_kind_confidence as _banking_match_kind_confidence,
     banking_pos_settlement_route_keys as _banking_pos_settlement_route_keys,
     banking_section_select as _banking_section_select,
+    render_banking_match_suggestion_chip as _render_banking_match_suggestion_chip,
     render_banking_pos_settlement_entry as _render_banking_pos_settlement_entry,
     render_banking_pos_settlement_section as _render_banking_pos_settlement_section,
     render_card_sales_clearing_visibility_block as _render_card_sales_clearing_visibility_block,
@@ -17696,6 +17698,23 @@ def render_bank_statement_import(session, *, embedded: bool = False):
                         )
                     elif st.session_state.get("bsi_match_kind") not in kind_ids:
                         st.session_state["bsi_match_kind"] = kind_ids[0]
+
+                    detected_kind = _bsi_default_match_kind(
+                        session,
+                        sel_row,
+                        is_deposit=is_deposit,
+                    )
+                    if detected_kind in kind_labels:
+                        _render_banking_match_suggestion_chip(
+                            detected_kind=detected_kind,
+                            kind_label=kind_labels[detected_kind],
+                            confidence=_banking_match_kind_confidence(
+                                detected_kind,
+                                sel_row.description or "",
+                                is_deposit=is_deposit,
+                            ),
+                            accept_key=f"bsi_accept_kind_{sel_row_id}",
+                        )
 
                     match_kind = st.radio(
                         _t("banking.import.match.what_is_this"),

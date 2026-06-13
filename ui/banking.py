@@ -12,6 +12,12 @@ import pandas as pd
 import streamlit as st
 
 from reconciliation.clearing import fetch_unsettled_card_sales_for_visibility
+from reconciliation.match_post import (
+    card_deposit_style,
+    looks_like_credit_card_bill_payment,
+    looks_like_statement_bank_fee,
+    looks_like_worker_payroll,
+)
 from reconciliation.clearing_visibility import ClearingVisibilitySnapshot, compute_clearing_visibility
 from reconciliation.unsettled_card_sales_list import (
     DEFAULT_LIST_LIMIT,
@@ -55,6 +61,56 @@ def banking_section_select(widget_key: str, options: list[tuple[str, str]]) -> s
                     st.rerun()
 
     return st.session_state[widget_key]
+
+
+def banking_match_kind_confidence(
+    detected_kind: str,
+    description: str,
+    *,
+    is_deposit: bool,
+) -> str:
+    """Presentation-only confidence band: high | medium | low."""
+    if is_deposit:
+        if detected_kind == "card_clearing":
+            style = card_deposit_style(description)
+            if style in ("net", "gross"):
+                return "high"
+            if style == "card":
+                return "medium"
+        return "low"
+
+    if detected_kind == "cc_bill" and looks_like_credit_card_bill_payment(description):
+        return "high"
+    if detected_kind == "bank_fee" and looks_like_statement_bank_fee(description):
+        return "high"
+    if detected_kind == "worker_payroll" and looks_like_worker_payroll(description):
+        return "high"
+    return "low"
+
+
+def render_banking_match_suggestion_chip(
+    *,
+    detected_kind: str,
+    kind_label: str,
+    confidence: str,
+    accept_key: str,
+) -> None:
+    """Detected match kind + confidence — Accept only updates bsi_match_kind."""
+    erp = _erp()
+    conf_text = erp._t(f"banking.import.match.confidence.{confidence}")
+    detected = erp._t("banking.import.match.detected_kind", kind=kind_label)
+    conf_label = erp._t("banking.import.match.confidence_label", level=conf_text)
+    c_main, c_btn = st.columns([5, 1])
+    with c_main:
+        st.info(f"{detected} · {conf_label}")
+    with c_btn:
+        if st.button(
+            erp._t("banking.import.match.accept_suggestion"),
+            key=accept_key,
+            use_container_width=True,
+        ):
+            st.session_state["bsi_match_kind"] = detected_kind
+            st.rerun()
 
 
 def banking_pos_settlement_route_keys() -> dict[str, Any]:
