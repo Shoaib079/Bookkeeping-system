@@ -5996,89 +5996,29 @@ def post_credit_sale(session, sale_id, amount, sale_date, currency=None, fx_rate
 
 
 def _resolve_purchase_debit_account(session, gl_debit):
-    """Return the GL account to debit for a purchase based on gl_debit label."""
-    if not gl_debit or gl_debit.lower() in ("inventory", "equipment", "supplies", "general stock",
-                                              "equipment purchase", "general supplies"):
-        return get_account_by_name(session, "Inventory")
-    cat = gl_debit.lower()
-    if "rent" in cat:
-        return get_account_by_name(session, "Rent Expense")
-    if "salary" in cat:
-        return get_account_by_name(session, "Salary Expense")
-    if any(k in cat for k in ("electricity", "water", "internet", "utility")):
-        return get_account_by_name(session, "Utility Expense")
-    if "advertising" in cat:
-        return get_account_by_name(session, "Advertising Expense")
-    if "fuel" in cat:
-        return get_account_by_name(session, "Fuel Expense")
-    if any(k in cat for k in ("office", "other", "supplies")):
-        return get_account_by_name(session, "Office Expense")
-    # Unknown category — default to Inventory rather than silently misfiling to Office Expense
-    return get_account_by_name(session, "Inventory")
+    """PS-P2c-3 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.resolve_purchase_debit_account(
+        session, gl_debit, company_id=_current_company_id(),
+    )
 
 
 def _purchase_ref_type(purchase_type: str | None) -> str:
-    """Map purchase_type to the GL reference_type used by post_purchase / void / edit."""
-    pt = purchase_type or "Credit"
-    if pt == "Cash":
-        return "CashPurchase"
-    if pt == "Bank":
-        return "BankPurchase"
-    if pt == "Credit Card":
-        return "CardPurchase"
-    return "Purchase"
+    """PS-P2c-3 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.purchase_ref_type(purchase_type)
 
 
 def post_purchase(session, purchase_id, amount, purchase_date, purchase_type="Credit",
                   gl_debit=NAV_INVENTORY, currency=None, fx_rate=1.0,
                   credit_card_account_id=None):
-    """Post purchase journal entry.
-    Credit:  Dr <gl_debit>  /  Cr Accounts Payable    ref_type = "Purchase"
-    Cash:    Dr <gl_debit>  /  Cr Cash[currency]      ref_type = "CashPurchase"
-    Bank:    Dr <gl_debit>  /  Cr Bank[currency]      ref_type = "BankPurchase"
-    Credit Card: Dr <gl_debit> / Cr Credit Card Payable  ref_type = "CardPurchase"
-    """
-    debit_acct = _resolve_purchase_debit_account(session, gl_debit)
-    if not debit_acct:
-        return
-
-    ref_type = _purchase_ref_type(purchase_type)
-    if purchase_type == "Cash":
-        credit_acct = get_account_by_name(session, "Cash", currency=currency)
-    elif purchase_type == "Bank":
-        credit_acct = get_account_by_name(session, "Bank", currency=currency)
-    elif purchase_type == "Credit Card":
-        purchase = session.get(Purchase, purchase_id)
-        cid = purchase.company_id if purchase else None
-        credit_acct = _resolve_payment_credit_account(
-            session, "Credit Card", currency=currency, company_id=cid
-        )
-    else:  # Credit
-        credit_acct = get_account_by_name(session, "Accounts Payable")
-
-    if credit_acct:
-        purchase = session.get(Purchase, purchase_id)
-        create_journal_entry(
-            session, purchase_date,
-            f"{purchase_type} Purchase (ID: {purchase_id})",
-            ref_type, purchase_id,
-            [(debit_acct.id, amount, 0), (credit_acct.id, 0, amount)],
-            currency=currency, fx_rate=fx_rate,
-        )
-        if purchase_type == _COMPANY_CC_METHOD:
-            _sync_company_cc_subledger(
-                session,
-                purchase_type,
-                company_id=purchase.company_id if purchase else None,
-                credit_card_account_id=credit_card_account_id
-                or (purchase.credit_card_account_id if purchase else None),
-                amount=amount,
-                txn_date=purchase_date,
-                description=f"CC purchase PUR#{purchase_id}",
-                reference_type=ref_type,
-                reference_id=purchase_id,
-                record=purchase,
-            )
+    """PS-P2c-3 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.post_purchase(
+        session, purchase_id, amount, purchase_date,
+        purchase_type=purchase_type, gl_debit=gl_debit,
+        currency=currency, fx_rate=fx_rate,
+        credit_card_account_id=credit_card_account_id,
+        gl_company_id=_current_company_id(),
+        ambient_company_id=_current_company_id(),
+    )
 
 
 def post_expense(session, expense_id, amount, expense_date, category, payment_method="Cash", currency=None,

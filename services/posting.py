@@ -5,6 +5,7 @@ PS-P2a: `get_account_by_name`, sales `post_*` trio, `card_settlement_on`.
 PS-P2b: `resolve_payment_credit_account`, `post_payable_creation`.
 PS-P2c-1: `sync_company_cc_subledger`.
 PS-P2c-2: `post_expense`, `post_payable_payment`.
+PS-P2c-3: `post_purchase`, `resolve_purchase_debit_account`, `purchase_ref_type`.
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -33,6 +34,7 @@ from models import (
     JournalEntry,
     JournalEntryLine,
     Payable,
+    Purchase,
     YearEndClose,
 )
 from reconciliation.company_card import (
@@ -52,6 +54,7 @@ _CC_NO_CARDS_MSG = (
     "No active company credit card account. Add one under Banking → Accounts."
 )
 _COMPANY_CC_METHOD = "Credit Card"
+_DEFAULT_PURCHASE_GL_DEBIT = "Inventory"  # app.py NAV_INVENTORY default
 
 
 def entry_date_posting_blocked(
@@ -506,3 +509,100 @@ def post_payable_payment(
             record=payable,
             ambient_company_id=ambient_company_id,
         )
+
+
+def resolve_purchase_debit_account(session, gl_debit, *, company_id: int | None = None):
+    """Return the GL account to debit for a purchase based on gl_debit label."""
+    if not gl_debit or gl_debit.lower() in ("inventory", "equipment", "supplies", "general stock",
+                                              "equipment purchase", "general supplies"):
+        return get_account_by_name(session, "Inventory", company_id=company_id)
+    cat = gl_debit.lower()
+    if "rent" in cat:
+        return get_account_by_name(session, "Rent Expense", company_id=company_id)
+    if "salary" in cat:
+        return get_account_by_name(session, "Salary Expense", company_id=company_id)
+    if any(k in cat for k in ("electricity", "water", "internet", "utility")):
+        return get_account_by_name(session, "Utility Expense", company_id=company_id)
+    if "advertising" in cat:
+        return get_account_by_name(session, "Advertising Expense", company_id=company_id)
+    if "fuel" in cat:
+        return get_account_by_name(session, "Fuel Expense", company_id=company_id)
+    if any(k in cat for k in ("office", "other", "supplies")):
+        return get_account_by_name(session, "Office Expense", company_id=company_id)
+    # Unknown category — default to Inventory rather than silently misfiling to Office Expense
+    return get_account_by_name(session, "Inventory", company_id=company_id)
+
+
+def purchase_ref_type(purchase_type: str | None) -> str:
+    """Map purchase_type to the GL reference_type used by post_purchase / void / edit."""
+    pt = purchase_type or "Credit"
+    if pt == "Cash":
+        return "CashPurchase"
+    if pt == "Bank":
+        return "BankPurchase"
+    if pt == "Credit Card":
+        return "CardPurchase"
+    return "Purchase"
+
+
+def post_purchase(
+    session,
+    purchase_id,
+    amount,
+    purchase_date,
+    purchase_type="Credit",
+    gl_debit=_DEFAULT_PURCHASE_GL_DEBIT,
+    currency=None,
+    fx_rate=1.0,
+    credit_card_account_id=None,
+    *,
+    gl_company_id: int | None = None,
+    ambient_company_id: int | None = None,
+):
+    """Post purchase journal entry.
+
+    PS-P2c-3: verbatim from app.py. Shim supplies ambient GL/CC scope — see TD-PS-06.
+    """
+    debit_acct = resolve_purchase_debit_account(session, gl_debit, company_id=gl_company_id)
+    if not debit_acct:
+        return
+
+    ref_type = purchase_ref_type(purchase_type)
+    if purchase_type == "Cash":
+        credit_acct = get_account_by_name(session, "Cash", currency=currency, company_id=gl_company_id)
+    elif purchase_type == "Bank":
+        credit_acct = get_account_by_name(session, "Bank", currency=currency, company_id=gl_company_id)
+    elif purchase_type == "Credit Card":
+        purchase = session.get(Purchase, purchase_id)
+        cid = purchase.company_id if purchase else None
+        credit_acct = resolve_payment_credit_account(
+            session, "Credit Card", currency=currency, company_id=cid, gl_company_id=gl_company_id
+        )
+    else:  # Credit
+        credit_acct = get_account_by_name(session, "Accounts Payable", company_id=gl_company_id)
+
+    if credit_acct:
+        purchase = session.get(Purchase, purchase_id)
+        create_journal_entry(
+            session, purchase_date,
+            f"{purchase_type} Purchase (ID: {purchase_id})",
+            ref_type, purchase_id,
+            [(debit_acct.id, amount, 0), (credit_acct.id, 0, amount)],
+            currency=currency, fx_rate=fx_rate,
+            company_id=gl_company_id,
+        )
+        if purchase_type == _COMPANY_CC_METHOD:
+            sync_company_cc_subledger(
+                session,
+                purchase_type,
+                company_id=purchase.company_id if purchase else None,
+                credit_card_account_id=credit_card_account_id
+                or (purchase.credit_card_account_id if purchase else None),
+                amount=amount,
+                txn_date=purchase_date,
+                description=f"CC purchase PUR#{purchase_id}",
+                reference_type=ref_type,
+                reference_id=purchase_id,
+                record=purchase,
+                ambient_company_id=ambient_company_id,
+            )
