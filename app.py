@@ -293,6 +293,14 @@ from ui.section import (
     aging_buckets_html,
     financial_section_header_html,
     financial_statement_table_html,
+    mobile_empty_state_html,
+    mobile_highlight_banner_html,
+    mobile_kpi_chip_html,
+    mobile_kpi_grid_html,
+    mobile_list_row_html,
+    mobile_screen_title_html,
+    mobile_section_label_html,
+    mobile_status_pill_html,
     mono_role_pill_html,
     page_report_banner_html,
     readable_dataframe_table_html,
@@ -4378,7 +4386,7 @@ def _render_txh_date_filters(container) -> tuple[datetime.date, datetime.date]:
         )
 
     container.markdown(
-        f'<div class="erp-txh-filters-label">{html.escape(_t("filter.date_range"))}</div>',
+        mobile_section_label_html(_t("filter.date_range")),
         unsafe_allow_html=True,
     )
     c1, c2 = container.columns(2)
@@ -13444,31 +13452,25 @@ def _render_add_transaction_mobile(
                 st.rerun()
         with tc:
             st.markdown(
-                f'<div class="erp-mob-at-screen-title">{_tf("txn.mob.title", "New transaction")}</div>',
+                mobile_screen_title_html(_tf("txn.mob.title", "New transaction")),
                 unsafe_allow_html=True,
             )
 
     today_sales, today_expenses, today_net = _mob_at_today_metrics(session, today)
     _fmt = lambda v: f"{currency_default} {v:,.2f}"
-    _net_col = "kpi-success" if today_net >= 0 else "kpi-danger"
+    _net_variant = "success" if today_net >= 0 else "danger"
 
     st.markdown(
-        f'<div class="erp-mob-at-kpi-scroll">'
-        f'<div class="erp-mob-at-kpi-chip">'
-        f'<div class="erp-mob-at-kpi-label">{_tf("txn.mob.kpi.sales", "Sales")}</div>'
-        f'<div class="erp-mob-at-kpi-value kpi-success">{_fmt(today_sales)}</div></div>'
-        f'<div class="erp-mob-at-kpi-chip">'
-        f'<div class="erp-mob-at-kpi-label">{_tf("txn.mob.kpi.expenses", "Expenses")}</div>'
-        f'<div class="erp-mob-at-kpi-value kpi-danger">{_fmt(today_expenses)}</div></div>'
-        f'<div class="erp-mob-at-kpi-chip">'
-        f'<div class="erp-mob-at-kpi-label">{_tf("txn.mob.kpi.net", "Net")}</div>'
-        f'<div class="erp-mob-at-kpi-value {_net_col}">{_fmt(today_net)}</div></div>'
-        f'</div>',
+        mobile_kpi_grid_html(
+            mobile_kpi_chip_html(_tf("txn.mob.kpi.sales", "Sales"), _fmt(today_sales), variant="success"),
+            mobile_kpi_chip_html(_tf("txn.mob.kpi.expenses", "Expenses"), _fmt(today_expenses), variant="danger"),
+            mobile_kpi_chip_html(_tf("txn.mob.kpi.net", "Net"), _fmt(today_net), variant=_net_variant),
+        ),
         unsafe_allow_html=True,
     )
 
     st.markdown(
-        f'<div class="erp-mob-at-list-title">{_tf("txn.mob.today", "Today")}</div>',
+        mobile_section_label_html(_tf("txn.mob.today", "Today")),
         unsafe_allow_html=True,
     )
     rows = _mob_at_today_rows(session, today)
@@ -13476,25 +13478,26 @@ def _render_add_transaction_mobile(
         _rows_html = ""
         for r in rows:
             sign = "+" if r["direction"] == "in" else "−"
-            col = "var(--theme-success-text)" if r["direction"] == "in" else "var(--theme-danger-text)"
+            amt_variant = "in" if r["direction"] == "in" else "out"
             icon_bg = (
                 "color-mix(in srgb,var(--theme-success)12%,var(--theme-card)88%)"
                 if r["direction"] == "in"
                 else "color-mix(in srgb,var(--theme-danger)12%,var(--theme-card)88%)"
             )
-            _rows_html += (
-                f'<div class="erp-mob-at-row">'
-                f'<div class="erp-mob-at-row-icon" style="background:{icon_bg};">{r["icon"]}</div>'
-                f'<div class="erp-mob-at-row-main">'
-                f'<div class="erp-mob-at-row-party">{html.escape(str(r["party"]))}</div>'
-                f'<div class="erp-mob-at-row-sub">{html.escape(r["sub"])}</div></div>'
-                f'<div class="erp-mob-at-row-amt" style="color:{col};">'
-                f'{sign}{currency_default} {r["amount"]:,.2f}</div></div>'
+            _rows_html += mobile_list_row_html(
+                str(r["party"]),
+                subtitle=r["sub"],
+                amount=f'{sign}{currency_default} {r["amount"]:,.2f}',
+                amount_variant=amt_variant,
+                icon_block=(
+                    f'<div class="erp-mob-at-row-icon" style="background:{icon_bg};">'
+                    f'{r["icon"]}</div>'
+                ),
             )
         st.markdown(_rows_html, unsafe_allow_html=True)
     else:
         st.markdown(
-            f'<div class="erp-mob-at-empty">{_tf("txn.mob.no_today", "No transactions today yet")}</div>',
+            mobile_empty_state_html(_tf("txn.mob.no_today", "No transactions today yet")),
             unsafe_allow_html=True,
         )
 
@@ -14716,13 +14719,13 @@ def _at_render_recent(session, currency):
             section_header_html(_t("txn.recent_transactions"), accent="info"),
             unsafe_allow_html=True,
         )
-        _PILL = {
-            "Paid":     ("color-mix(in srgb,var(--theme-success)12%,var(--theme-card)88%)", "var(--theme-success-text)"),
-            "Open":     ("color-mix(in srgb,var(--theme-warning)12%,var(--theme-card)88%)", "var(--theme-warning-text)"),
-            "Overdue":  ("color-mix(in srgb,var(--theme-danger)12%,var(--theme-card)88%)", "var(--theme-danger-text)"),
-            "Partial":  ("color-mix(in srgb,var(--theme-info)12%,var(--theme-card)88%)", "var(--theme-info)"),
-            "Recorded": ("color-mix(in srgb,var(--theme-info)12%,var(--theme-card)88%)", "var(--theme-text)"),
-            "Active":   ("color-mix(in srgb,var(--theme-card)8%,var(--theme-bg)92%)", "var(--theme-muted)"),
+        _PILL_VARIANT = {
+            "Paid": "success",
+            "Open": "warning",
+            "Overdue": "danger",
+            "Partial": "info",
+            "Recorded": "info",
+            "Active": "neutral",
         }
         _rows_html = ""
         for r in rows:
@@ -14730,25 +14733,23 @@ def _at_render_recent(session, currency):
             icon_bg = ("color-mix(in srgb,var(--theme-success)12%,var(--theme-card)88%)" if r["Direction"] == "in" else
                        ("color-mix(in srgb,var(--theme-info)12%,var(--theme-card)88%)" if "Purchase" in r["Type"] else
                         "color-mix(in srgb,var(--theme-danger)12%,var(--theme-card)88%)"))
-            pill_bg, pill_fg = _PILL.get(r["Status"], ("color-mix(in srgb,var(--theme-card)8%,var(--theme-bg)92%)", "var(--theme-muted)"))
-            amt_color = "var(--theme-success-text)" if r["Direction"] == "in" else "var(--theme-danger-text)"
+            amt_variant = "in" if r["Direction"] == "in" else "out"
             amt_sign  = "+" if r["Direction"] == "in" else "−"
             date_str  = r["Date"].strftime("%d %b") if hasattr(r["Date"], "strftime") else str(r["Date"])
-            _rows_html += (
-                f'<div style="display:flex;align-items:center;gap:12px;padding:9px 12px;'
-                f'border-radius:10px;border:1px solid var(--theme-border);margin-bottom:6px;background:var(--theme-card);">'
-                f'<div style="width:32px;height:32px;border-radius:8px;background:{icon_bg};'
-                f'display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">{icon}</div>'
-                f'<div style="flex:1;min-width:0;">'
-                f'<div style="font-size:12px;font-weight:600;color:var(--theme-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
-                f'{r["Party"]} <span style="background:{pill_bg};color:{pill_fg};font-size:10px;font-weight:600;'
-                f'padding:1px 7px;border-radius:99px;">{r["Status"]}</span></div>'
-                f'<div style="font-size:10px;color:var(--theme-muted);margin-top:1px;">{r["Type"]} · {r["Reference"]}</div>'
-                f'</div>'
-                f'<div style="text-align:right;flex-shrink:0;">'
-                f'<div style="font-size:13px;font-weight:700;color:{amt_color};">{amt_sign}{currency} {r["Amount"]:,.2f}</div>'
-                f'<div style="font-size:10px;color:var(--theme-muted);">{date_str}</div>'
-                f'</div></div>'
+            status_pill = mobile_status_pill_html(
+                r["Status"],
+                variant=_PILL_VARIANT.get(r["Status"], "neutral"),
+            )
+            _rows_html += mobile_list_row_html(
+                str(r["Party"]),
+                subtitle=f'{r["Type"]} · {r["Reference"]}',
+                amount=f'{amt_sign}{currency} {r["Amount"]:,.2f}',
+                amount_variant=amt_variant,
+                meta_sub=date_str,
+                title_extra_html=f' {status_pill}',
+                icon_block=(
+                    f'<div class="erp-mob-at-row-icon" style="background:{icon_bg};">{icon}</div>'
+                ),
             )
         st.markdown(_rows_html, unsafe_allow_html=True)
 
@@ -14926,14 +14927,14 @@ def edit_purchase(session, purchase_id, fields: dict):
     return True, None
 
 
-_TXH_STATUS_PILL = {
-    "Paid": "erp-txh-pill erp-txh-pill--success",
-    "Open": "erp-txh-pill erp-txh-pill--warning",
-    "Overdue": "erp-txh-pill erp-txh-pill--danger",
-    "Partial": "erp-txh-pill erp-txh-pill--info",
-    "Recorded": "erp-txh-pill erp-txh-pill--info",
-    "Active": "erp-txh-pill erp-txh-pill--neutral",
-    "VOID": "erp-txh-pill erp-txh-pill--void",
+_TXH_STATUS_VARIANT = {
+    "Paid": "success",
+    "Open": "warning",
+    "Overdue": "danger",
+    "Partial": "info",
+    "Recorded": "info",
+    "Active": "neutral",
+    "VOID": "void",
 }
 _TXH_TYPE_ICON = {
     "Cash Sale": "🧾",
@@ -15328,15 +15329,15 @@ def _txh_truncate_text(text: str, limit: int = 56) -> str:
 
 
 def _txh_status_pills_html(status: str, status_disp: str, *, is_corrected: bool, is_void_row: bool) -> str:
-    pill_cls = _TXH_STATUS_PILL.get(status, "erp-txh-pill erp-txh-pill--neutral")
-    corrected_pill = (
-        f'<span class="erp-txh-pill erp-txh-pill--corrected">'
-        f'✱ {html.escape(_t("txnrow.corrected"))}</span>'
-    ) if (is_corrected and not is_void_row) else ""
+    variant = _TXH_STATUS_VARIANT.get(status, "neutral")
+    parts = [mobile_status_pill_html(status_disp, variant=variant)]
+    if is_corrected and not is_void_row:
+        parts.append(
+            mobile_status_pill_html(f'✱ {_t("txnrow.corrected")}', variant="corrected")
+        )
     return (
-        f'<span class="erp-txh-row-pills">'
-        f'<span class="{pill_cls}">{html.escape(status_disp)}</span>'
-        f'{corrected_pill}</span>'
+        f'<span class="erp-mob-status-pill-row erp-txh-row-pills">'
+        f'{"".join(parts)}</span>'
     )
 
 
@@ -15832,7 +15833,6 @@ def _txh_render_mobile_card(
         icon_cls = _txh_row_icon_class(txn_type_key)
         txn_type_disp = _localize_txn_type(txn_type_key)
         status = str(row_dict.get("Status", ""))
-        pill_cls = _TXH_STATUS_PILL.get(status, "erp-txh-pill erp-txh-pill--neutral")
         status_disp = _localize_txn_status(status)
         amt = float(row_dict.get("Amount", 0))
         is_in = txn_type_key in _TXH_INFLOW_TYPES
@@ -15846,10 +15846,9 @@ def _txh_render_mobile_card(
         party = html.escape(str(row_dict.get("Party", "")))
         ref = html.escape(str(row_dict.get("Reference", "")))
         curr = html.escape(str(row_dict.get("Currency", "")))
-        corrected_pill = (
-            f'<span class="erp-txh-pill erp-txh-pill--corrected">'
-            f'✱ {html.escape(_t("txnrow.corrected"))}</span>'
-        ) if (is_corrected and not is_void_row) else ""
+        status_pills = _txh_status_pills_html(
+            status, status_disp, is_corrected=is_corrected, is_void_row=is_void_row,
+        )
         void_cls = " erp-txh-row--void" if is_void_row else ""
         st.markdown(
             f'<div class="erp-txh-row{void_cls}">'
@@ -15861,9 +15860,7 @@ def _txh_render_mobile_card(
             f'<div class="erp-txh-row-party">{party or "—"}</div>'
             f'<div class="erp-txh-row-meta">'
             f'<span class="erp-txh-row-ref">{ref}</span>'
-            f'<span class="erp-txh-row-pills">'
-            f'<span class="{pill_cls}">{html.escape(status_disp)}</span>'
-            f'{corrected_pill}</span>'
+            f'{status_pills}'
             f'<span class="erp-txh-row-date">{date_str}</span>'
             f'</div></div></div>',
             unsafe_allow_html=True,
@@ -16033,7 +16030,7 @@ def render_transaction_history(session):
     # ── Filter card ────────────────────────────────────────────────────────────
     with st.container(border=True, key="txh_filters_card"):
         st.markdown(
-            f'<div class="erp-txh-filters-label">{html.escape(_t("txn.filters_label"))}</div>',
+            mobile_section_label_html(_t("txn.filters_label")),
             unsafe_allow_html=True,
         )
         with st.container(border=False, key="txh_filter_search"):
@@ -21666,13 +21663,52 @@ def render_receivables(session):
     _outstanding = sum(s.balance for s in _open_filtered)
     _overdue     = sum(s.balance for s in filtered if s.status == "Overdue")
     _count       = len(_open_filtered)
-    k1, k2, k3  = st.columns(3)
-    k1.markdown(f'<div style="background:color-mix(in srgb,var(--theme-info) 8%,var(--theme-card) 92%);border:1px solid color-mix(in srgb,var(--theme-info) 24%,var(--theme-card) 76%);border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:var(--theme-muted);">{_t("receivable.metric.outstanding")}</div><div style="font-size:20px;font-weight:800;color:var(--theme-info);">{currency} {_outstanding:,.2f}</div></div>', unsafe_allow_html=True)
-    _overdue_bg = "color-mix(in srgb,var(--theme-danger) 8%,var(--theme-card) 92%)" if _overdue else "color-mix(in srgb,var(--theme-success) 8%,var(--theme-card) 92%)"
-    _overdue_border = "color-mix(in srgb,var(--theme-danger) 24%,var(--theme-card) 76%)" if _overdue else "color-mix(in srgb,var(--theme-success) 24%,var(--theme-card) 76%)"
-    _overdue_color = "var(--theme-danger-text)" if _overdue else "var(--theme-success-text)"
-    k2.markdown(f'<div style="background:{_overdue_bg};border:1px solid {_overdue_border};border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:var(--theme-muted);">{_t("receivable.metric.overdue")}</div><div style="font-size:20px;font-weight:800;color:{_overdue_color};">{currency} {_overdue:,.2f}</div></div>', unsafe_allow_html=True)
-    k3.markdown(f'<div style="background:var(--theme-card);border:1px solid var(--theme-border);border-radius:10px;padding:12px 16px;"><div style="font-size:11px;color:var(--theme-muted);">{_t("receivable.metric.open_invoices")}</div><div style="font-size:20px;font-weight:800;color:var(--theme-text);">{_count}</div></div>', unsafe_allow_html=True)
+    if _is_mobile_ui():
+        st.markdown(
+            mobile_kpi_grid_html(
+                mobile_kpi_chip_html(
+                    _t("receivable.metric.outstanding"),
+                    f"{currency} {_outstanding:,.2f}",
+                    variant="info",
+                ),
+                mobile_kpi_chip_html(
+                    _t("receivable.metric.overdue"),
+                    f"{currency} {_overdue:,.2f}",
+                    variant="danger" if _overdue else "success",
+                ),
+                mobile_kpi_chip_html(
+                    _t("receivable.metric.open_invoices"),
+                    str(_count),
+                    variant="neutral",
+                ),
+            ),
+            unsafe_allow_html=True,
+        )
+    else:
+        k1, k2, k3  = st.columns(3)
+        k1.markdown(
+            mobile_kpi_chip_html(
+                _t("receivable.metric.outstanding"),
+                f"{currency} {_outstanding:,.2f}",
+                variant="info",
+            ),
+            unsafe_allow_html=True,
+        )
+        k2.markdown(
+            mobile_kpi_chip_html(
+                _t("receivable.metric.overdue"),
+                f"{currency} {_overdue:,.2f}",
+                variant="danger" if _overdue else "success",
+            ),
+            unsafe_allow_html=True,
+        )
+        k3.markdown(
+            mobile_kpi_chip_html(
+                _t("receivable.metric.open_invoices"),
+                str(_count),
+            ),
+            unsafe_allow_html=True,
+        )
     st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
 
     # ── Aging buckets ─────────────────────────────────────────────────────────
@@ -25028,17 +25064,14 @@ def render_profit_loss(session, start_date=None, end_date=None):
 
     # ── Net result banner ─────────────────────────────────────────────────────
     net_label         = _t("pnl.net_profit") if net > 0 else (_t("pnl.net_loss") if net < 0 else _t("pnl.break_even"))
-    net_banner_bg     = ("color-mix(in srgb,var(--theme-success)12%,var(--theme-card)88%)" if is_profit else "color-mix(in srgb,var(--theme-danger)12%,var(--theme-card)88%)")
-    net_banner_border = ("color-mix(in srgb,var(--theme-success)24%,var(--theme-card)76%)" if is_profit else "color-mix(in srgb,var(--theme-danger)24%,var(--theme-card)76%)")
-    net_banner_color  = ("var(--theme-success-text)" if is_profit else "var(--theme-danger-text)")
+    net_variant       = "success" if is_profit else ("danger" if net < 0 else "neutral")
     st.markdown(
-        f'<div style="background:{net_banner_bg};border:1px solid {net_banner_border};'
-        f'border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;'
-        f'align-items:center;margin-top:4px;">'
-        f'<div><div style="font-size:13px;font-weight:700;color:{net_banner_color};">{net_label}</div>'
-        f'<div style="font-size:10px;color:var(--theme-muted);margin-top:2px;">{_t("form.margin", pct=margin_pct)}</div></div>'
-        f'<div style="font-size:22px;font-weight:800;color:{net_banner_color};">{currency} {abs(net):,.2f}</div>'
-        f'</div>',
+        mobile_highlight_banner_html(
+            net_label,
+            f"{currency} {abs(net):,.2f}",
+            subtitle=_t("form.margin", pct=margin_pct),
+            variant=net_variant,
+        ),
         unsafe_allow_html=True,
     )
 
@@ -25234,18 +25267,17 @@ def render_cash_flow(session, start_date=None, end_date=None):
             variant = "amt-pos"
         elif value < 0:
             variant = "amt-neg"
-        return (
-            f'<div class="card">'
-            f'<div style="font-size:11px;color:var(--theme-muted);font-weight:500;">{label}</div>'
-            f'<div class="table-amount {variant}" style="font-size:22px;margin-top:6px;">{sign}{currency} {value:,.2f}</div>'
-            f'</div>'
-        )
+        return mobile_kpi_chip_html(label, f"{sign}{currency} {value:,.2f}", variant=variant)
 
     with st.container(border=False, key="mob_rpt_cf_kpi"):
-        k1, k2, k3 = st.columns(3, gap="small")
-        k1.markdown(_cf_kpi(_t("cf.net_operating"), net_op), unsafe_allow_html=True)
-        k2.markdown(_cf_kpi(_t("cf.net_financing"), net_fin), unsafe_allow_html=True)
-        k3.markdown(_cf_kpi(_t("cf.net_change"), net_total), unsafe_allow_html=True)
+        st.markdown(
+            mobile_kpi_grid_html(
+                _cf_kpi(_t("cf.net_operating"), net_op),
+                _cf_kpi(_t("cf.net_financing"), net_fin),
+                _cf_kpi(_t("cf.net_change"), net_total),
+            ),
+            unsafe_allow_html=True,
+        )
 
     st.markdown("<div style='margin-bottom:14px;'></div>", unsafe_allow_html=True)
 
@@ -25301,17 +25333,14 @@ def render_cash_flow(session, start_date=None, end_date=None):
             st.caption(_t("cf.no_financing"))
 
     # ── Net change banner ─────────────────────────────────────────────────────
-    nc_bg     = ("color-mix(in srgb,var(--theme-success)12%,var(--theme-card)88%)" if net_total >= 0 else "color-mix(in srgb,var(--theme-danger)12%,var(--theme-card)88%)")
-    nc_border = ("color-mix(in srgb,var(--theme-success)24%,var(--theme-card)76%)" if net_total >= 0 else "color-mix(in srgb,var(--theme-danger)24%,var(--theme-card)76%)")
-    nc_color  = ("var(--theme-success-text)" if net_total >= 0 else "var(--theme-danger-text)")
     nc_sign   = "+" if net_total >= 0 else "−"
     st.markdown(
-        f'<div style="background:{nc_bg};border:1px solid {nc_border};border-radius:10px;'
-        f'padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-top:4px;">'
-        f'<div><div style="font-size:13px;font-weight:700;color:{nc_color};">{_t("cf.net_change_banner")}</div>'
-        f'<div style="font-size:10px;color:var(--theme-muted);margin-top:2px;">{_t("cf.operating_plus_financing")}</div></div>'
-        f'<div style="font-size:22px;font-weight:800;color:{nc_color};">{nc_sign}{currency} {abs(net_total):,.2f}</div>'
-        f'</div>',
+        mobile_highlight_banner_html(
+            _t("cf.net_change_banner"),
+            f"{nc_sign}{currency} {abs(net_total):,.2f}",
+            subtitle=_t("cf.operating_plus_financing"),
+            variant="success" if net_total >= 0 else "danger",
+        ),
         unsafe_allow_html=True,
     )
 

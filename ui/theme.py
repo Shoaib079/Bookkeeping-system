@@ -9,6 +9,7 @@ import streamlit as st
 
 _THEME_CSS_PATH = Path(__file__).with_name("theme.css")
 _WIDGETS_CSS_PATH = Path(__file__).with_name("widgets.css")
+_MOBILE_COMPONENTS_CSS_PATH = Path(__file__).with_name("mobile_components.css")
 _MOBILE_SHELL_CSS_PATH = Path(__file__).with_name("mobile_shell.css")
 _MOBILE_TXN_CSS_PATH = Path(__file__).with_name("mobile_txn.css")
 _MOBILE_REPORTS_CSS_PATH = Path(__file__).with_name("mobile_reports.css")
@@ -108,6 +109,7 @@ def load_theme_css() -> str:
     mtime = max(
         _THEME_CSS_PATH.stat().st_mtime,
         _WIDGETS_CSS_PATH.stat().st_mtime,
+        _MOBILE_COMPONENTS_CSS_PATH.stat().st_mtime,
         _MOBILE_SHELL_CSS_PATH.stat().st_mtime,
         _MOBILE_TXN_CSS_PATH.stat().st_mtime,
         _MOBILE_REPORTS_CSS_PATH.stat().st_mtime,
@@ -123,6 +125,7 @@ def load_theme_css() -> str:
     if _CSS_CACHE is None or _CSS_MTIME != mtime:
         base = _THEME_CSS_PATH.read_text(encoding="utf-8")
         widgets = _WIDGETS_CSS_PATH.read_text(encoding="utf-8")
+        mobile_components = _MOBILE_COMPONENTS_CSS_PATH.read_text(encoding="utf-8")
         mobile = _MOBILE_SHELL_CSS_PATH.read_text(encoding="utf-8")
         mobile_header = _MOBILE_HEADER_CSS_PATH.read_text(encoding="utf-8")
         auth = _AUTH_CSS_PATH.read_text(encoding="utf-8")
@@ -135,7 +138,7 @@ def load_theme_css() -> str:
         setup01_wizard = _SETUP01_WIZARD_CSS_PATH.read_text(encoding="utf-8")
         icons = _ICONS_CSS_PATH.read_text(encoding="utf-8")
         _CSS_CACHE = (
-            f"{base}\n\n{widgets}\n\n{mobile}\n\n{mobile_header}\n\n{auth}\n\n{mobile_txn}\n\n"
+            f"{base}\n\n{widgets}\n\n{mobile_components}\n\n{mobile}\n\n{mobile_header}\n\n{auth}\n\n{mobile_txn}\n\n"
             f"{mobile_reports}\n\n{mobile_txn_history}\n\n{desktop_txn_history}\n\n"
             f"{desktop_reports}\n\n{banking}\n\n{setup01_wizard}\n\n{icons}"
         )

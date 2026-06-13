@@ -1,0 +1,323 @@
+/* MOBILE-UX-02-A — shared mobile component grammar (token-driven; extends --theme-*) */
+
+:root {
+  --mob-space-1: 4px;
+  --mob-space-2: 8px;
+  --mob-space-3: 12px;
+  --mob-space-4: 16px;
+  --mob-space-5: 24px;
+  --mob-space-6: 32px;
+  --mob-radius-sm: var(--erp-field-radius, 8px);
+  --mob-radius-md: 10px;
+  --mob-radius-lg: 12px;
+  --mob-touch-min: 44px;
+  --mob-surface-bg: var(--theme-card);
+  --mob-surface-border: var(--theme-border);
+}
+
+/* Section / list labels */
+.erp-mob-section-label,
+.erp-txh-filters-label,
+.erp-mob-at-list-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--theme-muted);
+  margin: var(--mob-space-1) 0 var(--mob-space-2);
+}
+
+.erp-mob-screen-title,
+.erp-mob-at-screen-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-muted);
+  padding: var(--mob-space-2) var(--mob-space-1) 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* KPI chips — compact mobile grid */
+.erp-mob-kpi-grid,
+.erp-mob-at-kpi-scroll {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--mob-space-2);
+  margin: 0 0 var(--mob-space-3);
+}
+
+.erp-mob-kpi-chip,
+.erp-mob-at-kpi-chip {
+  background: var(--mob-surface-bg);
+  border: 1px solid var(--mob-surface-border);
+  border-radius: var(--mob-radius-md);
+  padding: var(--mob-space-2) var(--mob-space-3);
+  min-width: 0;
+}
+
+.erp-mob-kpi-label,
+.erp-mob-at-kpi-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--theme-muted);
+  margin-bottom: 2px;
+}
+
+.erp-mob-kpi-value,
+.erp-mob-at-kpi-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--theme-text);
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  text-overflow: unset;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+.erp-mob-kpi-value.kpi-success,
+.erp-mob-at-kpi-value.kpi-success,
+.erp-mob-kpi-value.amt-pos,
+.erp-mob-at-kpi-value.amt-pos {
+  color: var(--theme-success-text);
+}
+
+.erp-mob-kpi-value.kpi-danger,
+.erp-mob-at-kpi-value.kpi-danger,
+.erp-mob-kpi-value.amt-neg,
+.erp-mob-at-kpi-value.amt-neg {
+  color: var(--theme-danger);
+}
+
+.erp-mob-kpi-value.kpi-info,
+.erp-mob-at-kpi-value.kpi-info {
+  color: var(--theme-info);
+}
+
+.erp-mob-kpi-value.kpi-warning,
+.erp-mob-at-kpi-value.kpi-warning {
+  color: var(--theme-warning-text);
+}
+
+.erp-mob-kpi-value.kpi-neutral,
+.erp-mob-at-kpi-value.kpi-neutral {
+  color: var(--theme-text);
+}
+
+.erp-mob-kpi-value.amt-zero,
+.erp-mob-at-kpi-value.amt-zero {
+  color: var(--theme-text);
+}
+
+/* Card surface — filters, panels, inline cards */
+.erp-mob-surface {
+  background: var(--mob-surface-bg);
+  border: 1px solid var(--mob-surface-border);
+  border-radius: var(--mob-radius-lg);
+  padding: var(--mob-space-3);
+}
+
+/* List rows */
+.erp-mob-list-row,
+.erp-mob-at-row {
+  display: flex;
+  align-items: center;
+  gap: var(--mob-space-3);
+  padding: var(--mob-space-2) var(--mob-space-3);
+  border-radius: var(--mob-radius-md);
+  border: 1px solid var(--mob-surface-border);
+  margin-bottom: var(--mob-space-2);
+  background: var(--mob-surface-bg);
+}
+
+.erp-mob-list-row-main,
+.erp-mob-at-row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.erp-mob-list-row-title,
+.erp-mob-at-row-party {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.erp-mob-list-row-sub,
+.erp-mob-at-row-sub {
+  font-size: 10px;
+  color: var(--theme-muted);
+  margin-top: 1px;
+}
+
+.erp-mob-list-row-amt,
+.erp-mob-at-row-amt {
+  text-align: right;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.erp-mob-list-row-amt.amt-pos,
+.erp-mob-at-row-amt.amt-pos {
+  color: var(--theme-success-text);
+}
+
+.erp-mob-list-row-amt.amt-neg,
+.erp-mob-at-row-amt.amt-neg {
+  color: var(--theme-danger);
+}
+
+/* Empty states */
+.erp-mob-empty,
+.erp-mob-at-empty {
+  font-size: 12px;
+  color: var(--theme-muted);
+  padding: var(--mob-space-3) 0;
+  text-align: center;
+}
+
+/* Status pills — shared with transaction ledger */
+.erp-mob-status-pill,
+.erp-txh-pill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.erp-mob-status-pill--success,
+.erp-txh-pill--success {
+  background: color-mix(in srgb, var(--theme-success) 14%, var(--theme-card) 86%);
+  color: var(--theme-success-text);
+}
+
+.erp-mob-status-pill--warning,
+.erp-txh-pill--warning,
+.erp-mob-status-pill--corrected,
+.erp-txh-pill--corrected {
+  background: color-mix(in srgb, var(--theme-warning) 14%, var(--theme-card) 86%);
+  color: var(--theme-warning-text);
+}
+
+.erp-mob-status-pill--danger,
+.erp-txh-pill--danger {
+  background: color-mix(in srgb, var(--theme-danger) 14%, var(--theme-card) 86%);
+  color: var(--theme-danger);
+}
+
+.erp-mob-status-pill--info,
+.erp-txh-pill--info {
+  background: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%);
+  color: var(--theme-info);
+}
+
+.erp-mob-status-pill--neutral,
+.erp-txh-pill--neutral {
+  background: color-mix(in srgb, var(--theme-muted) 12%, var(--theme-card) 88%);
+  color: var(--theme-muted);
+}
+
+.erp-mob-status-pill--void,
+.erp-txh-pill--void {
+  background: color-mix(in srgb, var(--theme-muted) 10%, var(--theme-card) 90%);
+  color: var(--theme-muted);
+  text-decoration: line-through;
+}
+
+.erp-mob-status-pill-row,
+.erp-txh-row-pills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mob-space-1);
+}
+
+/* Highlight banner — net P&L / cash-flow totals */
+.erp-mob-highlight-banner {
+  border-radius: var(--mob-radius-md);
+  padding: var(--mob-space-4) var(--mob-space-5);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--mob-space-1);
+  border: 1px solid var(--mob-surface-border);
+  background: var(--mob-surface-bg);
+}
+
+.erp-mob-highlight-banner--success {
+  background: color-mix(in srgb, var(--theme-success) 12%, var(--theme-card) 88%);
+  border-color: color-mix(in srgb, var(--theme-success) 24%, var(--theme-card) 76%);
+}
+
+.erp-mob-highlight-banner--danger {
+  background: color-mix(in srgb, var(--theme-danger) 12%, var(--theme-card) 88%);
+  border-color: color-mix(in srgb, var(--theme-danger) 24%, var(--theme-card) 76%);
+}
+
+.erp-mob-highlight-banner--neutral {
+  background: var(--mob-surface-bg);
+  border-color: var(--mob-surface-border);
+}
+
+.erp-mob-highlight-banner-title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.erp-mob-highlight-banner-sub {
+  font-size: 10px;
+  color: var(--theme-muted);
+  margin-top: 2px;
+}
+
+.erp-mob-highlight-banner-value {
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.erp-mob-highlight-banner--success .erp-mob-highlight-banner-title,
+.erp-mob-highlight-banner--success .erp-mob-highlight-banner-value {
+  color: var(--theme-success-text);
+}
+
+.erp-mob-highlight-banner--danger .erp-mob-highlight-banner-title,
+.erp-mob-highlight-banner--danger .erp-mob-highlight-banner-value {
+  color: var(--theme-danger);
+}
+
+.erp-mob-highlight-banner--neutral .erp-mob-highlight-banner-title,
+.erp-mob-highlight-banner--neutral .erp-mob-highlight-banner-value {
+  color: var(--theme-text);
+}
+
+/* List row meta line (amount + date stack) */
+.erp-mob-list-row-meta {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.erp-mob-list-row-meta-amt {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.erp-mob-list-row-meta-sub {
+  font-size: 10px;
+  color: var(--theme-muted);
+  margin-top: 1px;
+}

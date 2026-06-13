@@ -133,6 +133,127 @@ def mono_role_pill_html(label: str) -> str:
     return f'<span class="erp-mono-pill">{html.escape(str(label))}</span>'
 
 
+_MOB_STATUS_VARIANTS = frozenset({
+    "success", "warning", "danger", "info", "neutral", "void", "corrected",
+})
+
+
+def mobile_status_pill_html(label: str, *, variant: str = "neutral") -> str:
+    """Token-based status pill for mobile list cards and ledger rows."""
+    v = variant if variant in _MOB_STATUS_VARIANTS else "neutral"
+    cls = f"erp-mob-status-pill erp-mob-status-pill--{v}"
+    return f'<span class="{cls}">{html.escape(str(label))}</span>'
+
+
+def mobile_kpi_chip_html(label: str, value: str, *, variant: str = "") -> str:
+    """Compact KPI chip — label + value using shared mobile token grammar."""
+    safe_label = html.escape(str(label))
+    safe_value = html.escape(str(value))
+    value_cls = "erp-mob-kpi-value"
+    if variant:
+        if variant.startswith(("kpi-", "amt-")):
+            value_cls += f" {variant}"
+        elif variant in ("success", "danger", "warning", "info", "neutral"):
+            value_cls += f" kpi-{variant}"
+    return (
+        f'<div class="erp-mob-kpi-chip">'
+        f'<div class="erp-mob-kpi-label">{safe_label}</div>'
+        f'<div class="{value_cls}">{safe_value}</div>'
+        f"</div>"
+    )
+
+
+def mobile_kpi_grid_html(*chips: str) -> str:
+    return f'<div class="erp-mob-kpi-grid">{"".join(chips)}</div>'
+
+
+def mobile_empty_state_html(message: str) -> str:
+    return f'<div class="erp-mob-empty">{html.escape(str(message))}</div>'
+
+
+def mobile_section_label_html(label: str) -> str:
+    return f'<div class="erp-mob-section-label">{html.escape(str(label))}</div>'
+
+
+def mobile_screen_title_html(title: str) -> str:
+    return f'<div class="erp-mob-screen-title">{html.escape(str(title))}</div>'
+
+
+def mobile_list_row_html(
+    title: str,
+    *,
+    subtitle: str = "",
+    amount: str = "",
+    amount_variant: str = "",
+    icon_block: str = "",
+    title_extra_html: str = "",
+    meta_sub: str = "",
+) -> str:
+    """Mobile list row — optional icon column, title/subtitle, right-aligned amount."""
+    amt_cls = "erp-mob-list-row-amt"
+    if amount_variant in ("in", "pos", "success"):
+        amt_cls += " amt-pos"
+    elif amount_variant in ("out", "neg", "danger"):
+        amt_cls += " amt-neg"
+    sub = (
+        f'<div class="erp-mob-list-row-sub">{html.escape(str(subtitle))}</div>'
+        if subtitle
+        else ""
+    )
+    if amount or meta_sub:
+        meta_amt_cls = "erp-mob-list-row-meta-amt"
+        if amount_variant in ("in", "pos", "success"):
+            meta_amt_cls += " amt-pos"
+        elif amount_variant in ("out", "neg", "danger"):
+            meta_amt_cls += " amt-neg"
+        meta_amt = (
+            f'<div class="{meta_amt_cls}">{html.escape(str(amount))}</div>'
+            if amount
+            else ""
+        )
+        meta_date = (
+            f'<div class="erp-mob-list-row-meta-sub">{html.escape(str(meta_sub))}</div>'
+            if meta_sub
+            else ""
+        )
+        amt = (
+            f'<div class="erp-mob-list-row-meta">{meta_amt}{meta_date}</div>'
+        )
+    else:
+        amt = ""
+    return (
+        f'<div class="erp-mob-list-row">'
+        f"{icon_block}"
+        f'<div class="erp-mob-list-row-main">'
+        f'<div class="erp-mob-list-row-title">{html.escape(str(title))}{title_extra_html}</div>'
+        f"{sub}</div>"
+        f"{amt}</div>"
+    )
+
+
+def mobile_highlight_banner_html(
+    title: str,
+    value: str,
+    *,
+    subtitle: str = "",
+    variant: str = "success",
+) -> str:
+    """Token highlight banner for net P&L / cash-flow summary rows."""
+    v = variant if variant in ("success", "danger", "neutral") else "neutral"
+    sub = (
+        f'<div class="erp-mob-highlight-banner-sub">{html.escape(str(subtitle))}</div>'
+        if subtitle
+        else ""
+    )
+    return (
+        f'<div class="erp-mob-highlight-banner erp-mob-highlight-banner--{v}">'
+        f'<div><div class="erp-mob-highlight-banner-title">{html.escape(str(title))}</div>'
+        f"{sub}</div>"
+        f'<div class="erp-mob-highlight-banner-value">{html.escape(str(value))}</div>'
+        f"</div>"
+    )
+
+
 def theme_table_html(
     columns: list[str],
     rows: list[list[str]],
@@ -309,6 +430,14 @@ __all__ = [
     "financial_section_header_html",
     "financial_statement_table_html",
     "infer_column_kind",
+    "mobile_empty_state_html",
+    "mobile_highlight_banner_html",
+    "mobile_kpi_chip_html",
+    "mobile_kpi_grid_html",
+    "mobile_list_row_html",
+    "mobile_screen_title_html",
+    "mobile_section_label_html",
+    "mobile_status_pill_html",
     "mono_role_pill_html",
     "page_report_banner_html",
     "readable_dataframe_table_html",
