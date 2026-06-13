@@ -5968,27 +5968,12 @@ def _bank_account_for_worker_payment(
 def _resolve_payment_credit_account(
     session, payment_method: str, *, currency=None, company_id: int | None = None
 ):
-    """Cash/Bank/Company Credit Card → GL account to credit on business payment posting.
-
-    Customer card sales (sale_type ``Card``) use ``post_card_sale`` — never call this
-    with payment_method ``Card``. Company CC requires ``banking.company_card_enabled``.
-    """
-    pm = (payment_method or "").lower().strip()
-    if pm == "bank":
-        return get_account_by_name(session, "Bank", currency=currency)
-    if pm == "credit card":
-        cid = company_id or _current_company_id()
-        if not cid or not company_card_enabled(session, cid):
-            raise ValueError(_t("form.err.company_cc_disabled"))
-        cc_acct = get_account_by_name(session, "Credit Card Payable")
-        if not cc_acct:
-            raise ValueError(_t("form.err.company_cc_gl_missing"))
-        return cc_acct
-    if pm == "cash":
-        return get_account_by_name(session, "Cash", currency=currency)
-    cash_acct = get_account_by_name(session, "Cash", currency=currency)
-    bank_acct = get_account_by_name(session, "Bank", currency=currency)
-    return cash_acct or bank_acct
+    """PS-P2b compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.resolve_payment_credit_account(
+        session, payment_method, currency=currency,
+        company_id=company_id,
+        gl_company_id=_current_company_id(),
+    )
 
 
 def _transfer_fee_threshold(session) -> float:
@@ -6195,29 +6180,12 @@ def post_bank_transaction(session, bank_txn_id, amount, txn_date, txn_type, curr
 
 
 def post_payable_creation(session, payable_id, amount, date, expense_category="Rent", currency=None):
-    """Post payable creation: Debit Expense account, Credit Accounts Payable."""
-    ap_acct = get_account_by_name(session, "Accounts Payable")
-    cat = (expense_category or "").lower()
-    if "rent" in cat:
-        debit_acct = get_account_by_name(session, "Rent Expense")
-    elif "salary" in cat:
-        debit_acct = get_account_by_name(session, "Salary Expense")
-    elif any(k in cat for k in ("utility", "electricity", "water", "internet")):
-        debit_acct = get_account_by_name(session, "Utility Expense")
-    elif "advertising" in cat:
-        debit_acct = get_account_by_name(session, "Advertising Expense")
-    elif "fuel" in cat:
-        debit_acct = get_account_by_name(session, "Fuel Expense")
-    else:
-        debit_acct = get_account_by_name(session, "Office Expense")
-    if debit_acct and ap_acct:
-        create_journal_entry(
-            session, date,
-            f"Payable Created (ID: {payable_id}) — {expense_category}",
-            "PayableCreation", payable_id,
-            [(debit_acct.id, amount, 0), (ap_acct.id, 0, amount)],
-            currency=currency,
-        )
+    """PS-P2b compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.post_payable_creation(
+        session, payable_id, amount, date,
+        expense_category=expense_category, currency=currency,
+        company_id=_current_company_id(),
+    )
 
 
 def post_payable_payment(session, payable_id, amount, date, payment_method="Cash", currency=None,

@@ -77,7 +77,8 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 ## POSTING-SERVICE-01 (TD-PS)
 
 PS-P1 shipped 2026-06-13 — JE kernel verbatim in `services/posting.py`; app.py shims.  
-PS-P2a shipped 2026-06-05 — `get_account_by_name`, sales `post_*` trio, `card_settlement_on`; app.py shims.
+PS-P2a shipped 2026-06-05 — `get_account_by_name`, sales `post_*` trio, `card_settlement_on`; app.py shims.  
+PS-P2b shipped 2026-06-13 — `resolve_payment_credit_account`, `post_payable_creation`; app.py shims.
 
 | ID | Item | Priority | Status | When / trigger |
 |----|------|----------|--------|----------------|
@@ -86,6 +87,29 @@ PS-P2a shipped 2026-06-05 — `get_account_by_name`, sales `post_*` trio, `card_
 | **TD-PS-03** | Service returns **ORM `JournalEntry`** (legacy contract) — add `PostingResult` DTO for new consumers; deprecate ORM return | Medium | Open | First new consumer (SC approval, PS-P2); removal at FastAPI Phase B |
 | **TD-PS-04** | Kernel `rollback()` on validation failure also discards the **caller's** uncommitted work (pre-existing behaviour, preserved verbatim) — fix lands with TD-PS-01 boundary conversion | Low | Open | PS-P2+ |
 | **TD-PS-05** | **`get_account_by_name` partial extraction** — sales posting moved; ~50 app.py non-sales callers still use the shim; migrate incrementally or re-export from service at PS-P2b | Medium | Open | PS-P2b expense/purchase wave |
+| **TD-PS-06** | **`resolve_payment_credit_account` partial `company_id`** — on Credit Card branch, `company_id` gates `company_card_enabled(session, cid)` but Credit Card Payable GL lookup uses `gl_company_id` only (ambient via shim); preserved verbatim in PS-P2b extraction — unify at intentional cleanup pass, not during extraction | Medium | Open | Post PS-P2b / before FastAPI Phase B |
+
+### PS-P2b Migration Cleanup (2026-06-13)
+
+#### 1. Code to keep during FastAPI/React migration
+- `services/posting.py` — `resolve_payment_credit_account`, `post_payable_creation` (+ PS-P1/P2a kernels)
+- app.py shims: `_resolve_payment_credit_account`, `post_payable_creation`
+- Tests: `tests/test_posting_service01_p2b_char.py` (unchanged), `tests/test_posting_service01_p2b.py`
+
+#### 2. Code likely to replace during FastAPI/React migration
+- `_resolve_payment_credit_account` app shim — direct service import at expense/purchase/payable-payment call sites
+- `gl_company_id` split parameter — single explicit `company_id` once TD-PS-06 fixed
+- EN error string constants in service — i18n via API layer
+
+#### 3. Dead code found
+- None in PS-P2b scope
+
+#### 4. Temporary Streamlit-only code
+- `_resolve_payment_credit_account` underscore name retained for internal app callers
+- `post_payable_creation` shim — transaction UI unchanged
+
+#### 5. Future cleanup items (registered above)
+- TD-PS-06 added PS-P2b session; TD-PS-01–05 unchanged
 
 ### PS-P2a Migration Cleanup (2026-06-05)
 

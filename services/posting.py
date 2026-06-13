@@ -2,6 +2,7 @@
 
 PS-P1: `create_journal_entry` + period/year-end guard (verbatim from app.py).
 PS-P2a: `get_account_by_name`, sales `post_*` trio, `card_settlement_on`.
+PS-P2b: `resolve_payment_credit_account`, `post_payable_creation`.
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -24,7 +25,14 @@ No Streamlit, no app.py imports — enforced by contract tests.
 from __future__ import annotations
 
 from models import ChartOfAccounts, FiscalPeriod, JournalEntry, JournalEntryLine, YearEndClose
+from reconciliation.company_card import company_card_enabled
 from registry.service import get_setting
+
+# Pinned by PS-P2b-CHAR — must match registry/locales/transactional.py EN strings.
+_CC_DISABLED_MSG = (
+    "Company Credit Card is not enabled. Enable it in Banking → Settings first."
+)
+_CC_GL_MISSING_MSG = "Credit Card Payable GL account is missing."
 
 
 def entry_date_posting_blocked(
@@ -245,5 +253,74 @@ def post_credit_sale(
             "CreditSale", sale_id,
             [(ar_acct.id, amount, 0), (sales_acct.id, 0, amount)],
             currency=currency, fx_rate=fx_rate,
+            company_id=company_id,
+        )
+
+
+def resolve_payment_credit_account(
+    session,
+    payment_method: str,
+    *,
+    currency=None,
+    company_id: int | None = None,
+    gl_company_id: int | None = None,
+):
+    """Cash/Bank/Company Credit Card → GL account to credit on business payment posting.
+
+    PS-P2b: verbatim from app.py ``_resolve_payment_credit_account``. The shim
+    supplies ``gl_company_id`` from the ambient session company (legacy
+    ``get_account_by_name`` scope). ``company_id`` gates ``company_card_enabled``
+    only on the Credit Card branch — see TD-PS-06.
+    """
+    pm = (payment_method or "").lower().strip()
+    if pm == "bank":
+        return get_account_by_name(session, "Bank", currency=currency, company_id=gl_company_id)
+    if pm == "credit card":
+        cid = company_id or gl_company_id
+        if not cid or not company_card_enabled(session, cid):
+            raise ValueError(_CC_DISABLED_MSG)
+        cc_acct = get_account_by_name(session, "Credit Card Payable", company_id=gl_company_id)
+        if not cc_acct:
+            raise ValueError(_CC_GL_MISSING_MSG)
+        return cc_acct
+    if pm == "cash":
+        return get_account_by_name(session, "Cash", currency=currency, company_id=gl_company_id)
+    cash_acct = get_account_by_name(session, "Cash", currency=currency, company_id=gl_company_id)
+    bank_acct = get_account_by_name(session, "Bank", currency=currency, company_id=gl_company_id)
+    return cash_acct or bank_acct
+
+
+def post_payable_creation(
+    session,
+    payable_id,
+    amount,
+    date,
+    expense_category="Rent",
+    currency=None,
+    *,
+    company_id: int | None = None,
+):
+    """Post payable creation: Debit Expense account, Credit Accounts Payable."""
+    ap_acct = get_account_by_name(session, "Accounts Payable", company_id=company_id)
+    cat = (expense_category or "").lower()
+    if "rent" in cat:
+        debit_acct = get_account_by_name(session, "Rent Expense", company_id=company_id)
+    elif "salary" in cat:
+        debit_acct = get_account_by_name(session, "Salary Expense", company_id=company_id)
+    elif any(k in cat for k in ("utility", "electricity", "water", "internet")):
+        debit_acct = get_account_by_name(session, "Utility Expense", company_id=company_id)
+    elif "advertising" in cat:
+        debit_acct = get_account_by_name(session, "Advertising Expense", company_id=company_id)
+    elif "fuel" in cat:
+        debit_acct = get_account_by_name(session, "Fuel Expense", company_id=company_id)
+    else:
+        debit_acct = get_account_by_name(session, "Office Expense", company_id=company_id)
+    if debit_acct and ap_acct:
+        create_journal_entry(
+            session, date,
+            f"Payable Created (ID: {payable_id}) — {expense_category}",
+            "PayableCreation", payable_id,
+            [(debit_acct.id, amount, 0), (ap_acct.id, 0, amount)],
+            currency=currency,
             company_id=company_id,
         )
