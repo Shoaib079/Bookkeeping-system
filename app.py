@@ -118,6 +118,19 @@ from registry.partner_statement import (
     partner_statement_preset_range,
     partner_statement_to_export_df,
 )
+from registry.banking_config import (
+    banking_accounting_preview,
+    banking_batch_confidence_threshold,
+    banking_batch_eligible_kinds,
+    banking_batch_posting_enabled,
+    banking_confidence_meets_batch_threshold,
+    banking_queue_density,
+    banking_queue_sort,
+    banking_review_required_kinds,
+    banking_show_accounting_previews,
+    banking_show_confidence_chips,
+    banking_sort_queue_rows,
+)
 from registry.service import get_module_state
 from registry.setup01_wizard import (
     SETUP01_SESSION_CREATING,
@@ -249,6 +262,8 @@ from reconciliation.match_post import (
 from ui.avatar import render_user_avatar, user_initials
 from ui.banking import (
     apply_banking_pos_settlement_route as _apply_banking_pos_settlement_route,
+    banking_apply_default_import_tab as _banking_apply_default_import_tab,
+    banking_apply_session_landing as _banking_apply_session_landing,
     banking_match_failure_label as _banking_match_failure_label,
     banking_match_kind_confidence as _banking_match_kind_confidence,
     banking_pos_settlement_route_keys as _banking_pos_settlement_route_keys,
@@ -16379,6 +16394,9 @@ def _bsi_queue_row_summaries(session, postable) -> list[dict]:
                 "summary": summary,
                 "kind_label": kind_label,
                 "confidence": confidence,
+                "date": row.date,
+                "amount": round(float(row.amount), 2),
+                "import_row_index": row.import_row_index,
             }
         )
     return rows
@@ -16464,15 +16482,27 @@ def _bsi_bank_fee_batch_review_reason(session, cid: int, row) -> str | None:
         return "not_postable"
     if _bsi_default_match_kind(session, row, is_deposit=False) != "bank_fee":
         return "not_bank_fee"
+    if "bank_fee" not in banking_batch_eligible_kinds(session, cid):
+        return "batch_kind_excluded"
     desc = row.description or ""
     if _bsi_bank_fee_description_is_mixed(desc):
         return "mixed_description"
-    if _banking_match_kind_confidence("bank_fee", desc, is_deposit=False) != "high":
+    confidence = _banking_match_kind_confidence("bank_fee", desc, is_deposit=False)
+    threshold = banking_batch_confidence_threshold(session, cid)
+    if not banking_confidence_meets_batch_threshold(threshold, confidence):
         return "low_confidence"
     if not _bsi_bank_fee_subtype_is_unambiguous(desc):
         return "ambiguous_subtype"
     if not _bsi_bank_fee_batch_gl_ready(session, row):
         return "missing_gl_accounts"
+    from reconciliation.match_post import infer_bank_charge_subtype
+
+    subtype = infer_bank_charge_subtype(desc)
+    if (
+        "transfer_charges" in banking_review_required_kinds(session, cid)
+        and subtype == "transfer_fee"
+    ):
+        return "review_required_transfer"
     return None
 
 
@@ -16625,16 +16655,27 @@ def _bsi_match_queue_detail_body(session, cid: int, sel_row) -> None:
         sel_row,
         is_deposit=is_deposit,
     )
-    if detected_kind in kind_labels:
+    confidence = _banking_match_kind_confidence(
+        detected_kind,
+        sel_row.description or "",
+        is_deposit=is_deposit,
+    )
+    uid = (_current_user() or {}).get("id")
+    if banking_show_accounting_previews(session, cid, user_id=uid):
+        preview = banking_accounting_preview(
+            detected_kind,
+            description=sel_row.description or "",
+        )
+        if preview:
+            st.caption(_t("banking.import.match.accounting_preview", impact=preview))
+    if detected_kind in kind_labels and banking_show_confidence_chips(
+        session, cid, user_id=uid
+    ):
         kind_key = _bsi_widget_key("bsi_match_kind", sel_row.id)
         _render_banking_match_suggestion_chip(
             detected_kind=detected_kind,
             kind_label=kind_labels[detected_kind],
-            confidence=_banking_match_kind_confidence(
-                detected_kind,
-                sel_row.description or "",
-                is_deposit=is_deposit,
-            ),
+            confidence=confidence,
             accept_key=f"bsi_accept_kind_{sel_row.id}",
             kind_state_key=kind_key,
         )
@@ -17458,6 +17499,8 @@ def render_bank_statement_import(session, *, embedded: bool = False):
         )
     cid = current_company_required()
     can_import = _can("import_bank_statement")
+    uid = (_current_user() or {}).get("id")
+    _banking_apply_default_import_tab(session, cid, user_id=uid)
 
     imports = (
         cq(session, BankStatementImport)
@@ -18048,7 +18091,10 @@ def render_bank_statement_import(session, *, embedded: bool = False):
                 if st.session_state.get("bsi_queue_sel_row") not in row_ids:
                     st.session_state["bsi_queue_sel_row"] = row_ids[0]
                 sel_row_id = st.session_state["bsi_queue_sel_row"]
-                if _bank_charges_on(session):
+                if (
+                    _bank_charges_on(session)
+                    and banking_batch_posting_enabled(session, cid)
+                ):
                     fee_partition = _bsi_bank_fee_batch_partition(
                         session, cid, postable
                     )
@@ -18056,9 +18102,17 @@ def render_bank_statement_import(session, *, embedded: bool = False):
                         session, cid, fee_partition
                     )
                 queue_rows = _bsi_queue_row_summaries(session, postable)
+                queue_rows = banking_sort_queue_rows(
+                    queue_rows,
+                    sort_key=banking_queue_sort(session, cid, user_id=uid),
+                )
                 _render_banking_match_queue_list(
                     queue_rows,
                     selected_row_id=sel_row_id,
+                    show_confidence=banking_show_confidence_chips(
+                        session, cid, user_id=uid
+                    ),
+                    density=banking_queue_density(session, cid, user_id=uid),
                 )
                 sel_row = session.get(BankStatementRow, sel_row_id)
                 if sel_row:
@@ -20730,6 +20784,10 @@ def render_banking(session):
     from reconciliation.company_card import apply_account_balance_delta
 
     _st_page_title(NAV_BANKING)
+
+    cid = current_company_required()
+    uid = (_current_user() or {}).get("id")
+    _banking_apply_session_landing(session, cid, user_id=uid)
 
     _render_banking_pos_settlement_entry(session)
 
@@ -24110,6 +24168,8 @@ def _render_banking_page_settings(session, cid: int):
         st.caption(_t("form.access_denied"))
         return
 
+    uid = (_current_user() or {}).get("id")
+
     rec_on = bool(get_setting(session, "banking.reconciliation_enabled", company_id=cid))
     card_on = bool(get_setting(session, "banking.company_card_enabled", company_id=cid))
     charges_on = bool(get_setting(session, "banking.bank_charges_enabled", company_id=cid))
@@ -24121,6 +24181,16 @@ def _render_banking_page_settings(session, cid: int):
         session, "banking.card_sales_clearing_backfill", company_id=cid
     ) or "none"
     _backfill_opts = ("none", "reclassify_to_clearing")
+
+    landing_val = get_setting(session, "banking.default_landing", company_id=cid) or "cockpit"
+    _landing_opts = ("cockpit", "queue", "accounts")
+    batch_on = bool(get_setting(session, "banking.batch_posting_enabled", company_id=cid))
+    batch_kinds_on = "bank_fee" in banking_batch_eligible_kinds(session, cid)
+    review_set = banking_review_required_kinds(session, cid)
+    conf_thresh = (
+        get_setting(session, "banking.batch_confidence_threshold", company_id=cid) or "high"
+    )
+    _conf_opts = ("high", "high_and_medium")
 
     with st.container(border=True):
         st.markdown(f"**{_t('bank.settings.section')}**")
@@ -24218,6 +24288,190 @@ def _render_banking_page_settings(session, cid: int):
         if rec_on and _can("view_bank_statement_import"):
             if st.button(_t("bank.settings.go_import"), key="bank_go_import_tab"):
                 st.session_state["banking_section"] = "import"
+                st.rerun()
+
+    with st.container(border=True):
+        st.markdown(f"**{_t('settings.banking.workspace_policy')}**")
+        st.caption(_t("settings.banking.workspace_policy_caption"))
+        landing_new = st.selectbox(
+            _t("settings.banking.default_landing"),
+            _landing_opts,
+            index=_landing_opts.index(landing_val)
+            if landing_val in _landing_opts
+            else 0,
+            format_func=lambda v: _t(f"settings.banking.default_landing.{v}"),
+            key="bank_default_landing",
+        )
+        batch_new = st.checkbox(
+            _t("settings.banking.batch_posting_enabled"),
+            value=batch_on,
+            key="bank_batch_posting_enabled",
+            help=_t("settings.banking.batch_posting_enabled_help"),
+        )
+        batch_kinds_new = st.checkbox(
+            _t("settings.banking.batch_eligible_kinds"),
+            value=batch_kinds_on,
+            key="bank_batch_eligible_bank_fee",
+            help=_t("settings.banking.batch_eligible_kinds_help"),
+        )
+        st.caption(_t("settings.banking.review_required_kinds"))
+        rev_transfer = st.checkbox(
+            _t("settings.banking.review_transfer_charges"),
+            value="transfer_charges" in review_set,
+            key="bank_review_transfer",
+        )
+        rev_payroll = st.checkbox(
+            _t("settings.banking.review_payroll"),
+            value="payroll" in review_set,
+            key="bank_review_payroll",
+        )
+        rev_vendor = st.checkbox(
+            _t("settings.banking.review_vendor"),
+            value="vendor" in review_set,
+            key="bank_review_vendor",
+        )
+        rev_equity = st.checkbox(
+            _t("settings.banking.review_equity_loan"),
+            value="equity_loan" in review_set,
+            key="bank_review_equity",
+        )
+        rev_low = st.checkbox(
+            _t("settings.banking.review_low_confidence"),
+            value="low_confidence" in review_set,
+            key="bank_review_low_conf",
+        )
+        conf_new = st.selectbox(
+            _t("settings.banking.batch_confidence_threshold"),
+            _conf_opts,
+            index=_conf_opts.index(conf_thresh)
+            if conf_thresh in _conf_opts
+            else 0,
+            format_func=lambda v: _t(f"settings.banking.batch_confidence_threshold.{v}"),
+            key="bank_batch_conf_threshold",
+        )
+        if st.button(
+            "💾  " + _t("common.save"),
+            key="bank_workspace_policy_save",
+            use_container_width=True,
+        ):
+            review_parts = []
+            if rev_transfer:
+                review_parts.append("transfer_charges")
+            if rev_payroll:
+                review_parts.append("payroll")
+            if rev_vendor:
+                review_parts.append("vendor")
+            if rev_equity:
+                review_parts.append("equity_loan")
+            if rev_low:
+                review_parts.append("low_confidence")
+            save_company_settings_batch(
+                session,
+                cid,
+                {
+                    "banking.default_landing": landing_new,
+                    "banking.batch_posting_enabled": batch_new,
+                    "banking.batch_eligible_kinds": (
+                        "bank_fee" if batch_kinds_new else ""
+                    ),
+                    "banking.review_required_kinds": ",".join(review_parts),
+                    "banking.batch_confidence_threshold": conf_new,
+                },
+                locale=_ui_locale(),
+            )
+            session.commit()
+            st.session_state.pop("banking_landing_applied", None)
+            st.success(_t("common.settings_saved"))
+            st.rerun()
+
+    if uid:
+        _density_opts = ("compact", "comfortable")
+        _sort_opts = ("date", "amount", "confidence")
+        _import_opts = ("upload", "review", "match", "history")
+        _pref_landing_opts = ("inherit", "cockpit", "queue", "accounts")
+        with st.container(border=True):
+            st.markdown(f"**{_t('settings.banking.workspace_preferences')}**")
+            st.caption(_t("settings.banking.workspace_preferences_caption"))
+            chips_new = st.checkbox(
+                _t("settings.banking.show_confidence_chips"),
+                value=banking_show_confidence_chips(session, cid, user_id=uid),
+                key="bank_pref_chips",
+            )
+            preview_new = st.checkbox(
+                _t("settings.banking.show_accounting_previews"),
+                value=banking_show_accounting_previews(session, cid, user_id=uid),
+                key="bank_pref_preview",
+            )
+            density_val = banking_queue_density(session, cid, user_id=uid)
+            density_new = st.selectbox(
+                _t("settings.banking.queue_density"),
+                _density_opts,
+                index=_density_opts.index(density_val)
+                if density_val in _density_opts
+                else 1,
+                format_func=lambda v: _t(f"settings.banking.queue_density.{v}"),
+                key="bank_pref_density",
+            )
+            sort_val = banking_queue_sort(session, cid, user_id=uid)
+            sort_new = st.selectbox(
+                _t("settings.banking.queue_sort"),
+                _sort_opts,
+                index=_sort_opts.index(sort_val) if sort_val in _sort_opts else 0,
+                format_func=lambda v: _t(f"settings.banking.queue_sort.{v}"),
+                key="bank_pref_sort",
+            )
+            import_val = get_setting(
+                session, "banking.default_import_tab", company_id=cid, user_id=uid
+            ) or "match"
+            import_new = st.selectbox(
+                _t("settings.banking.default_import_tab"),
+                _import_opts,
+                index=_import_opts.index(import_val)
+                if import_val in _import_opts
+                else 2,
+                format_func=lambda v: _t(f"settings.banking.default_import_tab.{v}"),
+                key="bank_pref_import_tab",
+            )
+            pref_landing_val = (
+                get_setting(
+                    session, "banking.landing_preference", company_id=cid, user_id=uid
+                )
+                or "inherit"
+            )
+            pref_landing_new = st.selectbox(
+                _t("settings.banking.landing_preference"),
+                _pref_landing_opts,
+                index=_pref_landing_opts.index(pref_landing_val)
+                if pref_landing_val in _pref_landing_opts
+                else 0,
+                format_func=lambda v: _t(f"settings.banking.landing_preference.{v}"),
+                key="bank_pref_landing",
+            )
+            if st.button(
+                "💾  " + _t("common.save"),
+                key="bank_workspace_prefs_save",
+                use_container_width=True,
+            ):
+                for key, val in (
+                    ("banking.show_confidence_chips", chips_new),
+                    ("banking.show_accounting_previews", preview_new),
+                    ("banking.queue_density", density_new),
+                    ("banking.queue_sort", sort_new),
+                    ("banking.default_import_tab", import_new),
+                    ("banking.landing_preference", pref_landing_new),
+                ):
+                    set_setting(
+                        session,
+                        key,
+                        val,
+                        company_id=cid,
+                        user_id=uid,
+                        check_locks=False,
+                    )
+                session.commit()
+                st.session_state.pop("banking_landing_applied", None)
+                st.session_state.pop("bsi_import_tab_applied", None)
+                st.success(_t("common.settings_saved"))
                 st.rerun()
 
 

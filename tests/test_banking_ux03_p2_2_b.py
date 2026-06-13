@@ -285,7 +285,7 @@ class TestBatchCandidateExclusion:
             session,
             co,
             ba,
-            description="HAVALE MASRAF",
+            description="POS KOMISYON",
             amount=12.0,
             idx=99,
         )

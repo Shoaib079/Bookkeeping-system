@@ -27,6 +27,10 @@ from reconciliation.unsettled_card_sales_list import (
     list_total_mismatch,
     sum_unsettled_card_sales,
 )
+from registry.banking_config import (
+    banking_default_import_tab,
+    banking_resolve_landing,
+)
 from registry.nav_keys import NAV_BANKING
 from ui.section import financial_section_header_html
 
@@ -35,6 +39,39 @@ def _erp():
     import app as app_module
 
     return app_module
+
+
+def banking_apply_session_landing(
+    session,
+    company_id: int,
+    *,
+    user_id: int | None = None,
+) -> None:
+    """Apply company/user landing preference once per session."""
+    if st.session_state.get("banking_landing_applied"):
+        return
+    landing = banking_resolve_landing(session, company_id, user_id=user_id)
+    if landing == "queue":
+        st.session_state["banking_section"] = "import"
+        st.session_state["bsi_section"] = "match"
+    elif landing in ("cockpit", "accounts"):
+        st.session_state["banking_section"] = landing
+    st.session_state["banking_landing_applied"] = True
+
+
+def banking_apply_default_import_tab(
+    session,
+    company_id: int,
+    *,
+    user_id: int | None = None,
+) -> None:
+    """Apply user default import tab once per session."""
+    if st.session_state.get("bsi_import_tab_applied"):
+        return
+    st.session_state["bsi_section"] = banking_default_import_tab(
+        session, company_id, user_id=user_id
+    )
+    st.session_state["bsi_import_tab_applied"] = True
 
 
 def banking_section_select(widget_key: str, options: list[tuple[str, str]]) -> str:
@@ -118,21 +155,33 @@ def render_banking_match_queue_list(
     queue_rows: list[dict],
     *,
     selected_row_id: int,
+    show_confidence: bool = True,
+    density: str = "comfortable",
 ) -> None:
     """Scannable postable-row list — selecting a row opens the detail fragment."""
     erp = _erp()
     st.markdown(f"**{erp._t('banking.import.match.queue_heading')}**")
+    compact = density == "compact"
     for item in queue_rows:
         row_id = item["row_id"]
         is_sel = row_id == selected_row_id
         conf_text = erp._t(f"banking.import.match.confidence.{item['confidence']}")
-        c_line, c_kind, c_btn = st.columns([4, 2, 1])
+        if show_confidence:
+            c_line, c_kind, c_btn = st.columns([4, 2, 1])
+        else:
+            c_line, c_btn = st.columns([5, 1])
+            c_kind = None
         with c_line:
             prefix = "**" if is_sel else ""
             suffix = "**" if is_sel else ""
-            st.markdown(f"{prefix}{item['summary']}{suffix}")
-        with c_kind:
-            st.caption(f"{item['kind_label']} · {conf_text}")
+            line = f"{prefix}{item['summary']}{suffix}"
+            if compact:
+                st.caption(line.replace("**", ""))
+            else:
+                st.markdown(line)
+        if c_kind is not None:
+            with c_kind:
+                st.caption(f"{item['kind_label']} · {conf_text}")
         with c_btn:
             if st.button(
                 erp._t("banking.import.match.queue_review"),

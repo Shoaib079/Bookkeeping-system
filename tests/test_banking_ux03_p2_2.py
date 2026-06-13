@@ -366,7 +366,8 @@ class TestConservativeEligibility:
         partition = banking_bank_fee_batch_partition(session, co.id, postable)
         eligible_ids = {c["row_id"] for c in partition["eligible"]}
         review_ids = {c["row_id"] for c in partition["needs_review"]}
-        assert eligible_ids == {eligible_a.id, eligible_b.id}
+        assert eligible_ids == {eligible_a.id}
+        assert eligible_b.id in review_ids
         assert mixed.id in review_ids
         assert vendor.id in review_ids
         assert deposit.id in review_ids
@@ -425,7 +426,7 @@ class TestBatchPostingParity:
             session,
             co,
             ba,
-            description="HAVALE MASRAF",
+            description="BSMV KESINTI",
             import_row_index=2,
             amount=25.0,
             file_hash="b2",
