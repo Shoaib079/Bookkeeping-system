@@ -105,7 +105,7 @@ def test_accounting_tools_picker_excludes_statements_and_books_dupes():
     assert not ids & _EXEC_REMOVED_BOOKS
 
 
-def test_mobile_reports_hub_statement_entries():
+def test_mobile_reports_hub_contains_statement_entries():
     reports = erp._MOBILE_HUB_CONFIG["reports"]
     kinds_pages = [(k, p) for k, p, *_ in reports if k == "page"]
     for key in _STATEMENT_KEYS:
@@ -114,10 +114,10 @@ def test_mobile_reports_hub_statement_entries():
     assert exec_rows == []
 
 
-def test_mobile_more_hub_has_statements_section():
+def test_mobile_more_hub_excludes_statements_section():
     more = erp._MOBILE_HUB_CONFIG["more"]
-    assert ("section", "statements", None, "nav.mobile.section.statements") in more
-    assert ("accordion", "statements", None, None) in more
+    assert ("section", "statements", None, "nav.mobile.section.statements") not in more
+    assert ("accordion", "statements", None, None) not in more
 
 
 def test_nav_group_statements_i18n_not_raw_key():
@@ -133,7 +133,7 @@ def test_nav_group_statements_i18n_not_raw_key():
         assert t(msg_key, "tr") != msg_key
 
 
-def test_mobile_statement_entries_visible_with_reports_access():
+def test_mobile_statement_entries_in_reports_not_more():
     allowed = {
         "Home",
         NAV_REPORTS,
@@ -143,8 +143,11 @@ def test_mobile_statement_entries_visible_with_reports_access():
         "My Account",
     }
     accordion = {k: v for k, v in erp._NAV_ACCORDION_BY_KEY.items()}
+    reports_pages = {p for k, p, *_ in erp._MOBILE_HUB_CONFIG["reports"] if k == "page"}
     for key in _STATEMENT_KEYS:
-        assert erp._mobile_hub_entry_visible("reports", "page", key, allowed, accordion)
+        assert key in reports_pages
+    more_accordions = {p for k, p, *_ in erp._MOBILE_HUB_CONFIG["more"] if k == "accordion"}
+    assert "statements" not in more_accordions
 
 
 def test_date_filter_pages_include_statements():

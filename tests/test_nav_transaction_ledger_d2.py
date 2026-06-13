@@ -86,11 +86,12 @@ def test_no_duplicate_page_dispatch_keys():
     assert main_src.count("NAV_TXN_LEDGER:") == 1
 
 
-def test_mobile_hubs_include_transaction_ledger():
+def test_mobile_hubs_include_transaction_ledger_in_reports_only():
     reports = erp._MOBILE_HUB_CONFIG["reports"]
     more = erp._MOBILE_HUB_CONFIG["more"]
     assert ("page", _TXN_LEDGER_KEY, None, None) in reports
-    assert ("page", _TXN_LEDGER_KEY, None, None) in more
+    more_pages = {p for k, p, *_ in more if k == "page"}
+    assert _TXN_LEDGER_KEY not in more_pages
     allowed = {"Home", "Reports", _TXN_LEDGER_KEY, "My Account"}
     accordion = dict(erp._NAV_ACCORDION_BY_KEY)
     assert erp._mobile_hub_entry_visible("reports", "page", _TXN_LEDGER_KEY, allowed, accordion)

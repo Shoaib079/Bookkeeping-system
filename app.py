@@ -3322,36 +3322,44 @@ def _nav_page_button(
 
 
 # Mobile-only presentation (desktop sidebar unchanged). Canonical page keys only.
-# Bottom bar: Home | Banking | New (FAB, center) | Reports | More
+# Bottom bar: Home | Money | New (FAB, center) | Reports | More
 # (kind, page_or_hub_key, i18n_key, slug, label_fallback, tab_icon)
 # MOBILE-NAV-ICON-01 — last field is the icon_svg registry name (was emoji).
 _MOBILE_BOTTOM_NAV = (
     ("home", NAV_HOME, "nav.bottom.home", "home", NAV_HOME, "home"),
-    ("hub", "banking", "nav.bottom.banking", "banking", NAV_BANKING, "landmark"),
+    ("hub", "money", "nav.bottom.money", "money", "Money", "landmark"),
     ("new", NAV_NEW_TRANSACTION, "nav.bottom.new", "new", "New", "plus"),
     ("hub", "reports", "nav.bottom.reports", "reports", NAV_REPORTS, "bar-chart"),
     ("hub", "more", "nav.bottom.more", "more", "More", "menu"),
 )
 _MOBILE_HUB_KEYS = frozenset(
     payload for kind, payload, _, _, _, _ in _MOBILE_BOTTOM_NAV if kind == "hub"
-) | frozenset({"people"})
+) | frozenset({"people", "banking"})  # banking: legacy session key (pre MOBILE-UX-01-A)
+_MOBILE_HUB_CONFIG_ALIASES = {"banking": "money"}
+
+# Pages omitted from mobile More accordions (desktop sidebar unchanged).
+_MOBILE_MORE_ACCORDION_EXCLUDE: dict[str, frozenset[str]] = {
+    "accounting": frozenset({NAV_RECON_HEALTH}),
+}
 
 # (hub_key, entry_kind, payload, label_i18n_or_none)
 # entry_kind: page | banking_import | report_sales | report_expenses | section
 _MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
-    "banking": [
-        ("page", NAV_BANKING, None, None),
+    "money": [
+        ("section", "close", None, "nav.mobile.section.close"),
         ("page", NAV_CASH_RECONCILIATION, None, None),
         ("page", NAV_EXTERNAL_SALES_VERIFICATION, None, None),
         ("page", NAV_END_OF_DAY_CLOSE, None, None),
+        ("section", "bank", None, "nav.mobile.section.bank"),
+        ("page", NAV_BANKING, None, None),
+        ("page", NAV_RECON_HEALTH, None, None),
         ("banking_import", "import", None, "nav.mobile.banking_import"),
     ],
     "reports": [
-        ("page", _TXN_LEDGER_PAGE_KEY, None, None),
-        ("section", "statements", None, "nav.mobile.section.statements"),
         ("page", NAV_PROFIT_LOSS, None, None),
         ("page", NAV_BALANCE_SHEET, None, None),
         ("page", NAV_CASH_FLOW, None, None),
+        ("page", _TXN_LEDGER_PAGE_KEY, None, None),
         ("report_sales", "sales", None, "nav.mobile.reports_sales"),
         ("report_expenses", "expenses", None, "nav.mobile.reports_expenses"),
     ],
@@ -3366,12 +3374,9 @@ _MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
     ],
     "more": [
         ("open_hub", "people", None, "nav.mobile.hub.people"),
-        ("section", "statements", None, "nav.mobile.section.statements"),
-        ("accordion", "statements", None, None),
         ("section", "books", None, "nav.mobile.section.books"),
         ("accordion", "accounting", None, None),
         ("section", "history", None, "nav.mobile.section.history"),
-        ("page", _TXN_LEDGER_PAGE_KEY, None, None),
         ("accordion", "transactions", None, None),
         ("page", NAV_INVENTORY, None, None),
         ("section", "admin", None, "nav.mobile.section.admin"),
@@ -3671,6 +3676,11 @@ def _mobile_open_surface(surface: str) -> None:
         _mobile_clear_company_switch_confirm()
 
 
+def _mobile_resolve_hub_key(hub_key: str) -> str:
+    """Canonical hub config key (legacy banking → money)."""
+    return _MOBILE_HUB_CONFIG_ALIASES.get(hub_key, hub_key)
+
+
 def _mobile_hub_nav(
     page_key: str,
     *,
@@ -3718,6 +3728,7 @@ def _mobile_hub_has_entries(
     allowed: set[str],
     accordion_by_key: dict,
 ) -> bool:
+    hub_key = _mobile_resolve_hub_key(hub_key)
     for kind, payload, _, _ in _MOBILE_HUB_CONFIG.get(hub_key, []):
         if kind == "section":
             continue
@@ -3727,6 +3738,7 @@ def _mobile_hub_has_entries(
 
 
 def _mobile_hub_page_keys(hub_key: str, accordion_by_key: dict) -> set[str]:
+    hub_key = _mobile_resolve_hub_key(hub_key)
     keys: set[str] = set()
     for kind, payload, _, _ in _MOBILE_HUB_CONFIG.get(hub_key, []):
         if kind == "page" and payload:
@@ -3783,10 +3795,11 @@ def _render_mobile_hub_sheet(
     allowed: set[str],
     accordion_by_key: dict,
 ) -> None:
-    """Hub sheet above the bottom tab bar (Banking / Reports / People / More)."""
+    """Hub sheet above the bottom tab bar (Money / Reports / People / More)."""
     hub_key = st.session_state.get("mobile_hub_open")
     if not hub_key or hub_key not in _MOBILE_HUB_KEYS:
         return
+    hub_key = _mobile_resolve_hub_key(hub_key)
     with st.container(border=False, key="erp_mob_hub_sheet"):
         st.markdown(
             f'<div class="erp-mobile-hub-host erp-mobile-hub-{hub_key}">'
@@ -3832,8 +3845,13 @@ def _render_mobile_hub_sheet(
                 continue
             if kind == "accordion":
                 _, gpages = accordion_by_key.get(payload or "", (None, []))
+                exclude = (
+                    _MOBILE_MORE_ACCORDION_EXCLUDE.get(payload or "", frozenset())
+                    if hub_key == "more"
+                    else frozenset()
+                )
                 for _lbl, page_key in gpages:
-                    if page_key not in allowed:
+                    if page_key not in allowed or page_key in exclude:
                         continue
                     _mob_hub_icon_nav_row(
                         hub_key=hub_key,
@@ -25771,18 +25789,19 @@ def main():
     if "sidebar_group" not in st.session_state:
         st.session_state["sidebar_group"] = _page_group(selection)
 
-    # ── Desktop sidebar nav ───────────────────────────────────────────────────
-    _render_navigation_tree(
-        st.sidebar,
-        key_prefix="nav",
-        selection=selection,
-        allowed=_allowed,
-        accordion_by_key=_NAV_ACCORDION_BY_KEY,
-    )
+    # ── Desktop sidebar nav (hidden on mobile — bottom bar is primary) ───────
+    if not _is_mobile_ui():
+        _render_navigation_tree(
+            st.sidebar,
+            key_prefix="nav",
+            selection=selection,
+            allowed=_allowed,
+            accordion_by_key=_NAV_ACCORDION_BY_KEY,
+        )
 
-    # Sidebar date filters on Reports and financial statement pages (AD-UI-001 D1).
-    if selection in _DATE_FILTER_PAGE_KEYS:
-        render_sidebar_filters()
+        # Sidebar date filters on Reports and financial statement pages (AD-UI-001 D1).
+        if selection in _DATE_FILTER_PAGE_KEYS:
+            render_sidebar_filters()
 
     # Clear transient confirm / void / payment dialogs on page change
     if st.session_state.get("_current_page") != selection:
