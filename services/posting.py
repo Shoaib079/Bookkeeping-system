@@ -9,6 +9,7 @@ PS-P2c-3: `post_purchase`, `resolve_purchase_debit_account`, `purchase_ref_type`
 PS-P3-1: `create_reversing_journal_entry`, `reverse_journal_entries_for`.
 PS-P3-2a: `void_expense`, `void_payable`.
 PS-P3-3a: `linked_purchase_payable`, `void_purchase_linked_payable`.
+PS-P3-3b: `void_purchase`.
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -769,3 +770,38 @@ def void_purchase_linked_payable(
     linked.is_void = True
     linked.voided_at = datetime.date.today()
     linked.void_reason = reason
+
+
+def void_purchase(
+    session,
+    purchase_id,
+    void_reason,
+    *,
+    company_id: int | None = None,
+):
+    """Reverse purchase GL + cascade linked payable void; commit purchase flags.
+
+    PS-P3-3b: verbatim reverse-and-flag core from app.py. Commits purchase and
+    linked-payable flags. App shim writes the audit row only on ``True``.
+    """
+    purchase = session.get(Purchase, purchase_id)
+    if not purchase or purchase.is_void:
+        return False
+    ref_type = purchase_ref_type(purchase.purchase_type)
+    reverse_cc_subledgers_for_gl_reference(
+        session, ref_type, purchase_id, void_reason
+    )
+    reverse_journal_entries_for(
+        session, ref_type, purchase_id, void_reason, company_id=company_id
+    )
+    purchase.is_void = True
+    purchase.voided_at = datetime.date.today()
+    purchase.void_reason = void_reason
+    void_purchase_linked_payable(
+        session,
+        purchase_id,
+        f"Purchase #{purchase_id} voided: {void_reason}",
+        company_id=company_id,
+    )
+    session.commit()
+    return True

@@ -2382,26 +2382,17 @@ def void_expense(session, expense_id, void_reason):
 
 
 def void_purchase(session, purchase_id, void_reason):
-    purchase = session.get(Purchase, purchase_id)
-    if not purchase or purchase.is_void:
-        return False
-    ref_type = _purchase_ref_type(purchase.purchase_type)
-    reverse_cc_subledgers_for_gl_reference(session, ref_type, purchase_id, void_reason)
-    reverse_journal_entries_for(session, ref_type, purchase_id, void_reason)
-    purchase.is_void = True
-    purchase.voided_at = datetime.date.today()
-    purchase.void_reason = void_reason
-    # Cascade void to the auto-created payable (if any).
-    # The PayableCreation GL was never posted for purchase-linked payables
-    # (the AP credit was set up by the Purchase GL already reversed above).
-    # However, if the payable was already paid, a PayablePayment GL entry
-    # exists (Dr AP / Cr Cash) and MUST be reversed to restore the equation.
-    _void_purchase_linked_payable(
-        session, purchase_id, f"Purchase #{purchase_id} voided: {void_reason}"
+    """PS-P3-3b compatibility shim — kernel lives in services/posting.py."""
+    ok = posting_service.void_purchase(
+        session, purchase_id, void_reason,
+        company_id=current_company_required(),
     )
-    session.commit()
-    log_audit(session, "Void", "Purchase", purchase_id, f"Voided Purchase #{purchase_id}: {void_reason}")
-    return True
+    if ok:
+        log_audit(
+            session, "Void", "Purchase", purchase_id,
+            f"Voided Purchase #{purchase_id}: {void_reason}",
+        )
+    return ok
 
 
 def _purchase_is_credit(purchase_type: str | None) -> bool:
