@@ -6226,45 +6226,19 @@ def reject_reconciliation(session, reconciliation_id: int, manager_id: int,
     return ""
 
 
-def void_reconciliation(session, reconciliation_id: int, owner_id: int, 
+def void_reconciliation(session, reconciliation_id: int, owner_id: int,
                        reason: str) -> str:
-    """Owner voids a reconciliation and reverses its variance JE.
-    
-    Returns: error message or ""
-    """
-    reconciliation = session.get(DailyCashReconciliation, reconciliation_id)
-    if not reconciliation:
-        return "Reconciliation not found."
-    if reconciliation.is_void:
-        return "Reconciliation already voided."
-    if reconciliation.status == "draft":
-        return "Cannot void a draft reconciliation; delete it instead."
-    
-    # If JE was posted, reverse it
-    if reconciliation.journal_entry_id:
-        original_je = session.get(JournalEntry, reconciliation.journal_entry_id)
-        if original_je:
-            reverse_journal_entries_for(session, "CashReconciliation", reconciliation_id, reason)
-            reversal = (
-                cq(session, JournalEntry)
-                .filter(
-                    JournalEntry.reference_type == "Reversal",
-                    JournalEntry.reference_id == original_je.id,
-                )
-                .order_by(JournalEntry.id.desc())
-                .first()
-            )
-            if reversal:
-                reconciliation.reversed_je_id = reversal.id
-    reconciliation.is_void = True
-    reconciliation.voided_by_id = owner_id
-    reconciliation.voided_at = datetime.datetime.now()
-    reconciliation.void_reason = reason
-    session.commit()
-    
-    log_audit(session, "Void", "DailyCashReconciliation", reconciliation_id,
-              f"Voided by user {owner_id}, reason: {reason}")
-    return ""
+    """PS-P5-4 compatibility shim — kernel lives in services/posting.py."""
+    err = posting_service.void_reconciliation(
+        session, reconciliation_id, owner_id, reason,
+        company_id=current_company_required(),
+    )
+    if not err:
+        log_audit(
+            session, "Void", "DailyCashReconciliation", reconciliation_id,
+            f"Voided by user {owner_id}, reason: {reason}",
+        )
+    return err
 
 
 # ── Phase 9D: End-of-Day Close ────────────────────────────────────────────────
@@ -6446,29 +6420,15 @@ def close_day(session, date: datetime.date, closer_id: int, notes: str) -> tuple
 
 
 def void_eod_close(session, close_id: int, owner_id: int, reason: str) -> str:
-    """Owner voids an end-of-day close record.
-
-    Returns: error message or empty string on success.
-    No GL reversal — EOD close posts no journal entries.
-    """
-    eod = session.get(EndOfDayClose, close_id)
-    if not eod:
-        return "End-of-day close record not found."
-    if eod.is_void:
-        return "This close has already been voided."
-
-    eod.is_void      = True
-    eod.voided_by_id = owner_id
-    eod.voided_at    = datetime.datetime.now()
-    eod.void_reason  = reason
-    eod.status       = "voided"
-    session.commit()
-
-    log_audit(
-        session, "Void", "EndOfDayClose", close_id,
-        f"Day {eod.date} close voided by user {owner_id}: {reason}",
-    )
-    return ""
+    """PS-P5-4 compatibility shim — kernel lives in services/posting.py."""
+    err = posting_service.void_eod_close(session, close_id, owner_id, reason)
+    if not err:
+        eod = session.get(EndOfDayClose, close_id)
+        log_audit(
+            session, "Void", "EndOfDayClose", close_id,
+            f"Day {eod.date} close voided by user {owner_id}: {reason}",
+        )
+    return err
 
 
 def _eod_is_stale(session, eod: "EndOfDayClose") -> bool:
@@ -8150,27 +8110,15 @@ def perform_year_end_close(
 def void_year_end_close(
     session, yec_id: int, voider_id: int, reason: str
 ) -> str:
-    """Void a year-end close, removing the year lock. Returns error string or ""."""
-    yec = session.get(YearEndClose, yec_id)
-    if not yec:
-        return "Year-end close record not found."
-    if yec.is_void:
-        return "Year-end close is already voided."
-    if not reason.strip():
-        return "Void reason is required."
-
-    yec.is_void      = True
-    yec.status       = "voided"
-    yec.voided_by_id = voider_id
-    yec.voided_at    = datetime.datetime.now()
-    yec.void_reason  = reason
-    session.commit()
-
-    log_audit(
-        session, "VoidYearEndClose", "YearEndClose", yec_id,
-        f"Voided year-end close for {yec.fiscal_year} — {reason}",
-    )
-    return ""
+    """PS-P5-4 compatibility shim — kernel lives in services/posting.py."""
+    err = posting_service.void_year_end_close(session, yec_id, voider_id, reason)
+    if not err:
+        yec = session.get(YearEndClose, yec_id)
+        log_audit(
+            session, "VoidYearEndClose", "YearEndClose", yec_id,
+            f"Voided year-end close for {yec.fiscal_year} — {reason}",
+        )
+    return err
 
 
 # ─── Phase 11: Attachment infrastructure ─────────────────────────────────────

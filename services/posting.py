@@ -16,6 +16,7 @@ PS-P4-2: `void_bank_transaction`.
 PS-P5-1: `compute_sale_balance_status`, `post_receivable_payment`.
 PS-P5-2: `void_inventory_transaction`.
 PS-P5-3: `post_capital_contribution`, `post_owner_drawing`, `post_salary`, `void_equity_movement`.
+PS-P5-4: `void_reconciliation`, `void_eod_close`, `void_year_end_close`.
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -43,6 +44,8 @@ from models import (
     BankAccount,
     BankTransaction,
     ChartOfAccounts,
+    DailyCashReconciliation,
+    EndOfDayClose,
     ExpenseRecord,
     FiscalPeriod,
     InventoryTransaction,
@@ -1166,3 +1169,88 @@ def void_equity_movement(
         btxn.voided_at = datetime.date.today()
         btxn.void_reason = void_reason
     session.commit()
+
+
+def void_reconciliation(
+    session,
+    reconciliation_id: int,
+    owner_id: int,
+    reason: str,
+    *,
+    company_id: int | None = None,
+) -> str:
+    """Owner voids a reconciliation and reverses its variance JE.
+
+    PS-P5-4: verbatim from app.py. App shim writes the audit row on success (``""``).
+    """
+    reconciliation = session.get(DailyCashReconciliation, reconciliation_id)
+    if not reconciliation:
+        return "Reconciliation not found."
+    if reconciliation.is_void:
+        return "Reconciliation already voided."
+    if reconciliation.status == "draft":
+        return "Cannot void a draft reconciliation; delete it instead."
+
+    if reconciliation.journal_entry_id:
+        original_je = session.get(JournalEntry, reconciliation.journal_entry_id)
+        if original_je:
+            reverse_journal_entries_for(
+                session, "CashReconciliation", reconciliation_id, reason, company_id=company_id
+            )
+            reversal_q = session.query(JournalEntry).filter(
+                JournalEntry.reference_type == "Reversal",
+                JournalEntry.reference_id == original_je.id,
+            )
+            if company_id is not None:
+                reversal_q = reversal_q.filter(JournalEntry.company_id == company_id)
+            reversal = reversal_q.order_by(JournalEntry.id.desc()).first()
+            if reversal:
+                reconciliation.reversed_je_id = reversal.id
+    reconciliation.is_void = True
+    reconciliation.voided_by_id = owner_id
+    reconciliation.voided_at = datetime.datetime.now()
+    reconciliation.void_reason = reason
+    session.commit()
+    return ""
+
+
+def void_eod_close(session, close_id: int, owner_id: int, reason: str) -> str:
+    """Owner voids an end-of-day close record.
+
+    PS-P5-4: verbatim from app.py. No GL reversal. App shim writes audit on success.
+    """
+    eod = session.get(EndOfDayClose, close_id)
+    if not eod:
+        return "End-of-day close record not found."
+    if eod.is_void:
+        return "This close has already been voided."
+
+    eod.is_void = True
+    eod.voided_by_id = owner_id
+    eod.voided_at = datetime.datetime.now()
+    eod.void_reason = reason
+    eod.status = "voided"
+    session.commit()
+    return ""
+
+
+def void_year_end_close(session, yec_id: int, voider_id: int, reason: str) -> str:
+    """Void a year-end close, removing the year lock.
+
+    PS-P5-4: verbatim from app.py. App shim writes audit on success.
+    """
+    yec = session.get(YearEndClose, yec_id)
+    if not yec:
+        return "Year-end close record not found."
+    if yec.is_void:
+        return "Year-end close is already voided."
+    if not reason.strip():
+        return "Void reason is required."
+
+    yec.is_void = True
+    yec.status = "voided"
+    yec.voided_by_id = voider_id
+    yec.voided_at = datetime.datetime.now()
+    yec.void_reason = reason
+    session.commit()
+    return ""
