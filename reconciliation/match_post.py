@@ -946,17 +946,16 @@ _CREDIT_CARD_BILL_PAYMENT_KEYWORDS = (
     "min odeme",
 )
 
-_TRANSFER_FEE_KEYWORDS = (
-    "havale",
-    "eft",
-    "wire",
-    "transfer fee",
-    "swift",
+_TRANSFER_FEE_TOKEN_KEYWORDS = (
+    "ucret",
+    "masraf",
+    "fee",
     "islem ucret",
     "banka masraf",
     "eft masraf",
     "havale masraf",
     "havale ucret",
+    "transfer fee",
 )
 
 
@@ -1017,7 +1016,7 @@ def looks_like_commission(description: str) -> bool:
 
 
 def looks_like_transfer_fee(description: str) -> bool:
-    """Heuristic: separate bank transfer / EFT fee line (not POS commission)."""
+    """Heuristic: bank transfer/EFT/SWIFT *fee* line — requires a fee token, not bare rail."""
     if (
         looks_like_commission(description)
         or looks_like_interest(description)
@@ -1025,7 +1024,7 @@ def looks_like_transfer_fee(description: str) -> bool:
     ):
         return False
     folded = _fold_tr(description or "")
-    return any(kw in folded for kw in _TRANSFER_FEE_KEYWORDS)
+    return any(kw in folded for kw in _TRANSFER_FEE_TOKEN_KEYWORDS)
 
 
 def card_deposit_style(description: str) -> str | None:
@@ -1058,6 +1057,8 @@ def infer_bank_charge_subtype(description: str) -> str:
         return "credit_card_fee"
     if looks_like_commission(description):
         return "card_settlement_fee"
+    if looks_like_transfer_fee(description):
+        return "transfer_fee"
     return "transfer_fee"
 
 
