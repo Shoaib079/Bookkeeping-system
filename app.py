@@ -5768,30 +5768,19 @@ def _sync_company_cc_subledger(
     reference_id: int,
     record=None,
 ) -> None:
-    """AD-011: mirror GL CC charge on card BankAccount sub-ledger (no extra JE)."""
-    if (payment_method or "") != _COMPANY_CC_METHOD:
-        return
-    company_id = company_id or _current_company_id()
-    if company_id is None:
-        raise ValueError(_t("form.err.company_cc_no_cards"))
-    try:
-        cc_id = resolve_company_credit_card_account_id(
-            session, company_id, credit_card_account_id
-        )
-    except CompanyCardError as exc:
-        raise ValueError(str(exc)) from exc
-    if record is not None and hasattr(record, "credit_card_account_id"):
-        record.credit_card_account_id = cc_id
-        session.flush()
-    post_cc_subledger_charge(
+    """PS-P2c-1 compatibility shim — kernel lives in services/posting.py."""
+    return posting_service.sync_company_cc_subledger(
         session,
-        credit_card_account_id=cc_id,
+        payment_method,
+        company_id=company_id,
+        credit_card_account_id=credit_card_account_id,
         amount=amount,
         txn_date=txn_date,
         description=description,
         reference_type=reference_type,
         reference_id=reference_id,
-        company_id=company_id,
+        record=record,
+        ambient_company_id=_current_company_id(),
     )
 
 

@@ -3,6 +3,7 @@
 PS-P1: `create_journal_entry` + period/year-end guard (verbatim from app.py).
 PS-P2a: `get_account_by_name`, sales `post_*` trio, `card_settlement_on`.
 PS-P2b: `resolve_payment_credit_account`, `post_payable_creation`.
+PS-P2c-1: `sync_company_cc_subledger`.
 
 app.py keeps compatibility shims under the original names so all existing
 call sites remain behaviourally untouched.
@@ -25,7 +26,12 @@ No Streamlit, no app.py imports — enforced by contract tests.
 from __future__ import annotations
 
 from models import ChartOfAccounts, FiscalPeriod, JournalEntry, JournalEntryLine, YearEndClose
-from reconciliation.company_card import company_card_enabled
+from reconciliation.company_card import (
+    CompanyCardError,
+    company_card_enabled,
+    post_cc_subledger_charge,
+    resolve_company_credit_card_account_id,
+)
 from registry.service import get_setting
 
 # Pinned by PS-P2b-CHAR — must match registry/locales/transactional.py EN strings.
@@ -33,6 +39,10 @@ _CC_DISABLED_MSG = (
     "Company Credit Card is not enabled. Enable it in Banking → Settings first."
 )
 _CC_GL_MISSING_MSG = "Credit Card Payable GL account is missing."
+_CC_NO_CARDS_MSG = (
+    "No active company credit card account. Add one under Banking → Accounts."
+)
+_COMPANY_CC_METHOD = "Credit Card"
 
 
 def entry_date_posting_blocked(
@@ -324,3 +334,49 @@ def post_payable_creation(
             currency=currency,
             company_id=company_id,
         )
+
+
+def sync_company_cc_subledger(
+    session,
+    payment_method: str | None,
+    *,
+    company_id: int | None,
+    credit_card_account_id: int | None,
+    amount: float,
+    txn_date,
+    description: str,
+    reference_type: str,
+    reference_id: int,
+    record=None,
+    ambient_company_id: int | None = None,
+) -> None:
+    """AD-011: mirror GL CC charge on card BankAccount sub-ledger (no extra JE).
+
+    PS-P2c-1: verbatim from app.py ``_sync_company_cc_subledger``. The shim
+    supplies ``ambient_company_id`` from the session company (legacy ambient
+    fallback when ``company_id`` is None).
+    """
+    if (payment_method or "") != _COMPANY_CC_METHOD:
+        return
+    company_id = company_id or ambient_company_id
+    if company_id is None:
+        raise ValueError(_CC_NO_CARDS_MSG)
+    try:
+        cc_id = resolve_company_credit_card_account_id(
+            session, company_id, credit_card_account_id
+        )
+    except CompanyCardError as exc:
+        raise ValueError(str(exc)) from exc
+    if record is not None and hasattr(record, "credit_card_account_id"):
+        record.credit_card_account_id = cc_id
+        session.flush()
+    post_cc_subledger_charge(
+        session,
+        credit_card_account_id=cc_id,
+        amount=amount,
+        txn_date=txn_date,
+        description=description,
+        reference_type=reference_type,
+        reference_id=reference_id,
+        company_id=company_id,
+    )
