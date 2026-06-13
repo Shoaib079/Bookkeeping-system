@@ -85,6 +85,7 @@ def generate_partner_statement_pdf(payload: dict) -> bytes:
     opening_position = float(payload.get("opening_position", 0.0))
     closing_position = float(payload.get("closing_position", 0.0))
     summary_rows = payload.get("summary_rows") or []
+    account_breakdown_rows = payload.get("account_breakdown_rows") or []
     detail_rows = payload.get("detail_rows") or []
     status_text = str(payload.get("status_text", "") or "")
     warnings = payload.get("warnings") or []
@@ -153,6 +154,29 @@ def generate_partner_statement_pdf(payload: dict) -> bytes:
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
 
+    breakdown_tbl = None
+    if account_breakdown_rows:
+        breakdown_data = [
+            [Paragraph("Section", h2), Paragraph("Line", h2),
+             Paragraph(f"Amount ({currency})", h2)],
+        ]
+        for row in account_breakdown_rows:
+            breakdown_data.append([
+                Paragraph(str(row.get("Section", "")), body),
+                Paragraph(str(row.get("Line", "")), body),
+                Paragraph(_fmt_amt(row.get("Amount", "")), right_body),
+            ])
+        breakdown_tbl = Table(breakdown_data, colWidths=[W * 0.22, W * 0.48, W * 0.30])
+        breakdown_tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#ecfdf5")),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.5, colors.HexColor("#6ee7b7")),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#e5e7eb")),
+            ("ALIGN", (2, 0), (2, -1), "RIGHT"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+
     elements = [
         header_tbl,
         Spacer(1, 4 * mm),
@@ -167,6 +191,14 @@ def generate_partner_statement_pdf(payload: dict) -> bytes:
         summary_tbl,
         Spacer(1, 4 * mm),
     ]
+
+    if breakdown_tbl is not None:
+        elements.extend([
+            Paragraph("Account Balances", h2),
+            Spacer(1, 2 * mm),
+            breakdown_tbl,
+            Spacer(1, 4 * mm),
+        ])
 
     if status_text:
         elements.extend([
