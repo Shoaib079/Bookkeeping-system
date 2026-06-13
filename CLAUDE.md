@@ -51,9 +51,9 @@ Sidebar filters (global search + date range) are stored in `st.session_state` an
 ### Double-entry accounting
 
 All financial transactions post through `create_journal_entry(session, date, description, reference_type, reference_id, lines)` where `lines` is a list of `(account_id, debit, credit)` tuples. This function:
-1. Blocks posting to closed fiscal periods (except `reference_type="PeriodClose"`).
+1. Blocks posting to closed fiscal periods (except `reference_type="PeriodClose"`) and closed fiscal years.
 2. Enforces `sum(debit) == sum(credit)` within 1 cent — rolls back and raises `ValueError` if unbalanced.
-3. Updates `ChartOfAccounts.balance` in-place using normal/contra balance rules (Asset/Expense: debit increases; Liability/Equity/Income: credit increases).
+3. Does **not** update `ChartOfAccounts.balance` in-place. Balance reads use `calculate_account_balance()` (derived from journal lines). `sync_account_balances()` runs at startup to refresh the cached `balance` column.
 
 Convenience wrappers like `post_cash_sale`, `post_purchase`, `post_expense`, etc. call `create_journal_entry` with the correct account pairs and `reference_type` strings.
 

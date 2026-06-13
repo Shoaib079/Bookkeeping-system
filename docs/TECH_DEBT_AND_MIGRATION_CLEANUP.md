@@ -323,6 +323,43 @@ Independent architectural review (Claude) — baseline FastAPI/React readiness a
 
 ---
 
+## POSTING-SERVICE-01 (TD-POSTING)
+
+| ID | Item | Priority | Status | When / trigger |
+|----|------|----------|--------|----------------|
+| **TD-POSTING-01** | **`app.py` shims after extraction** — keep thin re-export wrappers (`post_cash_sale`, `void_sale`, `_staff_capture_post_expense_draft`, etc.) in `app.py` until Streamlit pages and `reconciliation/` callers migrate to `services/posting.py` | High | Open | PS-P1 extraction |
+| **TD-POSTING-02** | **Internal commit behavior** — `create_journal_entry`, most `void_*`, `sync_account_balances`, `log_audit`, and several `post_*` paths call `session.commit()` internally; refactor to `flush()` + caller-owned transaction for FastAPI | **Critical** | Open | PS-P1 / FastAPI Phase B |
+| **TD-POSTING-03** | **ORM return deprecation** — posting helpers return ORM objects (`JournalEntry`, movement rows) or bare IDs inconsistently; introduce frozen DTOs (`JournalEntryView`, `PostingResult`) at service boundary | Medium | Open | PS-P1 API surface |
+| **TD-POSTING-04** | **Rollback semantics difference** — `create_journal_entry` rolls back on guard/balance failure; outer `post_*` / `void_*` callers may leave partial flushes; document and unify transaction boundaries during extraction | High | Open | PS-P1 extraction |
+| **TD-POSTING-05** | **Year-end guard location** — YEC lock centralized in `_entry_date_posting_blocked` for JE posting but duplicated inline in `post_partner_movement`, `post_worker_movement`, and related void guards; consolidate in posting service | Medium | Open | PS-P1 extraction |
+| **TD-POSTING-06** | **Reconciliation `_app` imports** — `reconciliation/company_card.py` and `reconciliation/match_post.py` lazy-import `app` for `create_journal_entry`; replace with `services/posting.py` import to break circular dependency | High | Open | PS-P1 / BANKING-SERVICE-01 |
+
+### PS-P0 Migration Cleanup (2026-06-05)
+
+#### 1. Code to keep during FastAPI/React migration
+- `app.py` posting engine (unchanged in PS-P0) — characterized baseline for extraction
+- `docs/POSTING_SERVICE_01_CASCADE_MAP.md` — cascade / commit-behavior map
+- Tests: `tests/test_posting_service01_characterization.py`
+- Existing guards: `_entry_date_posting_blocked`, `create_reversing_journal_entry`, `reverse_journal_entries_for`
+
+#### 2. Code likely to replace during FastAPI/React migration
+- Entire posting/void block in `app.py` → `services/posting.py` (POSTING-SERVICE-01)
+- `reconciliation/*` lazy `_app()` imports → direct posting service (TD-POSTING-06)
+- Internal `session.commit()` in posting paths (TD-POSTING-02)
+- `ChartOfAccounts.balance` cache maintenance — clarify read path vs write path in service API
+
+#### 3. Dead code found
+- None in PS-P0 scope (characterization only)
+
+#### 4. Temporary Streamlit-only code
+- `app._staff_capture_post_expense_draft` — posting adapter pending shared service (TD-SC-01 / TD-POSTING-01)
+- All `post_*` / `void_*` remain monolith-hosted until PS-P1
+
+#### 5. Future cleanup items (registered above)
+- TD-POSTING-01 through TD-POSTING-06 added PS-P0 session
+
+---
+
 ## Reference implementation
 
 **DSC-P1** (`services/daily_sales_close.py`) is the first module built under:
