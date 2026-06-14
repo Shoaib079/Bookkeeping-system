@@ -7,6 +7,7 @@ from typing import Any
 
 from models import BankAccount, BankStatementImport, BankStatementRow, BankTransaction, JournalEntry
 from registry.service import get_setting
+from services import audit as audit_svc
 
 COMPANY_CC_PAYMENT_METHOD = "Credit Card"
 
@@ -381,6 +382,8 @@ def void_credit_card_bill_payment(
     row_id: int,
     company_id: int,
     void_reason: str,
+    *,
+    performed_by: str | None = None,
 ) -> dict[str, Any]:
     """Atomically void/unpost a posted credit card bill payment statement row."""
     from reconciliation.match_post import MatchPostError
@@ -440,12 +443,14 @@ def void_credit_card_bill_payment(
     row.status = "voided"
     session.add(row)
     session.commit()
-    app.log_audit(
+    audit_svc.record_audit(
         session,
-        "Void",
-        "BankStatementRow",
-        row.id,
-        f"Unposted CC bill payment · {amt:,.2f}: {reason}",
+        action=audit_svc.ACTION_VOID,
+        entity_type=audit_svc.ENTITY_BANK_STATEMENT_ROW,
+        entity_id=row.id,
+        description=f"Unposted CC bill payment · {amt:,.2f}: {reason}",
+        performed_by=performed_by,
+        company_id=company_id,
     )
     return {
         "row_id": row.id,

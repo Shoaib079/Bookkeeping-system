@@ -18044,11 +18044,13 @@ def render_bank_statement_import(session, *, embedded: bool = False):
                         st.error(_t("purchase.void_reason_required"))
                     else:
                         try:
+                            _u = _current_user()
                             void_credit_card_bill_payment(
                                 session,
                                 void_row_id,
                                 cid,
                                 void_reason.strip(),
+                                performed_by=_u["username"] if _u else None,
                             )
                             st.success(_t("banking.import.unposted_ok"))
                             st.rerun()

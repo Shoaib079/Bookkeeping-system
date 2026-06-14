@@ -294,14 +294,178 @@ class TestRepresentativePostingAudit:
         assert audit.company_id == co.id
 
 
-def _add_coa(db, code, name, acct_type):
+def _add_coa(db, code, name, acct_type, *, company_id=None):
     acct = models.ChartOfAccounts(
         account_code=code,
         account_name=name,
         account_type=acct_type,
         balance=0.0,
         is_active=True,
+        company_id=company_id,
     )
     db.add(acct)
     db.flush()
     return acct
+
+
+class TestCompanyCardAuditConvergence:
+    def _seed_cc_void_env(self, db, slug: str = "cc_audit_co"):
+        from registry.service import set_setting
+        from reconciliation.company_card import (
+            post_credit_card_bill_payment,
+        )
+
+        co = _company(db, slug)
+        _set_company(co.id)
+        for code, name, typ in (
+            ("1010", "Bank", "Asset"),
+            ("2110", "Credit Card Payable", "Liability"),
+            ("3900", "Opening Balance Equity", "Equity"),
+        ):
+            _add_coa(db, code, name, typ, company_id=co.id)
+        db.commit()
+        set_setting(db, "banking.company_card_enabled", True, company_id=co.id)
+        set_setting(db, "banking.reconciliation_enabled", True, company_id=co.id)
+        bank = models.BankAccount(
+            name="Main TRY",
+            currency="TRY",
+            company_id=co.id,
+            is_active=True,
+            balance=10000.0,
+            kind="bank",
+        )
+        card = models.BankAccount(
+            name="Visa",
+            currency="TRY",
+            company_id=co.id,
+            is_active=True,
+            balance=500.0,
+            kind="credit_card",
+        )
+        db.add_all([bank, card])
+        db.commit()
+        imp = models.BankStatementImport(
+            company_id=co.id,
+            bank_account_id=bank.id,
+            file_name="t.csv",
+            file_hash=f"void-{slug}",
+            file_size=10,
+            file_path="/tmp/t.csv",
+            status="staging",
+            import_date=datetime.date.today(),
+            row_count=1,
+            valid_count=1,
+            flagged_count=0,
+            error_count=0,
+            currency="TRY",
+            created_at=datetime.datetime.now(),
+        )
+        db.add(imp)
+        db.flush()
+        row = models.BankStatementRow(
+            bank_statement_import_id=imp.id,
+            status="staging",
+            import_row_index=1,
+            date=datetime.date.today(),
+            description="KK ODEME",
+            debit_amount=200.0,
+            credit_amount=None,
+            amount=200.0,
+            currency="TRY",
+            original_amount=200.0,
+            parsed_successfully=True,
+            created_at=datetime.datetime.now(),
+        )
+        db.add(row)
+        db.commit()
+        post_credit_card_bill_payment(
+            db,
+            row_id=row.id,
+            company_id=co.id,
+            credit_card_account_id=card.id,
+            user_id=None,
+        )
+        return co, row
+
+    def test_void_audit_row_unchanged(self, db):
+        from reconciliation.company_card import void_credit_card_bill_payment
+
+        co, row = self._seed_cc_void_env(db)
+        reason = "Correction"
+        void_credit_card_bill_payment(
+            db,
+            row.id,
+            co.id,
+            reason,
+            performed_by="admin",
+        )
+        audit = (
+            db.query(models.AuditLog)
+            .filter_by(
+                action="Void",
+                entity_type="BankStatementRow",
+                entity_id=row.id,
+            )
+            .one()
+        )
+        assert audit.description == f"Unposted CC bill payment · 200.00: {reason}"
+        assert audit.performed_by == "admin"
+        assert audit.company_id == co.id
+
+    def test_void_creates_exactly_one_audit_row(self, db):
+        from reconciliation.company_card import void_credit_card_bill_payment
+
+        co, row = self._seed_cc_void_env(db, slug="cc_one_audit")
+        before = db.query(models.AuditLog).count()
+        void_credit_card_bill_payment(db, row.id, co.id, "Once")
+        after = db.query(models.AuditLog).count()
+        assert after == before + 1
+
+    def test_void_audit_commits_internally(self, db):
+        from reconciliation.company_card import void_credit_card_bill_payment
+        from services import audit as audit_svc
+
+        co, row = self._seed_cc_void_env(db, slug="cc_commit")
+        with patch.object(audit_svc, "record_audit", wraps=audit_svc.record_audit) as mock_record:
+            void_credit_card_bill_payment(db, row.id, co.id, "Undo")
+        mock_record.assert_called_once()
+        audit = (
+            db.query(models.AuditLog)
+            .filter_by(entity_type="BankStatementRow", entity_id=row.id)
+            .one()
+        )
+        assert audit.description == "Unposted CC bill payment · 200.00: Undo"
+
+    def test_void_company_isolation(self, db):
+        from reconciliation.company_card import void_credit_card_bill_payment
+
+        co_a, row_a = self._seed_cc_void_env(db, slug="alpha")
+        co_b, row_b = self._seed_cc_void_env(db, slug="beta")
+        void_credit_card_bill_payment(
+            db, row_a.id, co_a.id, "Alpha undo", performed_by="alpha_user"
+        )
+        void_credit_card_bill_payment(
+            db, row_b.id, co_b.id, "Beta undo", performed_by="beta_user"
+        )
+        audit_a = (
+            db.query(models.AuditLog)
+            .filter_by(entity_id=row_a.id, entity_type="BankStatementRow")
+            .one()
+        )
+        audit_b = (
+            db.query(models.AuditLog)
+            .filter_by(entity_id=row_b.id, entity_type="BankStatementRow")
+            .one()
+        )
+        assert audit_a.company_id == co_a.id
+        assert audit_b.company_id == co_b.id
+        assert audit_a.performed_by == "alpha_user"
+        assert audit_b.performed_by == "beta_user"
+
+    def test_company_card_void_has_no_log_audit_dependency(self):
+        from reconciliation import company_card
+
+        src = inspect.getsource(company_card.void_credit_card_bill_payment)
+        assert "log_audit" not in src
+        assert "record_audit" in src
+
