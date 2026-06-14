@@ -1,0 +1,679 @@
+"""FASTAPI-P1.1 — read-only API endpoint expansion contract tests."""
+
+from __future__ import annotations
+
+import datetime
+import sys
+from unittest.mock import MagicMock, patch
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, event as sa_event
+from sqlalchemy.orm import sessionmaker
+
+import app as erp_app
+import models
+from api.dependencies import get_db
+from api.main import create_app
+from api.serialization import (
+    ledger_page_to_dict,
+    partner_statement_to_dict,
+    payables_page_to_dict,
+    receivables_page_to_dict,
+    statement_readiness_list_to_dict,
+)
+from db import Base
+from registry.coa_seed import seed_chart_of_accounts_for_company
+from services import read_ar_ap, read_ledger, read_partner_statement, read_reconciliation
+
+if "streamlit" not in sys.modules:
+    _st_mock = MagicMock()
+    _st_mock.session_state = {}
+    sys.modules["streamlit"] = _st_mock
+
+POST_DATE = datetime.date(2026, 6, 1)
+FROM_DATE = datetime.date(2026, 6, 1)
+TO_DATE = datetime.date(2026, 6, 30)
+
+
+def _headers(
+    user_id: int,
+    *,
+    company_id: int | None = None,
+    role: str | None = None,
+) -> dict[str, str]:
+    out = {"X-User-Id": str(user_id)}
+    if company_id is not None:
+        out["X-Company-Id"] = str(company_id)
+    if role is not None:
+        out["X-Role"] = role
+    return out
+
+
+@pytest.fixture()
+def db():
+    engine = create_engine(
+        "sqlite:///:memory:", connect_args={"check_same_thread": False}
+    )
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+    @sa_event.listens_for(Session, "before_flush")
+    def _stamp(sess, ctx, instances):
+        erp_app._stamp_company_id_on_new_objects(sess, ctx, instances)
+
+    with Session() as s:
+        yield s
+
+
+@pytest.fixture()
+def api_client(db):
+    app = create_app()
+
+    def _override_db():
+        try:
+            yield db
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = _override_db
+    with TestClient(app) as client:
+        yield client
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def seeded_tenant(db):
+    owner = models.User(
+        id=erp_app._DEV_USER["id"],
+        username=erp_app._DEV_USER["username"],
+        display_name=erp_app._DEV_USER["display_name"],
+        password_hash="x",
+        role="owner",
+        is_active=True,
+        created_at=datetime.datetime.now(),
+    )
+    cashier = models.User(
+        username="cashier_p11",
+        display_name="Cashier P11",
+        password_hash="x",
+        role="cashier",
+        is_active=True,
+        created_at=datetime.datetime.now(),
+    )
+    viewer = models.User(
+        username="viewer_p11",
+        display_name="Viewer P11",
+        password_hash="x",
+        role="viewer",
+        is_active=True,
+        created_at=datetime.datetime.now(),
+    )
+    co_a = models.Company(
+        name="P11 Co A",
+        slug="p11_co_a",
+        is_active=True,
+        created_at=datetime.datetime.now(),
+    )
+    co_b = models.Company(
+        name="P11 Co B",
+        slug="p11_co_b",
+        is_active=True,
+        created_at=datetime.datetime.now(),
+    )
+    db.add_all([owner, cashier, viewer, co_a, co_b])
+    db.flush()
+    db.add_all(
+        [
+            models.CompanyUser(
+                company_id=co_a.id,
+                user_id=owner.id,
+                role="owner",
+                is_active=True,
+                created_at=datetime.datetime.now(),
+            ),
+            models.CompanyUser(
+                company_id=co_b.id,
+                user_id=owner.id,
+                role="owner",
+                is_active=True,
+                created_at=datetime.datetime.now(),
+            ),
+            models.CompanyUser(
+                company_id=co_a.id,
+                user_id=cashier.id,
+                role="cashier",
+                is_active=True,
+                created_at=datetime.datetime.now(),
+            ),
+            models.CompanyUser(
+                company_id=co_a.id,
+                user_id=viewer.id,
+                role="viewer",
+                is_active=True,
+                created_at=datetime.datetime.now(),
+            ),
+        ]
+    )
+    seed_chart_of_accounts_for_company(db, co_a.id)
+    seed_chart_of_accounts_for_company(db, co_b.id)
+
+    cash_a = (
+        db.query(models.ChartOfAccounts)
+        .filter_by(company_id=co_a.id, account_name="Cash")
+        .one()
+    )
+    sales_a = (
+        db.query(models.ChartOfAccounts)
+        .filter_by(company_id=co_a.id, account_name="Sales Revenue")
+        .one()
+    )
+    je = models.JournalEntry(
+        entry_date=POST_DATE,
+        description="Cash sale",
+        reference_type="CashSale",
+        reference_id=1,
+        company_id=co_a.id,
+    )
+    db.add(je)
+    db.flush()
+    db.add_all(
+        [
+            models.JournalEntryLine(
+                journal_entry_id=je.id,
+                account_id=cash_a.id,
+                debit=250.0,
+                credit=0.0,
+                company_id=co_a.id,
+            ),
+            models.JournalEntryLine(
+                journal_entry_id=je.id,
+                account_id=sales_a.id,
+                debit=0.0,
+                credit=250.0,
+                company_id=co_a.id,
+            ),
+        ]
+    )
+
+    vendor_a = models.Vendor(name="Vendor A", company_id=co_a.id, is_active=True)
+    vendor_b = models.Vendor(name="Vendor B", company_id=co_b.id, is_active=True)
+    db.add_all([vendor_a, vendor_b])
+    db.flush()
+
+    db.add_all(
+        [
+            models.Sale(
+                date=POST_DATE,
+                invoice_number="INV-A1",
+                customer_name="Alice",
+                description="Widgets",
+                amount=1000.0,
+                sale_type="Credit",
+                paid_amount=200.0,
+                balance=800.0,
+                due_date=datetime.date(2026, 7, 1),
+                status="Partial",
+                is_void=False,
+                company_id=co_a.id,
+            ),
+            models.Sale(
+                date=POST_DATE,
+                invoice_number="INV-B1",
+                customer_name="Bob",
+                description="",
+                amount=300.0,
+                sale_type="Credit",
+                paid_amount=0.0,
+                balance=300.0,
+                due_date=datetime.date(2026, 5, 1),
+                status="Open",
+                is_void=False,
+                company_id=co_b.id,
+            ),
+            models.Payable(
+                date=POST_DATE,
+                vendor_id=vendor_a.id,
+                amount=400.0,
+                paid_amount=100.0,
+                balance=300.0,
+                due_date=datetime.date(2026, 7, 15),
+                paid=False,
+                description="Rent",
+                company_id=co_a.id,
+            ),
+            models.Payable(
+                date=POST_DATE,
+                vendor_id=vendor_b.id,
+                amount=150.0,
+                paid_amount=0.0,
+                balance=150.0,
+                due_date=datetime.date(2026, 7, 1),
+                paid=False,
+                description="Supplies",
+                company_id=co_b.id,
+            ),
+        ]
+    )
+
+    cap = models.ChartOfAccounts(
+        account_code="P11-CAP",
+        account_name="Partner Capital P11",
+        account_type="Equity",
+        is_active=True,
+        balance=0.0,
+        company_id=co_a.id,
+    )
+    cur = models.ChartOfAccounts(
+        account_code="P11-CUR",
+        account_name="Partner Current P11",
+        account_type="Equity",
+        is_active=True,
+        balance=0.0,
+        company_id=co_a.id,
+    )
+    adv = models.ChartOfAccounts(
+        account_code="P11-ADV",
+        account_name="Partner Advances P11",
+        account_type="Asset",
+        is_active=True,
+        balance=0.0,
+        company_id=co_a.id,
+    )
+    db.add_all([cap, cur, adv])
+    db.flush()
+    partner = models.Partner(
+        name="Alice Partner",
+        profit_share_pct=50.0,
+        capital_account_id=cap.id,
+        current_account_id=cur.id,
+        advance_account_id=adv.id,
+        is_active=True,
+        created_at=datetime.datetime.now(),
+        company_id=co_a.id,
+    )
+    db.add(partner)
+
+    bank_a = models.BankAccount(
+        name="Main Bank",
+        currency="TRY",
+        company_id=co_a.id,
+        is_active=True,
+        balance=5000.0,
+        kind="bank",
+    )
+    db.add(bank_a)
+    db.flush()
+    db.add(
+        models.BankStatementImport(
+            company_id=co_a.id,
+            bank_account_id=bank_a.id,
+            file_name="stmt.csv",
+            file_hash="p11hash",
+            file_size=10,
+            file_path="/tmp/stmt.csv",
+            status="staging",
+            import_date=POST_DATE,
+            start_date=FROM_DATE,
+            end_date=TO_DATE,
+            starting_balance=5000.0,
+            ending_balance=5100.0,
+            row_count=1,
+            valid_count=1,
+            flagged_count=0,
+            error_count=0,
+            currency="TRY",
+            created_at=datetime.datetime.now(),
+        )
+    )
+    db.commit()
+
+    cash_b = (
+        db.query(models.ChartOfAccounts)
+        .filter_by(company_id=co_b.id, account_name="Cash")
+        .one()
+    )
+    return {
+        "owner_id": owner.id,
+        "cashier_id": cashier.id,
+        "viewer_id": viewer.id,
+        "company_a_id": co_a.id,
+        "company_b_id": co_b.id,
+        "cash_account_a_id": cash_a.id,
+        "cash_account_b_id": cash_b.id,
+        "partner_id": partner.id,
+    }
+
+
+READ_ENDPOINTS = [
+    (
+        "ledger",
+        "/api/v1/ledger",
+        {"account_id": "cash_account_a_id"},
+        read_ledger.compute_ledger_page,
+        ledger_page_to_dict,
+        lambda db, tenant: {
+            "company_id": tenant["company_a_id"],
+            "account_id": tenant["cash_account_a_id"],
+        },
+    ),
+    (
+        "receivables",
+        "/api/v1/receivables",
+        {},
+        read_ar_ap.compute_receivables_page,
+        receivables_page_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
+        "payables",
+        "/api/v1/payables",
+        {},
+        read_ar_ap.compute_payables_page,
+        payables_page_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
+        "banking_readiness",
+        "/api/v1/banking/readiness",
+        {},
+        read_reconciliation.compute_company_statement_readiness,
+        statement_readiness_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"], "limit": 10},
+    ),
+]
+
+
+class TestReadEndpointsReturnJson:
+    @pytest.mark.parametrize("name,path,extra_params,compute_fn,to_dict,kwargs_fn", READ_ENDPOINTS)
+    def test_endpoint_returns_service_dto_json(
+        self,
+        api_client,
+        db,
+        seeded_tenant,
+        name,
+        path,
+        extra_params,
+        compute_fn,
+        to_dict,
+        kwargs_fn,
+    ):
+        params = {
+            key: seeded_tenant[param_key]
+            for key, param_key in extra_params.items()
+        }
+        expected = to_dict(compute_fn(db, **kwargs_fn(db, seeded_tenant)))
+        resp = api_client.get(
+            path,
+            params=params,
+            headers=_headers(
+                seeded_tenant["owner_id"],
+                company_id=seeded_tenant["company_a_id"],
+                role="owner",
+            ),
+        )
+        assert resp.status_code == 200
+        assert resp.json() == expected
+
+    def test_partner_statement_returns_service_dto_json(
+        self, api_client, db, seeded_tenant
+    ):
+        expected = partner_statement_to_dict(
+            read_partner_statement.compute_partner_statement(
+                db,
+                company_id=seeded_tenant["company_a_id"],
+                partner_id=seeded_tenant["partner_id"],
+                from_date=FROM_DATE,
+                to_date=TO_DATE,
+            )
+        )
+        resp = api_client.get(
+            f"/api/v1/partners/{seeded_tenant['partner_id']}/statement",
+            params={"from_date": FROM_DATE.isoformat(), "to_date": TO_DATE.isoformat()},
+            headers=_headers(
+                seeded_tenant["owner_id"],
+                company_id=seeded_tenant["company_a_id"],
+                role="owner",
+            ),
+        )
+        assert resp.status_code == 200
+        assert resp.json() == expected
+        assert resp.json()["partner_name"] == "Alice Partner"
+
+
+class TestReadEndpointGuards:
+    @pytest.mark.parametrize(
+        "path,params",
+        [
+            ("/api/v1/ledger", {"account_id": 1}),
+            ("/api/v1/receivables", {}),
+            ("/api/v1/payables", {}),
+            ("/api/v1/banking/readiness", {}),
+            (
+                "/api/v1/partners/1/statement",
+                {"from_date": FROM_DATE.isoformat(), "to_date": TO_DATE.isoformat()},
+            ),
+        ],
+    )
+    def test_missing_user_header_rejected(self, api_client, seeded_tenant, path, params):
+        resp = api_client.get(
+            path,
+            params=params,
+            headers={"X-Company-Id": str(seeded_tenant["company_a_id"])},
+        )
+        assert resp.status_code == 401
+
+    @pytest.mark.parametrize(
+        "path,params",
+        [
+            ("/api/v1/ledger", {"account_id": 1}),
+            ("/api/v1/receivables", {}),
+            ("/api/v1/payables", {}),
+            ("/api/v1/banking/readiness", {}),
+            (
+                "/api/v1/partners/1/statement",
+                {"from_date": FROM_DATE.isoformat(), "to_date": TO_DATE.isoformat()},
+            ),
+        ],
+    )
+    def test_missing_company_header_rejected(
+        self, api_client, seeded_tenant, path, params
+    ):
+        resp = api_client.get(
+            path,
+            params=params,
+            headers=_headers(seeded_tenant["owner_id"]),
+        )
+        assert resp.status_code == 400
+        assert "active_company_id" in resp.json()["detail"]
+
+    @pytest.mark.parametrize(
+        "path,params",
+        [
+            ("/api/v1/ledger", {"account_id": 1}),
+            ("/api/v1/receivables", {}),
+            ("/api/v1/payables", {}),
+            ("/api/v1/banking/readiness", {}),
+            (
+                f"/api/v1/partners/{{partner_id}}/statement",
+                {"from_date": FROM_DATE.isoformat(), "to_date": TO_DATE.isoformat()},
+            ),
+        ],
+    )
+    def test_permission_denied_for_cashier(
+        self, api_client, seeded_tenant, path, params
+    ):
+        if "{partner_id}" in path:
+            path = path.format(partner_id=seeded_tenant["partner_id"])
+        if path == "/api/v1/ledger":
+            params = {"account_id": seeded_tenant["cash_account_a_id"]}
+        user_id = seeded_tenant["cashier_id"]
+        role = "cashier"
+        if path == "/api/v1/banking/readiness":
+            user_id = seeded_tenant["viewer_id"]
+            role = "viewer"
+        resp = api_client.get(
+            path,
+            params=params,
+            headers=_headers(
+                user_id,
+                company_id=seeded_tenant["company_a_id"],
+                role=role,
+            ),
+        )
+        assert resp.status_code == 403
+
+
+class TestReadEndpointNoCommit:
+    @pytest.mark.parametrize(
+        "path,params",
+        [
+            ("/api/v1/ledger", None),
+            ("/api/v1/receivables", {}),
+            ("/api/v1/payables", {}),
+            ("/api/v1/banking/readiness", {}),
+            ("/api/v1/partners/{partner_id}/statement", None),
+        ],
+    )
+    def test_get_performs_no_session_commit(
+        self, api_client, db, seeded_tenant, path, params
+    ):
+        if "{partner_id}" in path:
+            path = path.format(partner_id=seeded_tenant["partner_id"])
+        if params is None and "ledger" in path:
+            params = {"account_id": seeded_tenant["cash_account_a_id"]}
+        elif params is None:
+            params = {
+                "from_date": FROM_DATE.isoformat(),
+                "to_date": TO_DATE.isoformat(),
+            }
+        with patch.object(db, "commit", wraps=db.commit) as mock_commit:
+            resp = api_client.get(
+                path,
+                params=params,
+                headers=_headers(
+                    seeded_tenant["owner_id"],
+                    company_id=seeded_tenant["company_a_id"],
+                    role="owner",
+                ),
+            )
+        assert resp.status_code == 200
+        assert mock_commit.call_count == 0
+
+
+class TestCompanyIsolation:
+    def test_ledger_scoped_to_company(self, api_client, seeded_tenant):
+        resp_a = api_client.get(
+            "/api/v1/ledger",
+            params={"account_id": seeded_tenant["cash_account_a_id"]},
+            headers=_headers(
+                seeded_tenant["owner_id"],
+                company_id=seeded_tenant["company_a_id"],
+                role="owner",
+            ),
+        )
+        resp_b = api_client.get(
+            "/api/v1/ledger",
+            params={"account_id": seeded_tenant["cash_account_b_id"]},
+            headers=_headers(
+                seeded_tenant["owner_id"],
+                company_id=seeded_tenant["company_a_id"],
+                role="owner",
+            ),
+        )
+        assert resp_a.status_code == 200
+        assert resp_b.status_code == 200
+        assert resp_a.json()["row_count"] == 1
+        assert resp_b.json()["row_count"] == 0
+
+    def test_receivables_scoped_to_company(self, api_client, seeded_tenant):
+        resp_a = api_client.get(
+            "/api/v1/receivables",
+            headers=_headers(
+                seeded_tenant["owner_id"],
+                company_id=seeded_tenant["company_a_id"],
+                role="owner",
+            ),
+        )
+        resp_b = api_client.get(
+            "/api/v1/receivables",
+            headers=_headers(
+                seeded_tenant["owner_id"],
+                company_id=seeded_tenant["company_b_id"],
+                role="owner",
+            ),
+        )
+        assert resp_a.status_code == 200
+        assert resp_b.status_code == 200
+        assert len(resp_a.json()["rows"]) == 1
+        assert len(resp_b.json()["rows"]) == 1
+        assert resp_a.json()["rows"][0]["invoice_number"] == "INV-A1"
+        assert resp_b.json()["rows"][0]["invoice_number"] == "INV-B1"
+
+    def test_payables_scoped_to_company(self, api_client, seeded_tenant):
+        resp_a = api_client.get(
+            "/api/v1/payables",
+            headers=_headers(
+                seeded_tenant["owner_id"],
+                company_id=seeded_tenant["company_a_id"],
+                role="owner",
+            ),
+        )
+        resp_b = api_client.get(
+            "/api/v1/payables",
+            headers=_headers(
+                seeded_tenant["owner_id"],
+                company_id=seeded_tenant["company_b_id"],
+                role="owner",
+            ),
+        )
+        assert resp_a.status_code == 200
+        assert resp_b.status_code == 200
+        assert resp_a.json()["rows"][0]["vendor_name"] == "Vendor A"
+        assert resp_b.json()["rows"][0]["vendor_name"] == "Vendor B"
+
+
+class TestDateValidation:
+    def test_partner_statement_rejects_invalid_date(self, api_client, seeded_tenant):
+        resp = api_client.get(
+            f"/api/v1/partners/{seeded_tenant['partner_id']}/statement",
+            params={"from_date": "not-a-date", "to_date": TO_DATE.isoformat()},
+            headers=_headers(
+                seeded_tenant["owner_id"],
+                company_id=seeded_tenant["company_a_id"],
+                role="owner",
+            ),
+        )
+        assert resp.status_code == 422
+
+    def test_ledger_accepts_iso_date_filters(self, api_client, seeded_tenant):
+        resp = api_client.get(
+            "/api/v1/ledger",
+            params={
+                "account_id": seeded_tenant["cash_account_a_id"],
+                "start_date": FROM_DATE.isoformat(),
+                "end_date": TO_DATE.isoformat(),
+            },
+            headers=_headers(
+                seeded_tenant["owner_id"],
+                company_id=seeded_tenant["company_a_id"],
+                role="owner",
+            ),
+        )
+        assert resp.status_code == 200
+        assert resp.json()["filters"]["start_date"] == FROM_DATE.isoformat()
+
+    def test_ledger_rejects_invalid_start_date(self, api_client, seeded_tenant):
+        resp = api_client.get(
+            "/api/v1/ledger",
+            params={
+                "account_id": seeded_tenant["cash_account_a_id"],
+                "start_date": "bad-date",
+            },
+            headers=_headers(
+                seeded_tenant["owner_id"],
+                company_id=seeded_tenant["company_a_id"],
+                role="owner",
+            ),
+        )
+        assert resp.status_code == 422
