@@ -26278,6 +26278,13 @@ def _early_dev_auto_login() -> str | None:
         return _dev_auto_login(session)
 
 
+def _log_schema_startup_diagnostic(session) -> None:
+    """P3.8-A — read-only Alembic schema status log (no upgrade/stamp)."""
+    from services.schema_startup import log_schema_startup_diagnostic
+
+    log_schema_startup_diagnostic(session)
+
+
 def main():
     # Always use the project folder for DB, uploads, and backups — not the shell cwd.
     os.chdir(PROJECT_ROOT)
@@ -26289,6 +26296,7 @@ def main():
     # ── Run startup tasks (schema + seeds) before anything else ───────────────
     with get_session() as _boot_session:
         migrate_schema(_boot_session)
+        _log_schema_startup_diagnostic(_boot_session)
         initialize_chart_of_accounts(_boot_session)
         migrate_sales(_boot_session)
         migrate_expenses(_boot_session)
