@@ -13,12 +13,15 @@ from sqlalchemy.orm import sessionmaker
 
 import app as erp_app
 import models
+from api.bearer_auth import BEARER_MISSING_DETAIL
 from api.dependencies import get_db
 from api.main import create_app
 from api.serialization import profit_loss_to_dict
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
 from services import read_reports as rr
+from services import tokens as token_service
+from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
 if "streamlit" not in sys.modules:
     _st_mock = MagicMock()
@@ -30,24 +33,19 @@ START = datetime.date(2026, 6, 1)
 END = datetime.date(2026, 6, 30)
 
 
-def _headers(
-    user_id: int,
-    *,
-    company_id: int | None = None,
-    role: str | None = None,
-) -> dict[str, str]:
-    out = {"X-User-Id": str(user_id)}
-    if company_id is not None:
-        out["X-Company-Id"] = str(company_id)
-    if role is not None:
-        out["X-Role"] = role
-    return out
+@pytest.fixture(autouse=True)
+def jwt_secret(monkeypatch):
+    monkeypatch.setenv(token_service.JWT_SECRET_ENV, TEST_JWT_SECRET)
 
 
 @pytest.fixture()
 def db():
+    from sqlalchemy.pool import StaticPool
+
     engine = create_engine(
-        "sqlite:///:memory:", connect_args={"check_same_thread": False}
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
     Base.metadata.create_all(bind=engine)
     Session = sessionmaker(bind=engine, autoflush=False, autocommit=False)
@@ -67,7 +65,7 @@ def seeded_tenant(db):
         id=erp_app._DEV_USER["id"],
         username=erp_app._DEV_USER["username"],
         display_name=erp_app._DEV_USER["display_name"],
-        password_hash="x",
+        password_hash=password_hash_for_tests(),
         role="owner",
         is_active=True,
         created_at=datetime.datetime.now(),
@@ -75,7 +73,7 @@ def seeded_tenant(db):
     cashier = models.User(
         username="cashier_p1",
         display_name="Cashier P1",
-        password_hash="x",
+        password_hash=password_hash_for_tests(),
         role="cashier",
         is_active=True,
         created_at=datetime.datetime.now(),
@@ -148,7 +146,9 @@ def seeded_tenant(db):
     return {
         "company_id": co.id,
         "owner_id": owner.id,
+        "owner": owner,
         "cashier_id": cashier.id,
+        "cashier": cashier,
     }
 
 
@@ -159,7 +159,7 @@ def two_company_tenant(db):
         id=erp_app._DEV_USER["id"],
         username=erp_app._DEV_USER["username"],
         display_name=erp_app._DEV_USER["display_name"],
-        password_hash="x",
+        password_hash=password_hash_for_tests(),
         role="owner",
         is_active=True,
         created_at=datetime.datetime.now(),
@@ -243,6 +243,7 @@ def two_company_tenant(db):
         "company_a_id": co_a.id,
         "company_b_id": co_b.id,
         "owner_id": owner.id,
+        "owner": owner,
     }
 
 
@@ -274,18 +275,20 @@ class TestApiBoot:
 
 
 class TestReportContextAndPermissions:
-    def test_profit_loss_requires_user_header(self, api_client, seeded_tenant):
+    def test_profit_loss_requires_bearer_token(self, api_client, seeded_tenant):
         resp = api_client.get(
             "/api/v1/reports/profit-loss",
             params={"start_date": START.isoformat(), "end_date": END.isoformat()},
+            headers={"X-Company-Id": str(seeded_tenant["company_id"])},
         )
         assert resp.status_code == 401
+        assert resp.json()["detail"] == BEARER_MISSING_DETAIL
 
     def test_profit_loss_requires_company_header(self, api_client, seeded_tenant):
         resp = api_client.get(
             "/api/v1/reports/profit-loss",
             params={"start_date": START.isoformat(), "end_date": END.isoformat()},
-            headers=_headers(seeded_tenant["owner_id"]),
+            headers=api_headers(seeded_tenant["owner"]),
         )
         assert resp.status_code == 400
         assert "active_company_id" in resp.json()["detail"]
@@ -302,10 +305,9 @@ class TestReportContextAndPermissions:
         resp = api_client.get(
             "/api/v1/reports/profit-loss",
             params={"start_date": START.isoformat(), "end_date": END.isoformat()},
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=other.id,
-                role="owner",
             ),
         )
         assert resp.status_code == 403
@@ -317,10 +319,9 @@ class TestReportContextAndPermissions:
         resp = api_client.get(
             "/api/v1/reports/profit-loss",
             params={"start_date": START.isoformat(), "end_date": END.isoformat()},
-            headers=_headers(
-                seeded_tenant["cashier_id"],
+            headers=api_headers(
+                seeded_tenant["cashier"],
                 company_id=seeded_tenant["company_id"],
-                role="cashier",
             ),
         )
         assert resp.status_code == 403
@@ -340,10 +341,9 @@ class TestReportDtoResponse:
         resp = api_client.get(
             "/api/v1/reports/profit-loss",
             params={"start_date": START.isoformat(), "end_date": END.isoformat()},
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_id"],
-                role="owner",
             ),
         )
         assert resp.status_code == 200
@@ -358,10 +358,9 @@ class TestReportDtoResponse:
             resp = api_client.get(
                 "/api/v1/reports/profit-loss",
                 params={"start_date": START.isoformat(), "end_date": END.isoformat()},
-                headers=_headers(
-                    seeded_tenant["owner_id"],
+                headers=api_headers(
+                    seeded_tenant["owner"],
                     company_id=seeded_tenant["company_id"],
-                    role="owner",
                 ),
             )
         assert resp.status_code == 200
@@ -375,19 +374,17 @@ class TestCompanyIsolation:
         resp_a = api_client.get(
             "/api/v1/reports/profit-loss",
             params={"start_date": START.isoformat(), "end_date": END.isoformat()},
-            headers=_headers(
-                two_company_tenant["owner_id"],
+            headers=api_headers(
+                two_company_tenant["owner"],
                 company_id=two_company_tenant["company_a_id"],
-                role="owner",
             ),
         )
         resp_b = api_client.get(
             "/api/v1/reports/profit-loss",
             params={"start_date": START.isoformat(), "end_date": END.isoformat()},
-            headers=_headers(
-                two_company_tenant["owner_id"],
+            headers=api_headers(
+                two_company_tenant["owner"],
                 company_id=two_company_tenant["company_b_id"],
-                role="owner",
             ),
         )
         assert resp_a.status_code == 200

@@ -13,12 +13,15 @@ from sqlalchemy.orm import sessionmaker
 
 import app as erp_app
 import models
+from api.bearer_auth import BEARER_MISSING_DETAIL
 from api.dependencies import get_db
-from api.errors import AUTH_MISSING_DETAIL, COMPANY_MISSING_MARKER, MEMBERSHIP_DENIED_MARKER
+from api.errors import COMPANY_MISSING_MARKER, MEMBERSHIP_DENIED_MARKER
 from api.main import create_app
 from api.openapi_tags import OPENAPI_TAGS
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
+from services import tokens as token_service
+from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
 if "streamlit" not in sys.modules:
     _st_mock = MagicMock()
@@ -71,13 +74,29 @@ GET_ROUTES = [
 ]
 
 
-def _headers(user_id: int, *, company_id: int | None = None, role: str | None = None):
-    out = {"X-User-Id": str(user_id)}
-    if company_id is not None:
-        out["X-Company-Id"] = str(company_id)
-    if role is not None:
-        out["X-Role"] = role
-    return out
+@pytest.fixture(autouse=True)
+def jwt_secret(monkeypatch):
+    monkeypatch.setenv(token_service.JWT_SECRET_ENV, TEST_JWT_SECRET)
+
+
+@pytest.fixture()
+def db():
+    from sqlalchemy.pool import StaticPool
+
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+    @sa_event.listens_for(Session, "before_flush")
+    def _stamp(sess, ctx, instances):
+        erp_app._stamp_company_id_on_new_objects(sess, ctx, instances)
+
+    with Session() as s:
+        yield s
 
 
 def _resolve_path(path: str, seeded_tenant: dict) -> str:
@@ -94,28 +113,12 @@ def _resolve_params(params: dict, seeded_tenant: dict) -> dict:
 
 
 @pytest.fixture()
-def db():
-    engine = create_engine(
-        "sqlite:///:memory:", connect_args={"check_same_thread": False}
-    )
-    Base.metadata.create_all(bind=engine)
-    Session = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-
-    @sa_event.listens_for(Session, "before_flush")
-    def _stamp(sess, ctx, instances):
-        erp_app._stamp_company_id_on_new_objects(sess, ctx, instances)
-
-    with Session() as s:
-        yield s
-
-
-@pytest.fixture()
 def seeded_tenant(db):
     owner = models.User(
         id=erp_app._DEV_USER["id"],
         username=erp_app._DEV_USER["username"],
         display_name=erp_app._DEV_USER["display_name"],
-        password_hash="x",
+        password_hash=password_hash_for_tests(),
         role="owner",
         is_active=True,
         created_at=datetime.datetime.now(),
@@ -123,7 +126,7 @@ def seeded_tenant(db):
     cashier = models.User(
         username="cashier_p12",
         display_name="Cashier P12",
-        password_hash="x",
+        password_hash=password_hash_for_tests(),
         role="cashier",
         is_active=True,
         created_at=datetime.datetime.now(),
@@ -206,7 +209,9 @@ def seeded_tenant(db):
     db.commit()
     return {
         "owner_id": owner.id,
+        "owner": owner,
         "cashier_id": cashier.id,
+        "cashier": cashier,
         "company_id": co.id,
         "other_company_id": other.id,
         "cash_account_id": cash.id,
@@ -267,21 +272,21 @@ class TestOpenApiSchema:
 
 class TestErrorContract:
     @pytest.mark.parametrize("path,params", GET_ROUTES[1:])
-    def test_missing_user_returns_401(self, api_client, seeded_tenant, path, params):
+    def test_missing_bearer_returns_401(self, api_client, seeded_tenant, path, params):
         resp = api_client.get(
             _resolve_path(path, seeded_tenant),
             params=_resolve_params(params, seeded_tenant),
             headers={"X-Company-Id": str(seeded_tenant["company_id"])},
         )
         assert resp.status_code == 401
-        assert resp.json()["detail"] == AUTH_MISSING_DETAIL
+        assert resp.json()["detail"] == BEARER_MISSING_DETAIL
 
     @pytest.mark.parametrize("path,params", GET_ROUTES[1:])
     def test_missing_company_returns_400(self, api_client, seeded_tenant, path, params):
         resp = api_client.get(
             _resolve_path(path, seeded_tenant),
             params=_resolve_params(params, seeded_tenant),
-            headers=_headers(seeded_tenant["owner_id"]),
+            headers=api_headers(seeded_tenant["owner"]),
         )
         assert resp.status_code == 400
         assert COMPANY_MISSING_MARKER in resp.json()["detail"]
@@ -289,10 +294,9 @@ class TestErrorContract:
     def test_non_member_company_returns_403(self, api_client, seeded_tenant):
         resp = api_client.get(
             "/api/v1/receivables",
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["other_company_id"],
-                role="owner",
             ),
         )
         assert resp.status_code == 403
@@ -305,10 +309,9 @@ class TestErrorContract:
                 "start_date": FROM_DATE.isoformat(),
                 "end_date": TO_DATE.isoformat(),
             },
-            headers=_headers(
-                seeded_tenant["cashier_id"],
+            headers=api_headers(
+                seeded_tenant["cashier"],
                 company_id=seeded_tenant["company_id"],
-                role="cashier",
             ),
         )
         assert resp.status_code == 403
@@ -335,10 +338,9 @@ class TestErrorContract:
         resp = api_client.get(
             _resolve_path(path, seeded_tenant),
             params=_resolve_params(params, seeded_tenant),
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_id"],
-                role="owner",
             ),
         )
         assert resp.status_code == 422
@@ -349,10 +351,9 @@ class TestResponsePrimitives:
     def test_receivables_json_is_primitive_dict(self, api_client, seeded_tenant):
         resp = api_client.get(
             "/api/v1/receivables",
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_id"],
-                role="owner",
             ),
         )
         body = resp.json()
@@ -365,10 +366,9 @@ class TestResponsePrimitives:
         resp = api_client.get(
             "/api/v1/banking/readiness",
             params={"limit": 5},
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_id"],
-                role="owner",
             ),
         )
         assert resp.status_code == 200
@@ -384,10 +384,9 @@ class TestNoWriteInvariant:
         if path == "/health":
             auth_headers = {}
         else:
-            auth_headers = _headers(
-                seeded_tenant["owner_id"],
+            auth_headers = api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_id"],
-                role="owner",
             )
         resolved_path = _resolve_path(path, seeded_tenant)
         resolved_params = _resolve_params(params, seeded_tenant)

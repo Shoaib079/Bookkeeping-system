@@ -11,13 +11,15 @@ from api.routes import auth, banking, ledger, partners, payables, receivables, r
 from services.permissions import PermissionDenied
 
 _API_DESCRIPTION = """\
-Read-only ERP API (P1.x). All business routes require dev/test headers:
+Read-only ERP API (P1.x). Business routes require:
 
-- ``X-User-Id`` (required) — actor user id
-- ``X-Company-Id`` (required for company-scoped routes) — active company
-- ``X-Role`` (optional) — membership role override for tests
+- ``Authorization: Bearer <access_token>`` — identity from JWT (DB-verified)
+- ``X-Company-Id`` (required for company-scoped routes) — active company selection
 
-**Error contract:** 401 missing user · 400 missing company · 403 membership/permission · 404 not found · 422 validation
+Membership role and permissions are resolved from the database per request.
+Set ``ERP_API_DEV_HEADERS=1`` only for explicit test/dev fallback to legacy headers.
+
+**Error contract:** 401 missing/invalid bearer · 400 missing company · 403 membership/permission · 404 not found · 422 validation
 
 No write endpoints; GET handlers do not commit the database session.
 """
@@ -27,7 +29,7 @@ def create_app() -> FastAPI:
     """Construct the read-only FastAPI application."""
     app = FastAPI(
         title="Streamlit Accounting ERP API",
-        version="1.3.1",
+        version="1.3.2",
         description=_API_DESCRIPTION,
         openapi_tags=OPENAPI_TAGS,
     )

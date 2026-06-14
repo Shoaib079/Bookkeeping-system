@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from models import CompanyUser
+from models import Company, CompanyUser
 from services.context import RequestContext
 
 _MEMBERSHIP_REQUIRED_MSG = (
@@ -35,6 +35,9 @@ def require_company(context: RequestContext) -> int:
 def require_company_membership(session: Session, context: RequestContext) -> str:
     """Verify active CompanyUser membership; return membership role."""
     company_id = require_company(context)
+    company = session.get(Company, company_id)
+    if company is None or not company.is_active:
+        raise RuntimeError(_MEMBERSHIP_REQUIRED_MSG)
     row = (
         session.query(CompanyUser.role)
         .filter(

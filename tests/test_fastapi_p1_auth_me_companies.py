@@ -14,9 +14,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import models
-from api.auth_dependencies import BEARER_INVALID_DETAIL, BEARER_MISSING_DETAIL
+from api.bearer_auth import BEARER_INVALID_DETAIL, BEARER_MISSING_DETAIL
 from api.dependencies import get_db
-from api.errors import AUTH_MISSING_DETAIL
+from api.errors import COMPANY_MISSING_MARKER
 from api.main import create_app
 from db import Base
 from services import auth as auth_service
@@ -259,10 +259,8 @@ class TestAuthCompanies:
         assert resp.json()["detail"] == BEARER_INVALID_DETAIL
 
 
-class TestDevHeadersUnchanged:
-    def test_read_endpoint_still_requires_dev_headers_not_bearer(
-        self, api_client, tenant
-    ):
+class TestReadEndpointsUseBearer:
+    def test_read_endpoint_requires_company_with_bearer(self, api_client, tenant):
         token = _token_for(tenant["user"])
         resp = api_client.get(
             "/api/v1/reports/profit-loss",
@@ -272,8 +270,8 @@ class TestDevHeadersUnchanged:
             },
             headers=_auth(token),
         )
-        assert resp.status_code == 401
-        assert resp.json()["detail"] == AUTH_MISSING_DETAIL
+        assert resp.status_code == 400
+        assert COMPANY_MISSING_MARKER in resp.json()["detail"]
 
 
 class TestAuthMeCompaniesNoCommits:

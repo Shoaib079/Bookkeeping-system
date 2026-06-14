@@ -25,6 +25,8 @@ from api.serialization import (
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
 from services import read_ar_ap, read_ledger, read_partner_statement, read_reconciliation
+from services import tokens as token_service
+from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
 if "streamlit" not in sys.modules:
     _st_mock = MagicMock()
@@ -36,24 +38,19 @@ FROM_DATE = datetime.date(2026, 6, 1)
 TO_DATE = datetime.date(2026, 6, 30)
 
 
-def _headers(
-    user_id: int,
-    *,
-    company_id: int | None = None,
-    role: str | None = None,
-) -> dict[str, str]:
-    out = {"X-User-Id": str(user_id)}
-    if company_id is not None:
-        out["X-Company-Id"] = str(company_id)
-    if role is not None:
-        out["X-Role"] = role
-    return out
+@pytest.fixture(autouse=True)
+def jwt_secret(monkeypatch):
+    monkeypatch.setenv(token_service.JWT_SECRET_ENV, TEST_JWT_SECRET)
 
 
 @pytest.fixture()
 def db():
+    from sqlalchemy.pool import StaticPool
+
     engine = create_engine(
-        "sqlite:///:memory:", connect_args={"check_same_thread": False}
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
     Base.metadata.create_all(bind=engine)
     Session = sessionmaker(bind=engine, autoflush=False, autocommit=False)
@@ -88,7 +85,7 @@ def seeded_tenant(db):
         id=erp_app._DEV_USER["id"],
         username=erp_app._DEV_USER["username"],
         display_name=erp_app._DEV_USER["display_name"],
-        password_hash="x",
+        password_hash=password_hash_for_tests(),
         role="owner",
         is_active=True,
         created_at=datetime.datetime.now(),
@@ -96,7 +93,7 @@ def seeded_tenant(db):
     cashier = models.User(
         username="cashier_p11",
         display_name="Cashier P11",
-        password_hash="x",
+        password_hash=password_hash_for_tests(),
         role="cashier",
         is_active=True,
         created_at=datetime.datetime.now(),
@@ -104,7 +101,7 @@ def seeded_tenant(db):
     viewer = models.User(
         username="viewer_p11",
         display_name="Viewer P11",
-        password_hash="x",
+        password_hash=password_hash_for_tests(),
         role="viewer",
         is_active=True,
         created_at=datetime.datetime.now(),
@@ -335,8 +332,11 @@ def seeded_tenant(db):
     )
     return {
         "owner_id": owner.id,
+        "owner": owner,
         "cashier_id": cashier.id,
+        "cashier": cashier,
         "viewer_id": viewer.id,
+        "viewer": viewer,
         "company_a_id": co_a.id,
         "company_b_id": co_b.id,
         "cash_account_a_id": cash_a.id,
@@ -411,10 +411,9 @@ class TestReadEndpointsReturnJson:
         resp = api_client.get(
             path,
             params=params,
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_a_id"],
-                role="owner",
             ),
         )
         assert resp.status_code == 200
@@ -435,10 +434,9 @@ class TestReadEndpointsReturnJson:
         resp = api_client.get(
             f"/api/v1/partners/{seeded_tenant['partner_id']}/statement",
             params={"from_date": FROM_DATE.isoformat(), "to_date": TO_DATE.isoformat()},
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_a_id"],
-                role="owner",
             ),
         )
         assert resp.status_code == 200
@@ -487,7 +485,7 @@ class TestReadEndpointGuards:
         resp = api_client.get(
             path,
             params=params,
-            headers=_headers(seeded_tenant["owner_id"]),
+            headers=api_headers(seeded_tenant["owner"]),
         )
         assert resp.status_code == 400
         assert "active_company_id" in resp.json()["detail"]
@@ -512,18 +510,15 @@ class TestReadEndpointGuards:
             path = path.format(partner_id=seeded_tenant["partner_id"])
         if path == "/api/v1/ledger":
             params = {"account_id": seeded_tenant["cash_account_a_id"]}
-        user_id = seeded_tenant["cashier_id"]
-        role = "cashier"
+        user = seeded_tenant["cashier"]
         if path == "/api/v1/banking/readiness":
-            user_id = seeded_tenant["viewer_id"]
-            role = "viewer"
+            user = seeded_tenant["viewer"]
         resp = api_client.get(
             path,
             params=params,
-            headers=_headers(
-                user_id,
+            headers=api_headers(
+                user,
                 company_id=seeded_tenant["company_a_id"],
-                role=role,
             ),
         )
         assert resp.status_code == 403
@@ -556,10 +551,9 @@ class TestReadEndpointNoCommit:
             resp = api_client.get(
                 path,
                 params=params,
-                headers=_headers(
-                    seeded_tenant["owner_id"],
+                headers=api_headers(
+                    seeded_tenant["owner"],
                     company_id=seeded_tenant["company_a_id"],
-                    role="owner",
                 ),
             )
         assert resp.status_code == 200
@@ -571,19 +565,17 @@ class TestCompanyIsolation:
         resp_a = api_client.get(
             "/api/v1/ledger",
             params={"account_id": seeded_tenant["cash_account_a_id"]},
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_a_id"],
-                role="owner",
             ),
         )
         resp_b = api_client.get(
             "/api/v1/ledger",
             params={"account_id": seeded_tenant["cash_account_b_id"]},
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_a_id"],
-                role="owner",
             ),
         )
         assert resp_a.status_code == 200
@@ -594,18 +586,16 @@ class TestCompanyIsolation:
     def test_receivables_scoped_to_company(self, api_client, seeded_tenant):
         resp_a = api_client.get(
             "/api/v1/receivables",
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_a_id"],
-                role="owner",
             ),
         )
         resp_b = api_client.get(
             "/api/v1/receivables",
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_b_id"],
-                role="owner",
             ),
         )
         assert resp_a.status_code == 200
@@ -618,18 +608,16 @@ class TestCompanyIsolation:
     def test_payables_scoped_to_company(self, api_client, seeded_tenant):
         resp_a = api_client.get(
             "/api/v1/payables",
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_a_id"],
-                role="owner",
             ),
         )
         resp_b = api_client.get(
             "/api/v1/payables",
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_b_id"],
-                role="owner",
             ),
         )
         assert resp_a.status_code == 200
@@ -643,10 +631,9 @@ class TestDateValidation:
         resp = api_client.get(
             f"/api/v1/partners/{seeded_tenant['partner_id']}/statement",
             params={"from_date": "not-a-date", "to_date": TO_DATE.isoformat()},
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_a_id"],
-                role="owner",
             ),
         )
         assert resp.status_code == 422
@@ -659,10 +646,9 @@ class TestDateValidation:
                 "start_date": FROM_DATE.isoformat(),
                 "end_date": TO_DATE.isoformat(),
             },
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_a_id"],
-                role="owner",
             ),
         )
         assert resp.status_code == 200
@@ -675,10 +661,9 @@ class TestDateValidation:
                 "account_id": seeded_tenant["cash_account_a_id"],
                 "start_date": "bad-date",
             },
-            headers=_headers(
-                seeded_tenant["owner_id"],
+            headers=api_headers(
+                seeded_tenant["owner"],
                 company_id=seeded_tenant["company_a_id"],
-                role="owner",
             ),
         )
         assert resp.status_code == 422

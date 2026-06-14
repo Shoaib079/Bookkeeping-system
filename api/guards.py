@@ -1,7 +1,7 @@
 """Shared API permission and company guards.
 
-HTTP mapping (P1.2):
-- 401: raised by ``get_request_context`` when ``X-User-Id`` is absent
+HTTP mapping (P1.3e):
+- 401: missing/invalid bearer token (or legacy ``X-User-Id`` when dev fallback enabled)
 - 400: ``require_company`` when ``X-Company-Id`` is absent
 - 403: membership or permission failure
 """
