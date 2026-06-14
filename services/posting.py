@@ -82,10 +82,13 @@ from reconciliation.company_card import (
 from registry.service import get_setting
 from services.commit_modes import (
     POST_CASH_SALE_FAMILY,
+    POST_EQUITY_MOVEMENT_FAMILY,
     POST_EXPENSE_FAMILY,
+    POST_PARTNER_MOVEMENT_FAMILY,
     POST_PAYABLE_PAYMENT_FAMILY,
     POST_PURCHASE_FAMILY,
     POST_RECEIVABLE_PAYMENT_FAMILY,
+    POST_WORKER_MOVEMENT_FAMILY,
     is_boundary_mode,
 )
 
@@ -1282,6 +1285,7 @@ def post_capital_contribution(
             [(gl_acct.id, amount, 0), (cap_acct.id, 0, amount)],
             currency=currency,
             company_id=company_id,
+            commit_family=POST_EQUITY_MOVEMENT_FAMILY,
         )
 
 
@@ -1302,6 +1306,7 @@ def post_owner_drawing(
             [(draw_acct.id, amount, 0), (gl_acct.id, 0, amount)],
             currency=currency,
             company_id=company_id,
+            commit_family=POST_EQUITY_MOVEMENT_FAMILY,
         )
 
 
@@ -1839,9 +1844,10 @@ def post_partner_movement(
         movement.id,
         lines,
         company_id=company_id,
+        commit_family=POST_PARTNER_MOVEMENT_FAMILY,
     )
     movement.journal_entry_id = je.id
-    session.commit()
+    _kernel_persist(session, commit_family=POST_PARTNER_MOVEMENT_FAMILY)
     return movement.id, ""
 
 
@@ -2051,9 +2057,10 @@ def post_worker_movement(
         movement.id,
         lines,
         company_id=company_id,
+        commit_family=POST_WORKER_MOVEMENT_FAMILY,
     )
     movement.journal_entry_id = je.id
-    session.commit()
+    _kernel_persist(session, commit_family=POST_WORKER_MOVEMENT_FAMILY)
     return movement.id, ""
 
 

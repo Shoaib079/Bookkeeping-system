@@ -53,6 +53,19 @@ RECEIVABLE_PAYMENT_TABLES: tuple[type, ...] = (
     models.BankAccount,
 )
 
+MOVEMENT_TABLES: tuple[type, ...] = (
+    models.JournalEntry,
+    models.JournalEntryLine,
+    models.AuditLog,
+    models.Partner,
+    models.PartnerMovement,
+    models.Worker,
+    models.WorkerMovement,
+    models.ChartOfAccounts,
+    models.BankTransaction,
+    models.BankAccount,
+)
+
 
 def table_row_counts(session: Session, tables: tuple[type, ...] = DEFAULT_TABLES) -> dict[str, int]:
     """Serializable row counts keyed by table name."""
@@ -185,6 +198,54 @@ def payable_row_tuples(session: Session) -> list[tuple]:
     ]
 
 
+def partner_movement_row_tuples(session: Session) -> list[tuple]:
+    rows = (
+        session.query(models.PartnerMovement)
+        .order_by(models.PartnerMovement.id)
+        .all()
+    )
+    return [
+        (
+            r.id,
+            r.partner_id,
+            r.movement_type,
+            r.amount,
+            r.bank_transaction_id,
+            r.journal_entry_id,
+            str(r.date),
+            r.is_void,
+            r.company_id,
+        )
+        for r in rows
+    ]
+
+
+def worker_movement_row_tuples(session: Session) -> list[tuple]:
+    rows = (
+        session.query(models.WorkerMovement)
+        .order_by(models.WorkerMovement.id)
+        .all()
+    )
+    return [
+        (
+            r.id,
+            r.worker_id,
+            r.movement_type,
+            r.amount,
+            r.gross_salary,
+            r.deductions,
+            r.advance_recovery,
+            r.net_paid,
+            r.bank_transaction_id,
+            r.journal_entry_id,
+            str(r.date),
+            r.is_void,
+            r.company_id,
+        )
+        for r in rows
+    ]
+
+
 def persisted_state_snapshot(
     session: Session,
     *,
@@ -195,6 +256,8 @@ def persisted_state_snapshot(
     include_bank_txn_rows: bool = False,
     include_purchase_rows: bool = False,
     include_payable_rows: bool = False,
+    include_partner_movement_rows: bool = False,
+    include_worker_movement_rows: bool = False,
     include_audit_rows: bool = True,
 ) -> dict[str, Any]:
     """Compact persisted-state fingerprint for internal vs boundary dual-run."""
@@ -211,6 +274,10 @@ def persisted_state_snapshot(
         snap["purchases"] = purchase_row_tuples(session)
     if include_payable_rows:
         snap["payables"] = payable_row_tuples(session)
+    if include_partner_movement_rows:
+        snap["partner_movements"] = partner_movement_row_tuples(session)
+    if include_worker_movement_rows:
+        snap["worker_movements"] = worker_movement_row_tuples(session)
     if include_audit_rows:
         snap["audit_rows"] = audit_row_tuples(session)
     return snap

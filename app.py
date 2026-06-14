@@ -6072,6 +6072,14 @@ def post_bank_transfer(session, txn_id, amount, txn_date, src_name, dest_name):
 
 def post_capital_contribution(session, btxn_id, amount, date, gl_name, currency=None, notes=""):
     """PS-P5-3 compatibility shim — kernel lives in services/posting.py."""
+    family = _commit_modes.POST_EQUITY_MOVEMENT_FAMILY
+    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
+        with boundary_commit_scope(session, family):
+            return posting_service.post_capital_contribution(
+                session, btxn_id, amount, date, gl_name,
+                currency=currency, notes=notes,
+                company_id=_current_company_id(),
+            )
     return posting_service.post_capital_contribution(
         session, btxn_id, amount, date, gl_name,
         currency=currency, notes=notes,
@@ -6081,6 +6089,14 @@ def post_capital_contribution(session, btxn_id, amount, date, gl_name, currency=
 
 def post_owner_drawing(session, btxn_id, amount, date, gl_name, currency=None, notes=""):
     """PS-P5-3 compatibility shim — kernel lives in services/posting.py."""
+    family = _commit_modes.POST_EQUITY_MOVEMENT_FAMILY
+    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
+        with boundary_commit_scope(session, family):
+            return posting_service.post_owner_drawing(
+                session, btxn_id, amount, date, gl_name,
+                currency=currency, notes=notes,
+                company_id=_current_company_id(),
+            )
     return posting_service.post_owner_drawing(
         session, btxn_id, amount, date, gl_name,
         currency=currency, notes=notes,
@@ -6633,27 +6649,35 @@ def post_partner_movement(session, partner_id: int, movement_type: str, amount: 
                            date: "datetime.date", bank_account_id: int = None,
                            notes: str = None, created_by_id: int = None):
     """PS-P6-1 compatibility shim — kernel lives in services/posting.py."""
-    movement_id, err = posting_service.post_partner_movement(
-        session,
-        partner_id,
-        movement_type,
-        amount,
-        date,
-        bank_account_id=bank_account_id,
-        notes=notes,
-        created_by_id=created_by_id,
-        company_id=current_company_required(),
-    )
-    if err == "":
-        partner = session.get(Partner, partner_id)
-        log_audit(
+    family = _commit_modes.POST_PARTNER_MOVEMENT_FAMILY
+
+    def _run():
+        movement_id, err = posting_service.post_partner_movement(
             session,
-            "Create",
-            "PartnerMovement",
-            movement_id,
-            f"{movement_type}: {partner.name} — {amount:,.2f}",
+            partner_id,
+            movement_type,
+            amount,
+            date,
+            bank_account_id=bank_account_id,
+            notes=notes,
+            created_by_id=created_by_id,
+            company_id=current_company_required(),
         )
-    return movement_id, err
+        if err == "":
+            partner = session.get(Partner, partner_id)
+            log_audit(
+                session,
+                "Create",
+                "PartnerMovement",
+                movement_id,
+                f"{movement_type}: {partner.name} — {amount:,.2f}",
+            )
+        return movement_id, err
+
+    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
+        with boundary_commit_scope(session, family):
+            return _run()
+    return _run()
 
 
 def void_partner_movement(session, movement_id: int, voider_id: int, reason: str) -> str:
@@ -7522,32 +7546,40 @@ def post_worker_movement(
     created_by_id: int = None,
 ):
     """PS-P6-2 compatibility shim — kernel lives in services/posting.py."""
-    movement_id, err = posting_service.post_worker_movement(
-        session,
-        worker_id,
-        movement_type,
-        date,
-        bank_account_id=bank_account_id,
-        amount=amount,
-        gross_salary=gross_salary,
-        deductions=deductions,
-        advance_recovery=advance_recovery,
-        pay_period=pay_period,
-        notes=notes,
-        created_by_id=created_by_id,
-        company_id=current_company_required(),
-    )
-    if err == "":
-        movement = session.get(WorkerMovement, movement_id)
-        worker = session.get(Worker, worker_id)
-        log_audit(
+    family = _commit_modes.POST_WORKER_MOVEMENT_FAMILY
+
+    def _run():
+        movement_id, err = posting_service.post_worker_movement(
             session,
-            "Create",
-            "WorkerMovement",
-            movement_id,
-            f"{movement_type}: {worker.name} — {movement.amount:,.2f}",
+            worker_id,
+            movement_type,
+            date,
+            bank_account_id=bank_account_id,
+            amount=amount,
+            gross_salary=gross_salary,
+            deductions=deductions,
+            advance_recovery=advance_recovery,
+            pay_period=pay_period,
+            notes=notes,
+            created_by_id=created_by_id,
+            company_id=current_company_required(),
         )
-    return movement_id, err
+        if err == "":
+            movement = session.get(WorkerMovement, movement_id)
+            worker = session.get(Worker, worker_id)
+            log_audit(
+                session,
+                "Create",
+                "WorkerMovement",
+                movement_id,
+                f"{movement_type}: {worker.name} — {movement.amount:,.2f}",
+            )
+        return movement_id, err
+
+    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
+        with boundary_commit_scope(session, family):
+            return _run()
+    return _run()
 
 
 def void_worker_movement(session, movement_id: int, voider_id: int, reason: str) -> str:
@@ -9926,17 +9958,45 @@ def render_equity_movements(session, *, embedded: bool = False):
                                     amount=cc_amt, type="deposit",
                                     description="Capital Contribution #TBD",
                                 )
-                                session.add(btxn)
-                                session.flush()
-                                btxn.description = f"Capital Contribution #{btxn.id}"
-                                ba_obj.balance   = (ba_obj.balance or 0) + cc_amt
-                                post_capital_contribution(
-                                    session, btxn.id, cc_amt, cc_date,
-                                    gl_name, currency=ba_obj.currency, notes=cc_notes.strip(),
+                                _cc_audit = (
+                                    f"Capital Contribution #{{id}} · {cc_amt:,.2f} "
+                                    f"{ba_obj.currency or currency} → {ba_obj.name}"
                                 )
-                                session.commit()
-                                log_audit(session, "Create", "EquityMovement", btxn.id,
-                                          f"Capital Contribution #{btxn.id} · {cc_amt:,.2f} {ba_obj.currency or currency} → {ba_obj.name}")
+                                if _commit_modes.is_boundary_mode(
+                                    _commit_modes.POST_EQUITY_MOVEMENT_FAMILY
+                                ):
+                                    try:
+                                        with boundary_commit_scope(
+                                            session, _commit_modes.POST_EQUITY_MOVEMENT_FAMILY
+                                        ):
+                                            session.add(btxn)
+                                            session.flush()
+                                            btxn.description = f"Capital Contribution #{btxn.id}"
+                                            ba_obj.balance = (ba_obj.balance or 0) + cc_amt
+                                            post_capital_contribution(
+                                                session, btxn.id, cc_amt, cc_date,
+                                                gl_name, currency=ba_obj.currency,
+                                                notes=cc_notes.strip(),
+                                            )
+                                            log_audit(
+                                                session, "Create", "EquityMovement", btxn.id,
+                                                _cc_audit.format(id=btxn.id),
+                                            )
+                                    except ValueError as exc:
+                                        st.error(str(exc))
+                                        return
+                                else:
+                                    session.add(btxn)
+                                    session.flush()
+                                    btxn.description = f"Capital Contribution #{btxn.id}"
+                                    ba_obj.balance   = (ba_obj.balance or 0) + cc_amt
+                                    post_capital_contribution(
+                                        session, btxn.id, cc_amt, cc_date,
+                                        gl_name, currency=ba_obj.currency, notes=cc_notes.strip(),
+                                    )
+                                    session.commit()
+                                    log_audit(session, "Create", "EquityMovement", btxn.id,
+                                              f"Capital Contribution #{btxn.id} · {cc_amt:,.2f} {ba_obj.currency or currency} → {ba_obj.name}")
                                 st.success(_t("partner.contrib_posted", id=btxn.id, currency=currency, amount=cc_amt, name=ba_obj.name))
                                 st.rerun()
 
@@ -10009,17 +10069,42 @@ def render_equity_movements(session, *, embedded: bool = False):
                                     amount=od_amt, type="withdrawal",
                                     description="Owner Drawing #TBD",
                                 )
-                                session.add(btxn)
-                                session.flush()
-                                btxn.description = f"Owner Drawing #{btxn.id}"
-                                ba_obj.balance   = (ba_obj.balance or 0) - od_amt
-                                post_owner_drawing(
-                                    session, btxn.id, od_amt, od_date,
-                                    gl_name, currency=ba_obj.currency, notes=od_notes.strip(),
-                                )
-                                session.commit()
-                                log_audit(session, "Create", "EquityMovement", btxn.id,
-                                          f"Owner Drawing #{btxn.id} · {od_amt:,.2f} {ba_obj.currency or currency} from {ba_obj.name}")
+                                if _commit_modes.is_boundary_mode(
+                                    _commit_modes.POST_EQUITY_MOVEMENT_FAMILY
+                                ):
+                                    try:
+                                        with boundary_commit_scope(
+                                            session, _commit_modes.POST_EQUITY_MOVEMENT_FAMILY
+                                        ):
+                                            session.add(btxn)
+                                            session.flush()
+                                            btxn.description = f"Owner Drawing #{btxn.id}"
+                                            ba_obj.balance = (ba_obj.balance or 0) - od_amt
+                                            post_owner_drawing(
+                                                session, btxn.id, od_amt, od_date,
+                                                gl_name, currency=ba_obj.currency,
+                                                notes=od_notes.strip(),
+                                            )
+                                            log_audit(
+                                                session, "Create", "EquityMovement", btxn.id,
+                                                f"Owner Drawing #{btxn.id} · {od_amt:,.2f} "
+                                                f"{ba_obj.currency or currency} from {ba_obj.name}",
+                                            )
+                                    except ValueError as exc:
+                                        st.error(str(exc))
+                                        return
+                                else:
+                                    session.add(btxn)
+                                    session.flush()
+                                    btxn.description = f"Owner Drawing #{btxn.id}"
+                                    ba_obj.balance   = (ba_obj.balance or 0) - od_amt
+                                    post_owner_drawing(
+                                        session, btxn.id, od_amt, od_date,
+                                        gl_name, currency=ba_obj.currency, notes=od_notes.strip(),
+                                    )
+                                    session.commit()
+                                    log_audit(session, "Create", "EquityMovement", btxn.id,
+                                              f"Owner Drawing #{btxn.id} · {od_amt:,.2f} {ba_obj.currency or currency} from {ba_obj.name}")
                                 st.success(_t("partner.drawing_posted", id=btxn.id, currency=currency, amount=od_amt, name=ba_obj.name))
                                 st.rerun()
 
@@ -14517,42 +14602,117 @@ def _at_save(
                         )
                     )
                     return
-                mv_id, err = post_worker_movement(
-                    session,
-                    worker_id,
-                    "Salary",
-                    entry_date,
-                    bank_account_id=ba.id,
-                    gross_salary=gross,
-                    deductions=ded,
-                    advance_recovery=adv_rec,
-                    pay_period=st.session_state.get("at_worker_period"),
-                    notes=notes.strip() or None,
-                    created_by_id=_uid,
-                )
+                _worker_mv_audit = f"{wm_type}: {worker_id} · {amount:,.2f} {currency}"
+                if _commit_modes.is_boundary_mode(_commit_modes.POST_WORKER_MOVEMENT_FAMILY):
+                    try:
+                        with boundary_commit_scope(session, _commit_modes.POST_WORKER_MOVEMENT_FAMILY):
+                            mv_id, err = post_worker_movement(
+                                session,
+                                worker_id,
+                                "Salary",
+                                entry_date,
+                                bank_account_id=ba.id,
+                                gross_salary=gross,
+                                deductions=ded,
+                                advance_recovery=adv_rec,
+                                pay_period=st.session_state.get("at_worker_period"),
+                                notes=notes.strip() or None,
+                                created_by_id=_uid,
+                            )
+                            if err:
+                                raise ValueError(err)
+                            worker = session.get(Worker, worker_id)
+                            wname = worker.name if worker else "—"
+                            _worker_mv_audit = f"{wm_type}: {wname} · {amount:,.2f} {currency}"
+                            log_audit(
+                                session,
+                                "Create",
+                                "WorkerMovement",
+                                mv_id,
+                                _worker_mv_audit,
+                            )
+                    except ValueError as exc:
+                        st.error(str(exc))
+                        return
+                else:
+                    mv_id, err = post_worker_movement(
+                        session,
+                        worker_id,
+                        "Salary",
+                        entry_date,
+                        bank_account_id=ba.id,
+                        gross_salary=gross,
+                        deductions=ded,
+                        advance_recovery=adv_rec,
+                        pay_period=st.session_state.get("at_worker_period"),
+                        notes=notes.strip() or None,
+                        created_by_id=_uid,
+                    )
+                    if err:
+                        st.error(err)
+                        return
+                    worker = session.get(Worker, worker_id)
+                    wname = worker.name if worker else "—"
+                    log_audit(
+                        session,
+                        "Create",
+                        "WorkerMovement",
+                        mv_id,
+                        f"{wm_type}: {wname} · {amount:,.2f} {currency}",
+                    )
             else:
-                mv_id, err = post_worker_movement(
-                    session,
-                    worker_id,
-                    "Advance",
-                    entry_date,
-                    bank_account_id=ba.id,
-                    amount=amount,
-                    notes=notes.strip() or None,
-                    created_by_id=_uid,
-                )
-            if err:
-                st.error(err)
-                return
+                if _commit_modes.is_boundary_mode(_commit_modes.POST_WORKER_MOVEMENT_FAMILY):
+                    try:
+                        with boundary_commit_scope(session, _commit_modes.POST_WORKER_MOVEMENT_FAMILY):
+                            mv_id, err = post_worker_movement(
+                                session,
+                                worker_id,
+                                "Advance",
+                                entry_date,
+                                bank_account_id=ba.id,
+                                amount=amount,
+                                notes=notes.strip() or None,
+                                created_by_id=_uid,
+                            )
+                            if err:
+                                raise ValueError(err)
+                            worker = session.get(Worker, worker_id)
+                            wname = worker.name if worker else "—"
+                            log_audit(
+                                session,
+                                "Create",
+                                "WorkerMovement",
+                                mv_id,
+                                f"{wm_type}: {wname} · {amount:,.2f} {currency}",
+                            )
+                    except ValueError as exc:
+                        st.error(str(exc))
+                        return
+                else:
+                    mv_id, err = post_worker_movement(
+                        session,
+                        worker_id,
+                        "Advance",
+                        entry_date,
+                        bank_account_id=ba.id,
+                        amount=amount,
+                        notes=notes.strip() or None,
+                        created_by_id=_uid,
+                    )
+                    if err:
+                        st.error(err)
+                        return
+                    worker = session.get(Worker, worker_id)
+                    wname = worker.name if worker else "—"
+                    log_audit(
+                        session,
+                        "Create",
+                        "WorkerMovement",
+                        mv_id,
+                        f"{wm_type}: {wname} · {amount:,.2f} {currency}",
+                    )
             worker = session.get(Worker, worker_id)
             wname = worker.name if worker else "—"
-            log_audit(
-                session,
-                "Create",
-                "WorkerMovement",
-                mv_id,
-                f"{wm_type}: {wname} · {amount:,.2f} {currency}",
-            )
             st.success(
                 _t(
                     "txn.expense_worker_recorded",

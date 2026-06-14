@@ -38,6 +38,15 @@ POST_PAYABLE_PAYMENT_FAMILY = "post_payable_payment"
 # Slice 4 — receivable payment GL post + sale state + audit (Add Transaction customer payment boundary).
 POST_RECEIVABLE_PAYMENT_FAMILY = "post_receivable_payment"
 
+# Slice 5 — partner movement GL post + bank txn + movement row + audit boundary.
+POST_PARTNER_MOVEMENT_FAMILY = "post_partner_movement"
+
+# Slice 5 — worker movement GL post + bank txn + movement row + audit boundary.
+POST_WORKER_MOVEMENT_FAMILY = "post_worker_movement"
+
+# Slice 5 — equity contribution/drawing GL post + bank txn + audit boundary.
+POST_EQUITY_MOVEMENT_FAMILY = "post_equity_movement"
+
 AUDIT_FAMILY = "audit"
 
 
@@ -54,6 +63,9 @@ _DEFAULT_MODES[POST_EXPENSE_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[POST_PURCHASE_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[POST_PAYABLE_PAYMENT_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[POST_RECEIVABLE_PAYMENT_FAMILY] = CommitMode.INTERNAL
+_DEFAULT_MODES[POST_PARTNER_MOVEMENT_FAMILY] = CommitMode.INTERNAL
+_DEFAULT_MODES[POST_WORKER_MOVEMENT_FAMILY] = CommitMode.INTERNAL
+_DEFAULT_MODES[POST_EQUITY_MOVEMENT_FAMILY] = CommitMode.INTERNAL
 
 _test_overrides: dict[str, CommitMode] = {}
 
@@ -95,9 +107,12 @@ __all__ = (
     "CommitMode",
     "POST_CASH_SALE_FAMILY",
     "POST_EXPENSE_FAMILY",
+    "POST_EQUITY_MOVEMENT_FAMILY",
+    "POST_PARTNER_MOVEMENT_FAMILY",
     "POST_PAYABLE_PAYMENT_FAMILY",
     "POST_PURCHASE_FAMILY",
     "POST_RECEIVABLE_PAYMENT_FAMILY",
+    "POST_WORKER_MOVEMENT_FAMILY",
     "POSTING_FAMILIES",
     "get_commit_mode",
     "is_boundary_mode",
