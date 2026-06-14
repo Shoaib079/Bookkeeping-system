@@ -85,7 +85,7 @@ Recommended sequence (aligned with P3.1 § Recommended P3.2 tasks):
 | **P3.2-C** | PG optional test fixtures | ✅ **Shipped** — `ERP_TEST_POSTGRES_URL` + `tests/postgres_utils.py`; see [P3_2_POSTGRES_TEST_FIXTURES.md](./P3_2_POSTGRES_TEST_FIXTURES.md) |
 | **P3.2-D** | Baseline revision strategy | Decide: stamp existing DB vs. autogenerate from metadata vs. hand-written baseline |
 | **P3.2-E** | Port incremental DDL | Move `migrate_schema` `ALTER`/index DDL into Alembic revisions; fix partial index `is_void IS FALSE` for PG |
-| **P3.2-F** | Dual-run parity harness | Extend tests to compare SQLite vs PG persisted state |
+| **P3.2-F** | Dual-run parity harness | ✅ **Shipped** — `tests/p3_dual_run_utils.py`; see [P3_2_DUAL_RUN_PARITY_HARNESS.md](./P3_2_DUAL_RUN_PARITY_HARNESS.md) |
 | **P3.2-G** (separate) | `Float` → `NUMERIC` | Characterized rounding project — not bundled with engine swap |
 
 **Cutover gate (owner decision):**

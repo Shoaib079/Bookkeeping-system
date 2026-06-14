@@ -99,7 +99,7 @@ P3.2-C delivers **fixtures and safety gates only**:
 - No Alembic-managed schema on PostgreSQL (still `create_all` from ORM metadata)
 - No change to money types (`Float` remains)
 
-Dual-run parity is a follow-up slice (aligned with P3.1 § P3.2-E recommendation).
+Dual-run parity is a follow-up slice — **shipped in P3.2-D**; see [P3_2_DUAL_RUN_PARITY_HARNESS.md](./P3_2_DUAL_RUN_PARITY_HARNESS.md).
 
 ---
 
