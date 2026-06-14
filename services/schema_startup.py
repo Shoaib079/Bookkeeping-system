@@ -7,6 +7,8 @@ or blocks startup. ``migrate_schema()`` remains authoritative.
 from __future__ import annotations
 
 import logging
+import os
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TypedDict
 
@@ -25,6 +27,33 @@ from services.schema_version import (
 )
 
 _LOG = logging.getLogger(__name__)
+
+ALEMBIC_AUTHORITATIVE_ENV_VAR = "ERP_ALEMBIC_AUTHORITATIVE"
+
+_TRUE_FLAG_VALUES = frozenset({"1", "true", "yes", "on"})
+_FALSE_FLAG_VALUES = frozenset({"0", "false", "no", "off"})
+
+
+def parse_alembic_authoritative_flag(value: str | None) -> bool:
+    """Parse ``ERP_ALEMBIC_AUTHORITATIVE``; fail-safe ``False`` when unset or invalid."""
+    if value is None:
+        return False
+    normalized = value.strip().lower()
+    if not normalized:
+        return False
+    if normalized in _TRUE_FLAG_VALUES:
+        return True
+    if normalized in _FALSE_FLAG_VALUES:
+        return False
+    return False
+
+
+def is_alembic_authoritative_enabled(
+    environ: Mapping[str, str] | None = None,
+) -> bool:
+    """Read ``ERP_ALEMBIC_AUTHORITATIVE`` from *environ* (default: ``os.environ``)."""
+    source = os.environ if environ is None else environ
+    return parse_alembic_authoritative_flag(source.get(ALEMBIC_AUTHORITATIVE_ENV_VAR))
 
 
 class SchemaStartupDiagnostic(TypedDict):
