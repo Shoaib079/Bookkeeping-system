@@ -35,6 +35,9 @@ POST_PURCHASE_FAMILY = "post_purchase"
 # Slice 3 — payable payment GL post + state + audit (Add Transaction supplier payment boundary).
 POST_PAYABLE_PAYMENT_FAMILY = "post_payable_payment"
 
+# Slice 4 — receivable payment GL post + sale state + audit (Add Transaction customer payment boundary).
+POST_RECEIVABLE_PAYMENT_FAMILY = "post_receivable_payment"
+
 AUDIT_FAMILY = "audit"
 
 
@@ -50,6 +53,7 @@ _DEFAULT_MODES[POST_CASH_SALE_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[POST_EXPENSE_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[POST_PURCHASE_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[POST_PAYABLE_PAYMENT_FAMILY] = CommitMode.INTERNAL
+_DEFAULT_MODES[POST_RECEIVABLE_PAYMENT_FAMILY] = CommitMode.INTERNAL
 
 _test_overrides: dict[str, CommitMode] = {}
 
@@ -93,6 +97,7 @@ __all__ = (
     "POST_EXPENSE_FAMILY",
     "POST_PAYABLE_PAYMENT_FAMILY",
     "POST_PURCHASE_FAMILY",
+    "POST_RECEIVABLE_PAYMENT_FAMILY",
     "POSTING_FAMILIES",
     "get_commit_mode",
     "is_boundary_mode",

@@ -43,6 +43,16 @@ PURCHASE_PAYABLE_TABLES: tuple[type, ...] = (
     models.BankAccount,
 )
 
+RECEIVABLE_PAYMENT_TABLES: tuple[type, ...] = (
+    models.JournalEntry,
+    models.JournalEntryLine,
+    models.AuditLog,
+    models.Sale,
+    models.ChartOfAccounts,
+    models.BankTransaction,
+    models.BankAccount,
+)
+
 
 def table_row_counts(session: Session, tables: tuple[type, ...] = DEFAULT_TABLES) -> dict[str, int]:
     """Serializable row counts keyed by table name."""

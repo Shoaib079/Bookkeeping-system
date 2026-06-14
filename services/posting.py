@@ -85,6 +85,7 @@ from services.commit_modes import (
     POST_EXPENSE_FAMILY,
     POST_PAYABLE_PAYMENT_FAMILY,
     POST_PURCHASE_FAMILY,
+    POST_RECEIVABLE_PAYMENT_FAMILY,
     is_boundary_mode,
 )
 
@@ -878,9 +879,10 @@ def post_receivable_payment(
             sale.id,
             je_lines,
             company_id=company_id,
+            commit_family=POST_RECEIVABLE_PAYMENT_FAMILY,
         )
 
-    session.commit()
+    _kernel_persist(session, commit_family=POST_RECEIVABLE_PAYMENT_FAMILY)
 
 
 def resolve_payment_credit_account(

@@ -5126,9 +5126,19 @@ def _load_cat_lookup(session):
 def post_receivable_payment(session, sale_id, payment_amount, payment_date,
                             payment_method="Cash", currency=None, payment_fx_rate: float = 1.0):
     """PS-P5-1 compatibility shim — kernel lives in services/posting.py."""
+    family = _commit_modes.POST_RECEIVABLE_PAYMENT_FAMILY
+    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
+        with boundary_commit_scope(session, family):
+            return posting_service.post_receivable_payment(
+                session, sale_id, payment_amount, payment_date,
+                payment_method=payment_method, currency=currency,
+                payment_fx_rate=payment_fx_rate,
+                company_id=_current_company_id(),
+            )
     return posting_service.post_receivable_payment(
         session, sale_id, payment_amount, payment_date,
-        payment_method=payment_method, currency=currency, payment_fx_rate=payment_fx_rate,
+        payment_method=payment_method, currency=currency,
+        payment_fx_rate=payment_fx_rate,
         company_id=_current_company_id(),
     )
 
@@ -14860,10 +14870,40 @@ def _at_save(
             st.error(_t("txn.invoice_not_found"))
             return
         sale = open_sales[idx]
-        err = post_receivable_payment(session, sale.id, amount, entry_date, payment_method, currency=currency)
-        if err:
-            st.error(err)
+        _cust_payment_audit = (
+            f"Payment {amount:,.2f} {currency} on {sale.invoice_number}"
+        )
+        if _commit_modes.is_boundary_mode(_commit_modes.POST_RECEIVABLE_PAYMENT_FAMILY):
+            try:
+                with boundary_commit_scope(session, _commit_modes.POST_RECEIVABLE_PAYMENT_FAMILY):
+                    err = post_receivable_payment(
+                        session, sale.id, amount, entry_date, payment_method, currency=currency
+                    )
+                    if err:
+                        raise ValueError(err)
+                    if payment_method == "Bank":
+                        _record_named_bank_movement(
+                            session,
+                            bank_accounts,
+                            bank_payment_acct_val,
+                            amount=amount,
+                            date=entry_date,
+                            description=f"Customer payment {sale.invoice_number}",
+                            txn_type="deposit",
+                        )
+                    log_audit(
+                        session, "Payment", "Sale", sale.id, _cust_payment_audit,
+                    )
+            except ValueError as exc:
+                st.error(str(exc))
+                return
         else:
+            err = post_receivable_payment(
+                session, sale.id, amount, entry_date, payment_method, currency=currency
+            )
+            if err:
+                st.error(err)
+                return
             if payment_method == "Bank":
                 _record_named_bank_movement(
                     session,
@@ -14875,10 +14915,11 @@ def _at_save(
                     txn_type="deposit",
                 )
                 session.commit()
-            log_audit(session, "Payment", "Sale", sale.id,
-                      f"Payment {amount:,.2f} {currency} on {sale.invoice_number}")
-            st.success(_t("txn.customer_payment", amount=amount, invoice=sale.invoice_number))
-            _mark_at_save_succeeded()
+            log_audit(
+                session, "Payment", "Sale", sale.id, _cust_payment_audit,
+            )
+        st.success(_t("txn.customer_payment", amount=amount, invoice=sale.invoice_number))
+        _mark_at_save_succeeded()
 
     elif txn_type == "Bank Transaction":
         if not bank_accounts or not bank_acct_val:
