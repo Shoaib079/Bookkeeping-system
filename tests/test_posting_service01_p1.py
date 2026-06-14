@@ -193,10 +193,11 @@ def test_app_create_journal_entry_is_a_pure_shim():
     # no kernel logic left behind
     for leftover in ("JournalEntry(", "total_debit", "session.flush()", "session.commit()"):
         assert leftover not in block, f"kernel logic remained in shim: {leftover}"
-    # signature unchanged (legacy callers + reconciliation/ depend on it)
+    # signature: legacy positional args + optional explicit company_id (P0.5c)
     assert re.search(
         r"def create_journal_entry\(session, entry_date, description, reference_type, "
-        r"reference_id, lines,\n\s+currency: str = None, fx_rate: float = 1\.0\):",
+        r"reference_id, lines,\n\s+currency: str = None, fx_rate: float = 1\.0, "
+        r"\*, company_id: int \| None = None\):",
         APP_SRC,
     )
 

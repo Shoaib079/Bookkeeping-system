@@ -1604,18 +1604,21 @@ def _entry_date_posting_blocked(
 
 
 def create_journal_entry(session, entry_date, description, reference_type, reference_id, lines,
-                         currency: str = None, fx_rate: float = 1.0):
+                         currency: str = None, fx_rate: float = 1.0, *, company_id: int | None = None):
     """PS-P1 compatibility shim — kernel lives in services/posting.py.
 
     Behaviour (commit on success, rollback + ValueError on failure, ORM
     JournalEntry return, message strings) is identical: the kernel moved
     verbatim and still owns commit/rollback in PS-P1. The shim adds only
     ambient company resolution, exactly as the original did.
+
+    FASTAPI-P0.5c: optional explicit ``company_id`` for reconciliation and
+    other callers that must not rely on ambient session company.
     """
     return posting_service.create_journal_entry(
         session, entry_date, description, reference_type, reference_id, lines,
         currency=currency, fx_rate=fx_rate,
-        company_id=_current_company_id(),
+        company_id=company_id or _current_company_id(),
     )
 
 

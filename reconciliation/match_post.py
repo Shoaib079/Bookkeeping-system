@@ -281,6 +281,7 @@ def post_deposit_clearing_match(
         row.id,
         je_lines,
         currency=imp.currency,
+        company_id=company_id,
     )
     row.settlement_row_id = settlement_row.id if settlement_row else None
     _finalize_row(
@@ -347,6 +348,7 @@ def post_generic_deposit(
         row.id,
         [(bank_gl.id, amt, 0), (credit_gl.id, 0, amt)],
         currency=imp.currency,
+        company_id=company_id,
     )
     _finalize_row(
         session,
@@ -458,6 +460,7 @@ def post_partner_statement_match(
         movement.id,
         lines,
         currency=imp.currency,
+        company_id=company_id,
     )
     movement.journal_entry_id = je.id
     session.add(movement)
@@ -611,6 +614,7 @@ def post_worker_statement_match(
         movement.id,
         lines,
         currency=imp.currency,
+        company_id=company_id,
     )
     movement.journal_entry_id = je.id
     session.add(movement)
@@ -723,6 +727,7 @@ def post_equity_statement_match(
         row.id,
         lines,
         currency=imp.currency,
+        company_id=company_id,
     )
     _finalize_row(
         session,
@@ -795,6 +800,7 @@ def post_vendor_outflow(
             row.id,
             [(ap_gl.id, pay_amt, 0), (bank_gl.id, 0, pay_amt)],
             currency=imp.currency,
+            company_id=company_id,
         )
         payable.paid_amount = round((payable.paid_amount or 0) + pay_amt, 2)
         payable.balance = round(float(payable.amount) - payable.paid_amount, 2)
@@ -1197,6 +1203,7 @@ def post_bank_charge_outflow(
         row.id,
         [(charges_gl.id, amt, 0), (bank_gl.id, 0, amt)],
         currency=imp.currency,
+        company_id=company_id,
     )
     _finalize_row(
         session,
