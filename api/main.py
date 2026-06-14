@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from api.openapi_tags import OPENAPI_TAGS
-from api.routes import auth, banking, expenses, ledger, partners, payables, purchases, receivables, reports, sales
+from api.routes import auth, banking, expenses, ledger, partners, payables, purchases, receivable_payments, receivables, reports, sales
 from services.permissions import PermissionDenied
 
 _API_DESCRIPTION = """\
@@ -23,7 +23,8 @@ Set ``ERP_API_DEV_HEADERS=1`` only for explicit test/dev fallback to legacy head
 
 GET handlers do not commit the database session. Write endpoints (e.g. ``POST /api/v1/sales``,
 ``POST /api/v1/expenses``) require feature flags such as ``ERP_API_WRITE_SALES=1`` /
-``ERP_API_WRITE_EXPENSES=1`` / ``ERP_API_WRITE_PURCHASES=1``.
+``ERP_API_WRITE_EXPENSES=1`` / ``ERP_API_WRITE_PURCHASES=1`` /
+``ERP_API_WRITE_RECEIVABLE_PAYMENTS=1``.
 """
 
 
@@ -31,7 +32,7 @@ def create_app() -> FastAPI:
     """Construct the read-only FastAPI application."""
     app = FastAPI(
         title="Streamlit Accounting ERP API",
-        version="1.4.2",
+        version="1.4.3",
         description=_API_DESCRIPTION,
         openapi_tags=OPENAPI_TAGS,
     )
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
     app.include_router(sales.router, prefix="/api/v1/sales")
     app.include_router(expenses.router, prefix="/api/v1/expenses")
     app.include_router(purchases.router, prefix="/api/v1/purchases")
+    app.include_router(receivable_payments.router, prefix="/api/v1/receivable-payments")
 
     @app.exception_handler(PermissionDenied)
     async def _permission_denied_handler(_request, exc: PermissionDenied):
