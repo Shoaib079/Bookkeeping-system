@@ -18,6 +18,7 @@ def theme_module():
     st = types.ModuleType("streamlit")
     st.session_state = {}
     st.markdown = MagicMock()
+    st.html = MagicMock()
     st.iframe = MagicMock()
     sys.modules["streamlit"] = st
     sys.path.insert(0, str(ROOT))
@@ -28,6 +29,7 @@ def theme_module():
     spec.loader.exec_module(mod)
     mod.st.session_state = st.session_state
     mod.st.markdown = st.markdown
+    mod.st.html = st.html
     mod.st.iframe = st.iframe
     mod.st.context = types.SimpleNamespace(cookies={}, headers={})
     try:
@@ -40,7 +42,7 @@ def theme_module():
 
 def _style_bundle(st) -> str:
     calls = [
-        c.args[0] for c in st.markdown.call_args_list if c.args and "<style>" in c.args[0]
+        c.args[0] for c in st.html.call_args_list if c.args and "<style>" in c.args[0]
     ]
     assert len(calls) == 1
     return calls[0]
@@ -51,12 +53,14 @@ def test_explicit_dark_prefixes_dark_root_before_light_defaults(theme_module):
     st.session_state["theme_mode"] = "dark"
     st.context = types.SimpleNamespace(cookies={"erp_os_dark": "0"}, headers={})
     st.markdown.reset_mock()
+    st.html.reset_mock()
     theme.bootstrap_theme(lambda: MagicMock(), None)
     bundle = _style_bundle(st)
     dark_bg = theme.DARK_ROOT_VARS["--theme-bg"]
     assert dark_bg in bundle
     assert bundle.index(dark_bg) < bundle.find("#f8fafc")
-    assert "data-erp-theme" in bundle and "dark" in bundle
+    script_calls = [c.args[0] for c in st.html.call_args_list if c.args and "data-erp-theme" in c.args[0]]
+    assert script_calls and "dark" in script_calls[0]
     assert bundle.count(":root{") == 1
 
 
@@ -74,10 +78,10 @@ def test_system_mode_without_os_hint_keeps_media_fallback(theme_module):
     theme, st = theme_module
     st.session_state["theme_mode"] = "system"
     st.context = types.SimpleNamespace(cookies={}, headers={})
-    st.markdown.reset_mock()
+    st.html.reset_mock()
     theme.bootstrap_theme(lambda: MagicMock(), None)
     bundle = _style_bundle(st)
-    assert ":root{" not in bundle.split("<style>", 1)[0]
+    assert ":root{" not in bundle[:200]
     assert 'html[data-erp-theme="system"] :root' in bundle
     assert "prefers-color-scheme: dark" in bundle
 
@@ -96,10 +100,10 @@ def test_system_mode_with_os_cookie_injects_known_scheme(theme_module):
 def test_no_separate_theme_override_block(theme_module):
     theme, st = theme_module
     st.session_state["theme_mode"] = "dark"
-    st.markdown.reset_mock()
+    st.html.reset_mock()
     theme.bootstrap_theme(lambda: MagicMock(), None)
     style_blocks = [
-        c.args[0] for c in st.markdown.call_args_list if c.args and "<style>" in c.args[0]
+        c.args[0] for c in st.html.call_args_list if c.args and "<style>" in c.args[0]
     ]
     assert len(style_blocks) == 1
 

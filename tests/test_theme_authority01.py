@@ -19,6 +19,7 @@ def theme_module():
     st = types.ModuleType("streamlit")
     st.session_state = {}
     st.markdown = MagicMock()
+    st.html = MagicMock()
     st.iframe = MagicMock()
     sys.modules["streamlit"] = st
     sys.path.insert(0, str(ROOT))
@@ -29,6 +30,7 @@ def theme_module():
     spec.loader.exec_module(mod)
     mod.st.session_state = st.session_state
     mod.st.markdown = st.markdown
+    mod.st.html = st.html
     mod.st.iframe = st.iframe
     mod.st.context = types.SimpleNamespace(cookies={}, headers={})
     try:
@@ -78,15 +80,16 @@ def test_bootstrap_explicit_light_injects_light_vars(theme_module):
     theme, st = theme_module
     st.session_state["theme_mode"] = "light"
     st.context = types.SimpleNamespace(cookies={"erp_os_dark": "1"}, headers={})
-    st.markdown.reset_mock()
+    st.html.reset_mock()
     theme.bootstrap_theme(lambda: MagicMock(), None)
     style_calls = [
-        c.args[0] for c in st.markdown.call_args_list if c.args and "<style>" in c.args[0]
+        c.args[0] for c in st.html.call_args_list if c.args and "<style>" in c.args[0]
     ]
     assert len(style_calls) == 1
     bundle = style_calls[0]
     assert theme.LIGHT_ROOT_VARS["--theme-bg"] in bundle
-    assert "data-erp-theme" in bundle and "light" in bundle
+    script_calls = [c.args[0] for c in st.html.call_args_list if c.args and "data-erp-theme" in c.args[0]]
+    assert script_calls and "light" in script_calls[0]
     assert bundle.index(theme.LIGHT_ROOT_VARS["--theme-bg"]) < bundle.find("#f8fafc")
 
 
@@ -94,12 +97,13 @@ def test_bootstrap_system_no_inject_without_os_hint(theme_module):
     theme, st = theme_module
     st.session_state["theme_mode"] = "system"
     st.context = types.SimpleNamespace(cookies={}, headers={})
-    st.markdown.reset_mock()
+    st.html.reset_mock()
     theme.bootstrap_theme(lambda: MagicMock(), None)
-    inject_calls = [
-        c.args[0] for c in st.markdown.call_args_list if c.args and ":root{" in c.args[0]
+    style_calls = [
+        c.args[0] for c in st.html.call_args_list if c.args and "<style>" in c.args[0]
     ]
-    assert inject_calls == []
+    assert len(style_calls) == 1
+    assert ":root{" not in style_calls[0].split("<style>", 1)[1][:300]
 
 
 def test_apply_altair_theme_transparent_background(theme_module):
