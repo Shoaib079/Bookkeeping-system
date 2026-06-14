@@ -4511,6 +4511,7 @@ _COMPANY_SCOPED_AT_KEYS = (
     "at_date",
     "at_date_text",
     "at_date_text_sync_from",
+    "at_submit_resolved_date",
     "at_date_follows_today",
     "at_type_idx",
     "at_expense_mode",
@@ -11322,6 +11323,20 @@ def _at_entry_date_error() -> str | None:
     return date_ui.date_text_error("at_date_text", invalid_message=_t("txn.date_invalid"))
 
 
+def _at_capture_submit_resolved_date() -> None:
+    """Pin resolved entry date at submit click (before rerender can clobber widget state)."""
+    st.session_state["at_submit_resolved_date"] = _at_resolve_entry_date()
+
+
+def _at_resolve_submit_date() -> datetime.date:
+    """Return submit-pinned date when present, else resolve from current session state."""
+    cached = st.session_state.pop("at_submit_resolved_date", None)
+    if isinstance(cached, datetime.date):
+        st.session_state["at_date"] = cached
+        return cached
+    return _at_resolve_entry_date()
+
+
 def _at_resolve_entry_date() -> datetime.date:
     """Resolve entry date.
 
@@ -11387,12 +11402,8 @@ def _at_render_desktop_date_field() -> None:
 
     if "at_date_text" not in st.session_state:
         date_ui.seed_date_text_key("at_date_text", d)
-    elif (
-        st.session_state.get("at_date_follows_today")
-        and _at_parse_date_text(st.session_state.get("at_date_text", "")) not in (None, today)
-        and st.session_state.get("at_date") == today
-    ):
-        st.session_state["at_date_text"] = _format_at_display_date(today)
+    elif st.session_state.get("at_date_follows_today", True) is False:
+        st.session_state["at_date_text"] = _format_at_display_date(d)
 
     date_ui.render_preferred_date_input(
         "📅 " + _t("col.date"),
@@ -12301,8 +12312,9 @@ def _mob_at_set_date_choice(
 
 def _mob_at_apply_date_follow_today() -> None:
     """DATE-01 — roll at_date forward when user left it pinned to Today."""
-    if st.session_state.get("at_date_follows_today"):
-        st.session_state["at_date"] = datetime.date.today()
+    if st.session_state.get("at_date_follows_today", True) is False:
+        return
+    st.session_state["at_date"] = datetime.date.today()
 
 
 def _mob_at_date_is_backdated() -> bool:
@@ -12685,6 +12697,7 @@ def _mob_at_render_amount_keypad_fragment(currency_default: str) -> None:
             type="primary",
             use_container_width=True,
         ):
+            _at_capture_submit_resolved_date()
             st.session_state["_mob_at_submit_pending"] = True
             st.session_state["mob_at_save_clicked"] = True
             st.rerun(scope="app")
@@ -13114,7 +13127,7 @@ def _at_gather_submit_fields(
     """Collect submit context from session state (desktop + mobile)."""
     _coerce_at_payment_method(session, txn_type)
     _mob_at_sync_select_widgets()
-    date = _at_resolve_entry_date()
+    date = _at_resolve_submit_date()
     at_notes = st.session_state.get("at_notes_field", "") or ""
     at_payment_method = st.session_state.get("at_pm", "Cash")
     at_fx_rate = float(st.session_state.get("at_fx_rate_val") or 1.0)
@@ -14244,6 +14257,8 @@ def render_add_transaction(session):
                             use_container_width=True,
                             help=_t("txn.save_help"),
                         )
+                        if submitted:
+                            _at_capture_submit_resolved_date()
 
     else:
         with st.container(key="erp_at_desktop_host"):
@@ -14315,9 +14330,7 @@ def _at_save(
 
     if txn_type == "Sale":
         sale_type = payment_method  # "Cash", "Card", or "Credit" — stored as-is
-        if not isinstance(date, datetime.date):
-            date = _at_resolve_entry_date()
-        sale_date = date
+        sale_date = date if isinstance(date, datetime.date) else _at_resolve_submit_date()
         ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         inv_num = f"INV-{ts}"
         _cname = customer_name.strip() or "Walk-in Customer"
