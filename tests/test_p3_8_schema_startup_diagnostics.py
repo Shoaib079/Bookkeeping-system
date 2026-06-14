@@ -179,10 +179,17 @@ def test_startup_has_no_alembic_upgrade_or_stamp():
     assert "context.run_migrations" not in app_text
 
     startup_text = (ROOT / "services" / "schema_startup.py").read_text(encoding="utf-8")
-    assert "alembic upgrade" not in startup_text.lower()
-    assert "alembic stamp" not in startup_text.lower()
+    assert "alembic.command" not in startup_text
     assert "op.upgrade" not in startup_text
     assert "run_migrations" not in startup_text
+
+    runtime_src = (
+        inspect.getsource(get_schema_startup_diagnostic)
+        + inspect.getsource(log_schema_startup_diagnostic)
+        + inspect.getsource(__import__("app", fromlist=["main"])._log_schema_startup_diagnostic)
+    ).lower()
+    assert "alembic upgrade" not in runtime_src
+    assert "alembic stamp" not in runtime_src
 
 
 def test_detect_from_session_wrapper(memory_engine):

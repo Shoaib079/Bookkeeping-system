@@ -9,8 +9,9 @@ from __future__ import annotations
 import logging
 import os
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import Session
@@ -54,6 +55,251 @@ def is_alembic_authoritative_enabled(
     """Read ``ERP_ALEMBIC_AUTHORITATIVE`` from *environ* (default: ``os.environ``)."""
     source = os.environ if environ is None else environ
     return parse_alembic_authoritative_flag(source.get(ALEMBIC_AUTHORITATIVE_ENV_VAR))
+
+
+StartupAction = Literal[
+    "run_migrate_schema",
+    "verify_only",
+    "alembic_upgrade_head",
+    "require_stamp",
+    "fail_closed",
+]
+
+ACTION_RUN_MIGRATE_SCHEMA: StartupAction = "run_migrate_schema"
+ACTION_VERIFY_ONLY: StartupAction = "verify_only"
+ACTION_ALEMBIC_UPGRADE_HEAD: StartupAction = "alembic_upgrade_head"
+ACTION_REQUIRE_STAMP: StartupAction = "require_stamp"
+ACTION_FAIL_CLOSED: StartupAction = "fail_closed"
+
+_KNOWN_SCHEMA_STATUSES = frozenset(
+    {
+        STATUS_UNSTAMPED,
+        "unstamped_legacy",
+        STATUS_AT_HEAD,
+        STATUS_BEHIND_HEAD,
+        STATUS_AHEAD_OF_CODE,
+        STATUS_UNKNOWN,
+    }
+)
+_UNSTAMPED_STATUSES = frozenset({STATUS_UNSTAMPED, "unstamped_legacy"})
+
+
+@dataclass(frozen=True, slots=True)
+class SchemaStartupDecision:
+    """Pure startup decision — no I/O or migration execution."""
+
+    action: StartupAction
+    message: str
+    blocks_startup: bool
+    requires_backup: bool
+    requires_confirmation: bool
+    schema_status: str
+    db_revision: str | None
+    head_revision: str | None
+    dialect: str
+    flag_authoritative: bool
+
+
+def _revision_label(revision: str | None) -> str:
+    return revision if revision is not None else "unknown"
+
+
+def _operator_ready(backup_available: bool, confirmation_given: bool) -> bool:
+    return backup_available and confirmation_given
+
+
+def decide_schema_startup_action(
+    *,
+    flag_authoritative: bool,
+    schema_status: str,
+    is_new_db: bool,
+    dialect: str,
+    backup_available: bool = False,
+    confirmation_given: bool = False,
+    db_revision: str | None = None,
+    head_revision: str | None = None,
+) -> SchemaStartupDecision:
+    """Pure decision for schema startup authority (P3.8-E); no DB/env/Alembic calls."""
+    dialect_norm = dialect.strip().lower()
+    status_norm = schema_status.strip().lower()
+
+    if not flag_authoritative:
+        return SchemaStartupDecision(
+            action=ACTION_RUN_MIGRATE_SCHEMA,
+            message=(
+                "ERP_ALEMBIC_AUTHORITATIVE is off; continue with migrate_schema() "
+                f"(status={status_norm}, dialect={dialect_norm})."
+            ),
+            blocks_startup=False,
+            requires_backup=False,
+            requires_confirmation=False,
+            schema_status=status_norm,
+            db_revision=db_revision,
+            head_revision=head_revision,
+            dialect=dialect_norm,
+            flag_authoritative=False,
+        )
+
+    if status_norm not in _KNOWN_SCHEMA_STATUSES:
+        return _fail_closed_decision(
+            message=(
+                f"Unrecognized schema status {status_norm!r}; startup blocked until "
+                "migration state is resolved."
+            ),
+            schema_status=status_norm,
+            db_revision=db_revision,
+            head_revision=head_revision,
+            dialect=dialect_norm,
+            flag_authoritative=True,
+        )
+
+    if status_norm in {STATUS_AHEAD_OF_CODE, STATUS_UNKNOWN}:
+        return _fail_closed_decision(
+            message=(
+                f"Schema status is {status_norm} "
+                f"(db_revision={_revision_label(db_revision)}, "
+                f"head_revision={_revision_label(head_revision)}); "
+                "startup blocked — resolve deployment mismatch manually."
+            ),
+            schema_status=status_norm,
+            db_revision=db_revision,
+            head_revision=head_revision,
+            dialect=dialect_norm,
+            flag_authoritative=True,
+        )
+
+    if is_new_db:
+        return SchemaStartupDecision(
+            action=ACTION_ALEMBIC_UPGRADE_HEAD,
+            message=(
+                f"New empty database on {dialect_norm}; run alembic upgrade head "
+                f"({_revision_label(head_revision)})."
+            ),
+            blocks_startup=False,
+            requires_backup=False,
+            requires_confirmation=False,
+            schema_status=status_norm,
+            db_revision=db_revision,
+            head_revision=head_revision,
+            dialect=dialect_norm,
+            flag_authoritative=True,
+        )
+
+    if status_norm == STATUS_AT_HEAD:
+        return SchemaStartupDecision(
+            action=ACTION_VERIFY_ONLY,
+            message=(
+                f"Database stamped at Alembic head {_revision_label(head_revision)}; "
+                "verify schema and start."
+            ),
+            blocks_startup=False,
+            requires_backup=False,
+            requires_confirmation=False,
+            schema_status=status_norm,
+            db_revision=db_revision,
+            head_revision=head_revision,
+            dialect=dialect_norm,
+            flag_authoritative=True,
+        )
+
+    if status_norm in _UNSTAMPED_STATUSES:
+        ready = _operator_ready(backup_available, confirmation_given)
+        return SchemaStartupDecision(
+            action=ACTION_REQUIRE_STAMP,
+            message=(
+                f"Legacy unstamped database (status={status_norm}); "
+                f"back up, confirm equivalence, then alembic stamp "
+                f"{_revision_label(head_revision)}."
+                if ready
+                else (
+                    f"Legacy unstamped database (status={status_norm}); "
+                    "backup and operator confirmation required before stamp."
+                )
+            ),
+            blocks_startup=not ready,
+            requires_backup=True,
+            requires_confirmation=True,
+            schema_status=status_norm,
+            db_revision=db_revision,
+            head_revision=head_revision,
+            dialect=dialect_norm,
+            flag_authoritative=True,
+        )
+
+    if status_norm == STATUS_BEHIND_HEAD:
+        ready = _operator_ready(backup_available, confirmation_given)
+        return SchemaStartupDecision(
+            action=ACTION_ALEMBIC_UPGRADE_HEAD,
+            message=(
+                f"Database behind Alembic head "
+                f"(db_revision={_revision_label(db_revision)}, "
+                f"head_revision={_revision_label(head_revision)}); "
+                "run alembic upgrade head."
+                if ready
+                else (
+                    f"Database behind Alembic head "
+                    f"(db_revision={_revision_label(db_revision)}, "
+                    f"head_revision={_revision_label(head_revision)}); "
+                    "backup and operator confirmation required before upgrade."
+                )
+            ),
+            blocks_startup=not ready,
+            requires_backup=True,
+            requires_confirmation=True,
+            schema_status=status_norm,
+            db_revision=db_revision,
+            head_revision=head_revision,
+            dialect=dialect_norm,
+            flag_authoritative=True,
+        )
+
+    if dialect_norm == "postgresql":
+        return _fail_closed_decision(
+            message=(
+                f"PostgreSQL with ERP_ALEMBIC_AUTHORITATIVE on cannot use "
+                f"migrate_schema for status={status_norm}; startup blocked."
+            ),
+            schema_status=status_norm,
+            db_revision=db_revision,
+            head_revision=head_revision,
+            dialect=dialect_norm,
+            flag_authoritative=True,
+        )
+
+    return _fail_closed_decision(
+        message=(
+            f"Ambiguous schema startup state (status={status_norm}, "
+            f"dialect={dialect_norm}); startup blocked."
+        ),
+        schema_status=status_norm,
+        db_revision=db_revision,
+        head_revision=head_revision,
+        dialect=dialect_norm,
+        flag_authoritative=True,
+    )
+
+
+def _fail_closed_decision(
+    *,
+    message: str,
+    schema_status: str,
+    db_revision: str | None,
+    head_revision: str | None,
+    dialect: str,
+    flag_authoritative: bool,
+) -> SchemaStartupDecision:
+    return SchemaStartupDecision(
+        action=ACTION_FAIL_CLOSED,
+        message=message,
+        blocks_startup=True,
+        requires_backup=False,
+        requires_confirmation=False,
+        schema_status=schema_status,
+        db_revision=db_revision,
+        head_revision=head_revision,
+        dialect=dialect,
+        flag_authoritative=flag_authoritative,
+    )
 
 
 class SchemaStartupDiagnostic(TypedDict):
