@@ -30,6 +30,9 @@ TO_DATE = datetime.date(2026, 6, 30)
 
 EXPECTED_PATHS = {
     "/health",
+    "/auth/login",
+    "/auth/me",
+    "/auth/companies",
     "/api/v1/reports/profit-loss",
     "/api/v1/reports/balance-sheet",
     "/api/v1/ledger",
@@ -41,6 +44,7 @@ EXPECTED_PATHS = {
 
 EXPECTED_TAGS = {
     "health",
+    "auth",
     "reports",
     "ledger",
     "receivables",
@@ -240,13 +244,21 @@ class TestOpenApiSchema:
 
     def test_each_business_route_has_summary(self, api_client):
         schema = api_client.get("/openapi.json").json()
-        for path in EXPECTED_PATHS - {"/health"}:
+        for path in EXPECTED_PATHS - {"/health", "/auth/login", "/auth/me", "/auth/companies"}:
             get_op = schema["paths"][path]["get"]
             assert get_op.get("summary"), f"missing summary on {path}"
+        post_login = schema["paths"]["/auth/login"]["post"]
+        assert post_login.get("summary"), "missing summary on /auth/login"
+        for auth_path in ("/auth/me", "/auth/companies"):
+            get_auth = schema["paths"][auth_path]["get"]
+            assert get_auth.get("summary"), f"missing summary on {auth_path}"
 
     def test_route_tags_match_contract(self, api_client):
         schema = api_client.get("/openapi.json").json()
         assert schema["paths"]["/health"]["get"]["tags"] == ["health"]
+        assert schema["paths"]["/auth/login"]["post"]["tags"] == ["auth"]
+        assert schema["paths"]["/auth/me"]["get"]["tags"] == ["auth"]
+        assert schema["paths"]["/auth/companies"]["get"]["tags"] == ["auth"]
         assert schema["paths"]["/api/v1/ledger"]["get"]["tags"] == ["ledger"]
         assert schema["paths"]["/api/v1/receivables"]["get"]["tags"] == ["receivables"]
         assert schema["paths"]["/api/v1/payables"]["get"]["tags"] == ["payables"]

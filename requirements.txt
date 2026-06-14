@@ -6,3 +6,4 @@ lxml>=4.9
 reportlab>=3.6
 fastapi>=0.100
 httpx>=0.24
+PyJWT>=2.8

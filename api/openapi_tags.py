@@ -8,6 +8,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Liveness and readiness probes. No authentication required.",
     },
     {
+        "name": "auth",
+        "description": "Authentication — bearer tokens, identity, and company access.",
+    },
+    {
         "name": "reports",
         "description": "Financial statements (profit & loss, balance sheet).",
     },

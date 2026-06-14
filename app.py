@@ -2778,11 +2778,9 @@ def _restore_secret() -> bytes | None:
 
 def _password_hash_fragment(password_hash: str) -> str:
     """Short fragment of stored hash — invalidates restore token on password change."""
-    try:
-        _salt, key_hex = password_hash.split(":", 1)
-        return key_hex[:16]
-    except Exception:
-        return ""
+    from services.auth import password_hash_fragment
+
+    return password_hash_fragment(password_hash)
 
 
 def _mint_restore_token(
@@ -2906,19 +2904,16 @@ def _try_restore_session_from_cookie(session) -> bool:
 
 def _hash_password(password: str) -> str:
     """Return a salted PBKDF2-SHA256 hash of *password*."""
-    salt = secrets.token_hex(16)
-    key  = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 260_000)
-    return f"{salt}:{key.hex()}"
+    from services.auth import hash_password
+
+    return hash_password(password)
 
 
 def _verify_password(password: str, stored_hash: str) -> bool:
     """Return True if *password* matches *stored_hash*."""
-    try:
-        salt, key_hex = stored_hash.split(":", 1)
-        key = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 260_000)
-        return secrets.compare_digest(key.hex(), key_hex)
-    except Exception:
-        return False
+    from services.auth import verify_password
+
+    return verify_password(password, stored_hash)
 
 
 def initialize_default_user(session):

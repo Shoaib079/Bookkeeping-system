@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from api.openapi_tags import OPENAPI_TAGS
-from api.routes import banking, ledger, partners, payables, receivables, reports
+from api.routes import auth, banking, ledger, partners, payables, receivables, reports
 from services.permissions import PermissionDenied
 
 _API_DESCRIPTION = """\
@@ -27,7 +27,7 @@ def create_app() -> FastAPI:
     """Construct the read-only FastAPI application."""
     app = FastAPI(
         title="Streamlit Accounting ERP API",
-        version="1.2.0",
+        version="1.3.1",
         description=_API_DESCRIPTION,
         openapi_tags=OPENAPI_TAGS,
     )
@@ -41,6 +41,7 @@ def create_app() -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    app.include_router(auth.router, prefix="/auth")
     app.include_router(reports.router, prefix="/api/v1/reports")
     app.include_router(ledger.router, prefix="/api/v1/ledger")
     app.include_router(receivables.router, prefix="/api/v1/receivables")
