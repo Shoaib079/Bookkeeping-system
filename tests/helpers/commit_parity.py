@@ -15,6 +15,17 @@ DEFAULT_TABLES: tuple[type, ...] = (
     models.JournalEntryLine,
     models.AuditLog,
     models.Sale,
+    models.ExpenseRecord,
+    models.ChartOfAccounts,
+    models.BankTransaction,
+    models.BankAccount,
+)
+
+EXPENSE_TABLES: tuple[type, ...] = (
+    models.JournalEntry,
+    models.JournalEntryLine,
+    models.AuditLog,
+    models.ExpenseRecord,
     models.ChartOfAccounts,
     models.BankTransaction,
     models.BankAccount,
@@ -73,12 +84,54 @@ def audit_row_tuples(session: Session) -> list[tuple]:
     ]
 
 
+def expense_row_tuples(session: Session) -> list[tuple]:
+    rows = session.query(models.ExpenseRecord).order_by(models.ExpenseRecord.id).all()
+    return [
+        (
+            r.id,
+            r.expense_type,
+            r.category,
+            r.amount,
+            r.payment_method,
+            r.description,
+            str(r.date),
+            r.company_id,
+            r.credit_card_account_id,
+        )
+        for r in rows
+    ]
+
+
+def bank_txn_row_tuples(session: Session) -> list[tuple]:
+    rows = (
+        session.query(models.BankTransaction)
+        .order_by(models.BankTransaction.id)
+        .all()
+    )
+    return [
+        (
+            t.id,
+            t.account_id,
+            t.amount,
+            t.type,
+            t.description,
+            str(t.date),
+            t.company_id,
+            t.statement_ref,
+            t.is_void,
+        )
+        for t in rows
+    ]
+
+
 def persisted_state_snapshot(
     session: Session,
     *,
     tables: tuple[type, ...] = DEFAULT_TABLES,
     include_journal_lines: bool = True,
     include_sale_rows: bool = True,
+    include_expense_rows: bool = False,
+    include_bank_txn_rows: bool = False,
     include_audit_rows: bool = True,
 ) -> dict[str, Any]:
     """Compact persisted-state fingerprint for internal vs boundary dual-run."""
@@ -87,6 +140,10 @@ def persisted_state_snapshot(
         snap["journal_lines"] = journal_line_tuples(session)
     if include_sale_rows:
         snap["sales"] = sale_row_tuples(session)
+    if include_expense_rows:
+        snap["expenses"] = expense_row_tuples(session)
+    if include_bank_txn_rows:
+        snap["bank_txns"] = bank_txn_row_tuples(session)
     if include_audit_rows:
         snap["audit_rows"] = audit_row_tuples(session)
     return snap
@@ -102,23 +159,29 @@ def dual_run_parity(
     internal_runner: Callable[[Session], None],
     boundary_runner: Callable[[Session], None],
     tables: tuple[type, ...] = DEFAULT_TABLES,
+    snapshot_kwargs: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Run the same flow twice on isolated sessions; return both snapshots.
 
     ``session_factory`` must return a fresh DB each call (e.g. new :memory:
     engine). Callers assert equality — used by future family flip tests only.
     """
+    snap_kw = snapshot_kwargs or {}
     internal_session = session_factory()
     try:
         internal_runner(internal_session)
-        internal_snap = persisted_state_snapshot(internal_session, tables=tables)
+        internal_snap = persisted_state_snapshot(
+            internal_session, tables=tables, **snap_kw
+        )
     finally:
         internal_session.close()
 
     boundary_session = session_factory()
     try:
         boundary_runner(boundary_session)
-        boundary_snap = persisted_state_snapshot(boundary_session, tables=tables)
+        boundary_snap = persisted_state_snapshot(
+            boundary_session, tables=tables, **snap_kw
+        )
     finally:
         boundary_session.close()
 

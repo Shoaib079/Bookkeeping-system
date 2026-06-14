@@ -26,6 +26,9 @@ POSTING_FAMILIES: tuple[str, ...] = (
 # Slice 1 — first boundary flip candidate (cash sale GL post + paired audit only).
 POST_CASH_SALE_FAMILY = "post_cash_sale"
 
+# Slice 2 — expense GL post + paired audit (Add Transaction expense save boundary).
+POST_EXPENSE_FAMILY = "post_expense"
+
 AUDIT_FAMILY = "audit"
 
 
@@ -38,6 +41,7 @@ _DEFAULT_MODES: dict[str, CommitMode] = {
     family: CommitMode.INTERNAL for family in (*POSTING_FAMILIES, AUDIT_FAMILY)
 }
 _DEFAULT_MODES[POST_CASH_SALE_FAMILY] = CommitMode.INTERNAL
+_DEFAULT_MODES[POST_EXPENSE_FAMILY] = CommitMode.INTERNAL
 
 _test_overrides: dict[str, CommitMode] = {}
 
@@ -78,6 +82,7 @@ __all__ = (
     "AUDIT_FAMILY",
     "CommitMode",
     "POST_CASH_SALE_FAMILY",
+    "POST_EXPENSE_FAMILY",
     "POSTING_FAMILIES",
     "get_commit_mode",
     "is_boundary_mode",

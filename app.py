@@ -5608,9 +5608,14 @@ def _save_and_post_expense_record(
             credit_card_account_id=cc_id,
         )
     except ValueError as exc:
+        if boundary_depth() > 0:
+            raise
         session.rollback()
         return False, str(exc)
-    session.commit()
+    if boundary_depth() > 0:
+        session.flush()
+    else:
+        session.commit()
     return True, None
 
 
@@ -5964,6 +5969,15 @@ def post_purchase(session, purchase_id, amount, purchase_date, purchase_type="Cr
 def post_expense(session, expense_id, amount, expense_date, category, payment_method="Cash", currency=None,
                  credit_card_account_id=None):
     """PS-P2c-2 compatibility shim — kernel lives in services/posting.py."""
+    family = _commit_modes.POST_EXPENSE_FAMILY
+    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
+        with boundary_commit_scope(session, family):
+            return posting_service.post_expense(
+                session, expense_id, amount, expense_date, category,
+                payment_method=payment_method, currency=currency,
+                credit_card_account_id=credit_card_account_id,
+                company_id=_current_company_id(),
+            )
     return posting_service.post_expense(
         session, expense_id, amount, expense_date, category,
         payment_method=payment_method, currency=currency,
@@ -14536,30 +14550,65 @@ def _at_save(
             currency=currency, fx_rate=fx_rate, native_amount=_native,
             company_id=_current_company_id(),
         )
-        ok, err = _save_and_post_expense_record(
-            session,
-            record,
-            category=gl_category,
-            payment_method=payment_method,
-            credit_card_account_id=credit_card_account_id,
-        )
-        if not ok:
-            _err = err or _t("txn.save_failed", error="expense")
-            st.error(_err)
-            _at_set_flash("error", _err)
-            return
-        if payment_method == "Bank":
-            _record_named_bank_movement(
+        _expense_audit_logged = False
+        if _commit_modes.is_boundary_mode(_commit_modes.POST_EXPENSE_FAMILY):
+            try:
+                with boundary_commit_scope(session, _commit_modes.POST_EXPENSE_FAMILY):
+                    ok, err = _save_and_post_expense_record(
+                        session,
+                        record,
+                        category=gl_category,
+                        payment_method=payment_method,
+                        credit_card_account_id=credit_card_account_id,
+                    )
+                    if not ok:
+                        raise ValueError(err or "expense")
+                    if payment_method == "Bank":
+                        _record_named_bank_movement(
+                            session,
+                            bank_accounts,
+                            bank_payment_acct_val,
+                            amount=amount,
+                            date=entry_date,
+                            description=f"Expense EXP#{record.id} — {category}",
+                            txn_type="withdrawal",
+                        )
+                    log_audit(
+                        session, "Create", "ExpenseRecord", record.id,
+                        f"{category} expense · {amount:,.2f} {currency}",
+                    )
+                    _expense_audit_logged = True
+            except ValueError as exc:
+                _err = str(exc) or _t("txn.save_failed", error="expense")
+                st.error(_err)
+                _at_set_flash("error", _err)
+                return
+        else:
+            ok, err = _save_and_post_expense_record(
                 session,
-                bank_accounts,
-                bank_payment_acct_val,
-                amount=amount,
-                date=entry_date,
-                description=f"Expense EXP#{record.id} — {category}",
-                txn_type="withdrawal",
+                record,
+                category=gl_category,
+                payment_method=payment_method,
+                credit_card_account_id=credit_card_account_id,
             )
-            session.commit()
-        log_audit(session, "Create", "ExpenseRecord", record.id, f"{category} expense · {amount:,.2f} {currency}")
+            if not ok:
+                _err = err or _t("txn.save_failed", error="expense")
+                st.error(_err)
+                _at_set_flash("error", _err)
+                return
+            if payment_method == "Bank":
+                _record_named_bank_movement(
+                    session,
+                    bank_accounts,
+                    bank_payment_acct_val,
+                    amount=amount,
+                    date=entry_date,
+                    description=f"Expense EXP#{record.id} — {category}",
+                    txn_type="withdrawal",
+                )
+                session.commit()
+            if not _expense_audit_logged:
+                log_audit(session, "Create", "ExpenseRecord", record.id, f"{category} expense · {amount:,.2f} {currency}")
         _flush_pending_attachment(session, "ExpenseRecord", record.id)
         _exp_ok = _t("txn.expense_recorded", category=category)
         st.success(_exp_ok)
