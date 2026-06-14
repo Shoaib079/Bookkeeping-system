@@ -2933,18 +2933,6 @@ def _current_user() -> dict | None:
     return None
 
 
-def _require_role(*roles: str) -> bool:
-    """Return True if the current user has one of *roles*, else False.
-
-    Phase 14B: reads from active_company_role with User.role fallback.
-    """
-    u = _current_user()
-    if u is None:
-        return False
-    role = _current_company_role() or u["role"]
-    return role in roles
-
-
 _PERMISSIONS: dict[str, set[str]] = {
     k: set(v) for k, v in _user_access_svc.LEGACY_PERMISSION_MATRIX.items()
 }
@@ -24561,7 +24549,7 @@ def render_company_settings(session):
             help=_t("prefs.document_language_help"),
         )
 
-    if _require_role("owner"):
+    if _can("manage_users"):
         with st.container(border=True):
             st.markdown(f"**{_t('company_setup.team')}**")
             render_member_roster_summary(session)

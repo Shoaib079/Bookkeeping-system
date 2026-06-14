@@ -407,3 +407,55 @@ class TestCanConvergence:
         for action in _ALL_ACTIONS:
             assert erp_app._can(action) == perms.check_permission(ctx, action)
 
+
+class TestTeamRosterVisibility:
+    def test_company_settings_uses_manage_users_not_require_role(self):
+        import inspect
+
+        src = inspect.getsource(erp_app.render_company_settings)
+        assert '_can("manage_users")' in src
+        assert "render_member_roster_summary" in src
+        assert "_require_role" not in src
+
+    def test_require_role_retired_from_app(self):
+        import inspect
+
+        app_src = inspect.getsource(erp_app)
+        assert "def _require_role" not in app_src
+
+    def test_owner_sees_team_roster_permission(self, session, bind_session_local_to_test):
+        s, co_id, _co_b, owner_id, _mgr_id = session
+        sys.modules["streamlit"].session_state["active_company_id"] = co_id
+        sys.modules["streamlit"].session_state["active_company_role"] = "owner"
+        assert erp_app._can("manage_users") is True
+
+    def test_non_owner_hidden_from_team_roster_permission(
+        self, session, bind_session_local_to_test
+    ):
+        s, co_id, _co_b, _owner_id, mgr_id = session
+        sys.modules["streamlit"].session_state["auth_user"] = {
+            **erp_app._DEV_USER,
+            "id": mgr_id,
+            "role": "manager",
+        }
+        sys.modules["streamlit"].session_state["active_company_id"] = co_id
+        sys.modules["streamlit"].session_state["active_company_role"] = "manager"
+        erp_app._clear_permission_cache()
+        assert erp_app._can("manage_users") is False
+
+    def test_manage_users_grant_override_still_owner_locked(
+        self, session, bind_session_local_to_test
+    ):
+        s, co_id, _co_b, owner_id, mgr_id = session
+        ua.set_override(s, co_id, mgr_id, "manage_users", "grant", owner_id)
+        s.commit()
+        erp_app._clear_permission_cache()
+        sys.modules["streamlit"].session_state["auth_user"] = {
+            **erp_app._DEV_USER,
+            "id": mgr_id,
+            "role": "manager",
+        }
+        sys.modules["streamlit"].session_state["active_company_id"] = co_id
+        sys.modules["streamlit"].session_state["active_company_role"] = "manager"
+        assert erp_app._can("manage_users") is False
+
