@@ -872,30 +872,25 @@ def resolve_payment_credit_account(
     *,
     currency=None,
     company_id: int | None = None,
-    gl_company_id: int | None = None,
 ):
     """Cash/Bank/Company Credit Card → GL account to credit on business payment posting.
 
-    PS-P2b: verbatim from app.py ``_resolve_payment_credit_account``. The shim
-    supplies ``gl_company_id`` from the ambient session company (legacy
-    ``get_account_by_name`` scope). ``company_id`` gates ``company_card_enabled``
-    only on the Credit Card branch — see TD-PS-06.
+    FASTAPI-P0.5b: single explicit ``company_id`` for CC enablement gate and GL lookup.
     """
     pm = (payment_method or "").lower().strip()
     if pm == "bank":
-        return get_account_by_name(session, "Bank", currency=currency, company_id=gl_company_id)
+        return get_account_by_name(session, "Bank", currency=currency, company_id=company_id)
     if pm == "credit card":
-        cid = company_id or gl_company_id
-        if not cid or not company_card_enabled(session, cid):
+        if not company_id or not company_card_enabled(session, company_id):
             raise ValueError(_CC_DISABLED_MSG)
-        cc_acct = get_account_by_name(session, "Credit Card Payable", company_id=gl_company_id)
+        cc_acct = get_account_by_name(session, "Credit Card Payable", company_id=company_id)
         if not cc_acct:
             raise ValueError(_CC_GL_MISSING_MSG)
         return cc_acct
     if pm == "cash":
-        return get_account_by_name(session, "Cash", currency=currency, company_id=gl_company_id)
-    cash_acct = get_account_by_name(session, "Cash", currency=currency, company_id=gl_company_id)
-    bank_acct = get_account_by_name(session, "Bank", currency=currency, company_id=gl_company_id)
+        return get_account_by_name(session, "Cash", currency=currency, company_id=company_id)
+    cash_acct = get_account_by_name(session, "Cash", currency=currency, company_id=company_id)
+    bank_acct = get_account_by_name(session, "Bank", currency=currency, company_id=company_id)
     return cash_acct or bank_acct
 
 
@@ -947,17 +942,13 @@ def sync_company_cc_subledger(
     reference_type: str,
     reference_id: int,
     record=None,
-    ambient_company_id: int | None = None,
 ) -> None:
     """AD-011: mirror GL CC charge on card BankAccount sub-ledger (no extra JE).
 
-    PS-P2c-1: verbatim from app.py ``_sync_company_cc_subledger``. The shim
-    supplies ``ambient_company_id`` from the session company (legacy ambient
-    fallback when ``company_id`` is None).
+    FASTAPI-P0.5b: requires explicit ``company_id`` (no ambient fallback).
     """
     if (payment_method or "") != _COMPANY_CC_METHOD:
         return
-    company_id = company_id or ambient_company_id
     if company_id is None:
         raise ValueError(_CC_NO_CARDS_MSG)
     try:
@@ -991,39 +982,31 @@ def post_expense(
     currency=None,
     credit_card_account_id=None,
     *,
-    gl_company_id: int | None = None,
-    ambient_company_id: int | None = None,
+    company_id: int | None = None,
 ):
-    """Post expense: Debit Expense Account, Credit Cash/Bank/Credit Card Payable.
-
-    PS-P2c-2: verbatim from app.py. Shim supplies ``gl_company_id`` and
-    ``ambient_company_id`` from the session company (legacy ambient GL scope
-    and CC subledger fallback). Record ``company_id`` gates CC enablement via
-    ``resolve_payment_credit_account`` — see TD-PS-06.
-    """
+    """Post expense: Debit Expense Account, Credit Cash/Bank/Credit Card Payable."""
     expense = session.get(ExpenseRecord, expense_id)
-    cid = expense.company_id if expense else None
     credit_acct = resolve_payment_credit_account(
-        session, payment_method, currency=currency, company_id=cid, gl_company_id=gl_company_id
+        session, payment_method, currency=currency, company_id=company_id
     )
     if not credit_acct:
         return
 
     expense_acct = None
     if "rent" in category.lower():
-        expense_acct = get_account_by_name(session, "Rent Expense", company_id=gl_company_id)
+        expense_acct = get_account_by_name(session, "Rent Expense", company_id=company_id)
     elif "salary" in category.lower():
-        expense_acct = get_account_by_name(session, "Salary Expense", company_id=gl_company_id)
+        expense_acct = get_account_by_name(session, "Salary Expense", company_id=company_id)
     elif "utility" in category.lower():
-        expense_acct = get_account_by_name(session, "Utility Expense", company_id=gl_company_id)
+        expense_acct = get_account_by_name(session, "Utility Expense", company_id=company_id)
     elif "advertising" in category.lower():
-        expense_acct = get_account_by_name(session, "Advertising Expense", company_id=gl_company_id)
+        expense_acct = get_account_by_name(session, "Advertising Expense", company_id=company_id)
     elif "fuel" in category.lower():
-        expense_acct = get_account_by_name(session, "Fuel Expense", company_id=gl_company_id)
+        expense_acct = get_account_by_name(session, "Fuel Expense", company_id=company_id)
     elif "office" in category.lower() or "other" in category.lower():
-        expense_acct = get_account_by_name(session, "Office Expense", company_id=gl_company_id)
+        expense_acct = get_account_by_name(session, "Office Expense", company_id=company_id)
     else:
-        expense_acct = get_account_by_name(session, "Office Expense", company_id=gl_company_id)
+        expense_acct = get_account_by_name(session, "Office Expense", company_id=company_id)
 
     if expense_acct:
         create_journal_entry(
@@ -1032,12 +1015,12 @@ def post_expense(
             "Expense", expense_id,
             [(expense_acct.id, amount, 0), (credit_acct.id, 0, amount)],
             currency=currency,
-            company_id=gl_company_id,
+            company_id=company_id,
         )
         sync_company_cc_subledger(
             session,
             payment_method,
-            company_id=cid,
+            company_id=company_id,
             credit_card_account_id=credit_card_account_id
             or (expense.credit_card_account_id if expense else None),
             amount=amount,
@@ -1046,7 +1029,6 @@ def post_expense(
             reference_type="Expense",
             reference_id=expense_id,
             record=expense,
-            ambient_company_id=ambient_company_id,
         )
 
 
@@ -1059,19 +1041,16 @@ def post_payable_payment(
     currency=None,
     credit_card_account_id=None,
     *,
-    gl_company_id: int | None = None,
-    ambient_company_id: int | None = None,
+    company_id: int | None = None,
 ):
     """Post payable payment: Debit AP, Credit Cash/Bank/Credit Card Payable.
 
-    PS-P2c-2: verbatim from app.py. Subledger ``reference_id`` is ``je.id``,
-    not ``payable_id``. Shim supplies ambient GL/CC scope — see TD-PS-06.
+    Subledger ``reference_id`` is ``je.id``, not ``payable_id``.
     """
-    ap_acct = get_account_by_name(session, "Accounts Payable", company_id=gl_company_id)
+    ap_acct = get_account_by_name(session, "Accounts Payable", company_id=company_id)
     payable = session.get(Payable, payable_id)
-    cid = payable.company_id if payable else None
     credit_acct = resolve_payment_credit_account(
-        session, payment_method, currency=currency, company_id=cid, gl_company_id=gl_company_id
+        session, payment_method, currency=currency, company_id=company_id
     )
     if ap_acct and credit_acct:
         je = create_journal_entry(
@@ -1080,12 +1059,12 @@ def post_payable_payment(
             "PayablePayment", payable_id,
             [(ap_acct.id, amount, 0), (credit_acct.id, 0, amount)],
             currency=currency,
-            company_id=gl_company_id,
+            company_id=company_id,
         )
         sync_company_cc_subledger(
             session,
             payment_method,
-            company_id=cid,
+            company_id=company_id,
             credit_card_account_id=credit_card_account_id
             or (payable.credit_card_account_id if payable else None),
             amount=amount,
@@ -1094,7 +1073,6 @@ def post_payable_payment(
             reference_type="PayablePayment",
             reference_id=je.id,
             record=payable,
-            ambient_company_id=ambient_company_id,
         )
 
 
@@ -1143,30 +1121,24 @@ def post_purchase(
     fx_rate=1.0,
     credit_card_account_id=None,
     *,
-    gl_company_id: int | None = None,
-    ambient_company_id: int | None = None,
+    company_id: int | None = None,
 ):
-    """Post purchase journal entry.
-
-    PS-P2c-3: verbatim from app.py. Shim supplies ambient GL/CC scope — see TD-PS-06.
-    """
-    debit_acct = resolve_purchase_debit_account(session, gl_debit, company_id=gl_company_id)
+    """Post purchase journal entry."""
+    debit_acct = resolve_purchase_debit_account(session, gl_debit, company_id=company_id)
     if not debit_acct:
         return
 
     ref_type = purchase_ref_type(purchase_type)
     if purchase_type == "Cash":
-        credit_acct = get_account_by_name(session, "Cash", currency=currency, company_id=gl_company_id)
+        credit_acct = get_account_by_name(session, "Cash", currency=currency, company_id=company_id)
     elif purchase_type == "Bank":
-        credit_acct = get_account_by_name(session, "Bank", currency=currency, company_id=gl_company_id)
+        credit_acct = get_account_by_name(session, "Bank", currency=currency, company_id=company_id)
     elif purchase_type == "Credit Card":
-        purchase = session.get(Purchase, purchase_id)
-        cid = purchase.company_id if purchase else None
         credit_acct = resolve_payment_credit_account(
-            session, "Credit Card", currency=currency, company_id=cid, gl_company_id=gl_company_id
+            session, "Credit Card", currency=currency, company_id=company_id
         )
     else:  # Credit
-        credit_acct = get_account_by_name(session, "Accounts Payable", company_id=gl_company_id)
+        credit_acct = get_account_by_name(session, "Accounts Payable", company_id=company_id)
 
     if credit_acct:
         purchase = session.get(Purchase, purchase_id)
@@ -1176,13 +1148,13 @@ def post_purchase(
             ref_type, purchase_id,
             [(debit_acct.id, amount, 0), (credit_acct.id, 0, amount)],
             currency=currency, fx_rate=fx_rate,
-            company_id=gl_company_id,
+            company_id=company_id,
         )
         if purchase_type == _COMPANY_CC_METHOD:
             sync_company_cc_subledger(
                 session,
                 purchase_type,
-                company_id=purchase.company_id if purchase else None,
+                company_id=company_id,
                 credit_card_account_id=credit_card_account_id
                 or (purchase.credit_card_account_id if purchase else None),
                 amount=amount,
@@ -1191,7 +1163,6 @@ def post_purchase(
                 reference_type=ref_type,
                 reference_id=purchase_id,
                 record=purchase,
-                ambient_company_id=ambient_company_id,
             )
 
 

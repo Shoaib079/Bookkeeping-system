@@ -5631,7 +5631,7 @@ def _sync_company_cc_subledger(
     return posting_service.sync_company_cc_subledger(
         session,
         payment_method,
-        company_id=company_id,
+        company_id=company_id or _current_company_id(),
         credit_card_account_id=credit_card_account_id,
         amount=amount,
         txn_date=txn_date,
@@ -5639,7 +5639,6 @@ def _sync_company_cc_subledger(
         reference_type=reference_type,
         reference_id=reference_id,
         record=record,
-        ambient_company_id=_current_company_id(),
     )
 
 
@@ -5819,8 +5818,7 @@ def _resolve_payment_credit_account(
     """PS-P2b compatibility shim — kernel lives in services/posting.py."""
     return posting_service.resolve_payment_credit_account(
         session, payment_method, currency=currency,
-        company_id=company_id,
-        gl_company_id=_current_company_id(),
+        company_id=company_id or _current_company_id(),
     )
 
 
@@ -5875,8 +5873,7 @@ def post_purchase(session, purchase_id, amount, purchase_date, purchase_type="Cr
         purchase_type=purchase_type, gl_debit=gl_debit,
         currency=currency, fx_rate=fx_rate,
         credit_card_account_id=credit_card_account_id,
-        gl_company_id=_current_company_id(),
-        ambient_company_id=_current_company_id(),
+        company_id=_current_company_id(),
     )
 
 
@@ -5887,8 +5884,7 @@ def post_expense(session, expense_id, amount, expense_date, category, payment_me
         session, expense_id, amount, expense_date, category,
         payment_method=payment_method, currency=currency,
         credit_card_account_id=credit_card_account_id,
-        gl_company_id=_current_company_id(),
-        ambient_company_id=_current_company_id(),
+        company_id=_current_company_id(),
     )
 
 
@@ -5926,8 +5922,7 @@ def post_payable_payment(session, payable_id, amount, date, payment_method="Cash
         session, payable_id, amount, date,
         payment_method=payment_method, currency=currency,
         credit_card_account_id=credit_card_account_id,
-        gl_company_id=_current_company_id(),
-        ambient_company_id=_current_company_id(),
+        company_id=_current_company_id(),
     )
 
 

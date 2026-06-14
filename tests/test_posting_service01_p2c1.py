@@ -19,7 +19,7 @@ def _fn_block(name: str) -> str:
 def test_sync_company_cc_subledger_shim_delegates():
     block = _fn_block("_sync_company_cc_subledger")
     assert "posting_service.sync_company_cc_subledger(" in block
-    assert "ambient_company_id=_current_company_id()" in block
+    assert "company_id=company_id or _current_company_id()" in block
     for leftover in (
         "resolve_company_credit_card_account_id",
         "post_cc_subledger_charge",
@@ -35,7 +35,6 @@ def test_posting_service_has_sync_company_cc_subledger():
     assert "resolve_company_credit_card_account_id" in POSTING_SRC
     assert "post_cc_subledger_charge" in POSTING_SRC
     assert "_CC_NO_CARDS_MSG" in POSTING_SRC
-    assert "ambient_company_id" in POSTING_SRC
 
 
 def test_posting_service_import_purity_ps_p2c1():

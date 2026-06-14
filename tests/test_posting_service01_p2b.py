@@ -19,7 +19,7 @@ def _fn_block(name: str) -> str:
 def test_resolve_payment_credit_account_shim_delegates():
     block = _fn_block("_resolve_payment_credit_account")
     assert "posting_service.resolve_payment_credit_account(" in block
-    assert "gl_company_id=_current_company_id()" in block
+    assert "company_id=company_id or _current_company_id()" in block
     for leftover in ("company_card_enabled", "Credit Card Payable", ".lower().strip()"):
         assert leftover not in block
 
@@ -35,8 +35,8 @@ def test_post_payable_creation_shim_delegates():
 def test_posting_service_has_resolve_and_payable_creation():
     assert "def resolve_payment_credit_account(" in POSTING_SRC
     assert "def post_payable_creation(" in POSTING_SRC
-    assert "gl_company_id" in POSTING_SRC
-    assert "TD-PS-06" in POSTING_SRC or "company_card_enabled" in POSTING_SRC
+    assert "company_id" in POSTING_SRC
+    assert "company_card_enabled" in POSTING_SRC
 
 
 def test_posting_service_import_purity_ps_p2b():

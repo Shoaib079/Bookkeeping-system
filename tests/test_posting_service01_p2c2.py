@@ -19,8 +19,7 @@ def _fn_block(name: str) -> str:
 def test_post_expense_shim_delegates():
     block = _fn_block("post_expense")
     assert "posting_service.post_expense(" in block
-    assert "gl_company_id=_current_company_id()" in block
-    assert "ambient_company_id=_current_company_id()" in block
+    assert "company_id=_current_company_id()" in block
     for leftover in (
         "Rent Expense",
         "resolve_payment_credit_account",
@@ -35,8 +34,7 @@ def test_post_expense_shim_delegates():
 def test_post_payable_payment_shim_delegates():
     block = _fn_block("post_payable_payment")
     assert "posting_service.post_payable_payment(" in block
-    assert "gl_company_id=_current_company_id()" in block
-    assert "ambient_company_id=_current_company_id()" in block
+    assert "company_id=_current_company_id()" in block
     for leftover in (
         "Accounts Payable",
         "resolve_payment_credit_account",
@@ -54,7 +52,6 @@ def test_posting_service_has_post_expense_and_payable_payment():
     assert "def post_payable_payment(" in POSTING_SRC
     assert "reference_id=je.id" in POSTING_SRC
     assert "sync_company_cc_subledger(" in POSTING_SRC
-    assert "gl_company_id" in POSTING_SRC
 
 
 def test_posting_service_import_purity_ps_p2c2():

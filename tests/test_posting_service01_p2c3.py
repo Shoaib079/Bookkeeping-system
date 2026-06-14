@@ -34,8 +34,7 @@ def test_purchase_ref_type_shim_delegates():
 def test_post_purchase_shim_delegates():
     block = _fn_block("post_purchase")
     assert "posting_service.post_purchase(" in block
-    assert "gl_company_id=_current_company_id()" in block
-    assert "ambient_company_id=_current_company_id()" in block
+    assert "company_id=_current_company_id()" in block
     for leftover in (
         "resolve_purchase_debit_account",
         "purchase_ref_type",

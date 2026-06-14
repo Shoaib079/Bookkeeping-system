@@ -201,8 +201,8 @@ class TestResolvePaymentCreditAccount:
             app._resolve_payment_credit_account(db, "Credit Card", company_id=cid)
         assert str(exc.value) == CC_GL_MISSING_MSG
 
-    def test_explicit_company_id_honored_for_credit_card_enablement_only(self, session):
-        """company_id gates company_card_enabled; GL lookup still uses ambient company."""
+    def test_explicit_company_id_used_for_credit_card_gate_and_gl(self, session):
+        """Gate and GL resolve under the same explicit company_id."""
         db, cid = session
         other = _second_company(db, "cc_other")
         set_setting(db, "banking.company_card_enabled", False, company_id=cid)
@@ -217,7 +217,18 @@ class TestResolvePaymentCreditAccount:
         acct = app._resolve_payment_credit_account(
             db, "Credit Card", company_id=other.id
         )
-        assert acct.id == ambient_cc.id
+        assert acct.id == other_cc.id
+
+    def test_credit_card_disabled_on_explicit_company_raises(self, session):
+        db, cid = session
+        other = _second_company(db, "cc_disabled_other")
+        set_setting(db, "banking.company_card_enabled", False, company_id=cid)
+        set_setting(db, "banking.company_card_enabled", True, company_id=other.id)
+        db.commit()
+        _set_active(other.id)
+        with pytest.raises(ValueError) as exc:
+            app._resolve_payment_credit_account(db, "Credit Card", company_id=cid)
+        assert str(exc.value) == CC_DISABLED_MSG
 
     def test_ambient_company_used_when_company_id_omitted_for_credit_card(self, session):
         db, cid = session
@@ -228,16 +239,20 @@ class TestResolvePaymentCreditAccount:
         cc = _acct(db, "Credit Card Payable")
         assert acct.id == cc.id
 
-    def test_explicit_company_id_ignored_for_cash_uses_ambient_company(self, session):
+    def test_explicit_company_id_used_for_cash_gl_lookup(self, session):
         db, cid = session
         other = _second_company(db, "cash_other")
         db.commit()
         _set_active(cid)
         ambient_cash = _acct(db, "Cash")
+        _set_active(other.id)
+        other_cash = _acct(db, "Cash")
+        _set_active(cid)
+        assert ambient_cash.id != other_cash.id
         acct = app._resolve_payment_credit_account(
             db, "Cash", company_id=other.id
         )
-        assert acct.id == ambient_cash.id
+        assert acct.id == other_cash.id
 
     def test_currency_propagates_to_suffixed_cash(self, session):
         db, _cid = session
