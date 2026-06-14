@@ -382,3 +382,28 @@ class TestModulePurity:
         assert "streamlit" not in src
         assert "import app" not in src
         assert "from app" not in src
+
+
+class TestCanConvergence:
+    def test_can_delegates_to_check_permission(self):
+        import inspect
+
+        src = inspect.getsource(erp_app._can)
+        assert "check_permission" in src
+        assert "build_streamlit_request_context" in src
+
+    def test_can_matches_boundary_for_all_actions(self, session, bind_session_local_to_test):
+        s, co_id, _co_b, owner_id, mgr_id = session
+        sys.modules["streamlit"].session_state["active_company_id"] = co_id
+        sys.modules["streamlit"].session_state["active_company_role"] = "manager"
+        sys.modules["streamlit"].session_state["auth_user"] = {
+            **erp_app._DEV_USER,
+            "id": mgr_id,
+            "role": "manager",
+        }
+        erp_app._clear_permission_cache()
+        ctx = erp_app.build_streamlit_request_context(s)
+        assert ctx is not None
+        for action in _ALL_ACTIONS:
+            assert erp_app._can(action) == perms.check_permission(ctx, action)
+

@@ -398,6 +398,7 @@ from services import read_ledger as _read_ledger_svc
 from services import read_ar_ap as _read_ar_ap_svc
 from services import read_partner_statement as _read_pstmt_svc
 from services import audit as _audit_svc
+from services import permissions as _perms_svc
 
 # Initialize database
 Base.metadata.create_all(bind=engine)
@@ -3020,28 +3021,16 @@ def _clear_permission_cache() -> None:
 def _can(action: str) -> bool:
     """Return True if the current user may perform *action*.
 
-    UA-P1: resolves via services.user_access effective permissions when company
-    context is present; falls back to legacy role matrix when absent.
+    FASTAPI-P0.4c: delegates to permission boundary via Streamlit RequestContext.
     """
-    u = _current_user()
-    if u is None:
-        return False
-    cid = _current_company_id()
-    if cid is None:
-        role = _current_company_role() or u.get("role")
-        return role in _PERMISSIONS.get(action, set())
-
-    cache_key = f"_effective_perms_{u['id']}_{cid}"
-    if cache_key not in st.session_state:
-        sess = SessionLocal()
-        try:
-            view = _user_access_svc.effective_permissions(
-                sess, cid, u["id"], membership_role=_current_company_role()
-            )
-            st.session_state[cache_key] = view.effective_keys
-        finally:
-            sess.close()
-    return action in st.session_state[cache_key]
+    sess = SessionLocal()
+    try:
+        ctx = build_streamlit_request_context(sess)
+        if ctx is None:
+            return False
+        return _perms_svc.check_permission(ctx, action)
+    finally:
+        sess.close()
 
 
 def build_streamlit_request_context(session) -> RequestContext | None:
