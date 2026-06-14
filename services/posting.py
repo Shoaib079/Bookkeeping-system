@@ -1197,7 +1197,8 @@ def post_purchase(
 
 
 def post_bank_transaction(
-    session, bank_txn_id, amount, txn_date, txn_type, currency=None, *, company_id: int | None = None
+    session, bank_txn_id, amount, txn_date, txn_type, currency=None, *, company_id: int | None = None,
+    commit_family: str | None = None,
 ):
     """Post bank transaction.
 
@@ -1214,6 +1215,7 @@ def post_bank_transaction(
                 [(bank_acct.id, amount, 0), (cash_acct.id, 0, amount)],
                 currency=currency,
                 company_id=company_id,
+                commit_family=commit_family,
             )
         elif txn_type == "withdrawal":
             create_journal_entry(
@@ -1223,11 +1225,13 @@ def post_bank_transaction(
                 [(cash_acct.id, amount, 0), (bank_acct.id, 0, amount)],
                 currency=currency,
                 company_id=company_id,
+                commit_family=commit_family,
             )
 
 
 def post_bank_transfer(
-    session, txn_id, amount, txn_date, src_name, dest_name, *, company_id: int | None = None
+    session, txn_id, amount, txn_date, src_name, dest_name, *, company_id: int | None = None,
+    commit_family: str | None = None,
 ):
     """Post GL for a bank transfer only when source and destination use different GL accounts.
 
@@ -1250,6 +1254,7 @@ def post_bank_transfer(
         "BankTransfer", txn_id,
         [(dest_gl.id, amount, 0), (src_gl.id, 0, amount)],
         company_id=company_id,
+        commit_family=commit_family,
     )
 
 
