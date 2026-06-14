@@ -59,6 +59,9 @@ YEAR_END_CLOSE_FAMILY = "year_end_close"
 # Slice 7 — bank statement match/post boundary (row + btxn + JE + audit).
 RECONCILIATION_FAMILY = "reconciliation"
 
+# Slice 8 — void cascades boundary (reversal JE + flags + cascade + audit).
+VOID_CASCADE_FAMILY = "void_cascade"
+
 AUDIT_FAMILY = "audit"
 
 
@@ -82,6 +85,7 @@ _DEFAULT_MODES[PROFIT_ALLOCATION_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[PERIOD_CLOSE_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[YEAR_END_CLOSE_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[RECONCILIATION_FAMILY] = CommitMode.INTERNAL
+_DEFAULT_MODES[VOID_CASCADE_FAMILY] = CommitMode.INTERNAL
 
 _test_overrides: dict[str, CommitMode] = {}
 
@@ -132,6 +136,7 @@ __all__ = (
     "POST_RECEIVABLE_PAYMENT_FAMILY",
     "POST_WORKER_MOVEMENT_FAMILY",
     "RECONCILIATION_FAMILY",
+    "VOID_CASCADE_FAMILY",
     "YEAR_END_CLOSE_FAMILY",
     "POSTING_FAMILIES",
     "get_commit_mode",

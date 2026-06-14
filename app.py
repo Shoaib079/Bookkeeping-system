@@ -1597,6 +1597,14 @@ def _recon_boundary_scope(session):
     return nullcontext()
 
 
+def _void_boundary_scope(session):
+    """One boundary commit for void cascade + audit (FASTAPI-P0.5d-S8)."""
+    family = _commit_modes.VOID_CASCADE_FAMILY
+    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
+        return boundary_commit_scope(session, family)
+    return nullcontext()
+
+
 def _entry_date_posting_blocked(
     session, entry_date, *, reference_type: str = "Expense"
 ) -> str | None:
@@ -2383,44 +2391,56 @@ def reverse_journal_entries_for(session, reference_type, reference_id, void_reas
 
 def void_sale(session, sale_id, void_reason):
     """PS-P3-2b compatibility shim — kernel lives in services/posting.py."""
-    ok = posting_service.void_sale(
-        session, sale_id, void_reason,
-        company_id=current_company_required(),
-    )
-    if ok:
-        log_audit(
-            session, "Void", "Sale", sale_id,
-            f"Voided Sale #{sale_id}: {void_reason}",
+    def _run():
+        ok = posting_service.void_sale(
+            session, sale_id, void_reason,
+            company_id=current_company_required(),
         )
-    return ok
+        if ok:
+            log_audit(
+                session, "Void", "Sale", sale_id,
+                f"Voided Sale #{sale_id}: {void_reason}",
+            )
+        return ok
+
+    with _void_boundary_scope(session):
+        return _run()
 
 
 def void_expense(session, expense_id, void_reason):
     """PS-P3-2a compatibility shim — kernel lives in services/posting.py."""
-    ok = posting_service.void_expense(
-        session, expense_id, void_reason,
-        company_id=current_company_required(),
-    )
-    if ok:
-        log_audit(
-            session, "Void", "ExpenseRecord", expense_id,
-            f"Voided Expense #{expense_id}: {void_reason}",
+    def _run():
+        ok = posting_service.void_expense(
+            session, expense_id, void_reason,
+            company_id=current_company_required(),
         )
-    return ok
+        if ok:
+            log_audit(
+                session, "Void", "ExpenseRecord", expense_id,
+                f"Voided Expense #{expense_id}: {void_reason}",
+            )
+        return ok
+
+    with _void_boundary_scope(session):
+        return _run()
 
 
 def void_purchase(session, purchase_id, void_reason):
     """PS-P3-3b compatibility shim — kernel lives in services/posting.py."""
-    ok = posting_service.void_purchase(
-        session, purchase_id, void_reason,
-        company_id=current_company_required(),
-    )
-    if ok:
-        log_audit(
-            session, "Void", "Purchase", purchase_id,
-            f"Voided Purchase #{purchase_id}: {void_reason}",
+    def _run():
+        ok = posting_service.void_purchase(
+            session, purchase_id, void_reason,
+            company_id=current_company_required(),
         )
-    return ok
+        if ok:
+            log_audit(
+                session, "Void", "Purchase", purchase_id,
+                f"Voided Purchase #{purchase_id}: {void_reason}",
+            )
+        return ok
+
+    with _void_boundary_scope(session):
+        return _run()
 
 
 def _purchase_is_credit(purchase_type: str | None) -> bool:
@@ -2501,42 +2521,54 @@ def _sync_purchase_payable_lifecycle(
 
 def void_payable(session, payable_id, void_reason):
     """PS-P3-2a compatibility shim — kernel lives in services/posting.py."""
-    ok = posting_service.void_payable(
-        session, payable_id, void_reason,
-        company_id=current_company_required(),
-    )
-    if ok:
-        log_audit(
-            session, "Void", "Payable", payable_id,
-            f"Voided Payable #{payable_id}: {void_reason}",
+    def _run():
+        ok = posting_service.void_payable(
+            session, payable_id, void_reason,
+            company_id=current_company_required(),
         )
-    return ok
+        if ok:
+            log_audit(
+                session, "Void", "Payable", payable_id,
+                f"Voided Payable #{payable_id}: {void_reason}",
+            )
+        return ok
+
+    with _void_boundary_scope(session):
+        return _run()
 
 
 def void_bank_transaction(session, txn_id, void_reason):
     """PS-P4-2 compatibility shim — kernel lives in services/posting.py."""
-    ok = posting_service.void_bank_transaction(
-        session, txn_id, void_reason,
-        company_id=current_company_required(),
-    )
-    if ok:
-        log_audit(
-            session, "Void", "BankTransaction", txn_id,
-            f"Voided Bank Transaction #{txn_id}: {void_reason}",
+    def _run():
+        ok = posting_service.void_bank_transaction(
+            session, txn_id, void_reason,
+            company_id=current_company_required(),
         )
-    return ok
+        if ok:
+            log_audit(
+                session, "Void", "BankTransaction", txn_id,
+                f"Voided Bank Transaction #{txn_id}: {void_reason}",
+            )
+        return ok
+
+    with _void_boundary_scope(session):
+        return _run()
 
 
 def void_inventory_transaction(session, txn_id, void_reason):
     """PS-P5-2 compatibility shim — kernel lives in services/posting.py."""
-    txn = session.get(InventoryTransaction, txn_id)
-    ok = posting_service.void_inventory_transaction(session, txn_id, void_reason)
-    if ok:
-        log_audit(
-            session, "Void", "InventoryTransaction", txn_id,
-            f"Voided inventory adjustment #{txn_id} for product #{txn.product_id}: {void_reason}",
-        )
-    return ok
+    def _run():
+        txn = session.get(InventoryTransaction, txn_id)
+        ok = posting_service.void_inventory_transaction(session, txn_id, void_reason)
+        if ok:
+            log_audit(
+                session, "Void", "InventoryTransaction", txn_id,
+                f"Voided inventory adjustment #{txn_id} for product #{txn.product_id}: {void_reason}",
+            )
+        return ok
+
+    with _void_boundary_scope(session):
+        return _run()
 
 
 def get_account_by_name(session, name, currency=None):
@@ -6114,14 +6146,18 @@ def post_owner_drawing(session, btxn_id, amount, date, gl_name, currency=None, n
 
 def void_equity_movement(session, ref_type, btxn_id, void_reason):
     """PS-P5-3 compatibility shim — kernel lives in services/posting.py."""
-    posting_service.void_equity_movement(
-        session, ref_type, btxn_id, void_reason,
-        company_id=current_company_required(),
-    )
-    log_audit(
-        session, "Void", "EquityMovement", btxn_id,
-        f"Voided {ref_type} #{btxn_id}: {void_reason}",
-    )
+    def _run():
+        posting_service.void_equity_movement(
+            session, ref_type, btxn_id, void_reason,
+            company_id=current_company_required(),
+        )
+        log_audit(
+            session, "Void", "EquityMovement", btxn_id,
+            f"Voided {ref_type} #{btxn_id}: {void_reason}",
+        )
+
+    with _void_boundary_scope(session):
+        _run()
 
 
 # ── Phase 9C: Cash Reconciliation ─────────────────────────────────────────────
@@ -6378,16 +6414,20 @@ def reject_reconciliation(session, reconciliation_id: int, manager_id: int,
 def void_reconciliation(session, reconciliation_id: int, owner_id: int,
                        reason: str) -> str:
     """PS-P5-4 compatibility shim — kernel lives in services/posting.py."""
-    err = posting_service.void_reconciliation(
-        session, reconciliation_id, owner_id, reason,
-        company_id=current_company_required(),
-    )
-    if not err:
-        log_audit(
-            session, "Void", "DailyCashReconciliation", reconciliation_id,
-            f"Voided by user {owner_id}, reason: {reason}",
+    def _run():
+        err = posting_service.void_reconciliation(
+            session, reconciliation_id, owner_id, reason,
+            company_id=current_company_required(),
         )
-    return err
+        if not err:
+            log_audit(
+                session, "Void", "DailyCashReconciliation", reconciliation_id,
+                f"Voided by user {owner_id}, reason: {reason}",
+            )
+        return err
+
+    with _void_boundary_scope(session):
+        return _run()
 
 
 # ── Phase 9D: End-of-Day Close ────────────────────────────────────────────────
@@ -6570,14 +6610,18 @@ def close_day(session, date: datetime.date, closer_id: int, notes: str) -> tuple
 
 def void_eod_close(session, close_id: int, owner_id: int, reason: str) -> str:
     """PS-P5-4 compatibility shim — kernel lives in services/posting.py."""
-    err = posting_service.void_eod_close(session, close_id, owner_id, reason)
-    if not err:
-        eod = session.get(EndOfDayClose, close_id)
-        log_audit(
-            session, "Void", "EndOfDayClose", close_id,
-            f"Day {eod.date} close voided by user {owner_id}: {reason}",
-        )
-    return err
+    def _run():
+        err = posting_service.void_eod_close(session, close_id, owner_id, reason)
+        if not err:
+            eod = session.get(EndOfDayClose, close_id)
+            log_audit(
+                session, "Void", "EndOfDayClose", close_id,
+                f"Day {eod.date} close voided by user {owner_id}: {reason}",
+            )
+        return err
+
+    with _void_boundary_scope(session):
+        return _run()
 
 
 def _eod_is_stale(session, eod: "EndOfDayClose") -> bool:
@@ -6693,22 +6737,27 @@ def void_partner_movement(session, movement_id: int, voider_id: int, reason: str
     movement = session.get(PartnerMovement, movement_id)
     mv_type = movement.movement_type if movement else ""
     mv_amount = movement.amount if movement else 0.0
-    err = posting_service.void_partner_movement(
-        session,
-        movement_id,
-        voider_id,
-        reason,
-        company_id=current_company_required(),
-    )
-    if err == "":
-        log_audit(
+
+    def _run():
+        err = posting_service.void_partner_movement(
             session,
-            "Void",
-            "PartnerMovement",
             movement_id,
-            f"Voided {mv_type}: {mv_amount:,.2f} — {reason}",
+            voider_id,
+            reason,
+            company_id=current_company_required(),
         )
-    return err
+        if err == "":
+            log_audit(
+                session,
+                "Void",
+                "PartnerMovement",
+                movement_id,
+                f"Voided {mv_type}: {mv_amount:,.2f} — {reason}",
+            )
+        return err
+
+    with _void_boundary_scope(session):
+        return _run()
 
 
 # ─── Workers: staff payroll ledger ─────────────────────────────────────────────
@@ -7595,22 +7644,27 @@ def void_worker_movement(session, movement_id: int, voider_id: int, reason: str)
     movement = session.get(WorkerMovement, movement_id)
     mv_type = movement.movement_type if movement else ""
     mv_amount = movement.amount if movement else 0.0
-    err = posting_service.void_worker_movement(
-        session,
-        movement_id,
-        voider_id,
-        reason,
-        company_id=current_company_required(),
-    )
-    if err == "":
-        log_audit(
+
+    def _run():
+        err = posting_service.void_worker_movement(
             session,
-            "Void",
-            "WorkerMovement",
             movement_id,
-            f"Voided {mv_type}: {mv_amount:,.2f} — {reason}",
+            voider_id,
+            reason,
+            company_id=current_company_required(),
         )
-    return err
+        if err == "":
+            log_audit(
+                session,
+                "Void",
+                "WorkerMovement",
+                movement_id,
+                f"Voided {mv_type}: {mv_amount:,.2f} — {reason}",
+            )
+        return err
+
+    with _void_boundary_scope(session):
+        return _run()
 
 
 def _validate_partner_shares(session):
@@ -7665,22 +7719,27 @@ def void_profit_allocation(session, allocation_id: int, voider_id: int, reason: 
     """PS-P6-3 compatibility shim — kernel lives in services/posting.py."""
     allocation = session.get(PartnerProfitAllocation, allocation_id)
     fiscal_period_id = allocation.fiscal_period_id if allocation else None
-    err = posting_service.void_profit_allocation(
-        session,
-        allocation_id,
-        voider_id,
-        reason,
-        company_id=current_company_required(),
-    )
-    if err == "":
-        log_audit(
+
+    def _run():
+        err = posting_service.void_profit_allocation(
             session,
-            "Void",
-            "PartnerProfitAllocation",
             allocation_id,
-            f"Voided profit allocation for period #{fiscal_period_id} — {reason}",
+            voider_id,
+            reason,
+            company_id=current_company_required(),
         )
-    return err
+        if err == "":
+            log_audit(
+                session,
+                "Void",
+                "PartnerProfitAllocation",
+                allocation_id,
+                f"Voided profit allocation for period #{fiscal_period_id} — {reason}",
+            )
+        return err
+
+    with _void_boundary_scope(session):
+        return _run()
 
 
 def _allocate_all_pending(session, allocated_by_id: int) -> list:
@@ -18556,13 +18615,14 @@ def render_bank_statement_import(session, *, embedded: bool = False):
                     else:
                         try:
                             _u = _current_user()
-                            void_credit_card_bill_payment(
-                                session,
-                                void_row_id,
-                                cid,
-                                void_reason.strip(),
-                                performed_by=_u["username"] if _u else None,
-                            )
+                            with _void_boundary_scope(session):
+                                void_credit_card_bill_payment(
+                                    session,
+                                    void_row_id,
+                                    cid,
+                                    void_reason.strip(),
+                                    performed_by=_u["username"] if _u else None,
+                                )
                             st.success(_t("banking.import.unposted_ok"))
                             st.rerun()
                         except (MatchPostError, ValueError) as exc:

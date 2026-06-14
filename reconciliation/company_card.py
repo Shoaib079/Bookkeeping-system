@@ -404,10 +404,20 @@ def void_credit_card_bill_payment(
             "Only credit card bill payment rows can be unposted with this action."
         )
 
+    from services.commit_modes import VOID_CASCADE_FAMILY
+    from services.posting import _kernel_persist, reverse_journal_entries_for
+
     reason = (void_reason or "").strip() or "Unpost bill payment"
     amt = round(float(row.amount), 2)
 
-    app.reverse_journal_entries_for(session, "BankStmtCCBillPay", row.id, reason)
+    reverse_journal_entries_for(
+        session,
+        "BankStmtCCBillPay",
+        row.id,
+        reason,
+        company_id=company_id,
+        commit_family=VOID_CASCADE_FAMILY,
+    )
 
     if row.bank_transaction_id:
         bank_txn = session.get(BankTransaction, row.bank_transaction_id)
@@ -442,7 +452,7 @@ def void_credit_card_bill_payment(
 
     row.status = "voided"
     session.add(row)
-    session.commit()
+    _kernel_persist(session, commit_family=VOID_CASCADE_FAMILY)
     audit_svc.record_audit(
         session,
         action=audit_svc.ACTION_VOID,

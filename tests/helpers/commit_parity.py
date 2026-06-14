@@ -90,6 +90,22 @@ RECONCILIATION_TABLES: tuple[type, ...] = (
     models.ExpenseRecord,
 )
 
+VOID_CASCADE_TABLES: tuple[type, ...] = (
+    models.JournalEntry,
+    models.JournalEntryLine,
+    models.AuditLog,
+    models.Sale,
+    models.ExpenseRecord,
+    models.Purchase,
+    models.Payable,
+    models.BankTransaction,
+    models.BankAccount,
+    models.PartnerMovement,
+    models.WorkerMovement,
+    models.PartnerProfitAllocation,
+    models.ChartOfAccounts,
+)
+
 
 def table_row_counts(session: Session, tables: tuple[type, ...] = DEFAULT_TABLES) -> dict[str, int]:
     """Serializable row counts keyed by table name."""
@@ -389,6 +405,66 @@ def bank_account_row_tuples(session: Session) -> list[tuple]:
     ]
 
 
+def sale_void_row_tuples(session: Session) -> list[tuple]:
+    rows = session.query(models.Sale).order_by(models.Sale.id).all()
+    return [
+        (
+            s.id,
+            s.is_void,
+            s.status,
+            str(s.voided_at) if s.voided_at else None,
+            s.void_reason,
+            s.company_id,
+        )
+        for s in rows
+    ]
+
+
+def expense_void_row_tuples(session: Session) -> list[tuple]:
+    rows = session.query(models.ExpenseRecord).order_by(models.ExpenseRecord.id).all()
+    return [
+        (
+            r.id,
+            r.is_void,
+            str(r.voided_at) if r.voided_at else None,
+            r.void_reason,
+            r.company_id,
+        )
+        for r in rows
+    ]
+
+
+def purchase_void_row_tuples(session: Session) -> list[tuple]:
+    rows = session.query(models.Purchase).order_by(models.Purchase.id).all()
+    return [
+        (
+            r.id,
+            r.is_void,
+            str(r.voided_at) if r.voided_at else None,
+            r.void_reason,
+            r.purchase_type,
+            r.company_id,
+        )
+        for r in rows
+    ]
+
+
+def payable_void_row_tuples(session: Session) -> list[tuple]:
+    rows = session.query(models.Payable).order_by(models.Payable.id).all()
+    return [
+        (
+            r.id,
+            r.is_void,
+            r.paid,
+            str(r.voided_at) if r.voided_at else None,
+            r.void_reason,
+            r.purchase_id,
+            r.company_id,
+        )
+        for r in rows
+    ]
+
+
 def persisted_state_snapshot(
     session: Session,
     *,
@@ -407,6 +483,10 @@ def persisted_state_snapshot(
     include_year_end_close_rows: bool = False,
     include_bank_statement_rows: bool = False,
     include_bank_account_rows: bool = False,
+    include_sale_void_rows: bool = False,
+    include_expense_void_rows: bool = False,
+    include_purchase_void_rows: bool = False,
+    include_payable_void_rows: bool = False,
     include_audit_rows: bool = True,
 ) -> dict[str, Any]:
     """Compact persisted-state fingerprint for internal vs boundary dual-run."""
@@ -439,6 +519,14 @@ def persisted_state_snapshot(
         snap["bank_statement_rows"] = bank_statement_row_tuples(session)
     if include_bank_account_rows:
         snap["bank_accounts"] = bank_account_row_tuples(session)
+    if include_sale_void_rows:
+        snap["sale_void_rows"] = sale_void_row_tuples(session)
+    if include_expense_void_rows:
+        snap["expense_void_rows"] = expense_void_row_tuples(session)
+    if include_purchase_void_rows:
+        snap["purchase_void_rows"] = purchase_void_row_tuples(session)
+    if include_payable_void_rows:
+        snap["payable_void_rows"] = payable_void_row_tuples(session)
     if include_audit_rows:
         snap["audit_rows"] = audit_row_tuples(session)
     return snap

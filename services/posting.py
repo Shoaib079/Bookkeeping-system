@@ -91,6 +91,7 @@ from services.commit_modes import (
     POST_RECEIVABLE_PAYMENT_FAMILY,
     POST_WORKER_MOVEMENT_FAMILY,
     PROFIT_ALLOCATION_FAMILY,
+    VOID_CASCADE_FAMILY,
     YEAR_END_CLOSE_FAMILY,
     is_boundary_mode,
 )
@@ -1320,6 +1321,7 @@ def create_reversing_journal_entry(
     void_reason,
     *,
     company_id: int | None = None,
+    commit_family: str | None = None,
 ):
     """Swap every debit/credit in original_entry and post as a new entry.
 
@@ -1340,6 +1342,7 @@ def create_reversing_journal_entry(
         original_entry.id,
         reversed_lines,
         company_id=company_id,
+        commit_family=commit_family,
     )
 
 
@@ -1350,6 +1353,7 @@ def reverse_journal_entries_for(
     void_reason,
     *,
     company_id: int | None = None,
+    commit_family: str | None = None,
 ):
     """Find all journal entries for a reference and create reversals.
 
@@ -1364,7 +1368,7 @@ def reverse_journal_entries_for(
     entries = q.all()
     for entry in entries:
         create_reversing_journal_entry(
-            session, entry, void_reason, company_id=company_id
+            session, entry, void_reason, company_id=company_id, commit_family=commit_family
         )
 
 
@@ -1387,12 +1391,17 @@ def void_expense(
         session, "Expense", expense_id, void_reason
     )
     reverse_journal_entries_for(
-        session, "Expense", expense_id, void_reason, company_id=company_id
+        session,
+        "Expense",
+        expense_id,
+        void_reason,
+        company_id=company_id,
+        commit_family=VOID_CASCADE_FAMILY,
     )
     expense.is_void = True
     expense.voided_at = datetime.date.today()
     expense.void_reason = void_reason
-    session.commit()
+    _kernel_persist(session, commit_family=VOID_CASCADE_FAMILY)
     return True
 
 
@@ -1415,15 +1424,25 @@ def void_payable(
         session, "PayablePayment", payable_id, void_reason
     )
     reverse_journal_entries_for(
-        session, "PayableCreation", payable_id, void_reason, company_id=company_id
+        session,
+        "PayableCreation",
+        payable_id,
+        void_reason,
+        company_id=company_id,
+        commit_family=VOID_CASCADE_FAMILY,
     )
     reverse_journal_entries_for(
-        session, "PayablePayment", payable_id, void_reason, company_id=company_id
+        session,
+        "PayablePayment",
+        payable_id,
+        void_reason,
+        company_id=company_id,
+        commit_family=VOID_CASCADE_FAMILY,
     )
     payable.is_void = True
     payable.voided_at = datetime.date.today()
     payable.void_reason = void_reason
-    session.commit()
+    _kernel_persist(session, commit_family=VOID_CASCADE_FAMILY)
     return True
 
 
@@ -1451,6 +1470,7 @@ def void_purchase_linked_payable(
     reason: str,
     *,
     company_id: int | None = None,
+    commit_family: str | None = None,
 ) -> None:
     """Void payable linked to a purchase; reverse PayablePayment GL if paid.
 
@@ -1464,7 +1484,12 @@ def void_purchase_linked_payable(
             session, "PayablePayment", linked.id, reason
         )
         reverse_journal_entries_for(
-            session, "PayablePayment", linked.id, reason, company_id=company_id
+            session,
+            "PayablePayment",
+            linked.id,
+            reason,
+            company_id=company_id,
+            commit_family=commit_family,
         )
     linked.is_void = True
     linked.voided_at = datetime.date.today()
@@ -1491,7 +1516,8 @@ def void_purchase(
         session, ref_type, purchase_id, void_reason
     )
     reverse_journal_entries_for(
-        session, ref_type, purchase_id, void_reason, company_id=company_id
+        session, ref_type, purchase_id, void_reason, company_id=company_id,
+        commit_family=VOID_CASCADE_FAMILY,
     )
     purchase.is_void = True
     purchase.voided_at = datetime.date.today()
@@ -1501,8 +1527,9 @@ def void_purchase(
         purchase_id,
         f"Purchase #{purchase_id} voided: {void_reason}",
         company_id=company_id,
+        commit_family=VOID_CASCADE_FAMILY,
     )
-    session.commit()
+    _kernel_persist(session, commit_family=VOID_CASCADE_FAMILY)
     return True
 
 
@@ -1523,13 +1550,18 @@ def void_sale(
         return False
     for ref_type in ("CashSale", "CardSale", "CreditSale", "ReceivablePayment"):
         reverse_journal_entries_for(
-            session, ref_type, sale_id, void_reason, company_id=company_id
+            session,
+            ref_type,
+            sale_id,
+            void_reason,
+            company_id=company_id,
+            commit_family=VOID_CASCADE_FAMILY,
         )
     sale.is_void = True
     sale.voided_at = datetime.date.today()
     sale.void_reason = void_reason
     sale.status = "Void"
-    session.commit()
+    _kernel_persist(session, commit_family=VOID_CASCADE_FAMILY)
     return True
 
 
@@ -1562,7 +1594,12 @@ def void_bank_transaction(
         return False
     for ref_type in ("BankDeposit", "BankWithdrawal", "BankTransfer"):
         reverse_journal_entries_for(
-            session, ref_type, txn_id, void_reason, company_id=company_id
+            session,
+            ref_type,
+            txn_id,
+            void_reason,
+            company_id=company_id,
+            commit_family=VOID_CASCADE_FAMILY,
         )
     acct = session.get(BankAccount, txn.account_id)
     if acct:
@@ -1597,7 +1634,7 @@ def void_bank_transaction(
     txn.is_void = True
     txn.voided_at = datetime.date.today()
     txn.void_reason = void_reason
-    session.commit()
+    _kernel_persist(session, commit_family=VOID_CASCADE_FAMILY)
     return True
 
 
@@ -1616,7 +1653,7 @@ def void_inventory_transaction(session, txn_id, void_reason):
     txn.is_void = True
     txn.voided_at = datetime.date.today()
     txn.void_reason = void_reason
-    session.commit()
+    _kernel_persist(session, commit_family=VOID_CASCADE_FAMILY)
     return True
 
 
@@ -1633,7 +1670,12 @@ def void_equity_movement(
     PS-P5-3: verbatim from app.py. App shim writes the audit row after success.
     """
     reverse_journal_entries_for(
-        session, ref_type, btxn_id, void_reason, company_id=company_id
+        session,
+        ref_type,
+        btxn_id,
+        void_reason,
+        company_id=company_id,
+        commit_family=VOID_CASCADE_FAMILY,
     )
     btxn = session.get(BankTransaction, btxn_id)
     if btxn and not btxn.is_void:
@@ -1646,7 +1688,7 @@ def void_equity_movement(
         btxn.is_void = True
         btxn.voided_at = datetime.date.today()
         btxn.void_reason = void_reason
-    session.commit()
+    _kernel_persist(session, commit_family=VOID_CASCADE_FAMILY)
 
 
 def void_reconciliation(
@@ -1673,7 +1715,12 @@ def void_reconciliation(
         original_je = session.get(JournalEntry, reconciliation.journal_entry_id)
         if original_je:
             reverse_journal_entries_for(
-                session, "CashReconciliation", reconciliation_id, reason, company_id=company_id
+                session,
+                "CashReconciliation",
+                reconciliation_id,
+                reason,
+                company_id=company_id,
+                commit_family=VOID_CASCADE_FAMILY,
             )
             reversal_q = session.query(JournalEntry).filter(
                 JournalEntry.reference_type == "Reversal",
@@ -1688,7 +1735,7 @@ def void_reconciliation(
     reconciliation.voided_by_id = owner_id
     reconciliation.voided_at = datetime.datetime.now()
     reconciliation.void_reason = reason
-    session.commit()
+    _kernel_persist(session, commit_family=VOID_CASCADE_FAMILY)
     return ""
 
 
@@ -1708,7 +1755,7 @@ def void_eod_close(session, close_id: int, owner_id: int, reason: str) -> str:
     eod.voided_at = datetime.datetime.now()
     eod.void_reason = reason
     eod.status = "voided"
-    session.commit()
+    _kernel_persist(session, commit_family=VOID_CASCADE_FAMILY)
     return ""
 
 
@@ -1882,7 +1929,9 @@ def void_partner_movement(
     if movement.journal_entry_id:
         je = session.get(JournalEntry, movement.journal_entry_id)
         if je:
-            create_reversing_journal_entry(session, je, reason, company_id=company_id)
+            create_reversing_journal_entry(
+                session, je, reason, company_id=company_id, commit_family=VOID_CASCADE_FAMILY
+            )
 
     if movement.bank_transaction_id:
         btxn = session.get(BankTransaction, movement.bank_transaction_id)
@@ -1900,7 +1949,7 @@ def void_partner_movement(
     movement.voided_by_id = voider_id
     movement.voided_at = datetime.datetime.now()
     movement.void_reason = reason
-    session.commit()
+    _kernel_persist(session, commit_family=VOID_CASCADE_FAMILY)
     return ""
 
 
@@ -2095,7 +2144,9 @@ def void_worker_movement(
     if movement.journal_entry_id:
         je = session.get(JournalEntry, movement.journal_entry_id)
         if je:
-            create_reversing_journal_entry(session, je, reason, company_id=company_id)
+            create_reversing_journal_entry(
+                session, je, reason, company_id=company_id, commit_family=VOID_CASCADE_FAMILY
+            )
 
     if movement.bank_transaction_id:
         btxn = session.get(BankTransaction, movement.bank_transaction_id)
@@ -2113,7 +2164,7 @@ def void_worker_movement(
     movement.voided_by_id = voider_id
     movement.voided_at = datetime.datetime.now()
     movement.void_reason = reason
-    session.commit()
+    _kernel_persist(session, commit_family=VOID_CASCADE_FAMILY)
     return ""
 
 
@@ -2291,13 +2342,15 @@ def void_profit_allocation(
     if allocation.journal_entry_id:
         je = session.get(JournalEntry, allocation.journal_entry_id)
         if je:
-            create_reversing_journal_entry(session, je, reason, company_id=company_id)
+            create_reversing_journal_entry(
+                session, je, reason, company_id=company_id, commit_family=VOID_CASCADE_FAMILY
+            )
 
     allocation.is_void = True
     allocation.voided_by_id = voider_id
     allocation.voided_at = datetime.datetime.now()
     allocation.void_reason = reason
-    session.commit()
+    _kernel_persist(session, commit_family=VOID_CASCADE_FAMILY)
     return ""
 
 
