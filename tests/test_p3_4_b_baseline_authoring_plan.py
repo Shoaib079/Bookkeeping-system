@@ -45,19 +45,16 @@ def test_doc_exists():
     assert DOC_PATH.stat().st_size > 0, "Authoring plan doc is empty"
 
 
-def test_no_migration_revision_file_created():
-    """Rule: do not create migration revision files yet."""
+def test_baseline_revision_file_authored():
+    """P3.4-D: only the baseline revision ``0001`` may exist."""
     version_files: list[Path] = []
     for versions_dir in ROOT.glob("**/versions"):
         if versions_dir.is_dir():
             version_files.extend(p for p in versions_dir.glob("*.py") if p.name != "__init__.py")
-    # Also catch a stray baseline revision anywhere in the tree.
-    baseline_like = [
-        p for p in ROOT.glob("**/*.py")
-        if "0001" in p.name and ("baseline" in p.name.lower() or "alembic" in str(p).lower())
-    ]
-    offenders = version_files + baseline_like
-    assert not offenders, f"No migration revision file should exist yet, found: {offenders}"
+    names = sorted({p.name for p in version_files})
+    assert names == ["0001_baseline.py"], (
+        f"Expected only 0001_baseline.py revision, found: {names}"
+    )
 
 
 @pytest.mark.parametrize("section", REQUIRED_SECTIONS)

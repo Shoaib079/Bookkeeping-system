@@ -1,7 +1,7 @@
 # P3.4-C — Baseline Equivalence Harness
 
-**Status:** Shipped (test infrastructure only)  
-**Mode:** Schema fingerprint comparison harness + documentation. **No Alembic `0001` authored.**
+**Status:** Shipped (harness + post-0001 equivalence)  
+**Mode:** Schema fingerprint comparison harness + documentation. **Alembic `0001` authored in P3.4-D** (not applied to production).
 
 **Related:** [P3.4-B Baseline Authoring Plan](./P3_4_B_BASELINE_AUTHORING_PLAN.md) · [P3.4 Alembic Baseline Review](./P3_4_ALEMBIC_BASELINE_REVIEW.md) · `tests/p3_schema_equivalence_utils.py`
 
@@ -13,10 +13,11 @@ Provide the **acceptance-gate harness** that will eventually prove:
 
 | Path | Today (P3.4-C) | After P3.4-D (`0001` exists) |
 |------|----------------|------------------------------|
-| **A — Baseline** | `Base.metadata.create_all` | `alembic upgrade head` (revision `0001`) |
+| **A — Baseline** | `Base.metadata.create_all` | `alembic upgrade head` (revision `0001`) — **authored P3.4-D** |
 | **B — Authoritative** | `create_all` + `migrate_schema()` | Same until cutover |
 
-P3.4-C compares **A vs B now** and documents the **expected drift** that revision `0001` must reconcile. The harness **does not fail** because drift exists — it **asserts the known drift is detected** and reported.
+P3.4-C compares **create_all vs migrate_schema** and documents the **expected pre-0001 drift**.  
+P3.4-D adds **post-0001 equivalence**: Alembic `0001` upgrade vs `migrate_schema`-evolved (must match).
 
 No migration revision is created. No `alembic upgrade`. No stamping. No runtime DB change.
 
@@ -45,16 +46,14 @@ Drift report fields:
 
 ---
 
-## What will be compared after `0001` exists
+## What is compared after `0001` (P3.4-D)
 
-P3.4-D extends this harness:
-
-1. Build **A** from `alembic upgrade head` on ephemeral SQLite
+1. Build **A** from revision `0001` `upgrade()` on ephemeral SQLite (`build_alembic_0001_schema_summary`)
 2. Build **B** from `create_all` + `migrate_schema()` (unchanged until cutover)
-3. **`assert schema equivalence`** — drift must be **empty** (or limited to documented legacy index naming only)
-4. Gate merge on green equivalence before `alembic stamp` on existing DBs
+3. **`assert schema equivalence`** — drift must be **empty**
+4. See [P3.4-D Baseline Migration](./P3_4_D_BASELINE_MIGRATION.md) for acceptance status
 
-Until `0001` is authored, step 3 remains **expect drift**, not equivalence.
+Pre-0001 path (create_all vs migrate) still runs and **expects drift**.
 
 ---
 

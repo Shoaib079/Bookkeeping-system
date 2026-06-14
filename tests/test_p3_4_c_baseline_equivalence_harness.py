@@ -13,12 +13,15 @@ import pytest
 from p3_schema_equivalence_utils import (
     ACCOUNTING_INTEGRITY_UNIQUES,
     COMPOSITE_MIGRATE_ONLY_INDEXES,
+    POST_0001_PHASE,
     PRE_0001_PHASE,
+    assert_alembic_0001_matches_migrate_schema,
     assert_known_pre_0001_drift_detected,
     build_create_all_schema_summary,
     build_migrate_evolved_schema_summary,
     compute_schema_drift,
     format_pre_0001_drift_report,
+    run_post_0001_baseline_equivalence,
     run_pre_0001_baseline_equivalence,
 )
 
@@ -46,14 +49,17 @@ def test_doc_covers_required_topics():
         assert topic in text, f"Doc missing topic: {topic!r}"
 
 
-def test_no_alembic_revision_file_exists():
+def test_only_baseline_revision_exists():
     version_files: list[Path] = []
     for versions_dir in ROOT.glob("**/versions"):
         if versions_dir.is_dir():
             version_files.extend(
                 p for p in versions_dir.glob("*.py") if p.name != "__init__.py"
             )
-    assert not version_files, f"No Alembic revision files yet, found: {version_files}"
+    names = sorted(p.name for p in version_files)
+    assert names == ["0001_baseline.py"], (
+        f"Expected only 0001_baseline.py revision, found: {names}"
+    )
 
 
 def test_harness_does_not_use_runtime_db_engine():
@@ -131,3 +137,10 @@ def test_partial_indexes_captured_in_migrated_summary():
 def test_foreign_keys_extracted():
     summary = build_create_all_schema_summary()
     assert summary["foreign_keys"], "ORM models should declare foreign keys"
+
+
+def test_post_0001_alembic_matches_migrate_schema():
+    """P3.4-D acceptance gate: 0001 upgrade ≡ migrate_schema-evolved."""
+    result = run_post_0001_baseline_equivalence()
+    assert result["drift"]["phase"] == POST_0001_PHASE
+    assert_alembic_0001_matches_migrate_schema(result["drift"])

@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import re
 import sys
+import types
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -45,6 +47,10 @@ COMPOSITE_MIGRATE_ONLY_INDEXES: tuple[str, ...] = (
 COMPANY_ID_INDEX_NAME_FRAGMENT = "_company_id"
 
 PRE_0001_PHASE = "pre-0001-expected-drift"
+POST_0001_PHASE = "post-0001-baseline-equivalence"
+BASELINE_0001_PATH = (
+    Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0001_baseline.py"
+)
 
 
 def _register_models() -> None:
@@ -282,4 +288,94 @@ def run_pre_0001_baseline_equivalence() -> dict[str, Any]:
         "migrated_summary": migrated,
         "drift": drift,
         "report": format_pre_0001_drift_report(drift),
+    }
+
+
+def _load_0001_baseline_module():
+    """Load revision 0001 without requiring ``import alembic`` (local tree shadows package)."""
+    from sqlalchemy import text as sa_text
+
+    source = BASELINE_0001_PATH.read_text(encoding="utf-8")
+    cleaned = "\n".join(
+        line for line in source.splitlines() if line.strip() != "from alembic import op"
+    )
+    mod = types.ModuleType("alembic_baseline_0001")
+    mod.__dict__.update(
+        {
+            "__name__": "alembic_baseline_0001",
+            "annotations": __import__("__future__").annotations,
+            "text": sa_text,
+            "op": None,
+        }
+    )
+    exec(compile(cleaned, str(BASELINE_0001_PATH), "exec"), mod.__dict__)
+    return mod
+
+
+def build_alembic_0001_schema_summary() -> dict[str, Any]:
+    """Schema A — Alembic revision ``0001`` upgrade on ephemeral SQLite.
+
+    Uses this module's ``Base`` (ORM tables registered at import) plus the
+    supplemental index DDL from ``0001_baseline.py``. Avoids calling
+    ``upgrade()`` directly because ``importlib.reload(db)`` in other tests can
+    leave ``db.Base`` detached from ORM tables while ``Base`` here remains valid.
+    """
+    _register_models()
+    mod = _load_0001_baseline_module()
+    engine = _make_in_memory_engine()
+    try:
+        with engine.begin() as connection:
+            Base.metadata.create_all(connection)
+            for ddl in mod._SUPPLEMENTAL_INDEX_SQL:
+                connection.execute(text(ddl))
+        return extract_sqlite_schema_summary(engine)
+    finally:
+        engine.dispose()
+
+
+def compute_post_0001_drift(
+    alembic_summary: dict[str, Any],
+    migrated_summary: dict[str, Any],
+) -> dict[str, Any]:
+    """Diff Alembic 0001 vs migrate_schema-evolved summaries."""
+    drift = compute_schema_drift(alembic_summary, migrated_summary)
+    drift["phase"] = POST_0001_PHASE
+    return drift
+
+
+def format_post_0001_drift_report(drift: dict[str, Any]) -> str:
+    lines = [
+        "P3.4-D baseline equivalence report (post-0001)",
+        f"phase: {drift.get('phase')}",
+        f"equivalent: {drift.get('equivalent')}",
+        f"indexes alembic_0001: {drift.get('index_count_create_all')}",
+        f"indexes migrated: {drift.get('index_count_migrated')}",
+        f"indexes only in migrated: {drift.get('indexes_only_in_migrated')}",
+        f"indexes only in alembic_0001: {drift.get('indexes_only_in_create_all')}",
+        f"column_diffs: {drift.get('column_diffs')}",
+    ]
+    return "\n".join(lines)
+
+
+def assert_alembic_0001_matches_migrate_schema(drift: dict[str, Any]) -> None:
+    """Acceptance gate: 0001 upgrade must match migrate_schema-evolved schema."""
+    assert drift["phase"] == POST_0001_PHASE
+    assert drift["tables_only_in_create_all"] == [], drift["tables_only_in_create_all"]
+    assert drift["tables_only_in_migrated"] == [], drift["tables_only_in_migrated"]
+    assert not drift["column_diffs"], drift["column_diffs"]
+    assert not drift["indexes_only_in_migrated"], drift["indexes_only_in_migrated"]
+    assert not drift["indexes_only_in_create_all"], drift["indexes_only_in_create_all"]
+    assert drift["equivalent"]
+
+
+def run_post_0001_baseline_equivalence() -> dict[str, Any]:
+    """Full harness: Alembic 0001 vs migrate_schema-evolved."""
+    alembic = build_alembic_0001_schema_summary()
+    migrated = build_migrate_evolved_schema_summary()
+    drift = compute_post_0001_drift(alembic, migrated)
+    return {
+        "alembic_summary": alembic,
+        "migrated_summary": migrated,
+        "drift": drift,
+        "report": format_post_0001_drift_report(drift),
     }

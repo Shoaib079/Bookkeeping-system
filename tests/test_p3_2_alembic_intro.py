@@ -82,12 +82,14 @@ def test_env_py_wires_base_metadata():
     assert "target_metadata = Base.metadata" in text
 
 
-def test_no_revision_scripts_with_real_operations():
+def test_baseline_revision_exists_with_expected_metadata():
     py_files = sorted(ALEMBIC_VERSIONS.glob("*.py"))
-    assert py_files == [], (
-        "P3.2-A must not add alembic/versions/*.py revisions yet; "
-        f"found: {[p.name for p in py_files]}"
+    assert [p.name for p in py_files] == ["0001_baseline.py"], (
+        f"Expected only 0001_baseline.py, found: {[p.name for p in py_files]}"
     )
+    source = py_files[0].read_text(encoding="utf-8")
+    assert 'revision = "0001"' in source
+    assert "down_revision = None" in source
 
 
 def test_alembic_ini_points_at_script_location():
@@ -160,8 +162,10 @@ def _upgrade_body_is_noop(source: str) -> bool:
 
 
 def test_any_placeholder_revision_is_documented_noop():
-    """If a placeholder .py revision exists, upgrade() must be pass-only."""
+    """P3.2-A placeholder revisions must be pass-only; 0001 is a real baseline (P3.4-D)."""
     for path in ALEMBIC_VERSIONS.glob("*.py"):
+        if path.name == "0001_baseline.py":
+            continue
         source = path.read_text(encoding="utf-8")
         for pattern in DDL_OPERATION_PATTERNS:
             assert not re.search(pattern, source), (
