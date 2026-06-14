@@ -3130,6 +3130,26 @@ def _at_defer_date_text_display(d: datetime.date) -> None:
     st.session_state["at_date_text_sync_from"] = d
 
 
+def _at_defer_subcat_default(name: str) -> None:
+    """Queue desktop subcategory selectbox value — applied before widget renders."""
+    st.session_state["at_subcat_sync_from"] = name
+
+
+def _at_defer_subcat_clear() -> None:
+    """Queue clearing desktop subcategory selectbox — applied before widget renders."""
+    st.session_state["at_subcat_sync_clear"] = True
+
+
+def _at_apply_deferred_subcat_sync() -> None:
+    """Apply queued subcategory display (call only before at_subcat widget render)."""
+    if st.session_state.pop("at_subcat_sync_clear", False):
+        st.session_state.pop("at_subcat", None)
+        return
+    sync_from = st.session_state.pop("at_subcat_sync_from", None)
+    if sync_from and isinstance(sync_from, str):
+        st.session_state["at_subcat"] = sync_from
+
+
 def _at_apply_deferred_date_text_sync() -> None:
     """Apply queued date display to at_date_text (call only before widget render)."""
     sync_from = st.session_state.pop("at_date_text_sync_from", None)
@@ -4511,6 +4531,8 @@ _COMPANY_SCOPED_AT_KEYS = (
     "at_date",
     "at_date_text",
     "at_date_text_sync_from",
+    "at_subcat_sync_from",
+    "at_subcat_sync_clear",
     "at_submit_resolved_date",
     "at_date_follows_today",
     "at_type_idx",
@@ -11337,6 +11359,34 @@ def _at_resolve_submit_date() -> datetime.date:
     return _at_resolve_entry_date()
 
 
+def _at_resolve_submit_subcategory(
+    session, at_cat_id: int | None
+) -> tuple[str | None, list]:
+    """Resolve subcategory for submit without mutating widget-bound at_subcat."""
+    if not at_cat_id:
+        return None, []
+    subcats_list = (
+        cq(session, TransactionSubcategory)
+        .filter_by(category_id=at_cat_id, is_active=True)
+        .order_by(TransactionSubcategory.name)
+        .all()
+    )
+    if not subcats_list:
+        return None, []
+
+    sid = st.session_state.get("mob_at_subcat_id")
+    if sid:
+        sub = session.get(TransactionSubcategory, sid)
+        if sub and sub.category_id == at_cat_id and sub.is_active:
+            return sub.name, subcats_list
+
+    cur = st.session_state.get("at_subcat")
+    if cur and cur in [s.name for s in subcats_list]:
+        return cur, subcats_list
+
+    return subcats_list[0].name, subcats_list
+
+
 def _at_resolve_entry_date() -> datetime.date:
     """Resolve entry date.
 
@@ -11624,14 +11674,14 @@ def _mob_at_apply_default_subcategory(session, cat_id: int | None) -> None:
         if sub and sub.category_id == cat_id and sub.is_active:
             return
         st.session_state.pop("mob_at_subcat_id", None)
-        st.session_state.pop("at_subcat", None)
+        _at_defer_subcat_clear()
     subcats = _mob_at_subcategory_options(session, cat_id)
     if not subcats:
         return
     first = subcats[0]
     if first.subcat_id:
         st.session_state["mob_at_subcat_id"] = first.subcat_id
-        st.session_state["at_subcat"] = first.label
+        _at_defer_subcat_default(first.label)
 
 
 def _mob_at_apply_category_pick(
@@ -13174,28 +13224,9 @@ def _at_gather_submit_fields(
             if at_cat:
                 at_cat_id = at_cat.id
         if at_cat_id:
-            _mob_at_apply_default_subcategory(session, at_cat_id)
-
-        sid = st.session_state.get("mob_at_subcat_id")
-        if sid and at_cat_id:
-            sub = session.get(TransactionSubcategory, sid)
-            if sub and sub.category_id == at_cat_id:
-                at_subcat_name = sub.name
-                subcats_list = (
-                    cq(session, TransactionSubcategory)
-                    .filter_by(category_id=at_cat_id, is_active=True)
-                    .order_by(TransactionSubcategory.name)
-                    .all()
-                )
-        elif at_cat_id and st.session_state.get("at_subcat"):
-            subcats_list = (
-                cq(session, TransactionSubcategory)
-                .filter_by(category_id=at_cat_id, is_active=True)
-                .order_by(TransactionSubcategory.name)
-                .all()
+            at_subcat_name, subcats_list = _at_resolve_submit_subcategory(
+                session, at_cat_id
             )
-            if st.session_state["at_subcat"] in [s.name for s in subcats_list]:
-                at_subcat_name = st.session_state["at_subcat"]
 
     invoice_choices: list = []
     invoice_choice_val = None
@@ -13339,15 +13370,15 @@ def _at_process_submit(
     ):
         st.error(sp_err)
         _at_set_flash("error", sp_err)
-    elif txn_type == "Supplier Payment" and st.session_state.get("at_payable_id"):
-        payable = session.get(Payable, st.session_state["at_payable_id"])
-        if payable and (
-            pay_err := _validate_payable_payment_amount(
-                payable, amount, currency=currency_default
-            )
-        ):
-            st.error(pay_err)
-            _at_set_flash("error", pay_err)
+    elif txn_type == "Supplier Payment" and st.session_state.get("at_payable_id") and (
+        not (payable := session.get(Payable, st.session_state["at_payable_id"]))
+        or (pay_err := _validate_payable_payment_amount(
+            payable, amount, currency=currency_default
+        ))
+    ):
+        _sp_pay_err = pay_err or _t("txn.payable_missing")
+        st.error(_sp_pay_err)
+        _at_set_flash("error", _sp_pay_err)
     elif txn_type == "Customer Payment" and not open_sales:
         st.error(_t("txn.no_credit_invoices"))
     elif txn_type == "Customer Payment" and open_sales and not ctx.get("invoice_choice_val"):
@@ -14327,10 +14358,11 @@ def _at_save(
     # Compute native amount (Step 1.3)
     _reporting_ccy = load_settings().get("currency", "TRY")
     _native = round(amount * fx_rate, 2) if fx_rate and fx_rate != 1.0 else amount
+    entry_date = date if isinstance(date, datetime.date) else _at_resolve_submit_date()
 
     if txn_type == "Sale":
         sale_type = payment_method  # "Cash", "Card", or "Credit" — stored as-is
-        sale_date = date if isinstance(date, datetime.date) else _at_resolve_submit_date()
+        sale_date = entry_date
         ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         inv_num = f"INV-{ts}"
         _cname = customer_name.strip() or "Walk-in Customer"
@@ -14427,7 +14459,7 @@ def _at_save(
                     session,
                     worker_id,
                     "Salary",
-                    date,
+                    entry_date,
                     bank_account_id=ba.id,
                     gross_salary=gross,
                     deductions=ded,
@@ -14441,7 +14473,7 @@ def _at_save(
                     session,
                     worker_id,
                     "Advance",
-                    date,
+                    entry_date,
                     bank_account_id=ba.id,
                     amount=amount,
                     notes=notes.strip() or None,
@@ -14470,7 +14502,7 @@ def _at_save(
             return
 
         record = ExpenseRecord(
-            date=date,
+            date=entry_date,
             expense_type=category,
             category=gl_category,
             description=notes.strip(),
@@ -14503,7 +14535,7 @@ def _at_save(
                 bank_accounts,
                 bank_payment_acct_val,
                 amount=amount,
-                date=date,
+                date=entry_date,
                 description=f"Expense EXP#{record.id} — {category}",
                 txn_type="withdrawal",
             )
@@ -14524,7 +14556,7 @@ def _at_save(
             return
         gl_debit = category if category else "Inventory"
         record = Purchase(
-            date=date,
+            date=entry_date,
             vendor_id=vendor.id,
             amount=amount,
             description=notes.strip(),
@@ -14540,7 +14572,7 @@ def _at_save(
         session.commit()
         try:
             post_purchase(
-                session, record.id, amount, date, payment_method, gl_debit,
+                session, record.id, amount, entry_date, payment_method, gl_debit,
                 currency=currency, fx_rate=fx_rate,
                 credit_card_account_id=credit_card_account_id,
             )
@@ -14549,10 +14581,10 @@ def _at_save(
             return
         if payment_method == "Credit":
             payable = Payable(
-                date=date,
+                date=entry_date,
                 vendor_id=vendor.id,
                 amount=amount,
-                due_date=date + datetime.timedelta(days=30),
+                due_date=entry_date + datetime.timedelta(days=30),
                 paid=False,
                 description=f"From Purchase #{record.id}: {notes.strip()}",
                 expense_category=gl_debit,
@@ -14571,7 +14603,7 @@ def _at_save(
                     bank_accounts,
                     bank_payment_acct_val,
                     amount=amount,
-                    date=date,
+                    date=entry_date,
                     description=f"Purchase PUR#{record.id}",
                     txn_type="withdrawal",
                 )
@@ -14614,7 +14646,7 @@ def _at_save(
         session.commit()
         try:
             post_payable_payment(
-                session, payable.id, amount, date, payment_method, currency=currency,
+                session, payable.id, amount, entry_date, payment_method, currency=currency,
                 credit_card_account_id=credit_card_account_id,
             )
         except ValueError as exc:
@@ -14626,7 +14658,7 @@ def _at_save(
                 bank_accounts,
                 bank_payment_acct_val,
                 amount=amount,
-                date=date,
+                date=entry_date,
                 description=f"Supplier payment PAY#{payable.id}",
                 txn_type="withdrawal",
             )
@@ -14646,7 +14678,7 @@ def _at_save(
             st.error(_t("txn.invoice_not_found"))
             return
         sale = open_sales[idx]
-        err = post_receivable_payment(session, sale.id, amount, date, payment_method, currency=currency)
+        err = post_receivable_payment(session, sale.id, amount, entry_date, payment_method, currency=currency)
         if err:
             st.error(err)
         else:
@@ -14656,7 +14688,7 @@ def _at_save(
                     bank_accounts,
                     bank_payment_acct_val,
                     amount=amount,
-                    date=date,
+                    date=entry_date,
                     description=f"Customer payment {sale.invoice_number}",
                     txn_type="deposit",
                 )
@@ -14686,17 +14718,17 @@ def _at_save(
             acct.balance = (acct.balance or 0) - amount
             dest.balance = (dest.balance or 0) + amount
             txn = BankTransaction(
-                account_id=acct.id, date=date, amount=amount,
+                account_id=acct.id, date=entry_date, amount=amount,
                 type="transfer", description=notes.strip(),
             )
             txn2 = BankTransaction(
-                account_id=dest.id, date=date, amount=amount,
+                account_id=dest.id, date=entry_date, amount=amount,
                 type="transfer",
                 description=f"Transfer from {acct.name}: {notes.strip()}",
             )
             session.add_all([txn, txn2])
             session.commit()
-            post_bank_transfer(session, txn.id, amount, date, acct.name, dest.name)
+            post_bank_transfer(session, txn.id, amount, entry_date, acct.name, dest.name)
             log_audit(session, "Create", "BankTransaction", txn.id,
                       f"Transfer {amount:,.2f} from {acct.name} → {dest.name}")
             st.success(_t("txn.transfer_recorded", amount=amount, from_acct=acct.name, to_acct=dest.name))
@@ -14707,12 +14739,12 @@ def _at_save(
             else:
                 acct.balance = (acct.balance or 0) - amount
             txn = BankTransaction(
-                account_id=acct.id, date=date, amount=amount,
+                account_id=acct.id, date=entry_date, amount=amount,
                 type=ttype, description=notes.strip(),
             )
             session.add(txn)
             session.commit()
-            post_bank_transaction(session, txn.id, amount, date, ttype, currency=currency)
+            post_bank_transaction(session, txn.id, amount, entry_date, ttype, currency=currency)
             log_audit(session, "Create", "BankTransaction", txn.id,
                       f"Bank {bank_sub} {amount:,.2f} {currency} — {acct.name}")
             _bk = bank_sub.lower()
@@ -23549,8 +23581,10 @@ def _inline_subcat_row(session, at_cat, *, inside_form: bool = False):
         return None, []
 
     if st.session_state.get("at_last_cat_id") != at_cat.id:
-        st.session_state.pop("at_subcat", None)
+        _at_defer_subcat_clear()
         st.session_state["at_last_cat_id"] = at_cat.id
+
+    _at_apply_deferred_subcat_sync()
 
     subcats_list = _at_filter_transaction_categories(
         cq(session, TransactionSubcategory)

@@ -141,4 +141,5 @@ def test_process_submit_uses_post_save_clear_helper():
 def test_inline_subcat_row_resets_subcat_when_category_changes():
     src = inspect.getsource(erp._inline_subcat_row)
     assert "at_last_cat_id" in src
-    assert 'st.session_state.pop("at_subcat", None)' in src
+    assert "_at_defer_subcat_clear()" in src
+    assert "_at_apply_deferred_subcat_sync()" in src
