@@ -199,6 +199,11 @@ def _theme_authority_script(theme_mode: str) -> str:
     )
 
 
+def _inject_style_html(css: str) -> None:
+    """Inject CSS via st.html — style-only blocks go to the event container (Streamlit 1.58+)."""
+    st.html(f"<style>{css}</style>")
+
+
 def render_global_style(
     *,
     root_prefix: str = "",
@@ -211,8 +216,9 @@ def render_global_style(
         css = root_prefix + "\n" + _strip_first_root_block(css)
     if extra_css:
         css = css + "\n" + extra_css
-    authority = _theme_authority_script(theme_mode) if theme_mode else ""
-    st.markdown(f"{authority}<style>{css}</style>", unsafe_allow_html=True)
+    if theme_mode:
+        st.html(_theme_authority_script(theme_mode), unsafe_allow_javascript=True)
+    _inject_style_html(css)
 
 
 def inject_mobile_viewport_detector() -> None:
@@ -275,7 +281,7 @@ def inject_theme_css(dark_mode: bool) -> None:
     """Override :root for the user's saved light/dark preference."""
     vars_map = DARK_ROOT_VARS if dark_mode else LIGHT_ROOT_VARS
     extra = _DARK_MONO_KPI_CSS if dark_mode else ""
-    st.markdown(f"<style>{_vars_to_css_block(vars_map)}{extra}</style>", unsafe_allow_html=True)
+    _inject_style_html(f"{_vars_to_css_block(vars_map)}{extra}")
 
 
 def role_accent_css_var(role: str | None) -> str:
