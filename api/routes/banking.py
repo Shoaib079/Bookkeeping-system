@@ -15,12 +15,24 @@ from services.context import RequestContext
 
 router = APIRouter(tags=["banking"])
 
+_READINESS_LIMIT_MAX = 100
 
-@router.get("/readiness")
+
+@router.get(
+    "/readiness",
+    summary="Bank statement import readiness",
+    description=(
+        "Recent statement imports with tie-out and workflow readiness. "
+        f"``limit`` is capped at {_READINESS_LIMIT_MAX}."
+    ),
+)
 def get_banking_readiness(
     session: Annotated[Session, Depends(get_db)],
     context: Annotated[RequestContext, Depends(get_request_context)],
-    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+    limit: Annotated[
+        int,
+        Query(ge=1, le=_READINESS_LIMIT_MAX, description="Max imports to return"),
+    ] = 10,
 ) -> dict:
     company_id = require_company_read_access(
         session,
@@ -34,4 +46,4 @@ def get_banking_readiness(
         company_id,
         limit=limit,
     )
-    return statement_readiness_list_to_dict(items)
+    return statement_readiness_list_to_dict(items, limit=limit)

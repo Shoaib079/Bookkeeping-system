@@ -402,7 +402,12 @@ class TestReadEndpointsReturnJson:
             key: seeded_tenant[param_key]
             for key, param_key in extra_params.items()
         }
-        expected = to_dict(compute_fn(db, **kwargs_fn(db, seeded_tenant)))
+        compute_kwargs = kwargs_fn(db, seeded_tenant)
+        result = compute_fn(db, **compute_kwargs)
+        if name == "banking_readiness":
+            expected = to_dict(result, limit=compute_kwargs["limit"])
+        else:
+            expected = to_dict(result)
         resp = api_client.get(
             path,
             params=params,

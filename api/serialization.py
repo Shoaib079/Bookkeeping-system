@@ -232,5 +232,12 @@ def statement_readiness_to_dict(item: StatementReadiness) -> dict[str, Any]:
 
 def statement_readiness_list_to_dict(
     items: tuple[StatementReadiness, ...],
+    *,
+    limit: int | None = None,
 ) -> dict[str, Any]:
-    return {"items": [statement_readiness_to_dict(i) for i in items]}
+    payload: dict[str, Any] = {
+        "items": [statement_readiness_to_dict(i) for i in items],
+    }
+    if limit is not None:
+        payload["meta"] = {"limit": limit, "count": len(items)}
+    return payload

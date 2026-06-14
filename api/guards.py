@@ -1,4 +1,10 @@
-"""Shared API permission and company guards."""
+"""Shared API permission and company guards.
+
+HTTP mapping (P1.2):
+- 401: raised by ``get_request_context`` when ``X-User-Id`` is absent
+- 400: ``require_company`` when ``X-Company-Id`` is absent
+- 403: membership or permission failure
+"""
 
 from __future__ import annotations
 

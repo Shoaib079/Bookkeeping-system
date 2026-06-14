@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from api.dependencies import get_db, get_request_context
+from api.errors import NOT_FOUND_PARTNER_STATEMENT
 from api.guards import require_company_read_access
 from api.serialization import partner_statement_to_dict
 from services import read_partner_statement
@@ -17,7 +18,12 @@ from services.context import RequestContext
 router = APIRouter(tags=["partners"])
 
 
-@router.get("/{partner_id}/statement")
+@router.get(
+    "/{partner_id}/statement",
+    summary="Partner settlement statement",
+    description="Opening/closing position and movement detail for one partner.",
+    responses={404: {"description": "Partner not found or not in company scope."}},
+)
 def get_partner_statement(
     partner_id: int,
     from_date: datetime.date,
@@ -41,5 +47,5 @@ def get_partner_statement(
         to_date=to_date,
     )
     if data is None:
-        raise HTTPException(status_code=404, detail="Partner statement not found.")
+        raise HTTPException(status_code=404, detail=NOT_FOUND_PARTNER_STATEMENT)
     return partner_statement_to_dict(data)

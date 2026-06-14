@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
+from api.errors import AUTH_MISSING_DETAIL
 from db import SessionLocal
 from models import CompanyUser, User
 from services.context import RequestContext, build_request_context
@@ -30,7 +31,7 @@ def get_request_context(
 ) -> RequestContext:
     """Build RequestContext from dev/test headers (no JWT yet)."""
     if x_user_id is None:
-        raise HTTPException(status_code=401, detail="X-User-Id header required")
+        raise HTTPException(status_code=401, detail=AUTH_MISSING_DETAIL)
 
     user = session.get(User, x_user_id)
     fallback_role = user.role if user is not None else None

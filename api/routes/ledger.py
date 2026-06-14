@@ -17,9 +17,17 @@ from services.context import RequestContext
 router = APIRouter(tags=["ledger"])
 
 
-@router.get("")
+@router.get(
+    "",
+    summary="General ledger for one account",
+    description=(
+        "Journal lines for a single chart-of-accounts row with optional date "
+        "filters and keyword search. Returns all matching rows (no pagination "
+        "in P1; cursor/page support may be added later)."
+    ),
+)
 def get_ledger(
-    account_id: Annotated[int, Query()],
+    account_id: Annotated[int, Query(description="Chart of accounts row id")],
     session: Annotated[Session, Depends(get_db)],
     context: Annotated[RequestContext, Depends(get_request_context)],
     start_date: datetime.date | None = None,
