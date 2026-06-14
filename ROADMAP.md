@@ -1,10 +1,143 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** 2026-06-05 (PARTNER-STATEMENT-01 P4 shipped)  
+**Last updated:** 2026-06-14 (ROADMAP-PRINCIPLES-01 — locked ERP core principles + BANKING-UX-04 + DATE CONTROL)  
 **Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
+
+---
+
+## ERP Core Principles (Locked)
+
+**Status:** Locked architectural principles — learned during Streamlit ERP development (2026).  
+**Authority:** Governs all future work (Streamlit, FastAPI, React). Documentation only; no retroactive code mandate beyond what is already shipped.
+
+These ten principles are the official project contract. They extend and consolidate [ARCHITECTURE-PROTECTION-01](#architecture-protection-01--service-first-development-rule), [MIGRATION-READINESS-01](#migration-readiness-01--fastapireact-ready-service-checklist), and related rules below.
+
+### 1. Business Logic First
+
+Always:
+
+```text
+Models → Services → Tests → UI
+```
+
+Never place business logic in Streamlit UI. Rule remains migration-safe for FastAPI + React.
+
+### 2. Explicit Company Scoping
+
+Services should prefer:
+
+```python
+company_id=...
+```
+
+Avoid ambient company access inside services. Multi-company isolation is a non-negotiable invariant.
+
+### 3. Accounting Integrity
+
+Never delete accounting records. Use:
+
+```text
+Void → Reverse → Audit
+```
+
+Audit trail is mandatory.
+
+### 4. State Management Rules
+
+Every form must explicitly define:
+
+- What persists?
+- What resets?
+- When?
+- Why?
+
+Hidden state must never affect save.
+
+### 5. Add Transaction Retention Policy (Locked)
+
+After save:
+
+| Action | Fields |
+|--------|--------|
+| **KEEP** | Transaction type/section · date |
+| **RESET** | Everything else |
+
+Defaults may re-seed safely on rerun. Shipped as **RETENTION-01** / UX-04A evolution.
+
+### 6. Date Ownership Standard
+
+Date is captured at **submit time**. Single resolved date flows through:
+
+```text
+UI → Model → Journal Entry → Bank Movement → Reports
+```
+
+User-selected date must never be replaced by today's date.
+
+### 7. Desktop/Mobile Unity
+
+Desktop and mobile are **two interfaces of the same ERP** — not separate products. Use:
+
+- Same tokens
+- Same components
+- Same workflows
+- Same permissions
+- Same design language
+
+See [ERP-DESIGN-SYSTEM-01](./docs/ERP_DESIGN_SYSTEM_01_ROADMAP.md) and [ERP_DS_04](./docs/ERP_DS_04_MASTER_DESIGN_SYSTEM.md).
+
+### 8. Configurable ERP Philosophy
+
+Prefer **configurable** over opinionated. Examples:
+
+- Inventory optional
+- Customer module optional
+- Banking workflow configurable ([BANKING-UX-04](#banking-ux-04--configurable-banking-workflow))
+- Dashboard density configurable
+
+Hide or organize features instead of deleting them.
+
+### 9. Commit Ownership Principle
+
+Question for every feature: **Who owns commit?**
+
+Target architecture:
+
+```text
+UI/API → Unit of Work → Services
+```
+
+Boundary commits are the long-term model. Execution plan: [FASTAPI_P0_5D_COMMIT_OWNERSHIP_PLAN.md](./docs/FASTAPI_P0_5D_COMMIT_OWNERSHIP_PLAN.md). Slices shipped: cash sale (S1) · expense (S2).
+
+### 10. Discovery Before Implementation
+
+All future projects should follow:
+
+```text
+Discovery → Roadmap → Models → Services → Tests → UI → API → Migration
+```
+
+No implementation before roadmap approval.
+
+### Changelog — principles locked (2026-06-14)
+
+| Principle | Streamlit evidence |
+|-----------|-------------------|
+| Business logic first | `services/posting.py`, `services/audit.py`, registry services |
+| Explicit `company_id` | FASTAPI-P0.5b company scoping; service parameter pattern |
+| Void/reverse/audit | Kernel + `AuditLog` on every mutation |
+| Form state rules | AT widget keys; deferred subcat sync; submit-time capture |
+| RETENTION-01 | `_at_clear_post_save_transient_fields()` — type + date only |
+| Date ownership | `_at_capture_submit_resolved_date()` pipeline |
+| Desktop/mobile unity | `mobile_components.css` + DS-4 parity matrix |
+| Configurable ERP | Registry settings; module gates; banking A/B/C (P2.3) |
+| Commit ownership | `boundary_commit_scope` + per-family `commit_mode` flags |
+| Discovery first | CHAR docs before every extraction phase |
+
+**Cross-references:** [ERP_DS_04](./docs/ERP_DS_04_MASTER_DESIGN_SYSTEM.md) · [ERP_DS_05](./docs/ERP_DS_05_REACT_ARCHITECTURE.md) · [BANKING_UX_03_ROADMAP](./docs/BANKING_UX_03_ROADMAP.md)
 
 ---
 
@@ -30,6 +163,13 @@ This roadmap defines **what is done**, **what is active**, and **what comes next
 | BANK-03 POS Settlement wording | ✅ **Verified** (2026-06-05 — locales EN/TR; `tests/test_bank03_wording.py`) |
 | BANKING-POS-WORKFLOW-01 P1+P2 | ✅ Shipped — Other Income Sales Revenue guardrails + POS Settlement explainer (no posting changes) |
 | **BANKING-UX-02** — POS Settlement Transparency | ✅ **Complete** — P1 preview · P1B focused entry · P2 clearing visibility · P3 unsettled list · P4 match check (no posting changes) |
+| **BANKING-UX-03** — Reconciliation Cockpit & Queue | ✅ **P1–P2 shipped** · 📋 **P3 future** — see [BANKING_UX_03_ROADMAP](./docs/BANKING_UX_03_ROADMAP.md) |
+| **BANKING-UX-04** — Configurable Banking Workflow | 📋 **Future** — statement-first / hybrid / manual-first modes; see [§ BANKING-UX-04](#banking-ux-04--configurable-banking-workflow) |
+| **ERP Core Principles (Locked)** | ✅ **Approved** — 10 locked principles; see [§ ERP Core Principles](#erp-core-principles-locked) |
+| **RETENTION-01** — Add Transaction post-save policy | ✅ **Shipped** — keep type + date; reset all other fields |
+| **DATE OWNERSHIP** — Submit-time date capture | ✅ **Shipped** — single resolved date through GL/bank/reports |
+| **FASTAPI-P0.5d** — Commit ownership (boundary UoW) | 🟡 **In progress** — S1 cash sale ✅ · S2 expense ✅ · remaining families queued |
+| **DATE CONTROL** — Unified React date field | 📋 **Future (React)** — single field + focus-opens calendar; see [§ DATE CONTROL](#date-control--future-react-ux) |
 | PARTNER-UX-01 P1–P3 | ✅ Shipped — Partner movement explanations, advance warnings, Summary plain labels (no posting changes) |
 | PARTNER-STATEMENT-01 P1 | ✅ Shipped — read-only Partner Statement tab (month/quarter/year/custom); profit by fiscal period end-date; no posting changes |
 | PARTNER-STATEMENT-01 P2 | ✅ Shipped — detail lines, running position, Excel export |
@@ -579,6 +719,69 @@ When **Confirm & Post** is unavailable, replace vague messaging with:
 - Database models
 
 **Scope:** UX and visibility only.
+
+---
+
+### BANKING-UX-03 — Reconciliation Cockpit & Queue
+
+**Status:** P1–P2 shipped · P3 future  
+**Plan:** [docs/BANKING_UX_03_ROADMAP.md](./docs/BANKING_UX_03_ROADMAP.md)
+
+Shipped: error UX hardening · confidence chips · fragment-scoped match queue · reconciliation cockpit · batch post · configuration surface (A/B/C) · tie-out/unpost polish.
+
+**Constraints (unchanged):** No accounting changes · no posting kernel changes · `reconciliation/match_post.py` orchestration preserved · batch = N single posts.
+
+**Next:** P3.x mobile oversight · learned match memory · reconciliation audit trail · React-readiness prep (post-FastAPI).
+
+---
+
+### BANKING-UX-04 — Configurable Banking Workflow
+
+**Status:** 📋 Future — design approved 2026-06-14  
+**Priority:** Medium — after BANKING-UX-03 P3 or alongside registry settings expansion  
+**Principle:** [Configurable ERP Philosophy](#8-configurable-erp-philosophy) · [BANKING_UX_03 § P2.3](./docs/BANKING_UX_03_ROADMAP.md)
+
+**Goal:** Let each company choose how bank activity enters the system — without removing any workflow.
+
+#### Modes
+
+| Mode | Workflow | UX emphasis |
+|------|----------|-------------|
+| **1. Statement-first** (recommended) | Import → Match → Post → Reconcile | Manual bank entry hidden under **Advanced** |
+| **2. Hybrid** | Both workflows available | Default landing configurable (registry) |
+| **3. Manual-first** | Traditional bookkeeping | Direct bank transaction entry prominent |
+
+#### Rules (locked)
+
+- Do **not** remove manual bank transactions.
+- Prevent duplicate posting (existing idempotency guards + UI warnings).
+- Imported statements are **preferred**, not mandatory.
+- Manual entries remain available in all modes (visibility varies).
+
+**Implementation gate:** Registry setting `banking.workflow_mode` (company-scoped); no schema change required. UI-only visibility routing in `ui/banking.py` + Add Transaction bank paths. Tests: mode switch does not alter posting contracts.
+
+**Do not modify:** `services/posting.py` · `reconciliation/match_post.py` · GL line tuples.
+
+---
+
+### DATE CONTROL — Future React UX
+
+**Status:** 📋 Future (React / DS-6) — spec locked; Streamlit DATE-01 remains interim  
+**Principle:** [Date Ownership Standard](#6-date-ownership-standard) · [ERP_DS_04 §12](./docs/ERP_DS_04_MASTER_DESIGN_SYSTEM.md)
+
+**Goal:** One date control pattern across desktop and mobile — no separate calendar button.
+
+| Behavior | Spec |
+|----------|------|
+| Field | Single editable date text field |
+| Open calendar | Click or focus on field opens picker |
+| Desktop | Dropdown calendar anchored to field |
+| Mobile | Bottom-sheet calendar (same component family) |
+| Submit | Date captured at submit time; never overwritten by "today" on rerun |
+
+**Streamlit interim:** DATE-01 mobile date sheet + desktop `at_date` ownership pipeline — behaviorally aligned, visually different until React.
+
+**React component:** `DateField` in DS-4 / DS-5 — maps to `/transactions/new` and all date-bar surfaces.
 
 ---
 
@@ -2403,6 +2606,7 @@ Inventory and reduce Streamlit-only context coupling — `_erp()` lazy `import a
 
 | Date | Decision |
 |------|----------|
+| 2026-06-14 | **ROADMAP-PRINCIPLES-01** — **ERP Core Principles (Locked)** recorded: 10 architectural principles learned during Streamlit ERP development (business logic first · explicit `company_id` · void/reverse/audit · form state rules · RETENTION-01 · date ownership · desktop/mobile unity · configurable ERP · commit ownership · discovery before implementation). **BANKING-UX-04** Configurable Banking Workflow added (statement-first / hybrid / manual-first). **DATE CONTROL** future React UX spec locked (single field, focus-opens calendar). Docs only — no code. Cross-links: [ERP_DS_04](./docs/ERP_DS_04_MASTER_DESIGN_SYSTEM.md) · [ERP_DS_05](./docs/ERP_DS_05_REACT_ARCHITECTURE.md) · [FASTAPI_P0_5D](./docs/FASTAPI_P0_5D_COMMIT_OWNERSHIP_PLAN.md). |
 | 2026-06 | Shared DB + `company_id` isolation — do not redesign per-tenant DB yet |
 | 2026-06 | Hidden ≠ disabled ≠ locked |
 | 2026-06 | 14D-C + 14D-D + nav fix + simplified Company Setup |
