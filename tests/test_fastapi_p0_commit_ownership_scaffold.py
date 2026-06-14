@@ -66,6 +66,7 @@ class TestCommitModes:
         for family in commit_modes.POSTING_FAMILIES:
             assert commit_modes.get_commit_mode(family) is CommitMode.INTERNAL
         assert commit_modes.get_commit_mode(commit_modes.AUDIT_FAMILY) is CommitMode.INTERNAL
+        assert commit_modes.get_commit_mode(commit_modes.POST_CASH_SALE_FAMILY) is CommitMode.INTERNAL
 
     def test_unknown_family_defaults_internal(self):
         assert commit_modes.get_commit_mode("future_family") is CommitMode.INTERNAL

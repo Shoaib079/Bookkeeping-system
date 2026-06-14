@@ -110,13 +110,18 @@ def test_type_change_coerces_invalid_pm(monkeypatch):
     assert state["at_pm"] == "Cash"
 
 
-def test_post_save_retains_at_pm(monkeypatch):
+def test_post_save_resets_payment_method(monkeypatch):
     state = _FakeSessionState({"at_pm": "Bank", "at_amount_display": "50", "at_notes_field": "x"})
     monkeypatch.setattr(erp.st, "session_state", state)
-    erp._at_clear_post_save_transient_fields()
-    assert state["at_pm"] == "Bank"
+    monkeypatch.setattr(erp, "_company_cc_charge_ready", lambda _s: False)
+    erp._at_clear_post_save_transient_fields(
+        MagicMock(), txn_type="Expense", currency_default="TRY"
+    )
+    assert "at_pm" not in state
     assert "at_amount_display" not in state
     assert "at_notes_field" not in state
+    erp._mob_at_ensure_defaults(MagicMock(), "Expense", "TRY", [])
+    assert state["at_pm"] == "Cash"
 
 
 def test_row1_has_three_buttons_only():

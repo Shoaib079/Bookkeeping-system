@@ -82,6 +82,7 @@ def test_resolve_entry_date_stores_same_underlying_date(pref, typed, monkeypatch
     resolved = erp._at_resolve_entry_date()
     assert resolved == datetime.date(2026, 6, 12)
     assert state["at_date"] == datetime.date(2026, 6, 12)
+    erp._at_apply_deferred_date_text_sync()
     assert state["at_date_text"] == erp._format_date_for_user_pref(
         datetime.date(2026, 6, 12), pref
     )
@@ -96,6 +97,7 @@ def test_refresh_date_text_display_uses_active_preference(monkeypatch):
     )
     monkeypatch.setattr(erp.st, "session_state", state)
     erp._at_refresh_date_text_display()
+    erp._at_apply_deferred_date_text_sync()
     assert state["at_date_text"] == "12.06.2026"
     assert state["mob_at_date_custom_str"] == "12.06.2026"
 
@@ -190,6 +192,7 @@ def test_resolve_entry_date_digit_only_masks_on_save(monkeypatch):
     resolved = erp._at_resolve_entry_date()
     assert resolved == datetime.date(2026, 6, 3)
     assert isinstance(resolved, datetime.date)
+    erp._at_apply_deferred_date_text_sync()
     assert state["at_date_text"] == "03.06.2026"
 
 

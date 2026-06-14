@@ -4502,6 +4502,7 @@ _COMPANY_SCOPED_AT_KEYS = (
     "at_cust",
     "at_cust_sel",
     "at_payable_id",
+    "at_payable_sel",
     "at_inv",
     "at_cat",
     "at_subcat",
@@ -5261,12 +5262,6 @@ _AT_DEFAULT_PM: dict[str, str] = {
     "Customer Payment": "Cash",
 }
 
-_MOB_AT_LAST_PM_BY_TYPE = {
-    "Sale": "mob_at_last_pm_sale",
-    "Expense": "mob_at_last_pm_expense",
-    "Purchase": "mob_at_last_pm_purchase",
-}
-
 _AT_TYPE_I18N: dict[str, str] = {
     "Sale": "txn.type.sale",
     "Expense": "txn.type.expense",
@@ -5329,15 +5324,12 @@ def _mob_at_remember_last_pm(txn_type: str, pm: str | None) -> None:
 
 
 def _at_default_pay_method(session, txn_type: str) -> str:
-    """First-choice default payment method: memory → static → first allowed."""
+    """Return the static default payment method for a transaction type."""
     if txn_type == "Expense" and _mob_at_is_salary_mode():
         return "Cash"
     allowed = _at_allowed_pay_methods(session, txn_type)
     if not allowed:
         return "Cash"
-    remembered = _mob_at_recall_last_pm(txn_type)
-    if remembered and remembered in allowed:
-        return remembered
     preferred = _AT_DEFAULT_PM.get(txn_type, "Cash")
     if preferred in allowed:
         return preferred
@@ -5472,6 +5464,7 @@ _AT_POST_SAVE_CLEAR_KEYS = (
     "at_cust",
     "at_cust_sel",
     "at_payable_id",
+    "at_payable_sel",
     "at_last_vendor",
     "at_vendor",
     "at_inv",
@@ -5481,6 +5474,11 @@ _AT_POST_SAVE_CLEAR_KEYS = (
     "mob_at_worker_ded",
     "at_worker_adv_rec",
     "mob_at_worker_adv_rec",
+    "at_worker_id",
+    "mob_at_worker_id",
+    "at_worker_period",
+    "mob_at_worker_period",
+    "at_worker_mv_type",
     "at_cat",
     "at_subcat",
     "at_last_cat_id",
@@ -5493,13 +5491,50 @@ _AT_POST_SAVE_CLEAR_KEYS = (
     "mob_at_last_pm_sale",
     "mob_at_last_pm_expense",
     "mob_at_last_pm_purchase",
+    "at_pm",
+    "at_currency",
+    "at_cc_card_id",
+    "mob_at_cc_card_id",
+    "at_card_bank_acct",
+    "mob_at_card_bank_sel",
+    "at_bank_pay_acct",
+    "mob_at_bank_pay_sel",
+    "at_bank_acct",
+    "mob_at_bank_acct_sel",
+    "at_bank_dest",
+    "at_bank_sub",
+    "at_fx_rate_val",
+    "at_expense_mode",
+    "mob_at_inv_sel",
+    "mob_at_vendor_sel",
+    "mob_at_payable_sel",
+    "mob_at_picker",
+    "mob_at_picker_search",
+    "mob_at_date_custom",
+    "at_picker_mode",
+    "at_submit_resolved_date",
+    "at_subcat_sync_from",
+    "at_subcat_sync_clear",
+    "at_date_text_sync_from",
+    "_mob_at_coerce_pm_type",
+    "at_pending_attachment",
 )
 
 
-def _at_clear_post_save_transient_fields() -> None:
-    """ADD-TXN-FIX-01 — clear per-entry fields after save; retain type/date/currency/PM only."""
+def _at_clear_post_save_transient_fields(
+    session=None,
+    *,
+    txn_type: str | None = None,
+    currency_default: str | None = None,
+) -> None:
+    """RETENTION-01 — after save keep only txn section + date; reset all other entry fields.
+
+    Pops widget-bound keys only; ``at_pm`` / ``at_currency`` are restored on the next
+    rerun by ``_mob_at_ensure_defaults`` / ``_coerce_at_payment_method`` (no post-widget writes).
+    """
     for _k in _AT_POST_SAVE_CLEAR_KEYS:
         st.session_state.pop(_k, None)
+    _at_sync_desktop_type_to_mobile_tabs()
 
 
 def _at_consume_mobile_save_pending() -> bool:
@@ -11241,12 +11276,6 @@ def _at_filter_transaction_categories(cats: list) -> list:
     return [c for c in cats if not _at_is_payment_like_category_name(c.name)]
 
 
-_MOB_AT_LAST_CAT_BY_TYPE = {
-    "Sale": "mob_at_last_cat_sale",
-    "Expense": "mob_at_last_cat_expense",
-    "Purchase": "mob_at_last_cat_purchase",
-}
-
 def _at_clear_category_session_state() -> None:
     """Remove stale category keys when a txn type has no category fields."""
     for _k in (
@@ -11646,19 +11675,6 @@ def _mob_at_quick_chips(
     return top
 
 
-def _mob_at_coerce_visible_category(session, txn_type: str) -> None:
-    """Drop mobile category selection when it no longer matches the active txn type."""
-    cid = st.session_state.get("mob_at_cat_id")
-    if not cid:
-        return
-    cat = session.get(TransactionCategory, cid)
-    if not cat or not cat.is_active or cat.transaction_type != txn_type:
-        st.session_state.pop("mob_at_cat_id", None)
-        st.session_state.pop("mob_at_subcat_id", None)
-        st.session_state.pop("mob_at_cat_name", None)
-        st.session_state.pop("at_subcat", None)
-
-
 def _mob_at_seed_visible_category(session, txn_type: str) -> None:
     """ADD-TXN-FIX-01 — no auto category preselection (user picks explicitly)."""
     return
@@ -11703,7 +11719,7 @@ def _mob_at_apply_category_pick(
         if txn_type:
             _mob_at_remember_last_category(txn_type, pick.cat_id)
     st.session_state.pop("mob_at_subcat_id", None)
-    st.session_state.pop("at_subcat", None)
+    _at_defer_subcat_clear()
     if pick.cat_id:
         _mob_at_apply_default_subcategory(session, pick.cat_id)
 
@@ -13433,7 +13449,11 @@ def _at_process_submit(
                 credit_card_account_id=_submit_cc_card_id,
             )
             if st.session_state.pop("_at_save_succeeded", False):
-                _at_clear_post_save_transient_fields()
+                _at_clear_post_save_transient_fields(
+                    session,
+                    txn_type=txn_type,
+                    currency_default=currency_default,
+                )
                 _at_refresh_date_text_display()
                 st.rerun()
         except Exception as exc:
@@ -14362,14 +14382,13 @@ def _at_save(
 
     if txn_type == "Sale":
         sale_type = payment_method  # "Cash", "Card", or "Credit" — stored as-is
-        sale_date = entry_date
         ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         inv_num = f"INV-{ts}"
         _cname = customer_name.strip() or "Walk-in Customer"
         # Resolve customer_id if the name matches a known customer record
         _cust_obj = cq(session, Customer).filter_by(name=_cname, is_active=True).first()
         record = Sale(
-            date=sale_date,
+            date=entry_date,
             invoice_number=inv_num,
             customer_name=_cname,
             description=notes.strip(),
@@ -14377,7 +14396,7 @@ def _at_save(
             sale_type=sale_type,
             paid_amount=amount if sale_type != "Credit" else 0.0,
             balance=0.0 if sale_type != "Credit" else amount,
-            due_date=sale_date if sale_type != "Credit" else sale_date + datetime.timedelta(days=30),
+            due_date=entry_date if sale_type != "Credit" else entry_date + datetime.timedelta(days=30),
             status="Paid" if sale_type != "Credit" else "Open",
             tx_category_id=tx_category_id,
             tx_subcategory_id=tx_subcategory_id,
@@ -14389,7 +14408,7 @@ def _at_save(
         session.commit()
         _sale_audit_logged = False
         if sale_type == "Card":
-            post_card_sale(session, record.id, amount, sale_date, currency=currency, fx_rate=fx_rate)
+            post_card_sale(session, record.id, amount, entry_date, currency=currency, fx_rate=fx_rate)
             # Also update the named bank account balance so the dashboard reflects it.
             # Phase 18-MVP-1: when card settlement routing is ON the money is not in
             # the bank yet (it settles later), so skip the deposit + balance bump.
@@ -14399,7 +14418,7 @@ def _at_save(
                     _card_ba.balance = (_card_ba.balance or 0) + amount
                     session.add(BankTransaction(
                         account_id=_card_ba.id,
-                        date=sale_date,
+                        date=entry_date,
                         amount=amount,
                         type="deposit",
                         description=f"Card Sale {inv_num}",
@@ -14408,13 +14427,13 @@ def _at_save(
         elif sale_type == "Cash":
             if _commit_modes.is_boundary_mode(_commit_modes.POST_CASH_SALE_FAMILY):
                 with boundary_commit_scope(session, _commit_modes.POST_CASH_SALE_FAMILY):
-                    post_cash_sale(session, record.id, amount, sale_date, currency=currency, fx_rate=fx_rate)
+                    post_cash_sale(session, record.id, amount, entry_date, currency=currency, fx_rate=fx_rate)
                     log_audit(session, "Create", "Sale", record.id, f"Sale {inv_num} · {amount:,.2f} {currency}")
                     _sale_audit_logged = True
             else:
-                post_cash_sale(session, record.id, amount, sale_date, currency=currency, fx_rate=fx_rate)
+                post_cash_sale(session, record.id, amount, entry_date, currency=currency, fx_rate=fx_rate)
         else:
-            post_credit_sale(session, record.id, amount, sale_date, currency=currency, fx_rate=fx_rate)
+            post_credit_sale(session, record.id, amount, entry_date, currency=currency, fx_rate=fx_rate)
         if not _sale_audit_logged:
             log_audit(session, "Create", "Sale", record.id, f"Sale {inv_num} · {amount:,.2f} {currency}")
         st.success(_t("txn.sale_recorded", invoice=inv_num))

@@ -160,6 +160,23 @@ def test_at_resolve_entry_date_empty_text_falls_back(monkeypatch):
     assert erp._at_resolve_entry_date() == datetime.date(2026, 2, 2)
 
 
+def test_at_resolve_entry_date_does_not_mutate_widget_key_on_submit(monkeypatch):
+    """Regression: never write at_date_text after the widget is bound to that key."""
+    state = {
+        "_user_date_format": "DD.MM.YYYY",
+        "at_date_text": "05062026",
+        "at_date": datetime.date(2020, 1, 1),
+    }
+    monkeypatch.setattr(erp.st, "session_state", state)
+    resolved = erp._at_resolve_entry_date()
+    assert resolved == datetime.date(2026, 6, 5)
+    assert state["at_date_text"] == "05062026"
+    assert state["at_date_text_sync_from"] == datetime.date(2026, 6, 5)
+    erp._at_apply_deferred_date_text_sync()
+    assert state["at_date_text"] == "05.06.2026"
+    assert "at_date_text_sync_from" not in state
+
+
 def test_at_resolve_entry_date_mobile_ignores_desktop_text(monkeypatch):
     """Mobile date sheet writes at_date; stale desktop text must not override."""
     state = {
@@ -350,6 +367,7 @@ def test_at_date_text_is_company_scoped():
     resolve time, so an unscoped value would leak Company A's date into
     Company B's first transaction."""
     assert "at_date_text" in erp._COMPANY_SCOPED_AT_KEYS
+    assert "at_date_text_sync_from" in erp._COMPANY_SCOPED_AT_KEYS
     assert "at_date" in erp._COMPANY_SCOPED_AT_KEYS
 
 

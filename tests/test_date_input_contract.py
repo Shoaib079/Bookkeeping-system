@@ -174,8 +174,10 @@ def test_render_preferred_date_input_outside_form_uses_on_change(monkeypatch):
 def test_add_transaction_date_field_is_form_safe():
     src = inspect.getsource(erp._at_render_desktop_date_field)
     assert "in_form=True" in src
+    assert "_at_apply_deferred_date_text_sync" in src
     resolve_src = inspect.getsource(erp._at_resolve_entry_date)
-    assert "normalize_date_text_key" in resolve_src
+    assert "_at_defer_date_text_display" in resolve_src
+    assert 'st.session_state["at_date_text"]' not in resolve_src
 
 
 def test_cash_recon_form_date_field_is_form_safe():

@@ -117,16 +117,23 @@ def test_post_save_clears_worker_salary_amount_fields(monkeypatch):
         assert key not in state
 
 
-def test_post_save_retains_type_payment_date_currency(monkeypatch):
+def test_post_save_retains_type_and_date_only(monkeypatch):
     state = _state_with_retained_and_transient()
     monkeypatch.setattr(erp.st, "session_state", state)
-    erp._at_clear_post_save_transient_fields()
+    monkeypatch.setattr(erp, "_company_cc_charge_ready", lambda _s: False)
+    erp._at_clear_post_save_transient_fields(
+        MagicMock(), txn_type="Expense", currency_default="TRY"
+    )
     assert state["at_type_idx"] == 1
-    assert state["at_pm"] == "Card"
     assert state["at_date"] == datetime.date(2026, 6, 10)
-    assert state["at_currency"] == "USD"
+    assert "at_pm" not in state
+    assert "at_currency" not in state
+    assert "at_amount_display" not in state
     assert "at_vendor" not in state
-    assert state["at_bank_acct"] == "Main Bank"
+    assert "at_bank_acct" not in state
+    erp._mob_at_ensure_defaults(MagicMock(), "Expense", "TRY", [])
+    assert state["at_currency"] == "TRY"
+    assert state["at_pm"] == "Cash"
 
 
 def test_post_save_clear_keys_include_last_cat_id():
@@ -135,7 +142,8 @@ def test_post_save_clear_keys_include_last_cat_id():
 
 def test_process_submit_uses_post_save_clear_helper():
     src = inspect.getsource(erp._at_process_submit)
-    assert "_at_clear_post_save_transient_fields()" in src
+    assert "_at_clear_post_save_transient_fields(" in src
+    assert "currency_default=currency_default" in src
 
 
 def test_inline_subcat_row_resets_subcat_when_category_changes():

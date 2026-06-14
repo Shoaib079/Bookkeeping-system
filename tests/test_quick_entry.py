@@ -89,6 +89,8 @@ def test_mob_at_apply_category_pick_resets_subcategory(monkeypatch):
     erp._mob_at_apply_category_pick(None, pick, txn_type="Expense")
     assert state["mob_at_cat_id"] == 3
     assert "mob_at_subcat_id" not in state
+    assert state.get("at_subcat_sync_clear") is True
+    erp._at_apply_deferred_subcat_sync()
     assert "at_subcat" not in state
     assert "mob_at_last_cat_expense" not in state
 
