@@ -397,6 +397,7 @@ from services import read_reports as _read_reports_svc
 from services import read_ledger as _read_ledger_svc
 from services import read_ar_ap as _read_ar_ap_svc
 from services import read_partner_statement as _read_pstmt_svc
+from services import audit as _audit_svc
 
 # Initialize database
 Base.metadata.create_all(bind=engine)
@@ -1570,17 +1571,19 @@ def log_audit(session, action, entity_type, entity_id, description):
     """Write an audit log entry and commit it.
     Automatically stamps the currently logged-in user (Step 6.2).
     """
+    ctx = build_streamlit_request_context(session)
     _u = _current_user()
-    entry = AuditLog(
-        timestamp=datetime.datetime.now(),
+    performed_by = _u["username"] if _u else None
+    company_id = ctx.company_id if ctx else _current_company_id()
+    return _audit_svc.record_audit(
+        session,
         action=action,
         entity_type=entity_type,
         entity_id=entity_id,
         description=description,
-        performed_by=_u["username"] if _u else None,
+        performed_by=performed_by,
+        company_id=company_id,
     )
-    session.add(entry)
-    session.commit()
 
 
 def _entry_date_posting_blocked(
