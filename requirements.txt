@@ -4,3 +4,5 @@ pandas>=1.5
 openpyxl>=3.0
 lxml>=4.9
 reportlab>=3.6
+fastapi>=0.100
+httpx>=0.24
