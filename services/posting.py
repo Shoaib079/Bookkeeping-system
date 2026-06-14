@@ -80,7 +80,13 @@ from reconciliation.company_card import (
     reverse_account_balance_delta,
 )
 from registry.service import get_setting
-from services.commit_modes import POST_CASH_SALE_FAMILY, POST_EXPENSE_FAMILY, is_boundary_mode
+from services.commit_modes import (
+    POST_CASH_SALE_FAMILY,
+    POST_EXPENSE_FAMILY,
+    POST_PAYABLE_PAYMENT_FAMILY,
+    POST_PURCHASE_FAMILY,
+    is_boundary_mode,
+)
 
 # Pinned by PS-P2b-CHAR — must match registry/locales/transactional.py EN strings.
 _CC_DISABLED_MSG = (
@@ -1072,6 +1078,7 @@ def post_payable_payment(
             [(ap_acct.id, amount, 0), (credit_acct.id, 0, amount)],
             currency=currency,
             company_id=company_id,
+            commit_family=POST_PAYABLE_PAYMENT_FAMILY,
         )
         sync_company_cc_subledger(
             session,
@@ -1161,6 +1168,7 @@ def post_purchase(
             [(debit_acct.id, amount, 0), (credit_acct.id, 0, amount)],
             currency=currency, fx_rate=fx_rate,
             company_id=company_id,
+            commit_family=POST_PURCHASE_FAMILY,
         )
         if purchase_type == _COMPANY_CC_METHOD:
             sync_company_cc_subledger(

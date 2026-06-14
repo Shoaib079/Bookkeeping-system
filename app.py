@@ -5957,6 +5957,16 @@ def post_purchase(session, purchase_id, amount, purchase_date, purchase_type="Cr
                   gl_debit=NAV_INVENTORY, currency=None, fx_rate=1.0,
                   credit_card_account_id=None):
     """PS-P2c-3 compatibility shim — kernel lives in services/posting.py."""
+    family = _commit_modes.POST_PURCHASE_FAMILY
+    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
+        with boundary_commit_scope(session, family):
+            return posting_service.post_purchase(
+                session, purchase_id, amount, purchase_date,
+                purchase_type=purchase_type, gl_debit=gl_debit,
+                currency=currency, fx_rate=fx_rate,
+                credit_card_account_id=credit_card_account_id,
+                company_id=_current_company_id(),
+            )
     return posting_service.post_purchase(
         session, purchase_id, amount, purchase_date,
         purchase_type=purchase_type, gl_debit=gl_debit,
@@ -6016,6 +6026,15 @@ def post_payable_creation(session, payable_id, amount, date, expense_category="R
 def post_payable_payment(session, payable_id, amount, date, payment_method="Cash", currency=None,
                          credit_card_account_id=None):
     """PS-P2c-2 compatibility shim — kernel lives in services/posting.py."""
+    family = _commit_modes.POST_PAYABLE_PAYMENT_FAMILY
+    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
+        with boundary_commit_scope(session, family):
+            return posting_service.post_payable_payment(
+                session, payable_id, amount, date,
+                payment_method=payment_method, currency=currency,
+                credit_card_account_id=credit_card_account_id,
+                company_id=_current_company_id(),
+            )
     return posting_service.post_payable_payment(
         session, payable_id, amount, date,
         payment_method=payment_method, currency=currency,
@@ -14636,50 +14655,114 @@ def _at_save(
             currency=currency, fx_rate=fx_rate, native_amount=_native,
             credit_card_account_id=credit_card_account_id if payment_method == _COMPANY_CC_METHOD else None,
         )
-        session.add(record)
-        session.commit()
-        try:
-            post_purchase(
-                session, record.id, amount, entry_date, payment_method, gl_debit,
-                currency=currency, fx_rate=fx_rate,
-                credit_card_account_id=credit_card_account_id,
-            )
-        except ValueError as exc:
-            st.error(str(exc))
-            return
-        if payment_method == "Credit":
-            payable = Payable(
-                date=entry_date,
-                vendor_id=vendor.id,
-                amount=amount,
-                due_date=entry_date + datetime.timedelta(days=30),
-                paid=False,
-                description=f"From Purchase #{record.id}: {notes.strip()}",
-                expense_category=gl_debit,
-                purchase_id=record.id,
-            )
-            session.add(payable)
-            session.commit()
-            log_audit(session, "Create", "Purchase", record.id, f"PUR#{record.id} · {amount:,.2f} {currency} — payable created")
-            _flush_pending_attachment(session, "Purchase", record.id)
-            st.success(_t("txn.purchase_recorded_payable", id=record.id))
-            _mark_at_save_succeeded()
+        if _commit_modes.is_boundary_mode(_commit_modes.POST_PURCHASE_FAMILY):
+            try:
+                with boundary_commit_scope(session, _commit_modes.POST_PURCHASE_FAMILY):
+                    session.add(record)
+                    session.flush()
+                    post_purchase(
+                        session, record.id, amount, entry_date, payment_method, gl_debit,
+                        currency=currency, fx_rate=fx_rate,
+                        credit_card_account_id=credit_card_account_id,
+                    )
+                    if payment_method == "Credit":
+                        payable = Payable(
+                            date=entry_date,
+                            vendor_id=vendor.id,
+                            amount=amount,
+                            due_date=entry_date + datetime.timedelta(days=30),
+                            paid=False,
+                            description=f"From Purchase #{record.id}: {notes.strip()}",
+                            expense_category=gl_debit,
+                            purchase_id=record.id,
+                        )
+                        session.add(payable)
+                        session.flush()
+                        log_audit(
+                            session,
+                            "Create",
+                            "Purchase",
+                            record.id,
+                            f"PUR#{record.id} · {amount:,.2f} {currency} — payable created",
+                        )
+                    else:
+                        if payment_method == "Bank":
+                            _record_named_bank_movement(
+                                session,
+                                bank_accounts,
+                                bank_payment_acct_val,
+                                amount=amount,
+                                date=entry_date,
+                                description=f"Purchase PUR#{record.id}",
+                                txn_type="withdrawal",
+                            )
+                        log_audit(
+                            session,
+                            "Create",
+                            "Purchase",
+                            record.id,
+                            f"PUR#{record.id} · {amount:,.2f} {currency}",
+                        )
+            except ValueError as exc:
+                st.error(str(exc))
+                return
         else:
-            if payment_method == "Bank":
-                _record_named_bank_movement(
-                    session,
-                    bank_accounts,
-                    bank_payment_acct_val,
-                    amount=amount,
-                    date=entry_date,
-                    description=f"Purchase PUR#{record.id}",
-                    txn_type="withdrawal",
+            session.add(record)
+            session.commit()
+            try:
+                post_purchase(
+                    session, record.id, amount, entry_date, payment_method, gl_debit,
+                    currency=currency, fx_rate=fx_rate,
+                    credit_card_account_id=credit_card_account_id,
                 )
+            except ValueError as exc:
+                st.error(str(exc))
+                return
+            if payment_method == "Credit":
+                payable = Payable(
+                    date=entry_date,
+                    vendor_id=vendor.id,
+                    amount=amount,
+                    due_date=entry_date + datetime.timedelta(days=30),
+                    paid=False,
+                    description=f"From Purchase #{record.id}: {notes.strip()}",
+                    expense_category=gl_debit,
+                    purchase_id=record.id,
+                )
+                session.add(payable)
                 session.commit()
-            log_audit(session, "Create", "Purchase", record.id, f"PUR#{record.id} · {amount:,.2f} {currency}")
-            _flush_pending_attachment(session, "Purchase", record.id)
+                log_audit(
+                    session,
+                    "Create",
+                    "Purchase",
+                    record.id,
+                    f"PUR#{record.id} · {amount:,.2f} {currency} — payable created",
+                )
+            else:
+                if payment_method == "Bank":
+                    _record_named_bank_movement(
+                        session,
+                        bank_accounts,
+                        bank_payment_acct_val,
+                        amount=amount,
+                        date=entry_date,
+                        description=f"Purchase PUR#{record.id}",
+                        txn_type="withdrawal",
+                    )
+                    session.commit()
+                log_audit(
+                    session,
+                    "Create",
+                    "Purchase",
+                    record.id,
+                    f"PUR#{record.id} · {amount:,.2f} {currency}",
+                )
+        _flush_pending_attachment(session, "Purchase", record.id)
+        if payment_method == "Credit":
+            st.success(_t("txn.purchase_recorded_payable", id=record.id))
+        else:
             st.success(_t("txn.purchase_recorded", id=record.id))
-            _mark_at_save_succeeded()
+        _mark_at_save_succeeded()
 
     elif txn_type == "Supplier Payment":
         if not vendors or not vendor_name:
@@ -14707,32 +14790,63 @@ def _at_save(
         if pay_err:
             st.error(pay_err)
             return
-        payable.payment_method = payment_method
-        if payment_method == _COMPANY_CC_METHOD:
-            payable.credit_card_account_id = credit_card_account_id
-        _apply_payable_payment_state(payable, amount)
-        session.commit()
-        try:
-            post_payable_payment(
-                session, payable.id, amount, entry_date, payment_method, currency=currency,
-                credit_card_account_id=credit_card_account_id,
-            )
-        except ValueError as exc:
-            st.error(str(exc))
-            return
-        if payment_method == "Bank":
-            _record_named_bank_movement(
-                session,
-                bank_accounts,
-                bank_payment_acct_val,
-                amount=amount,
-                date=entry_date,
-                description=f"Supplier payment PAY#{payable.id}",
-                txn_type="withdrawal",
-            )
+        _payable_payment_audit = (
+            f"Payable #{payable.id} paid · {amount:,.2f} {currency}"
+        )
+        if _commit_modes.is_boundary_mode(_commit_modes.POST_PAYABLE_PAYMENT_FAMILY):
+            try:
+                with boundary_commit_scope(session, _commit_modes.POST_PAYABLE_PAYMENT_FAMILY):
+                    payable.payment_method = payment_method
+                    if payment_method == _COMPANY_CC_METHOD:
+                        payable.credit_card_account_id = credit_card_account_id
+                    _apply_payable_payment_state(payable, amount)
+                    session.flush()
+                    post_payable_payment(
+                        session, payable.id, amount, entry_date, payment_method, currency=currency,
+                        credit_card_account_id=credit_card_account_id,
+                    )
+                    if payment_method == "Bank":
+                        _record_named_bank_movement(
+                            session,
+                            bank_accounts,
+                            bank_payment_acct_val,
+                            amount=amount,
+                            date=entry_date,
+                            description=f"Supplier payment PAY#{payable.id}",
+                            txn_type="withdrawal",
+                        )
+                    log_audit(
+                        session, "Payment", "Payable", payable.id, _payable_payment_audit,
+                    )
+            except ValueError as exc:
+                st.error(str(exc))
+                return
+        else:
+            payable.payment_method = payment_method
+            if payment_method == _COMPANY_CC_METHOD:
+                payable.credit_card_account_id = credit_card_account_id
+            _apply_payable_payment_state(payable, amount)
             session.commit()
-        log_audit(session, "Payment", "Payable", payable.id,
-                  f"Payable #{payable.id} paid · {amount:,.2f} {currency}")
+            try:
+                post_payable_payment(
+                    session, payable.id, amount, entry_date, payment_method, currency=currency,
+                    credit_card_account_id=credit_card_account_id,
+                )
+            except ValueError as exc:
+                st.error(str(exc))
+                return
+            if payment_method == "Bank":
+                _record_named_bank_movement(
+                    session,
+                    bank_accounts,
+                    bank_payment_acct_val,
+                    amount=amount,
+                    date=entry_date,
+                    description=f"Supplier payment PAY#{payable.id}",
+                    txn_type="withdrawal",
+                )
+                session.commit()
+            log_audit(session, "Payment", "Payable", payable.id, _payable_payment_audit)
         st.success(_t("txn.payment_recorded", id=payable.id))
         _mark_at_save_succeeded()
 

@@ -61,6 +61,7 @@ def theme_module():
     st = types.ModuleType("streamlit")
     st.session_state = {}
     st.markdown = MagicMock()
+    st.html = MagicMock()
     st.iframe = MagicMock()
     st.altair_chart = MagicMock()
     sys.modules["streamlit"] = st
@@ -108,19 +109,19 @@ def test_bootstrap_system_injects_only_when_os_scheme_known(theme_module):
     st.session_state["theme_mode"] = "system"
     st.session_state["dark_mode"] = False
     st.context = types.SimpleNamespace(cookies={}, headers={})
-    st.markdown.reset_mock()
+    st.html.reset_mock()
     theme.bootstrap_theme(lambda: MagicMock(), None)
     inject_calls = [
-        c.args[0] for c in st.markdown.call_args_list if c.args and ":root{" in c.args[0]
+        c.args[0] for c in st.html.call_args_list if c.args and ":root{" in c.args[0]
     ]
     assert inject_calls == [], "system + unknown OS — no forced :root injection"
     st.session_state.clear()
     st.session_state["theme_mode"] = "system"
     st.context = types.SimpleNamespace(cookies={"erp_os_dark": "1"}, headers={})
-    st.markdown.reset_mock()
+    st.html.reset_mock()
     theme.bootstrap_theme(lambda: MagicMock(), None)
     inject_calls = [
-        c.args[0] for c in st.markdown.call_args_list if c.args and ":root{" in c.args[0]
+        c.args[0] for c in st.html.call_args_list if c.args and ":root{" in c.args[0]
     ]
     assert len(inject_calls) == 1, "global CSS + marker + dark :root when cookie known"
     assert theme.DARK_ROOT_VARS["--theme-bg"] in inject_calls[0]

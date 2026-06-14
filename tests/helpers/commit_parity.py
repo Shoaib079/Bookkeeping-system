@@ -31,6 +31,18 @@ EXPENSE_TABLES: tuple[type, ...] = (
     models.BankAccount,
 )
 
+PURCHASE_PAYABLE_TABLES: tuple[type, ...] = (
+    models.JournalEntry,
+    models.JournalEntryLine,
+    models.AuditLog,
+    models.Purchase,
+    models.Payable,
+    models.Vendor,
+    models.ChartOfAccounts,
+    models.BankTransaction,
+    models.BankAccount,
+)
+
 
 def table_row_counts(session: Session, tables: tuple[type, ...] = DEFAULT_TABLES) -> dict[str, int]:
     """Serializable row counts keyed by table name."""
@@ -124,6 +136,45 @@ def bank_txn_row_tuples(session: Session) -> list[tuple]:
     ]
 
 
+def purchase_row_tuples(session: Session) -> list[tuple]:
+    rows = session.query(models.Purchase).order_by(models.Purchase.id).all()
+    return [
+        (
+            r.id,
+            r.vendor_id,
+            r.amount,
+            r.purchase_type,
+            r.gl_debit,
+            r.description,
+            str(r.date),
+            r.company_id,
+            r.credit_card_account_id,
+        )
+        for r in rows
+    ]
+
+
+def payable_row_tuples(session: Session) -> list[tuple]:
+    rows = session.query(models.Payable).order_by(models.Payable.id).all()
+    return [
+        (
+            r.id,
+            r.vendor_id,
+            r.amount,
+            r.paid_amount,
+            r.balance,
+            r.paid,
+            r.purchase_id,
+            r.payment_method,
+            str(r.date),
+            str(r.due_date),
+            r.company_id,
+            r.credit_card_account_id,
+        )
+        for r in rows
+    ]
+
+
 def persisted_state_snapshot(
     session: Session,
     *,
@@ -132,6 +183,8 @@ def persisted_state_snapshot(
     include_sale_rows: bool = True,
     include_expense_rows: bool = False,
     include_bank_txn_rows: bool = False,
+    include_purchase_rows: bool = False,
+    include_payable_rows: bool = False,
     include_audit_rows: bool = True,
 ) -> dict[str, Any]:
     """Compact persisted-state fingerprint for internal vs boundary dual-run."""
@@ -144,6 +197,10 @@ def persisted_state_snapshot(
         snap["expenses"] = expense_row_tuples(session)
     if include_bank_txn_rows:
         snap["bank_txns"] = bank_txn_row_tuples(session)
+    if include_purchase_rows:
+        snap["purchases"] = purchase_row_tuples(session)
+    if include_payable_rows:
+        snap["payables"] = payable_row_tuples(session)
     if include_audit_rows:
         snap["audit_rows"] = audit_row_tuples(session)
     return snap
