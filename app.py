@@ -3125,6 +3125,18 @@ def _at_date_input_placeholder() -> str:
     return date_input_placeholder(_active_user_date_format())
 
 
+def _at_defer_date_text_display(d: datetime.date) -> None:
+    """Queue formatted desktop date text — applied before the widget renders."""
+    st.session_state["at_date_text_sync_from"] = d
+
+
+def _at_apply_deferred_date_text_sync() -> None:
+    """Apply queued date display to at_date_text (call only before widget render)."""
+    sync_from = st.session_state.pop("at_date_text_sync_from", None)
+    if isinstance(sync_from, datetime.date):
+        st.session_state["at_date_text"] = _format_at_display_date(sync_from)
+
+
 def _at_refresh_date_text_display(d: datetime.date | None = None) -> None:
     """Sync desktop/mobile typed date strings to the user's display format."""
     if d is None:
@@ -3132,7 +3144,7 @@ def _at_refresh_date_text_display(d: datetime.date | None = None) -> None:
     if not isinstance(d, datetime.date):
         return
     shown = _format_at_display_date(d)
-    st.session_state["at_date_text"] = shown
+    _at_defer_date_text_display(d)
     st.session_state["mob_at_date_custom_str"] = shown
 
 
@@ -4498,6 +4510,7 @@ _COMPANY_SCOPED_AT_KEYS = (
     "mob_at_picker_search",
     "at_date",
     "at_date_text",
+    "at_date_text_sync_from",
     "at_date_follows_today",
     "at_type_idx",
     "at_expense_mode",
@@ -11312,19 +11325,48 @@ def _at_entry_date_error() -> str | None:
 def _at_resolve_entry_date() -> datetime.date:
     """Resolve entry date.
 
-    Desktop: the single typed Date field (at_date_text) is the source of truth;
-    valid text wins, empty text falls back to the resolved at_date.
-    Mobile: the date sheet writes at_date directly — desktop text is ignored so
-    stale typed values can never override a mobile date pick.
+    Desktop: typed text wins when the user is entering a date; an explicit
+    backdated ``at_date`` (``at_date_follows_today`` is False) wins over stale
+    today-shaped display text left in ``at_date_text``.
+    Mobile: the date sheet writes ``at_date`` directly — desktop text is ignored.
     """
     if not _is_mobile_ui():
-        date_ui.normalize_date_text_key("at_date_text")
+        if st.session_state.get("at_date_follows_today", True) is False:
+            d = st.session_state.get("at_date")
+            if isinstance(d, datetime.date):
+                return d
+
         raw = st.session_state.get("at_date_text")
         typed = _at_parse_date_text(str(raw)) if raw and str(raw).strip() else None
-        if typed:
-            st.session_state["at_date"] = typed
-            st.session_state["at_date_text"] = _format_at_display_date(typed)
-            return typed
+        canonical = st.session_state.get("at_date")
+        if not isinstance(canonical, datetime.date):
+            canonical = None
+
+        if typed is not None:
+            today = datetime.date.today()
+            if (
+                canonical is not None
+                and canonical != today
+                and typed == today
+                and st.session_state.get("at_date_follows_today")
+            ):
+                # Seeded/stale today display must not override a backdated pick.
+                resolved = canonical
+                st.session_state["at_date_follows_today"] = False
+            else:
+                resolved = typed
+                if resolved != today:
+                    st.session_state["at_date_follows_today"] = False
+        elif canonical is not None:
+            resolved = canonical
+        else:
+            resolved = datetime.date.today()
+            st.session_state["at_date_follows_today"] = True
+
+        st.session_state["at_date"] = resolved
+        _at_defer_date_text_display(resolved)
+        return resolved
+
     d = st.session_state.get("at_date")
     if isinstance(d, datetime.date):
         return d
@@ -11340,6 +11382,8 @@ def _at_render_desktop_date_field() -> None:
     if not isinstance(d, datetime.date):
         d = today
         st.session_state["at_date"] = d
+
+    _at_apply_deferred_date_text_sync()
 
     if "at_date_text" not in st.session_state:
         date_ui.seed_date_text_key("at_date_text", d)
@@ -12252,6 +12296,7 @@ def _mob_at_set_date_choice(
     st.session_state["at_date"] = chosen
     st.session_state["at_date_follows_today"] = follows_today
     st.session_state.pop("mob_at_date_custom", None)
+    _at_defer_date_text_display(chosen)
 
 
 def _mob_at_apply_date_follow_today() -> None:
@@ -14270,13 +14315,16 @@ def _at_save(
 
     if txn_type == "Sale":
         sale_type = payment_method  # "Cash", "Card", or "Credit" — stored as-is
+        if not isinstance(date, datetime.date):
+            date = _at_resolve_entry_date()
+        sale_date = date
         ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         inv_num = f"INV-{ts}"
         _cname = customer_name.strip() or "Walk-in Customer"
         # Resolve customer_id if the name matches a known customer record
         _cust_obj = cq(session, Customer).filter_by(name=_cname, is_active=True).first()
         record = Sale(
-            date=date,
+            date=sale_date,
             invoice_number=inv_num,
             customer_name=_cname,
             description=notes.strip(),
@@ -14284,7 +14332,7 @@ def _at_save(
             sale_type=sale_type,
             paid_amount=amount if sale_type != "Credit" else 0.0,
             balance=0.0 if sale_type != "Credit" else amount,
-            due_date=date if sale_type != "Credit" else date + datetime.timedelta(days=30),
+            due_date=sale_date if sale_type != "Credit" else sale_date + datetime.timedelta(days=30),
             status="Paid" if sale_type != "Credit" else "Open",
             tx_category_id=tx_category_id,
             tx_subcategory_id=tx_subcategory_id,
@@ -14296,7 +14344,7 @@ def _at_save(
         session.commit()
         _sale_audit_logged = False
         if sale_type == "Card":
-            post_card_sale(session, record.id, amount, date, currency=currency, fx_rate=fx_rate)
+            post_card_sale(session, record.id, amount, sale_date, currency=currency, fx_rate=fx_rate)
             # Also update the named bank account balance so the dashboard reflects it.
             # Phase 18-MVP-1: when card settlement routing is ON the money is not in
             # the bank yet (it settles later), so skip the deposit + balance bump.
@@ -14306,7 +14354,7 @@ def _at_save(
                     _card_ba.balance = (_card_ba.balance or 0) + amount
                     session.add(BankTransaction(
                         account_id=_card_ba.id,
-                        date=date,
+                        date=sale_date,
                         amount=amount,
                         type="deposit",
                         description=f"Card Sale {inv_num}",
@@ -14315,13 +14363,13 @@ def _at_save(
         elif sale_type == "Cash":
             if _commit_modes.is_boundary_mode(_commit_modes.POST_CASH_SALE_FAMILY):
                 with boundary_commit_scope(session, _commit_modes.POST_CASH_SALE_FAMILY):
-                    post_cash_sale(session, record.id, amount, date, currency=currency, fx_rate=fx_rate)
+                    post_cash_sale(session, record.id, amount, sale_date, currency=currency, fx_rate=fx_rate)
                     log_audit(session, "Create", "Sale", record.id, f"Sale {inv_num} · {amount:,.2f} {currency}")
                     _sale_audit_logged = True
             else:
-                post_cash_sale(session, record.id, amount, date, currency=currency, fx_rate=fx_rate)
+                post_cash_sale(session, record.id, amount, sale_date, currency=currency, fx_rate=fx_rate)
         else:
-            post_credit_sale(session, record.id, amount, date, currency=currency, fx_rate=fx_rate)
+            post_credit_sale(session, record.id, amount, sale_date, currency=currency, fx_rate=fx_rate)
         if not _sale_audit_logged:
             log_audit(session, "Create", "Sale", record.id, f"Sale {inv_num} · {amount:,.2f} {currency}")
         st.success(_t("txn.sale_recorded", invoice=inv_num))
