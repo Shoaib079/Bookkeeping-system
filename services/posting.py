@@ -81,6 +81,7 @@ from reconciliation.company_card import (
 )
 from registry.service import get_setting
 from services.commit_modes import (
+    PERIOD_CLOSE_FAMILY,
     POST_CASH_SALE_FAMILY,
     POST_EQUITY_MOVEMENT_FAMILY,
     POST_EXPENSE_FAMILY,
@@ -89,6 +90,8 @@ from services.commit_modes import (
     POST_PURCHASE_FAMILY,
     POST_RECEIVABLE_PAYMENT_FAMILY,
     POST_WORKER_MOVEMENT_FAMILY,
+    PROFIT_ALLOCATION_FAMILY,
+    YEAR_END_CLOSE_FAMILY,
     is_boundary_mode,
 )
 
@@ -2237,6 +2240,7 @@ def allocate_profit_to_partners(
         allocation.id,
         lines,
         company_id=company_id,
+        commit_family=PROFIT_ALLOCATION_FAMILY,
     )
     allocation.journal_entry_id = je.id
 
@@ -2249,7 +2253,7 @@ def allocate_profit_to_partners(
                 amount=s if net_income > 0 else -s,
             )
         )
-    session.commit()
+    _kernel_persist(session, commit_family=PROFIT_ALLOCATION_FAMILY)
     return allocation.id, ""
 
 
@@ -2488,12 +2492,13 @@ def close_fiscal_period(session, period_id, *, company_id: int | None = None):
         period_id,
         lines,
         company_id=company_id,
+        commit_family=PERIOD_CLOSE_FAMILY,
     )
 
     period.is_closed = True
     period.closed_at = datetime.date.today()
     period.closing_je_id = je.id
-    session.commit()
+    _kernel_persist(session, commit_family=PERIOD_CLOSE_FAMILY)
     return je
 
 
@@ -2710,5 +2715,5 @@ def perform_year_end_close(
         created_at=datetime.datetime.now(),
     )
     session.add(yec)
-    session.commit()
+    _kernel_persist(session, commit_family=YEAR_END_CLOSE_FAMILY)
     return yec.id, warnings, ""

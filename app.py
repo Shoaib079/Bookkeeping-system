@@ -7622,27 +7622,35 @@ def _get_period_net_income_from_je(session, period) -> float:
 def allocate_profit_to_partners(session, period_id: int, allocated_by_id: int,
                                   notes: str = None):
     """PS-P6-3 compatibility shim — kernel lives in services/posting.py."""
-    alloc_id, err = posting_service.allocate_profit_to_partners(
-        session,
-        period_id,
-        allocated_by_id,
-        notes=notes,
-        company_id=current_company_required(),
-    )
-    if err == "":
-        period = session.get(FiscalPeriod, period_id)
-        allocation = session.get(PartnerProfitAllocation, alloc_id)
-        partner_count = len(
-            cq(session, Partner).filter_by(is_active=True).all()
-        )
-        log_audit(
+    family = _commit_modes.PROFIT_ALLOCATION_FAMILY
+
+    def _run():
+        alloc_id, err = posting_service.allocate_profit_to_partners(
             session,
-            "ProfitAllocation",
-            "PartnerProfitAllocation",
-            alloc_id,
-            f"Allocated {period.name}: net {allocation.total_net_income:,.2f} → {partner_count} partners",
+            period_id,
+            allocated_by_id,
+            notes=notes,
+            company_id=current_company_required(),
         )
-    return alloc_id, err
+        if err == "":
+            period = session.get(FiscalPeriod, period_id)
+            allocation = session.get(PartnerProfitAllocation, alloc_id)
+            partner_count = len(
+                cq(session, Partner).filter_by(is_active=True).all()
+            )
+            log_audit(
+                session,
+                "ProfitAllocation",
+                "PartnerProfitAllocation",
+                alloc_id,
+                f"Allocated {period.name}: net {allocation.total_net_income:,.2f} → {partner_count} partners",
+            )
+        return alloc_id, err
+
+    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
+        with boundary_commit_scope(session, family):
+            return _run()
+    return _run()
 
 
 def void_profit_allocation(session, allocation_id: int, voider_id: int, reason: str) -> str:
@@ -7698,25 +7706,33 @@ def perform_year_end_close(
     acknowledged_warnings: list = None,
 ) -> tuple[int | None, list, str]:
     """PS-P6-4 compatibility shim — kernel lives in services/posting.py."""
-    yec_id, warnings, err = posting_service.perform_year_end_close(
-        session,
-        fiscal_year,
-        closed_by_id=closed_by_id,
-        notes=notes,
-        acknowledged_warnings=acknowledged_warnings,
-        company_id=current_company_required(),
-    )
-    if err == "" and yec_id is not None:
-        yec = session.get(YearEndClose, yec_id)
-        log_audit(
+    family = _commit_modes.YEAR_END_CLOSE_FAMILY
+
+    def _run():
+        yec_id, warnings, err = posting_service.perform_year_end_close(
             session,
-            "YearEndClose",
-            "YearEndClose",
-            yec_id,
-            f"Year {fiscal_year} closed. {yec.period_count} periods, "
-            f"net income {yec.net_income_snapshot:,.2f}, RE at close {yec.re_balance_at_close:,.2f}.",
+            fiscal_year,
+            closed_by_id=closed_by_id,
+            notes=notes,
+            acknowledged_warnings=acknowledged_warnings,
+            company_id=current_company_required(),
         )
-    return yec_id, warnings, err
+        if err == "" and yec_id is not None:
+            yec = session.get(YearEndClose, yec_id)
+            log_audit(
+                session,
+                "YearEndClose",
+                "YearEndClose",
+                yec_id,
+                f"Year {fiscal_year} closed. {yec.period_count} periods, "
+                f"net income {yec.net_income_snapshot:,.2f}, RE at close {yec.re_balance_at_close:,.2f}.",
+            )
+        return yec_id, warnings, err
+
+    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
+        with boundary_commit_scope(session, family):
+            return _run()
+    return _run()
 
 
 def void_year_end_close(
@@ -8097,20 +8113,28 @@ def delete_record(session, model, record_id):
 
 def close_fiscal_period(session, period_id):
     """PS-P6-4 compatibility shim — kernel lives in services/posting.py."""
-    je = posting_service.close_fiscal_period(
-        session, period_id, company_id=current_company_required()
-    )
-    period = session.get(FiscalPeriod, period_id)
-    net_income = _get_period_net_income_from_je(session, period)
-    log_audit(
-        session,
-        "PeriodClose",
-        "FiscalPeriod",
-        period_id,
-        f"Closed period '{period.name}' ({period.start_date}–{period.end_date}). "
-        f"Net income: ${net_income:,.2f}. Closing JE #{je.id}.",
-    )
-    return je
+    family = _commit_modes.PERIOD_CLOSE_FAMILY
+
+    def _run():
+        je = posting_service.close_fiscal_period(
+            session, period_id, company_id=current_company_required()
+        )
+        period = session.get(FiscalPeriod, period_id)
+        net_income = _get_period_net_income_from_je(session, period)
+        log_audit(
+            session,
+            "PeriodClose",
+            "FiscalPeriod",
+            period_id,
+            f"Closed period '{period.name}' ({period.start_date}–{period.end_date}). "
+            f"Net income: ${net_income:,.2f}. Closing JE #{je.id}.",
+        )
+        return je
+
+    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
+        with boundary_commit_scope(session, family):
+            return _run()
+    return _run()
 
 
 def render_year_end_close(session):

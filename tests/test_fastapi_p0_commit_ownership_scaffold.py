@@ -74,6 +74,9 @@ class TestCommitModes:
         assert commit_modes.get_commit_mode(commit_modes.POST_PARTNER_MOVEMENT_FAMILY) is CommitMode.INTERNAL
         assert commit_modes.get_commit_mode(commit_modes.POST_WORKER_MOVEMENT_FAMILY) is CommitMode.INTERNAL
         assert commit_modes.get_commit_mode(commit_modes.POST_EQUITY_MOVEMENT_FAMILY) is CommitMode.INTERNAL
+        assert commit_modes.get_commit_mode(commit_modes.PROFIT_ALLOCATION_FAMILY) is CommitMode.INTERNAL
+        assert commit_modes.get_commit_mode(commit_modes.PERIOD_CLOSE_FAMILY) is CommitMode.INTERNAL
+        assert commit_modes.get_commit_mode(commit_modes.YEAR_END_CLOSE_FAMILY) is CommitMode.INTERNAL
 
     def test_unknown_family_defaults_internal(self):
         assert commit_modes.get_commit_mode("future_family") is CommitMode.INTERNAL

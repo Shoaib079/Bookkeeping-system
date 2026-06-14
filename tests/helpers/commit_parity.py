@@ -66,6 +66,18 @@ MOVEMENT_TABLES: tuple[type, ...] = (
     models.BankAccount,
 )
 
+CLOSE_ALLOCATION_TABLES: tuple[type, ...] = (
+    models.JournalEntry,
+    models.JournalEntryLine,
+    models.AuditLog,
+    models.FiscalPeriod,
+    models.PartnerProfitAllocation,
+    models.PartnerProfitAllocationLine,
+    models.Partner,
+    models.YearEndClose,
+    models.ChartOfAccounts,
+)
+
 
 def table_row_counts(session: Session, tables: tuple[type, ...] = DEFAULT_TABLES) -> dict[str, int]:
     """Serializable row counts keyed by table name."""
@@ -246,6 +258,83 @@ def worker_movement_row_tuples(session: Session) -> list[tuple]:
     ]
 
 
+def fiscal_period_row_tuples(session: Session) -> list[tuple]:
+    rows = session.query(models.FiscalPeriod).order_by(models.FiscalPeriod.id).all()
+    return [
+        (
+            r.id,
+            r.name,
+            str(r.start_date),
+            str(r.end_date),
+            r.is_closed,
+            str(r.closed_at) if r.closed_at else None,
+            r.closing_je_id,
+            r.company_id,
+        )
+        for r in rows
+    ]
+
+
+def profit_allocation_row_tuples(session: Session) -> list[tuple]:
+    rows = (
+        session.query(models.PartnerProfitAllocation)
+        .order_by(models.PartnerProfitAllocation.id)
+        .all()
+    )
+    return [
+        (
+            r.id,
+            r.fiscal_period_id,
+            r.total_net_income,
+            r.journal_entry_id,
+            r.is_void,
+            r.company_id,
+        )
+        for r in rows
+    ]
+
+
+def profit_allocation_line_tuples(session: Session) -> list[tuple]:
+    rows = (
+        session.query(models.PartnerProfitAllocationLine)
+        .order_by(
+            models.PartnerProfitAllocationLine.allocation_id,
+            models.PartnerProfitAllocationLine.id,
+        )
+        .all()
+    )
+    return [
+        (
+            r.allocation_id,
+            r.partner_id,
+            r.share_pct,
+            r.amount,
+            r.company_id,
+        )
+        for r in rows
+    ]
+
+
+def year_end_close_row_tuples(session: Session) -> list[tuple]:
+    rows = session.query(models.YearEndClose).order_by(models.YearEndClose.id).all()
+    return [
+        (
+            r.id,
+            r.fiscal_year,
+            str(r.start_date),
+            str(r.end_date),
+            r.status,
+            r.period_count,
+            r.allocation_count,
+            r.net_income_snapshot,
+            r.re_balance_at_close,
+            r.is_void,
+            r.company_id,
+        )
+        for r in rows
+    ]
+
+
 def persisted_state_snapshot(
     session: Session,
     *,
@@ -258,6 +347,10 @@ def persisted_state_snapshot(
     include_payable_rows: bool = False,
     include_partner_movement_rows: bool = False,
     include_worker_movement_rows: bool = False,
+    include_fiscal_period_rows: bool = False,
+    include_profit_allocation_rows: bool = False,
+    include_profit_allocation_lines: bool = False,
+    include_year_end_close_rows: bool = False,
     include_audit_rows: bool = True,
 ) -> dict[str, Any]:
     """Compact persisted-state fingerprint for internal vs boundary dual-run."""
@@ -278,6 +371,14 @@ def persisted_state_snapshot(
         snap["partner_movements"] = partner_movement_row_tuples(session)
     if include_worker_movement_rows:
         snap["worker_movements"] = worker_movement_row_tuples(session)
+    if include_fiscal_period_rows:
+        snap["fiscal_periods"] = fiscal_period_row_tuples(session)
+    if include_profit_allocation_rows:
+        snap["profit_allocations"] = profit_allocation_row_tuples(session)
+    if include_profit_allocation_lines:
+        snap["profit_allocation_lines"] = profit_allocation_line_tuples(session)
+    if include_year_end_close_rows:
+        snap["year_end_closes"] = year_end_close_row_tuples(session)
     if include_audit_rows:
         snap["audit_rows"] = audit_row_tuples(session)
     return snap

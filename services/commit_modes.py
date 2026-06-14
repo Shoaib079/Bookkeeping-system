@@ -47,6 +47,15 @@ POST_WORKER_MOVEMENT_FAMILY = "post_worker_movement"
 # Slice 5 — equity contribution/drawing GL post + bank txn + audit boundary.
 POST_EQUITY_MOVEMENT_FAMILY = "post_equity_movement"
 
+# Slice 6 — profit allocation GL post + allocation rows + audit boundary.
+PROFIT_ALLOCATION_FAMILY = "profit_allocation"
+
+# Slice 6 — fiscal period close JE + period state + audit boundary.
+PERIOD_CLOSE_FAMILY = "period_close"
+
+# Slice 6 — year-end close lock record + audit boundary.
+YEAR_END_CLOSE_FAMILY = "year_end_close"
+
 AUDIT_FAMILY = "audit"
 
 
@@ -66,6 +75,9 @@ _DEFAULT_MODES[POST_RECEIVABLE_PAYMENT_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[POST_PARTNER_MOVEMENT_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[POST_WORKER_MOVEMENT_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[POST_EQUITY_MOVEMENT_FAMILY] = CommitMode.INTERNAL
+_DEFAULT_MODES[PROFIT_ALLOCATION_FAMILY] = CommitMode.INTERNAL
+_DEFAULT_MODES[PERIOD_CLOSE_FAMILY] = CommitMode.INTERNAL
+_DEFAULT_MODES[YEAR_END_CLOSE_FAMILY] = CommitMode.INTERNAL
 
 _test_overrides: dict[str, CommitMode] = {}
 
@@ -105,6 +117,8 @@ def reset_commit_modes_for_tests() -> None:
 __all__ = (
     "AUDIT_FAMILY",
     "CommitMode",
+    "PERIOD_CLOSE_FAMILY",
+    "PROFIT_ALLOCATION_FAMILY",
     "POST_CASH_SALE_FAMILY",
     "POST_EXPENSE_FAMILY",
     "POST_EQUITY_MOVEMENT_FAMILY",
@@ -113,6 +127,7 @@ __all__ = (
     "POST_PURCHASE_FAMILY",
     "POST_RECEIVABLE_PAYMENT_FAMILY",
     "POST_WORKER_MOVEMENT_FAMILY",
+    "YEAR_END_CLOSE_FAMILY",
     "POSTING_FAMILIES",
     "get_commit_mode",
     "is_boundary_mode",
