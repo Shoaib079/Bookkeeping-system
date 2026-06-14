@@ -1008,6 +1008,7 @@ def post_expense(
     credit_card_account_id=None,
     *,
     company_id: int | None = None,
+    commit_family: str | None = None,
 ):
     """Post expense: Debit Expense Account, Credit Cash/Bank/Credit Card Payable."""
     expense = session.get(ExpenseRecord, expense_id)
@@ -1041,7 +1042,7 @@ def post_expense(
             [(expense_acct.id, amount, 0), (credit_acct.id, 0, amount)],
             currency=currency,
             company_id=company_id,
-            commit_family=POST_EXPENSE_FAMILY,
+            commit_family=commit_family or POST_EXPENSE_FAMILY,
         )
         sync_company_cc_subledger(
             session,

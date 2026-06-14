@@ -56,6 +56,9 @@ PERIOD_CLOSE_FAMILY = "period_close"
 # Slice 6 — year-end close lock record + audit boundary.
 YEAR_END_CLOSE_FAMILY = "year_end_close"
 
+# Slice 7 — bank statement match/post boundary (row + btxn + JE + audit).
+RECONCILIATION_FAMILY = "reconciliation"
+
 AUDIT_FAMILY = "audit"
 
 
@@ -78,6 +81,7 @@ _DEFAULT_MODES[POST_EQUITY_MOVEMENT_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[PROFIT_ALLOCATION_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[PERIOD_CLOSE_FAMILY] = CommitMode.INTERNAL
 _DEFAULT_MODES[YEAR_END_CLOSE_FAMILY] = CommitMode.INTERNAL
+_DEFAULT_MODES[RECONCILIATION_FAMILY] = CommitMode.INTERNAL
 
 _test_overrides: dict[str, CommitMode] = {}
 
@@ -127,6 +131,7 @@ __all__ = (
     "POST_PURCHASE_FAMILY",
     "POST_RECEIVABLE_PAYMENT_FAMILY",
     "POST_WORKER_MOVEMENT_FAMILY",
+    "RECONCILIATION_FAMILY",
     "YEAR_END_CLOSE_FAMILY",
     "POSTING_FAMILIES",
     "get_commit_mode",

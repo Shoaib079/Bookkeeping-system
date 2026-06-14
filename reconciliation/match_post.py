@@ -23,6 +23,8 @@ from models import (
     SettlementStatementRow,
     Vendor,
 )
+from services.commit_modes import RECONCILIATION_FAMILY
+from services.posting import _kernel_persist, create_journal_entry as _posting_create_journal_entry
 
 _PARTNER_REF_TYPES = {
     "CapitalContribution": "PartnerCapital",
@@ -44,6 +46,34 @@ def _app():
     import app as app_module
 
     return app_module
+
+
+def _recon_persist(session) -> None:
+    _kernel_persist(session, commit_family=RECONCILIATION_FAMILY)
+
+
+def _create_je(
+    session,
+    entry_date,
+    description,
+    reference_type,
+    reference_id,
+    lines,
+    *,
+    currency: str | None = None,
+    company_id: int | None = None,
+):
+    return _posting_create_journal_entry(
+        session,
+        entry_date,
+        description,
+        reference_type,
+        reference_id,
+        lines,
+        currency=currency,
+        company_id=company_id,
+        commit_family=RECONCILIATION_FAMILY,
+    )
 
 
 def _row_context(session, row_id: int, company_id: int) -> tuple[BankStatementRow, BankStatementImport]:
@@ -273,7 +303,7 @@ def post_deposit_clearing_match(
     je_lines.append((clearing_gl.id, 0, clearing_total))
 
     fee_note = f" · fee {fee_amt:,.2f}" if fee_amt > 0.01 else ""
-    je = app.create_journal_entry(
+    je = _create_je(
         session,
         row.date,
         f"Card settlement — stmt row {row.import_row_index}{fee_note}",
@@ -301,7 +331,7 @@ def post_deposit_clearing_match(
         settlement_row.posted_by_user_id = user_id
         session.add(settlement_row)
 
-    session.commit()
+    _recon_persist(session)
     return {
         "journal_entry_id": je.id,
         "bank_transaction_id": btxn.id,
@@ -340,7 +370,7 @@ def post_generic_deposit(
         company_id=company_id,
         txn_type="deposit",
     )
-    je = app.create_journal_entry(
+    je = _create_je(
         session,
         row.date,
         f"Bank deposit — stmt row {row.import_row_index}",
@@ -358,7 +388,7 @@ def post_generic_deposit(
         bank_transaction_id=btxn.id,
         user_id=user_id,
     )
-    session.commit()
+    _recon_persist(session)
     return {"journal_entry_id": je.id, "bank_transaction_id": btxn.id, "amount": amt}
 
 
@@ -452,7 +482,7 @@ def post_partner_statement_match(
         lines = [(bank_gl.id, amt, 0), (adv_acct.id, 0, amt)]
 
     desc = f"Partner {movement_type}: {partner.name} — stmt row {row.import_row_index}"
-    je = app.create_journal_entry(
+    je = _create_je(
         session,
         row.date,
         desc,
@@ -474,7 +504,7 @@ def post_partner_statement_match(
         user_id=user_id,
         partner_movement_id=movement.id,
     )
-    session.commit()
+    _recon_persist(session)
     return {
         "journal_entry_id": je.id,
         "bank_transaction_id": btxn.id,
@@ -606,7 +636,7 @@ def post_worker_statement_match(
     desc = (
         f"Worker {movement_type}: {worker.name} — stmt row {row.import_row_index}"
     )
-    je = app.create_journal_entry(
+    je = _create_je(
         session,
         row.date,
         desc,
@@ -628,7 +658,7 @@ def post_worker_statement_match(
         user_id=user_id,
         worker_movement_id=movement.id,
     )
-    session.commit()
+    _recon_persist(session)
     return {
         "journal_entry_id": je.id,
         "bank_transaction_id": btxn.id,
@@ -719,7 +749,7 @@ def post_equity_statement_match(
         company_id=company_id,
         txn_type=txn_type,
     )
-    je = app.create_journal_entry(
+    je = _create_je(
         session,
         row.date,
         desc,
@@ -737,7 +767,7 @@ def post_equity_statement_match(
         bank_transaction_id=btxn.id,
         user_id=user_id,
     )
-    session.commit()
+    _recon_persist(session)
     return {
         "journal_entry_id": je.id,
         "bank_transaction_id": btxn.id,
@@ -792,7 +822,7 @@ def post_vendor_outflow(
             company_id=company_id,
             txn_type="withdrawal",
         )
-        je = app.create_journal_entry(
+        je = _create_je(
             session,
             row.date,
             f"Payable payment — stmt row {row.import_row_index} · {vendor.name}",
@@ -832,7 +862,9 @@ def post_vendor_outflow(
             company_id=company_id,
             txn_type="withdrawal",
         )
-        app.post_expense(
+        from services import posting as posting_svc
+
+        posting_svc.post_expense(
             session,
             expense.id,
             amt,
@@ -840,6 +872,8 @@ def post_vendor_outflow(
             expense_category,
             payment_method="Bank",
             currency=imp.currency,
+            company_id=company_id,
+            commit_family=RECONCILIATION_FAMILY,
         )
         je = (
             session.query(JournalEntry)
@@ -864,7 +898,7 @@ def post_vendor_outflow(
         payable_id=paid_payable_id,
         expense_record_id=expense_id,
     )
-    session.commit()
+    _recon_persist(session)
     return {
         "journal_entry_id": je.id,
         "bank_transaction_id": btxn.id,
@@ -1195,7 +1229,7 @@ def post_bank_charge_outflow(
     btxn.charge_subtype = subtype
     session.add(btxn)
 
-    je = app.create_journal_entry(
+    je = _create_je(
         session,
         row.date,
         f"Bank {fee_label} — stmt row {row.import_row_index} ({(row.description or '')[:50]})",
@@ -1213,7 +1247,7 @@ def post_bank_charge_outflow(
         bank_transaction_id=btxn.id,
         user_id=user_id,
     )
-    session.commit()
+    _recon_persist(session)
     return {
         "journal_entry_id": je.id,
         "bank_transaction_id": btxn.id,

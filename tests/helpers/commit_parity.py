@@ -78,6 +78,18 @@ CLOSE_ALLOCATION_TABLES: tuple[type, ...] = (
     models.ChartOfAccounts,
 )
 
+RECONCILIATION_TABLES: tuple[type, ...] = (
+    models.JournalEntry,
+    models.JournalEntryLine,
+    models.AuditLog,
+    models.BankStatementRow,
+    models.BankStatementImport,
+    models.BankTransaction,
+    models.BankAccount,
+    models.ChartOfAccounts,
+    models.ExpenseRecord,
+)
+
 
 def table_row_counts(session: Session, tables: tuple[type, ...] = DEFAULT_TABLES) -> dict[str, int]:
     """Serializable row counts keyed by table name."""
@@ -335,6 +347,48 @@ def year_end_close_row_tuples(session: Session) -> list[tuple]:
     ]
 
 
+def bank_statement_row_tuples(session: Session) -> list[tuple]:
+    rows = (
+        session.query(models.BankStatementRow)
+        .order_by(models.BankStatementRow.id)
+        .all()
+    )
+    return [
+        (
+            r.id,
+            r.bank_statement_import_id,
+            r.status,
+            r.match_type,
+            r.posted_journal_entry_id,
+            r.bank_transaction_id,
+            r.amount,
+            r.vendor_id,
+            r.payable_id,
+            r.expense_record_id,
+            r.partner_movement_id,
+            r.worker_movement_id,
+            r.clearing_sale_ids_json,
+            r.settlement_row_id,
+        )
+        for r in rows
+    ]
+
+
+def bank_account_row_tuples(session: Session) -> list[tuple]:
+    rows = session.query(models.BankAccount).order_by(models.BankAccount.id).all()
+    return [
+        (
+            r.id,
+            r.name,
+            r.currency,
+            r.balance,
+            r.company_id,
+            r.is_active,
+        )
+        for r in rows
+    ]
+
+
 def persisted_state_snapshot(
     session: Session,
     *,
@@ -351,6 +405,8 @@ def persisted_state_snapshot(
     include_profit_allocation_rows: bool = False,
     include_profit_allocation_lines: bool = False,
     include_year_end_close_rows: bool = False,
+    include_bank_statement_rows: bool = False,
+    include_bank_account_rows: bool = False,
     include_audit_rows: bool = True,
 ) -> dict[str, Any]:
     """Compact persisted-state fingerprint for internal vs boundary dual-run."""
@@ -379,6 +435,10 @@ def persisted_state_snapshot(
         snap["profit_allocation_lines"] = profit_allocation_line_tuples(session)
     if include_year_end_close_rows:
         snap["year_end_closes"] = year_end_close_row_tuples(session)
+    if include_bank_statement_rows:
+        snap["bank_statement_rows"] = bank_statement_row_tuples(session)
+    if include_bank_account_rows:
+        snap["bank_accounts"] = bank_account_row_tuples(session)
     if include_audit_rows:
         snap["audit_rows"] = audit_row_tuples(session)
     return snap

@@ -1589,6 +1589,14 @@ def log_audit(session, action, entity_type, entity_id, description):
     )
 
 
+def _recon_boundary_scope(session):
+    """One boundary commit for reconciliation poster + audit (FASTAPI-P0.5d-S7)."""
+    family = _commit_modes.RECONCILIATION_FAMILY
+    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
+        return boundary_commit_scope(session, family)
+    return nullcontext()
+
+
 def _entry_date_posting_blocked(
     session, entry_date, *, reference_type: str = "Expense"
 ) -> str | None:
@@ -17057,19 +17065,20 @@ def _bsi_execute_bank_fee_batch_post(
             )
             continue
         try:
-            result = post_bank_charge_outflow(
-                session,
-                row_id=row_id,
-                company_id=cid,
-                user_id=user_id,
-            )
-            log_audit(
-                session,
-                "Post",
-                "BankStatementRow",
-                row_id,
-                f"Bank charge · {result['amount']:,.2f}",
-            )
+            with _recon_boundary_scope(session):
+                result = post_bank_charge_outflow(
+                    session,
+                    row_id=row_id,
+                    company_id=cid,
+                    user_id=user_id,
+                )
+                log_audit(
+                    session,
+                    "Post",
+                    "BankStatementRow",
+                    row_id,
+                    f"Bank charge · {result['amount']:,.2f}",
+                )
             results.append(
                 {
                     "row_id": row_id,
@@ -17367,22 +17376,23 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
     ):
         uid = (_current_user() or {}).get("id")
         try:
-            post_deposit_clearing_match(
-                session,
-                row_id=sel_row.id,
-                company_id=cid,
-                sale_ids=picked_sales,
-                user_id=uid,
-                settlement_row_id=settlement_row_id,
-                confirm_inferred_fee=confirm_inferred_fee,
-            )
-            log_audit(
-                session,
-                "Post",
-                "BankStatementRow",
-                sel_row.id,
-                f"Clearing match · {sel_row.amount:,.2f}",
-            )
+            with _recon_boundary_scope(session):
+                post_deposit_clearing_match(
+                    session,
+                    row_id=sel_row.id,
+                    company_id=cid,
+                    sale_ids=picked_sales,
+                    user_id=uid,
+                    settlement_row_id=settlement_row_id,
+                    confirm_inferred_fee=confirm_inferred_fee,
+                )
+                log_audit(
+                    session,
+                    "Post",
+                    "BankStatementRow",
+                    sel_row.id,
+                    f"Clearing match · {sel_row.amount:,.2f}",
+                )
             st.success(
                 _t(
                     "banking.import.match.posted_ok",
@@ -17423,20 +17433,21 @@ def _render_bsi_other_deposit(session, sel_row, cid: int) -> None:
     ):
         uid = (_current_user() or {}).get("id")
         try:
-            post_generic_deposit(
-                session,
-                row_id=sel_row.id,
-                company_id=cid,
-                credit_account_name=credit_acct,
-                user_id=uid,
-            )
-            log_audit(
-                session,
-                "Post",
-                "BankStatementRow",
-                sel_row.id,
-                f"Deposit · {sel_row.amount:,.2f} · CR {credit_acct}",
-            )
+            with _recon_boundary_scope(session):
+                post_generic_deposit(
+                    session,
+                    row_id=sel_row.id,
+                    company_id=cid,
+                    credit_account_name=credit_acct,
+                    user_id=uid,
+                )
+                log_audit(
+                    session,
+                    "Post",
+                    "BankStatementRow",
+                    sel_row.id,
+                    f"Deposit · {sel_row.amount:,.2f} · CR {credit_acct}",
+                )
             st.success(
                 _t(
                     "banking.import.match.posted_ok",
@@ -17574,23 +17585,24 @@ def _render_bsi_vendor_payment(session, sel_row, cid: int) -> None:
     ):
         uid = (_current_user() or {}).get("id")
         try:
-            post_vendor_outflow(
-                session,
-                row_id=sel_row.id,
-                company_id=cid,
-                vendor_id=vendor_id,
-                user_id=uid,
-                payable_id=payable_id,
-                expense_category=exp_cat,
-                create_expense=adhoc and payable_id is None,
-            )
-            log_audit(
-                session,
-                "Post",
-                "BankStatementRow",
-                sel_row.id,
-                f"Payment · {sel_row.amount:,.2f}",
-            )
+            with _recon_boundary_scope(session):
+                post_vendor_outflow(
+                    session,
+                    row_id=sel_row.id,
+                    company_id=cid,
+                    vendor_id=vendor_id,
+                    user_id=uid,
+                    payable_id=payable_id,
+                    expense_category=exp_cat,
+                    create_expense=adhoc and payable_id is None,
+                )
+                log_audit(
+                    session,
+                    "Post",
+                    "BankStatementRow",
+                    sel_row.id,
+                    f"Payment · {sel_row.amount:,.2f}",
+                )
             st.success(
                 _t(
                     "banking.import.match.posted_ok",
@@ -17681,25 +17693,26 @@ def _render_bsi_worker_payroll(session, sel_row, cid: int) -> None:
                 if not gross or gross <= 0:
                     st.error(_t("form.amount_positive"))
                 else:
-                    post_worker_statement_match(
-                        session,
-                        row_id=sel_row.id,
-                        company_id=cid,
-                        worker_id=worker_id,
-                        movement_type="Salary",
-                        user_id=uid,
-                        gross_salary=gross,
-                        deductions=ded or 0.0,
-                        advance_recovery=adv_rec or 0.0,
-                        pay_period=period,
-                    )
-                    log_audit(
-                        session,
-                        "Post",
-                        "BankStatementRow",
-                        sel_row.id,
-                        f"Worker salary · {sel_row.amount:,.2f}",
-                    )
+                    with _recon_boundary_scope(session):
+                        post_worker_statement_match(
+                            session,
+                            row_id=sel_row.id,
+                            company_id=cid,
+                            worker_id=worker_id,
+                            movement_type="Salary",
+                            user_id=uid,
+                            gross_salary=gross,
+                            deductions=ded or 0.0,
+                            advance_recovery=adv_rec or 0.0,
+                            pay_period=period,
+                        )
+                        log_audit(
+                            session,
+                            "Post",
+                            "BankStatementRow",
+                            sel_row.id,
+                            f"Worker salary · {sel_row.amount:,.2f}",
+                        )
                     st.success(
                         _t(
                             "banking.import.match.posted_ok",
@@ -17708,21 +17721,22 @@ def _render_bsi_worker_payroll(session, sel_row, cid: int) -> None:
                     )
                     st.rerun()
             else:
-                post_worker_statement_match(
-                    session,
-                    row_id=sel_row.id,
-                    company_id=cid,
-                    worker_id=worker_id,
-                    movement_type="Advance",
-                    user_id=uid,
-                )
-                log_audit(
-                    session,
-                    "Post",
-                    "BankStatementRow",
-                    sel_row.id,
-                    f"Worker advance · {sel_row.amount:,.2f}",
-                )
+                with _recon_boundary_scope(session):
+                    post_worker_statement_match(
+                        session,
+                        row_id=sel_row.id,
+                        company_id=cid,
+                        worker_id=worker_id,
+                        movement_type="Advance",
+                        user_id=uid,
+                    )
+                    log_audit(
+                        session,
+                        "Post",
+                        "BankStatementRow",
+                        sel_row.id,
+                        f"Worker advance · {sel_row.amount:,.2f}",
+                    )
                 st.success(
                     _t(
                         "banking.import.match.posted_ok",
@@ -17762,19 +17776,20 @@ def _render_bsi_bank_fee(session, sel_row, cid: int) -> None:
     ):
         uid = (_current_user() or {}).get("id")
         try:
-            post_bank_charge_outflow(
-                session,
-                row_id=sel_row.id,
-                company_id=cid,
-                user_id=uid,
-            )
-            log_audit(
-                session,
-                "Post",
-                "BankStatementRow",
-                sel_row.id,
-                f"Bank charge · {sel_row.amount:,.2f}",
-            )
+            with _recon_boundary_scope(session):
+                post_bank_charge_outflow(
+                    session,
+                    row_id=sel_row.id,
+                    company_id=cid,
+                    user_id=uid,
+                )
+                log_audit(
+                    session,
+                    "Post",
+                    "BankStatementRow",
+                    sel_row.id,
+                    f"Bank charge · {sel_row.amount:,.2f}",
+                )
             st.success(
                 _t(
                     "banking.import.match.posted_ok",
@@ -17843,21 +17858,22 @@ def _render_bsi_partner_owner_loan_match(
             ):
                 uid = (_current_user() or {}).get("id")
                 try:
-                    post_partner_statement_match(
-                        session,
-                        row_id=sel_row.id,
-                        company_id=cid,
-                        partner_id=partner_id,
-                        movement_type=pm_type,
-                        user_id=uid,
-                    )
-                    log_audit(
-                        session,
-                        "Post",
-                        "BankStatementRow",
-                        sel_row.id,
-                        f"Partner {pm_type} · {sel_row.amount:,.2f}",
-                    )
+                    with _recon_boundary_scope(session):
+                        post_partner_statement_match(
+                            session,
+                            row_id=sel_row.id,
+                            company_id=cid,
+                            partner_id=partner_id,
+                            movement_type=pm_type,
+                            user_id=uid,
+                        )
+                        log_audit(
+                            session,
+                            "Post",
+                            "BankStatementRow",
+                            sel_row.id,
+                            f"Partner {pm_type} · {sel_row.amount:,.2f}",
+                        )
                     st.success(
                         _t(
                             "banking.import.match.posted_ok",
@@ -17901,20 +17917,21 @@ def _render_bsi_partner_owner_loan_match(
         ):
             uid = (_current_user() or {}).get("id")
             try:
-                post_equity_statement_match(
-                    session,
-                    row_id=sel_row.id,
-                    company_id=cid,
-                    equity_kind=owner_kind,
-                    user_id=uid,
-                )
-                log_audit(
-                    session,
-                    "Post",
-                    "BankStatementRow",
-                    sel_row.id,
-                    f"{owner_kind} · {sel_row.amount:,.2f}",
-                )
+                with _recon_boundary_scope(session):
+                    post_equity_statement_match(
+                        session,
+                        row_id=sel_row.id,
+                        company_id=cid,
+                        equity_kind=owner_kind,
+                        user_id=uid,
+                    )
+                    log_audit(
+                        session,
+                        "Post",
+                        "BankStatementRow",
+                        sel_row.id,
+                        f"{owner_kind} · {sel_row.amount:,.2f}",
+                    )
                 st.success(
                     _t(
                         "banking.import.match.posted_ok",
@@ -17941,20 +17958,21 @@ def _render_bsi_partner_owner_loan_match(
     ):
         uid = (_current_user() or {}).get("id")
         try:
-            post_equity_statement_match(
-                session,
-                row_id=sel_row.id,
-                company_id=cid,
-                equity_kind=loan_kind,
-                user_id=uid,
-            )
-            log_audit(
-                session,
-                "Post",
-                "BankStatementRow",
-                sel_row.id,
-                f"{loan_kind} · {sel_row.amount:,.2f}",
-            )
+            with _recon_boundary_scope(session):
+                post_equity_statement_match(
+                    session,
+                    row_id=sel_row.id,
+                    company_id=cid,
+                    equity_kind=loan_kind,
+                    user_id=uid,
+                )
+                log_audit(
+                    session,
+                    "Post",
+                    "BankStatementRow",
+                    sel_row.id,
+                    f"{loan_kind} · {sel_row.amount:,.2f}",
+                )
             st.success(
                 _t(
                     "banking.import.match.posted_ok",
