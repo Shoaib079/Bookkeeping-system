@@ -94,10 +94,11 @@ def test_login01_user_tiles_use_avatar_cards():
 
 def test_login01_dev_auth_and_restore_hooks_untouched():
     main_src = inspect.getsource(erp.main)
-    assert "_try_restore_session_from_cookie" in main_src
-    restore_pos = main_src.index("_try_restore_session_from_cookie")
+    assert "_early_restore_auth_session" in main_src
+    restore_pos = main_src.index("_early_restore_auth_session")
+    bootstrap_pos = main_src.index("bootstrap_theme(")
     login_pos = main_src.index("render_login")
-    assert restore_pos < login_pos
+    assert restore_pos < bootstrap_pos < login_pos
 
     assert hasattr(erp, "DEV_MODE")
     assert "ERP_DEV_MODE" in inspect.getsource(erp) or "DEV_MODE" in dir(erp)

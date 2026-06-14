@@ -80,17 +80,14 @@ def test_bootstrap_explicit_light_injects_light_vars(theme_module):
     st.context = types.SimpleNamespace(cookies={"erp_os_dark": "1"}, headers={})
     st.markdown.reset_mock()
     theme.bootstrap_theme(lambda: MagicMock(), None)
-    inject_calls = [
-        c.args[0] for c in st.markdown.call_args_list if c.args and ":root{" in c.args[0]
+    style_calls = [
+        c.args[0] for c in st.markdown.call_args_list if c.args and "<style>" in c.args[0]
     ]
-    assert len(inject_calls) == 1
-    assert theme.LIGHT_ROOT_VARS["--theme-bg"] in inject_calls[0]
-    marker_calls = [
-        c.args[0]
-        for c in st.markdown.call_args_list
-        if c.args and "data-erp-theme" in c.args[0] and "<script>" in c.args[0]
-    ]
-    assert marker_calls and "light" in marker_calls[0]
+    assert len(style_calls) == 1
+    bundle = style_calls[0]
+    assert theme.LIGHT_ROOT_VARS["--theme-bg"] in bundle
+    assert "data-erp-theme" in bundle and "light" in bundle
+    assert bundle.index(theme.LIGHT_ROOT_VARS["--theme-bg"]) < bundle.find("#f8fafc")
 
 
 def test_bootstrap_system_no_inject_without_os_hint(theme_module):

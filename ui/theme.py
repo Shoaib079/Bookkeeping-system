@@ -151,9 +151,68 @@ def _vars_to_css_block(vars_map: dict[str, str]) -> str:
     return f":root{{{body}}}"
 
 
-def render_global_style() -> None:
+def _strip_first_root_block(css: str) -> str:
+    """Remove the leading :root{} block from theme.css (first in the bundle)."""
+    s = css.lstrip()
+    if not s.startswith(":root"):
+        return css
+    brace = s.find("{")
+    if brace < 0:
+        return css
+    depth = 0
+    for i in range(brace, len(s)):
+        ch = s[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return s[i + 1 :].lstrip()
+    return css
+
+
+def _resolve_bootstrap_root_css(theme_mode: str) -> tuple[str, str]:
+    """Resolved :root prefix for the first style bundle (THEME-FLASH-01)."""
+    if theme_mode == "light":
+        return _vars_to_css_block(LIGHT_ROOT_VARS), ""
+    if theme_mode == "dark":
+        return _vars_to_css_block(DARK_ROOT_VARS), _DARK_MONO_KPI_CSS
+    os_inject = _system_theme_injection_dark()
+    if os_inject is None:
+        return "", ""
+    vars_map = DARK_ROOT_VARS if os_inject else LIGHT_ROOT_VARS
+    extra = _DARK_MONO_KPI_CSS if os_inject else ""
+    return _vars_to_css_block(vars_map), extra
+
+
+def _theme_authority_script(theme_mode: str) -> str:
+    """Synchronous script stamping html[data-erp-theme] before CSS parses."""
+    safe = theme_mode if theme_mode in ("light", "dark", "system") else "system"
+    mode_js = json.dumps(safe)
+    return (
+        f"""<script>
+        (function() {{
+          const root = (window.top || window.parent).document.documentElement;
+          root.setAttribute("data-erp-theme", {mode_js});
+        }})();
+        </script>"""
+    )
+
+
+def render_global_style(
+    *,
+    root_prefix: str = "",
+    extra_css: str = "",
+    theme_mode: str | None = None,
+) -> None:
     """Inject base stylesheet (tokens + layout + legacy hex overrides)."""
-    st.markdown(f"<style>{load_theme_css()}</style>", unsafe_allow_html=True)
+    css = load_theme_css()
+    if root_prefix:
+        css = root_prefix + "\n" + _strip_first_root_block(css)
+    if extra_css:
+        css = css + "\n" + extra_css
+    authority = _theme_authority_script(theme_mode) if theme_mode else ""
+    st.markdown(f"{authority}<style>{css}</style>", unsafe_allow_html=True)
 
 
 def inject_mobile_viewport_detector() -> None:
@@ -327,17 +386,7 @@ def sync_derived_dark_mode() -> bool:
 
 def inject_theme_authority_marker(theme_mode: str) -> None:
     """Stamp html[data-erp-theme] so CSS @media cannot override explicit prefs."""
-    safe = theme_mode if theme_mode in ("light", "dark", "system") else "system"
-    mode_js = json.dumps(safe)
-    st.markdown(
-        f"""<script>
-        (function() {{
-          const root = (window.top || window.parent).document.documentElement;
-          root.setAttribute("data-erp-theme", {mode_js});
-        }})();
-        </script>""",
-        unsafe_allow_html=True,
-    )
+    st.markdown(_theme_authority_script(theme_mode), unsafe_allow_html=True)
 
 
 def chart_theme_tokens(*, dark: bool | None = None) -> dict[str, str]:
@@ -506,8 +555,6 @@ def apply_user_theme_from_db(session, user_id: int) -> str | None:
 
 def bootstrap_theme(session_factory, auth_user: dict | None) -> None:
     """Call once at start of main(): base CSS + DB theme + injection (THEME-AUTHORITY-01)."""
-    render_global_style()
-    inject_mobile_viewport_detector()
     if auth_user and auth_user.get("id"):
         try:
             with session_factory() as session:
@@ -520,16 +567,13 @@ def bootstrap_theme(session_factory, auth_user: dict | None) -> None:
 
     sync_derived_dark_mode()
     theme_mode = get_theme_mode()
-    inject_theme_authority_marker(theme_mode)
-
-    if theme_mode == "light":
-        inject_theme_css(False)
-    elif theme_mode == "dark":
-        inject_theme_css(True)
-    else:
-        os_inject = _system_theme_injection_dark()
-        if os_inject is not None:
-            inject_theme_css(os_inject)
+    root_prefix, mono_extra = _resolve_bootstrap_root_css(theme_mode)
+    render_global_style(
+        root_prefix=root_prefix,
+        extra_css=mono_extra,
+        theme_mode=theme_mode,
+    )
+    inject_mobile_viewport_detector()
     sync_os_dark_flag_from_cookie()
 
 

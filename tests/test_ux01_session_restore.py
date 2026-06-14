@@ -323,10 +323,11 @@ def test_dev_mode_unaffected(monkeypatch, db):
 
 def test_main_wires_restore_before_auth_gate():
     src = inspect.getsource(erp.main)
-    assert "_try_restore_session_from_cookie" in src
-    restore_pos = src.index("_try_restore_session_from_cookie")
+    assert "_early_restore_auth_session" in src
+    restore_pos = src.index("_early_restore_auth_session")
+    bootstrap_pos = src.index("bootstrap_theme(")
     login_pos = src.index("render_login")
-    assert restore_pos < login_pos
+    assert restore_pos < bootstrap_pos < login_pos
 
 
 def test_cookie_component_skipped_in_dev_mode(monkeypatch):

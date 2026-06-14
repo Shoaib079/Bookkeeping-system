@@ -25664,11 +25664,30 @@ def render_my_account(session):
                 st.rerun()
 
 
+def _early_restore_auth_session() -> bool:
+    """Restore auth from cookie before theme bootstrap (THEME-FLASH-01)."""
+    if st.session_state.get(_SESSION_LOGGED_OUT):
+        _render_session_restore_cookie(clear=True)
+        return False
+    if _current_user() is not None:
+        return False
+    with get_session() as session:
+        return _try_restore_session_from_cookie(session)
+
+
+def _early_dev_auto_login() -> str | None:
+    """Establish dev auth before theme bootstrap when applicable."""
+    if not DEV_MODE or is_setup01_active():
+        return None
+    if st.session_state.get(_SESSION_LOGGED_OUT) or st.session_state.get("auth_user"):
+        return None
+    with get_session() as session:
+        return _dev_auto_login(session)
+
+
 def main():
     # Always use the project folder for DB, uploads, and backups — not the shell cwd.
     os.chdir(PROJECT_ROOT)
-
-    bootstrap_theme(get_session, st.session_state.get("auth_user"))
 
     # ── Phase 14A: pre-session DDL (raw sqlite3, FK enforcement off) ─────────
     _phase14a_milestone_backup()      # one-time backup before first migration run
@@ -25695,30 +25714,26 @@ def main():
         ensure_workers_accounts(_boot_session)  # Workers: 1250 Employee Advances
         sync_account_balances(_boot_session)  # keep balance cache in sync with journal lines
 
+    # ── THEME-FLASH-01: restore auth before theme CSS so DB preference applies ─
+    _session_restored = _early_restore_auth_session()
+    _dev_login_err = _early_dev_auto_login()
+
+    bootstrap_theme(get_session, st.session_state.get("auth_user"))
+
+    if _session_restored:
+        st.rerun()
+
     # ── Auto-backup: runs silently if last backup is older than 24 hours ──────
     auto_backup_if_needed(hours=24)
 
-    # ── DEV-AUTH-01: dev bypass banner + auto-login ───────────────────────────
+    # ── DEV-AUTH-01: dev bypass banner + auto-login error ─────────────────────
     if DEV_MODE and not is_setup01_active():
         st.markdown(
             f'<div class="dev-mode-stripe">{html.escape(_t("dev.banner"))}</div>',
             unsafe_allow_html=True,
         )
-        if not st.session_state.get(_SESSION_LOGGED_OUT) and not st.session_state.get("auth_user"):
-            with get_session() as _dev_s:
-                _dev_err = _dev_auto_login(_dev_s)
-                if _dev_err:
-                    st.error(_dev_err)
-
-    # ── UX-01: clear restore cookie after explicit logout ─────────────────────
-    if st.session_state.get(_SESSION_LOGGED_OUT):
-        _render_session_restore_cookie(clear=True)
-
-    # ── UX-01: restore user (+ company) from signed cookie after refresh ──────
-    if _current_user() is None and not st.session_state.get(_SESSION_LOGGED_OUT):
-        with get_session() as _restore_s:
-            if _try_restore_session_from_cookie(_restore_s):
-                st.rerun()
+        if _dev_login_err:
+            st.error(_dev_login_err)
 
     # ── Auth gate — show login page if no valid session ───────────────────────
     if _current_user() is None:
