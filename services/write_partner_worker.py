@@ -7,7 +7,15 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from models import BankAccount, JournalEntry, Partner, PartnerMovement, Worker, WorkerMovement
+from models import (
+    BankAccount,
+    BankTransaction,
+    JournalEntry,
+    Partner,
+    PartnerMovement,
+    Worker,
+    WorkerMovement,
+)
 from services import audit as audit_svc
 from services import commit_modes
 from services import posting as posting_svc
@@ -123,6 +131,25 @@ def _movement_journal_entry(
     return entry
 
 
+def _stamp_company_on_movement(session: Session, movement, company_id: int) -> None:
+    """P2-HARDEN-01a — wrapper-side company stamp parity for API sessions.
+
+    The kernel-created PartnerMovement and the partner/worker movement BankTransaction
+    rows do not set company_id (Streamlit relies on the SessionLocal before_flush hook,
+    which is a no-op on API sessions). Stamp them from the explicit request company when
+    still NULL. No accounting/audit change — only the company_id column on these rows.
+    """
+    if movement is None:
+        return
+    if movement.company_id is None:
+        movement.company_id = company_id
+    btxn_id = getattr(movement, "bank_transaction_id", None)
+    if btxn_id is not None:
+        btxn = session.get(BankTransaction, btxn_id)
+        if btxn is not None and btxn.company_id is None:
+            btxn.company_id = company_id
+
+
 def _partner_audit_description(
     movement_type: str, partner_name: str, amount: float
 ) -> str:
@@ -175,6 +202,9 @@ def post_partner_movement_record(
         )
         if err:
             raise ValueError(err)
+        _stamp_company_on_movement(
+            session, session.get(PartnerMovement, movement_id), company_id
+        )
         audit_svc.record_audit(
             session,
             action=audit_svc.ACTION_CREATE,
@@ -261,6 +291,7 @@ def post_worker_payment_record(
             raise ValueError(err)
         movement = session.get(WorkerMovement, movement_id)
         mv_amount = movement.amount if movement is not None else (amount or 0.0)
+        _stamp_company_on_movement(session, movement, company_id)
         audit_desc = _worker_audit_description(
             movement_type, worker.name, mv_amount
         )

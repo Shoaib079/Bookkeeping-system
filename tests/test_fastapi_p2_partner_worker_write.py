@@ -565,6 +565,79 @@ class TestPartnerWorkerWriteBoundaryCommit:
             assert mock_commit.call_count == 1
 
 
+class TestPartnerWorkerWriteCompanyStamp:
+    """P2-HARDEN-01a — kernel-created PartnerMovement and partner/worker movement
+    BankTransaction rows must carry company_id even when the Streamlit before_flush
+    stamp hook is inactive (no ambient active_company_id), as on the real API path.
+    Clearing the ambient company reproduces that condition so the wrapper stamp is
+    the only thing that can populate company_id.
+    """
+
+    @staticmethod
+    def _clear_ambient_company():
+        sys.modules["streamlit"].session_state.pop("active_company_id", None)
+
+    def test_partner_movement_and_bank_txn_company_id_stamped(
+        self, api_client, tenant, db
+    ):
+        pid = _seed_partner(db, tenant["company_id"])
+        self._clear_ambient_company()
+        payload = _partner_payload(
+            pid,
+            movement_type="CapitalContribution",
+            bank_account_id=tenant["bank_account_id"],
+        )
+        resp = _post_partner(api_client, tenant["owner"], tenant["company_id"], payload)
+        assert resp.status_code == 201
+        movement = db.get(models.PartnerMovement, resp.json()["movement_id"])
+        assert movement.company_id == tenant["company_id"]
+        assert movement.bank_transaction_id is not None
+        btxn = db.get(models.BankTransaction, movement.bank_transaction_id)
+        assert btxn.company_id == tenant["company_id"]
+
+    def test_worker_movement_and_bank_txn_company_id_stamped(
+        self, api_client, tenant, db
+    ):
+        wid = _seed_worker(db, tenant["company_id"])
+        self._clear_ambient_company()
+        payload = _worker_payload(wid, bank_account_id=tenant["bank_account_id"])
+        resp = _post_worker(api_client, tenant["owner"], tenant["company_id"], payload)
+        assert resp.status_code == 201
+        movement = db.get(models.WorkerMovement, resp.json()["payment_id"])
+        assert movement.company_id == tenant["company_id"]
+        assert movement.bank_transaction_id is not None
+        btxn = db.get(models.BankTransaction, movement.bank_transaction_id)
+        assert btxn.company_id == tenant["company_id"]
+
+    def test_isolation_holds_with_ambient_cleared(self, api_client, tenant, db):
+        other_pid = _seed_partner(db, tenant["other_company_id"])
+        self._clear_ambient_company()
+        payload = _partner_payload(
+            other_pid, bank_account_id=tenant["bank_account_id"]
+        )
+        resp = _post_partner(api_client, tenant["owner"], tenant["company_id"], payload)
+        assert resp.status_code == 400
+        assert resp.json()["detail"] == PARTNER_NOT_FOUND_MSG
+
+    def test_partner_stamp_under_boundary_single_commit(self, api_client, tenant, db):
+        commit_modes.set_commit_mode_for_tests(
+            POST_PARTNER_MOVEMENT_FAMILY, CommitMode.BOUNDARY
+        )
+        pid = _seed_partner(db, tenant["company_id"])
+        self._clear_ambient_company()
+        payload = _partner_payload(pid, bank_account_id=tenant["bank_account_id"])
+        with patch.object(db, "commit", wraps=db.commit) as mock_commit:
+            resp = _post_partner(
+                api_client, tenant["owner"], tenant["company_id"], payload
+            )
+            assert resp.status_code == 201
+            assert mock_commit.call_count == 1
+        movement = db.get(models.PartnerMovement, resp.json()["movement_id"])
+        assert movement.company_id == tenant["company_id"]
+        btxn = db.get(models.BankTransaction, movement.bank_transaction_id)
+        assert btxn.company_id == tenant["company_id"]
+
+
 class TestPartnerWorkerWriteNoGetCommits:
     def test_read_get_still_performs_no_commit(self, api_client, tenant, db):
         with patch.object(db, "commit", wraps=db.commit) as mock_commit:
