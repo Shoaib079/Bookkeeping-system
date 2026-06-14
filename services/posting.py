@@ -45,6 +45,8 @@ from __future__ import annotations
 
 import datetime
 import json
+from dataclasses import dataclass
+from typing import Any
 
 from models import (
     BankAccount,
@@ -104,6 +106,357 @@ _WORKER_REF_TYPES = {
     "Advance": "WorkerAdvance",
     "Repayment": "WorkerRepayment",
 }
+
+
+# ── FASTAPI-P0.5a — posting result DTOs (additive; legacy returns unchanged) ───
+
+
+@dataclass(frozen=True, slots=True)
+class PostingLineResult:
+    account_id: int
+    debit: float
+    credit: float
+    currency: str | None = None
+    amount_native: float | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "account_id": self.account_id,
+            "debit": self.debit,
+            "credit": self.credit,
+            "currency": self.currency,
+            "amount_native": self.amount_native,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PostingResult:
+    je_id: int
+    reference_type: str | None
+    reference_id: int | None
+    entry_date: datetime.date
+    company_id: int | None
+    lines: tuple[PostingLineResult, ...]
+    currency: str | None = None
+    description: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "je_id": self.je_id,
+            "reference_type": self.reference_type,
+            "reference_id": self.reference_id,
+            "entry_date": self.entry_date.isoformat(),
+            "company_id": self.company_id,
+            "currency": self.currency,
+            "description": self.description,
+            "lines": [ln.to_dict() for ln in self.lines],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class VoidResult:
+    voided: bool
+    reversal_je_ids: tuple[int, ...]
+    cascade: tuple[str, ...]
+    reason: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "voided": self.voided,
+            "reversal_je_ids": list(self.reversal_je_ids),
+            "cascade": list(self.cascade),
+            "reason": self.reason,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PaymentResult:
+    je_id: int | None
+    applied_amount: float | None
+    fx_gain_loss: float | None
+    sale_balance_after: float | None
+    error: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "je_id": self.je_id,
+            "applied_amount": self.applied_amount,
+            "fx_gain_loss": self.fx_gain_loss,
+            "sale_balance_after": self.sale_balance_after,
+            "error": self.error,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PartnerAllocationLineResult:
+    partner_id: int
+    share_pct: float
+    amount: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "partner_id": self.partner_id,
+            "share_pct": self.share_pct,
+            "amount": self.amount,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class AllocationResult:
+    allocation_id: int | None
+    je_id: int | None
+    per_partner: tuple[PartnerAllocationLineResult, ...]
+    net_income: float | None
+    error: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "allocation_id": self.allocation_id,
+            "je_id": self.je_id,
+            "per_partner": [ln.to_dict() for ln in self.per_partner],
+            "net_income": self.net_income,
+            "error": self.error,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class YearEndCloseResult:
+    yec_id: int | None
+    warnings: tuple[tuple[str, str], ...]
+    error: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "yec_id": self.yec_id,
+            "warnings": [list(w) for w in self.warnings],
+            "error": self.error,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PeriodCloseResult:
+    je_id: int
+    period_id: int
+    net_income: float
+    closing_je_id: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "je_id": self.je_id,
+            "period_id": self.period_id,
+            "net_income": self.net_income,
+            "closing_je_id": self.closing_je_id,
+        }
+
+
+def _journal_lines_for_entry(session, entry_id: int) -> list[JournalEntryLine]:
+    return (
+        session.query(JournalEntryLine)
+        .filter_by(journal_entry_id=entry_id)
+        .order_by(JournalEntryLine.id)
+        .all()
+    )
+
+
+def _reversal_je_ids_for_reference(
+    session,
+    reference_type: str,
+    reference_id: int,
+    *,
+    company_id: int | None = None,
+) -> tuple[int, ...]:
+    orig_q = session.query(JournalEntry.id).filter_by(
+        reference_type=reference_type,
+        reference_id=reference_id,
+    )
+    if company_id is not None:
+        orig_q = orig_q.filter(JournalEntry.company_id == company_id)
+    orig_ids = [row[0] for row in orig_q.all()]
+    if not orig_ids:
+        return ()
+    rev_q = session.query(JournalEntry.id).filter(
+        JournalEntry.reference_type == "Reversal",
+        JournalEntry.reference_id.in_(orig_ids),
+    )
+    if company_id is not None:
+        rev_q = rev_q.filter(JournalEntry.company_id == company_id)
+    return tuple(row[0] for row in rev_q.order_by(JournalEntry.id).all())
+
+
+def posting_result_from_entry(
+    session,
+    entry: JournalEntry,
+    *,
+    currency: str | None = None,
+) -> PostingResult:
+    """Build a PostingResult DTO from a persisted JournalEntry."""
+    lines = _journal_lines_for_entry(session, entry.id)
+    line_dtos = tuple(
+        PostingLineResult(
+            account_id=ln.account_id,
+            debit=ln.debit or 0.0,
+            credit=ln.credit or 0.0,
+            currency=ln.currency,
+            amount_native=ln.amount_native,
+        )
+        for ln in lines
+    )
+    entry_currency = currency or (lines[0].currency if lines else None)
+    return PostingResult(
+        je_id=entry.id,
+        reference_type=entry.reference_type,
+        reference_id=entry.reference_id,
+        entry_date=entry.entry_date,
+        company_id=entry.company_id,
+        lines=line_dtos,
+        currency=entry_currency,
+        description=entry.description,
+    )
+
+
+def period_close_result_from_je(
+    je: JournalEntry,
+    period: FiscalPeriod,
+    *,
+    net_income: float,
+) -> PeriodCloseResult:
+    return PeriodCloseResult(
+        je_id=je.id,
+        period_id=period.id,
+        net_income=net_income,
+        closing_je_id=period.closing_je_id or je.id,
+    )
+
+
+def allocation_result_from_post(
+    session,
+    allocation_id: int | None,
+    error: str,
+) -> AllocationResult:
+    if error or allocation_id is None:
+        return AllocationResult(
+            allocation_id=allocation_id,
+            je_id=None,
+            per_partner=(),
+            net_income=None,
+            error=error or "",
+        )
+    alloc = session.get(PartnerProfitAllocation, allocation_id)
+    if not alloc:
+        return AllocationResult(
+            allocation_id=allocation_id,
+            je_id=None,
+            per_partner=(),
+            net_income=None,
+            error="Allocation not found.",
+        )
+    partner_lines = (
+        session.query(PartnerProfitAllocationLine)
+        .filter_by(allocation_id=allocation_id)
+        .order_by(PartnerProfitAllocationLine.id)
+        .all()
+    )
+    return AllocationResult(
+        allocation_id=alloc.id,
+        je_id=alloc.journal_entry_id,
+        per_partner=tuple(
+            PartnerAllocationLineResult(
+                partner_id=ln.partner_id,
+                share_pct=ln.share_pct,
+                amount=ln.amount,
+            )
+            for ln in partner_lines
+        ),
+        net_income=alloc.total_net_income,
+        error="",
+    )
+
+
+def year_end_close_result_from_tuple(
+    yec_id: int | None,
+    warnings: list,
+    error: str,
+) -> YearEndCloseResult:
+    return YearEndCloseResult(
+        yec_id=yec_id,
+        warnings=tuple((str(k), str(v)) for k, v in warnings),
+        error=error or "",
+    )
+
+
+def payment_result_from_receivable_post(
+    session,
+    sale_id: int,
+    *,
+    error: str | None = None,
+    applied_amount: float | None = None,
+) -> PaymentResult:
+    if error:
+        return PaymentResult(
+            je_id=None,
+            applied_amount=applied_amount,
+            fx_gain_loss=None,
+            sale_balance_after=None,
+            error=error,
+        )
+    sale = session.get(Sale, sale_id)
+    je = (
+        session.query(JournalEntry)
+        .filter_by(reference_type="ReceivablePayment", reference_id=sale_id)
+        .order_by(JournalEntry.id.desc())
+        .first()
+    )
+    fx_gain_loss = None
+    if je:
+        fx_gain = get_account_by_name(session, "FX Gain")
+        fx_loss = get_account_by_name(session, "FX Loss")
+        for ln in _journal_lines_for_entry(session, je.id):
+            if fx_gain and ln.account_id == fx_gain.id:
+                fx_gain_loss = round(ln.credit or 0.0, 2)
+            elif fx_loss and ln.account_id == fx_loss.id:
+                fx_gain_loss = round(-(ln.debit or 0.0), 2)
+    return PaymentResult(
+        je_id=je.id if je else None,
+        applied_amount=applied_amount,
+        fx_gain_loss=fx_gain_loss,
+        sale_balance_after=sale.balance if sale else None,
+        error="",
+    )
+
+
+def void_result_from_bool(
+    voided: bool,
+    *,
+    reason: str | None = None,
+    reversal_je_ids: tuple[int, ...] = (),
+    cascade: tuple[str, ...] = (),
+) -> VoidResult:
+    return VoidResult(
+        voided=voided,
+        reversal_je_ids=reversal_je_ids,
+        cascade=cascade,
+        reason=reason,
+    )
+
+
+def void_result_from_expense_void(
+    session,
+    expense_id: int,
+    voided: bool,
+    *,
+    void_reason: str | None = None,
+    company_id: int | None = None,
+) -> VoidResult:
+    if not voided:
+        return void_result_from_bool(False, reason=void_reason)
+    return VoidResult(
+        voided=True,
+        reversal_je_ids=_reversal_je_ids_for_reference(
+            session, "Expense", expense_id, company_id=company_id
+        ),
+        cascade=(),
+        reason=void_reason,
+    )
 
 
 def _get_worker_advance_balance(session, worker_id: int, *, company_id: int | None = None):
