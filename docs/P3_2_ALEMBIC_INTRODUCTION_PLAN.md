@@ -34,7 +34,7 @@ No revision scripts, no `alembic upgrade`, no cutover from `migrate_schema()`.
 | Change accounting, FastAPI, or Streamlit behavior | P3.2-A is infrastructure scaffolding only |
 | Remove `migrate_schema()` or `MigrationFlag` | Current path remains authoritative until explicit cutover |
 | Convert `Float` → `Decimal` / `NUMERIC` | Separate accounting-sensitive project (MONEY-DECIMAL-01 / P3.2-F) |
-| Add PostgreSQL test fixtures | Deferred to P3.2-E |
+| Add PostgreSQL test fixtures | Shipped in **P3.2-C** — see [P3_2_POSTGRES_TEST_FIXTURES.md](./P3_2_POSTGRES_TEST_FIXTURES.md) |
 | Autogenerate or hand-write real DDL revisions | Baseline snapshot must be planned in P3.2-B+ |
 
 ---
@@ -82,10 +82,11 @@ Recommended sequence (aligned with P3.1 § Recommended P3.2 tasks):
 |-------|------|--------|
 | **P3.2-A** (this slice) | Alembic scaffold + boundary plan | No revisions, no upgrade |
 | **P3.2-B** | Engine dialect guard | ✅ **Shipped** — `db.py` connect listener runs `PRAGMA foreign_keys=ON` only when `dialect.name == "sqlite"`; see `tests/test_p3_2_sqlite_dialect_guards.py` |
-| **P3.2-C** | Baseline revision strategy | Decide: stamp existing DB vs. autogenerate from metadata vs. hand-written baseline |
-| **P3.2-D** | Port incremental DDL | Move `migrate_schema` `ALTER`/index DDL into Alembic revisions; fix partial index `is_void IS FALSE` for PG |
-| **P3.2-E** | PG fixtures + dual-run | Optional PostgreSQL test container; parity harness |
-| **P3.2-F** (separate) | `Float` → `NUMERIC` | Characterized rounding project — not bundled with engine swap |
+| **P3.2-C** | PG optional test fixtures | ✅ **Shipped** — `ERP_TEST_POSTGRES_URL` + `tests/postgres_utils.py`; see [P3_2_POSTGRES_TEST_FIXTURES.md](./P3_2_POSTGRES_TEST_FIXTURES.md) |
+| **P3.2-D** | Baseline revision strategy | Decide: stamp existing DB vs. autogenerate from metadata vs. hand-written baseline |
+| **P3.2-E** | Port incremental DDL | Move `migrate_schema` `ALTER`/index DDL into Alembic revisions; fix partial index `is_void IS FALSE` for PG |
+| **P3.2-F** | Dual-run parity harness | Extend tests to compare SQLite vs PG persisted state |
+| **P3.2-G** (separate) | `Float` → `NUMERIC` | Characterized rounding project — not bundled with engine swap |
 
 **Cutover gate (owner decision):**
 
