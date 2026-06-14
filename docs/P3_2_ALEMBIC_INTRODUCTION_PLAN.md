@@ -81,7 +81,7 @@ Recommended sequence (aligned with P3.1 § Recommended P3.2 tasks):
 | Phase | Task | Scope |
 |-------|------|--------|
 | **P3.2-A** (this slice) | Alembic scaffold + boundary plan | No revisions, no upgrade |
-| **P3.2-B** | Engine dialect guard | Gate `db.py` `PRAGMA foreign_keys=ON` on `dialect == "sqlite"` |
+| **P3.2-B** | Engine dialect guard | ✅ **Shipped** — `db.py` connect listener runs `PRAGMA foreign_keys=ON` only when `dialect.name == "sqlite"`; see `tests/test_p3_2_sqlite_dialect_guards.py` |
 | **P3.2-C** | Baseline revision strategy | Decide: stamp existing DB vs. autogenerate from metadata vs. hand-written baseline |
 | **P3.2-D** | Port incremental DDL | Move `migrate_schema` `ALTER`/index DDL into Alembic revisions; fix partial index `is_void IS FALSE` for PG |
 | **P3.2-E** | PG fixtures + dual-run | Optional PostgreSQL test container; parity harness |

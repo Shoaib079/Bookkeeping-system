@@ -18,7 +18,11 @@ def _set_sqlite_pragma(dbapi_connection, connection_record):
     SQLite disables FK checks by default. Without this, inserting a
     JournalEntryLine with a non-existent account_id would silently succeed
     instead of raising an IntegrityError.
+
+    P3.2-B: dialect-guarded so a future PostgreSQL engine does not receive PRAGMA.
     """
+    if engine.dialect.name != "sqlite":
+        return
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys = ON")
     cursor.close()

@@ -75,7 +75,7 @@
 
 ## No-change decisions (P3.1)
 - **No `Float → NUMERIC` change now** — the swap preserves accounting with `Float`; NUMERIC is a deliberate future project.
-- **No `db.py` dialect guard now** — it's a runtime change; proposed for P3.2-B.
+- **No `db.py` dialect guard now** — shipped in **P3.2-B** (`PRAGMA foreign_keys=ON` gated on `dialect.name == "sqlite"`).
 - **No Alembic now** — documented only; P3.2-A.
 - **No timezone-aware datetime change** — naive is consistent across engines; future design note.
 - **No query rewrites** — `ilike`/date-filter/`text()` reads are portable; only documented.
