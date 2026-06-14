@@ -54,6 +54,7 @@ EXPECTED_TAGS = {
     "payables",
     "partners",
     "banking",
+    "writes",
 }
 
 GET_ROUTES = [

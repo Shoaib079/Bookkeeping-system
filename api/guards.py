@@ -23,18 +23,18 @@ def _registered_preferences(*preferred: str) -> tuple[str, ...]:
     return tuple(key for key in preferred if key in PERMISSION_REGISTRY)
 
 
-def require_company_read_access(
+def _enforce_company_access(
     session: Session,
     context: RequestContext,
     *preferred_permissions: str,
+    fallback_permission: str,
 ) -> int:
-    """Enforce membership, company scope, and a read permission with fallback."""
     try:
         perms.require_company_membership(session, context)
         company_id = perms.require_company(context)
         registered = _registered_preferences(*preferred_permissions)
         if not registered:
-            perms.require_permission(context, _FALLBACK_PERMISSION)
+            perms.require_permission(context, fallback_permission)
         elif not any(context.can(key) for key in registered):
             perms.require_permission(context, registered[0])
         return company_id
@@ -45,3 +45,33 @@ def require_company_read_access(
         if "require_company_membership" in msg:
             raise HTTPException(status_code=403, detail=msg) from exc
         raise HTTPException(status_code=400, detail=msg) from exc
+
+
+def require_company_read_access(
+    session: Session,
+    context: RequestContext,
+    *preferred_permissions: str,
+) -> int:
+    """Enforce membership, company scope, and a read permission with fallback."""
+    return _enforce_company_access(
+        session,
+        context,
+        *preferred_permissions,
+        fallback_permission=_FALLBACK_PERMISSION,
+    )
+
+
+def require_company_write_access(
+    session: Session,
+    context: RequestContext,
+    *preferred_permissions: str,
+) -> int:
+    """Enforce membership, company scope, and a write permission (no read fallback)."""
+    if not preferred_permissions:
+        raise ValueError("require_company_write_access requires at least one permission")
+    return _enforce_company_access(
+        session,
+        context,
+        *preferred_permissions,
+        fallback_permission=preferred_permissions[0],
+    )

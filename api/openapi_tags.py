@@ -38,4 +38,8 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "name": "banking",
         "description": "Bank statement import reconciliation readiness.",
     },
+    {
+        "name": "writes",
+        "description": "Transactional write endpoints (feature-flagged per slice).",
+    },
 ]

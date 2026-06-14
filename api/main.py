@@ -7,11 +7,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from api.openapi_tags import OPENAPI_TAGS
-from api.routes import auth, banking, ledger, partners, payables, receivables, reports
+from api.routes import auth, banking, ledger, partners, payables, receivables, reports, sales
 from services.permissions import PermissionDenied
 
 _API_DESCRIPTION = """\
-Read-only ERP API (P1.x). Business routes require:
+ERP API (P1.x reads, P2.x writes). Business routes require:
 
 - ``Authorization: Bearer <access_token>`` — identity from JWT (DB-verified)
 - ``X-Company-Id`` (required for company-scoped routes) — active company selection
@@ -21,7 +21,8 @@ Set ``ERP_API_DEV_HEADERS=1`` only for explicit test/dev fallback to legacy head
 
 **Error contract:** 401 missing/invalid bearer · 400 missing company · 403 membership/permission · 404 not found · 422 validation
 
-No write endpoints; GET handlers do not commit the database session.
+GET handlers do not commit the database session. Write endpoints (e.g. ``POST /api/v1/sales``)
+require feature flags such as ``ERP_API_WRITE_SALES=1``.
 """
 
 
@@ -29,7 +30,7 @@ def create_app() -> FastAPI:
     """Construct the read-only FastAPI application."""
     app = FastAPI(
         title="Streamlit Accounting ERP API",
-        version="1.3.2",
+        version="1.4.0",
         description=_API_DESCRIPTION,
         openapi_tags=OPENAPI_TAGS,
     )
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(payables.router, prefix="/api/v1/payables")
     app.include_router(partners.router, prefix="/api/v1/partners")
     app.include_router(banking.router, prefix="/api/v1/banking")
+    app.include_router(sales.router, prefix="/api/v1/sales")
 
     @app.exception_handler(PermissionDenied)
     async def _permission_denied_handler(_request, exc: PermissionDenied):
