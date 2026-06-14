@@ -14,6 +14,7 @@ DEFAULT_TABLES: tuple[type, ...] = (
     models.JournalEntry,
     models.JournalEntryLine,
     models.AuditLog,
+    models.Sale,
     models.ChartOfAccounts,
     models.BankTransaction,
     models.BankAccount,
@@ -38,16 +39,56 @@ def journal_line_tuples(session: Session) -> list[tuple[int | None, int, float, 
     return [(ln.journal_entry_id, ln.account_id, ln.debit or 0.0, ln.credit or 0.0) for ln in lines]
 
 
+def sale_row_tuples(session: Session) -> list[tuple]:
+    sales = session.query(models.Sale).order_by(models.Sale.id).all()
+    return [
+        (
+            s.id,
+            s.invoice_number,
+            s.customer_name,
+            s.amount,
+            s.sale_type,
+            s.paid_amount,
+            s.balance,
+            s.status,
+            str(s.date),
+            s.company_id,
+        )
+        for s in sales
+    ]
+
+
+def audit_row_tuples(session: Session) -> list[tuple]:
+    rows = session.query(models.AuditLog).order_by(models.AuditLog.id).all()
+    return [
+        (
+            r.action,
+            r.entity_type,
+            r.entity_id,
+            r.description,
+            r.performed_by,
+            r.company_id,
+        )
+        for r in rows
+    ]
+
+
 def persisted_state_snapshot(
     session: Session,
     *,
     tables: tuple[type, ...] = DEFAULT_TABLES,
     include_journal_lines: bool = True,
+    include_sale_rows: bool = True,
+    include_audit_rows: bool = True,
 ) -> dict[str, Any]:
     """Compact persisted-state fingerprint for internal vs boundary dual-run."""
     snap: dict[str, Any] = {"counts": table_row_counts(session, tables)}
     if include_journal_lines:
         snap["journal_lines"] = journal_line_tuples(session)
+    if include_sale_rows:
+        snap["sales"] = sale_row_tuples(session)
+    if include_audit_rows:
+        snap["audit_rows"] = audit_row_tuples(session)
     return snap
 
 

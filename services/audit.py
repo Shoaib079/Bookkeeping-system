@@ -7,6 +7,8 @@ import datetime
 from sqlalchemy.orm import Session
 
 from models import AuditLog
+from services.commit_modes import is_boundary_mode
+from services.unit_of_work import get_active_boundary_family
 
 # Canonical action strings (no DB enum — values unchanged from legacy call sites).
 ACTION_CREATE = "Create"
@@ -46,6 +48,15 @@ ENTITY_ATTACHMENT = "Attachment"
 ENTITY_PARTNER_PROFIT_ALLOCATION = "PartnerProfitAllocation"
 
 
+def _audit_persist(session, *, commit_family: str | None) -> None:
+    """Commit (internal) or flush (boundary) after staging an audit row."""
+    family = commit_family or get_active_boundary_family()
+    if family and is_boundary_mode(family):
+        session.flush()
+    else:
+        session.commit()
+
+
 def record_audit(
     session: Session,
     *,
@@ -55,8 +66,9 @@ def record_audit(
     description: str | None,
     performed_by: str | None,
     company_id: int | None,
+    commit_family: str | None = None,
 ) -> AuditLog:
-    """Persist one AuditLog row and commit (legacy log_audit commit ownership)."""
+    """Persist one AuditLog row and commit (legacy) or flush (boundary family)."""
     entry = AuditLog(
         timestamp=datetime.datetime.now(),
         action=action,
@@ -67,5 +79,5 @@ def record_audit(
         company_id=company_id,
     )
     session.add(entry)
-    session.commit()
+    _audit_persist(session, commit_family=commit_family)
     return entry

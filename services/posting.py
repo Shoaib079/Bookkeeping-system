@@ -80,6 +80,7 @@ from reconciliation.company_card import (
     reverse_account_balance_delta,
 )
 from registry.service import get_setting
+from services.commit_modes import POST_CASH_SALE_FAMILY, is_boundary_mode
 
 # Pinned by PS-P2b-CHAR — must match registry/locales/transactional.py EN strings.
 _CC_DISABLED_MSG = (
@@ -596,6 +597,14 @@ def yec_block_message(
     return None
 
 
+def _kernel_persist(session, *, commit_family: str | None) -> None:
+    """Commit (internal) or flush (boundary) after a successful kernel write."""
+    if commit_family and is_boundary_mode(commit_family):
+        session.flush()
+    else:
+        session.commit()
+
+
 def create_journal_entry(
     session,
     entry_date,
@@ -607,6 +616,7 @@ def create_journal_entry(
     fx_rate: float = 1.0,
     *,
     company_id: int | None = None,
+    commit_family: str | None = None,
 ):
     """
     Create a journal entry with debit/credit pairs.
@@ -665,7 +675,7 @@ def create_journal_entry(
     # All balance reads must go through calculate_account_balance() which
     # derives the correct value from journal lines — the true source of truth.
     # sync_account_balances() is called at startup to keep the cache current.
-    session.commit()
+    _kernel_persist(session, commit_family=commit_family)
     return entry
 
 
@@ -733,6 +743,7 @@ def post_cash_sale(
             [(cash_acct.id, amount, 0), (sales_acct.id, 0, amount)],
             currency=currency, fx_rate=fx_rate,
             company_id=company_id,
+            commit_family=POST_CASH_SALE_FAMILY,
         )
 
 

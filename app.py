@@ -387,6 +387,8 @@ from models import (
 )
 
 from services import posting as posting_service
+from services import commit_modes as _commit_modes
+from services.unit_of_work import boundary_commit_scope, boundary_depth
 from services import user_access as _user_access_svc
 from services.context import RequestContext, build_request_context
 from services.read_balances import (
@@ -5096,6 +5098,14 @@ def post_receivable_payment(session, sale_id, payment_amount, payment_date,
 
 def post_cash_sale(session, sale_id, amount, sale_date, currency=None, fx_rate=1.0):
     """PS-P2a compatibility shim — kernel lives in services/posting.py."""
+    family = _commit_modes.POST_CASH_SALE_FAMILY
+    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
+        with boundary_commit_scope(session, family):
+            return posting_service.post_cash_sale(
+                session, sale_id, amount, sale_date,
+                currency=currency, fx_rate=fx_rate,
+                company_id=_current_company_id(),
+            )
     return posting_service.post_cash_sale(
         session, sale_id, amount, sale_date,
         currency=currency, fx_rate=fx_rate,
@@ -14284,6 +14294,7 @@ def _at_save(
         )
         session.add(record)
         session.commit()
+        _sale_audit_logged = False
         if sale_type == "Card":
             post_card_sale(session, record.id, amount, date, currency=currency, fx_rate=fx_rate)
             # Also update the named bank account balance so the dashboard reflects it.
@@ -14302,10 +14313,17 @@ def _at_save(
                     ))
                     session.commit()
         elif sale_type == "Cash":
-            post_cash_sale(session, record.id, amount, date, currency=currency, fx_rate=fx_rate)
+            if _commit_modes.is_boundary_mode(_commit_modes.POST_CASH_SALE_FAMILY):
+                with boundary_commit_scope(session, _commit_modes.POST_CASH_SALE_FAMILY):
+                    post_cash_sale(session, record.id, amount, date, currency=currency, fx_rate=fx_rate)
+                    log_audit(session, "Create", "Sale", record.id, f"Sale {inv_num} · {amount:,.2f} {currency}")
+                    _sale_audit_logged = True
+            else:
+                post_cash_sale(session, record.id, amount, date, currency=currency, fx_rate=fx_rate)
         else:
             post_credit_sale(session, record.id, amount, date, currency=currency, fx_rate=fx_rate)
-        log_audit(session, "Create", "Sale", record.id, f"Sale {inv_num} · {amount:,.2f} {currency}")
+        if not _sale_audit_logged:
+            log_audit(session, "Create", "Sale", record.id, f"Sale {inv_num} · {amount:,.2f} {currency}")
         st.success(_t("txn.sale_recorded", invoice=inv_num))
         _mark_at_save_succeeded()
 
