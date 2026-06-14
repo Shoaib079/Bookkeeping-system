@@ -83,8 +83,9 @@ Importing `postgres_utils` does **not** connect to PostgreSQL.
 | Phase | Action |
 |-------|--------|
 | **Now (P3.2-C)** | Contract tests always run; PG integration tests marked `optional_postgres` and skip without env |
-| **Next** | CI job matrix: default job = SQLite only; optional `postgres` job sets `ERP_TEST_POSTGRES_URL` against a service container / ephemeral DB |
-| **Later (P3.2 dual-run)** | Extend parity harness to run selected flows on SQLite + PG and compare persisted state |
+| **P3.2-E (shipped)** | CI matrix documented — see [P3_2_CI_MATRIX_PLAN.md](./P3_2_CI_MATRIX_PLAN.md) |
+| **Next** | Add `.github/workflows/test.yml` per plan outline (owner decision) |
+| **Later** | Extend parity harness with more flows on SQLite + PG |
 
 Do **not** add `ERP_TEST_POSTGRES_URL` to default CI until a managed test database is provisioned.
 

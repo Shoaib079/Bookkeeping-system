@@ -134,6 +134,8 @@ P3.2-D intentionally avoids Alembic execution so parity tests do not depend on a
 
 ## CI future plan
 
+Documented in **[P3_2_CI_MATRIX_PLAN.md](./P3_2_CI_MATRIX_PLAN.md)** (P3.2-E).
+
 | Job | Scope |
 |-----|--------|
 | **default** | `pytest` — all SQLite parity tests green |
