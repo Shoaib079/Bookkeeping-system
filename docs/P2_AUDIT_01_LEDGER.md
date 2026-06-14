@@ -18,4 +18,4 @@ Running ledger of implementation findings, parity gaps, and follow-ups discovere
 
 **Tests:** Covered in `tests/test_fastapi_p2_closing_write.py` (duplicate allocation rejection + `PartnerProfitAllocation.company_id` assertion).
 
-**Follow-up registered:** **P2-HARDEN-01** — audit whether all API-created ORM rows receive explicit `company_id` (or an API-session equivalent of the Streamlit `before_flush` stamp) without relying on Streamlit-only hooks. See [TECH_DEBT § P2-HARDEN-01](./TECH_DEBT_AND_MIGRATION_CLEANUP.md#p2-harden-01-2026-06-14).
+**Follow-up registered:** **P2-HARDEN-01** — audit whether all API-created ORM rows receive explicit `company_id` (or an API-session equivalent of the Streamlit `before_flush` stamp) without relying on Streamlit-only hooks. See [ROADMAP § P2-HARDEN-01](../ROADMAP.md#p2-harden-01--company-stamp-audit) · [TECH_DEBT § P2-HARDEN-01](./TECH_DEBT_AND_MIGRATION_CLEANUP.md#p2-harden-01-2026-06-14).

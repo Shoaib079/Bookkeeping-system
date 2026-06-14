@@ -221,6 +221,7 @@ No implementation before roadmap approval.
 | **USER-ACCESS-01** | ✅ **UA-P1 complete** · 📋 **UA-P1b pending** — permission override service + effective resolver; see [docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-UA-*) |
 | **STAFF-CAPTURE-01** | ✅ **SC-P1 complete** · ✅ **SC-P1b complete** · 📋 **SC-P2 pending** · 📋 **SC-P3 pending** — expense draft service + thin Streamlit UI (submit · receipts · inbox); see [docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-SC-*) |
 | **FUTURE-MIGRATION-AUDIT-01** | 📊 **Recorded** — FastAPI readiness **62/100**; keystone **POSTING-SERVICE-01**; see [§ FUTURE-MIGRATION-AUDIT-01](#future-migration-audit-01--fastapi-readiness-audit) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
+| **P2-HARDEN-01** — Company Stamp Audit | 📋 **High** · Low risk — audit API `company_id` stamping on P2 write paths; no intended behavior change · see [§ P2-HARDEN-01](#p2-harden-01--company-stamp-audit) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) · [P2_AUDIT_01_LEDGER](./docs/P2_AUDIT_01_LEDGER.md) |
 
 ---
 
@@ -2567,6 +2568,28 @@ Extract report query/aggregation logic from `app.py` into read-only `services/` 
 
 Inventory and reduce Streamlit-only context coupling — `_erp()` lazy `import app`, `st.session_state`, `cq()` in `ui/` renderers. Related: TD-DSC-08, TD-UA-04, TD-SC-03/04. Output: shared `ui/context.py` or injected context protocol for FastAPI Phase D.
 
+#### P2-HARDEN-01 — Company Stamp Audit
+
+**Priority:** High  
+**Risk:** Low  
+**Behavior changes:** None intended  
+**Status:** Open (discovered P2.9 — 2026-06-14)
+
+Streamlit `SessionLocal` installs a `before_flush` hook (`app._stamp_company_id_on_new_objects`) that stamps `company_id` on new ORM rows at flush time. FastAPI `get_db` sessions do not. P2.9 fixed `PartnerProfitAllocation` wrapper-side only; other API write paths may still rely on the hook implicitly for guards, uniqueness checks, or tenancy filters.
+
+**Scope:**
+
+- Inventory all P2 write API paths (`services/write_*.py`) and posting/match kernels they call
+- For each ORM row created on the API path, verify explicit `company_id` assignment (or a shared API-session stamp equivalent)
+- Document gaps; fix with wrapper-side stamps or a centralized API `before_flush` hook — parity with Streamlit, no GL or posting rule changes
+- Add contract tests where guards depend on stamped `company_id`
+
+**Trigger:** After P2.9 ship; before broadening the write API surface.
+
+**Origin:** [P2_AUDIT_01_LEDGER.md § 2026-06-14](./docs/P2_AUDIT_01_LEDGER.md) (P2.9 duplicate-allocation guard miss).
+
+Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#p2-harden-01-2026-06-14).
+
 ---
 
 ## Module state vocabulary (frozen)
@@ -2606,6 +2629,7 @@ Inventory and reduce Streamlit-only context coupling — `_erp()` lazy `import a
 
 | Date | Decision |
 |------|----------|
+| 2026-06-14 | **P2-HARDEN-01 recorded** — Company Stamp Audit: audit API `company_id` stamping across P2 write paths; Priority High, Risk Low, no intended behavior changes. Triggered by P2.9 `PartnerProfitAllocation` finding ([P2_AUDIT_01_LEDGER](./docs/P2_AUDIT_01_LEDGER.md)). Register: [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md). |
 | 2026-06-14 | **ROADMAP-PRINCIPLES-01** — **ERP Core Principles (Locked)** recorded: 10 architectural principles learned during Streamlit ERP development (business logic first · explicit `company_id` · void/reverse/audit · form state rules · RETENTION-01 · date ownership · desktop/mobile unity · configurable ERP · commit ownership · discovery before implementation). **BANKING-UX-04** Configurable Banking Workflow added (statement-first / hybrid / manual-first). **DATE CONTROL** future React UX spec locked (single field, focus-opens calendar). Docs only — no code. Cross-links: [ERP_DS_04](./docs/ERP_DS_04_MASTER_DESIGN_SYSTEM.md) · [ERP_DS_05](./docs/ERP_DS_05_REACT_ARCHITECTURE.md) · [FASTAPI_P0_5D](./docs/FASTAPI_P0_5D_COMMIT_OWNERSHIP_PLAN.md). |
 | 2026-06 | Shared DB + `company_id` isolation — do not redesign per-tenant DB yet |
 | 2026-06 | Hidden ≠ disabled ≠ locked |

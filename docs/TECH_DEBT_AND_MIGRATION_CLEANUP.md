@@ -286,6 +286,8 @@ Discovered during P2.9 closing write API — logged in [P2_AUDIT_01_LEDGER.md](.
 |----|------|----------|--------|----------------|
 | **P2-HARDEN-01** | **API `company_id` stamping audit** — Streamlit `SessionLocal` installs `before_flush` (`_stamp_company_id_on_new_objects`); FastAPI `get_db` does not. P2.9 fixed `PartnerProfitAllocation` wrapper-side only. Audit all P2 write paths (and kernels they call) so API-created ORM rows get explicit `company_id` or a shared API-session stamp hook; do not rely on Streamlit-only hooks for guards, uniqueness, or tenancy filters | High | Open | After P2.9 ship; before broadening write API surface |
 
+**Related roadmap:** [ROADMAP.md § P2-HARDEN-01](../ROADMAP.md#p2-harden-01--company-stamp-audit)
+
 ---
 
 ## USER-ACCESS-01 (TD-UA)

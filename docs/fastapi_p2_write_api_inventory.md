@@ -208,7 +208,7 @@ Columns:
 6. **Split-commit CC subledger** — `sync_company_cc_subledger` flushes; caller owns final commit. API must preserve ordering: JE post → subledger sink → boundary commit.
 7. **Void cascade ordering** — Purchase void may cascade to linked payable and paid `PayablePayment` reversals; API must not partial-void.
 8. **Error string stability** — Contract tests pin messages (`require_company_membership`, `Permission denied: {key}`, period/YEC `ValueError` text). HTTP mapping: 400 company missing, 401 bearer, 403 permission/membership, 422 validation, 409 business guard.
-9. **Streamlit-only `company_id` stamp** — Streamlit `SessionLocal` installs `before_flush` (`_stamp_company_id_on_new_objects`); FastAPI `get_db` does not. P2.9 fixed `PartnerProfitAllocation` wrapper-side; follow-up **P2-HARDEN-01** audits all API-created rows ([P2_AUDIT_01_LEDGER.md](./P2_AUDIT_01_LEDGER.md)).
+9. **Streamlit-only `company_id` stamp** — Streamlit `SessionLocal` installs `before_flush` (`_stamp_company_id_on_new_objects`); FastAPI `get_db` does not. P2.9 fixed `PartnerProfitAllocation` wrapper-side; follow-up **P2-HARDEN-01** audits all API-created rows ([ROADMAP § P2-HARDEN-01](../ROADMAP.md#p2-harden-01--company-stamp-audit) · [P2_AUDIT_01_LEDGER.md](./P2_AUDIT_01_LEDGER.md)).
 
 ### Per-slice highlights
 
