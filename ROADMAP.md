@@ -2536,6 +2536,50 @@ Restaurant (POS, recipes), retail (barcode), services (projects), tourism (booki
 
 ---
 
+## ROADMAP-UPDATE-02 — AI Learning + POS/Z-Report Queue
+
+**Status:** Approved (documentation only — 2026-06). **No implementation, no schema change, no `app.py` change** from this update alone. Inherits all [ROADMAP-UPDATE-01 architectural rules](#roadmap-update-01--approved-future-work-queue) (service-first, explicit `company_id`, void→reverse→audit, migration-safe, assist-mode-first, owner-gated trusted auto-post).
+
+### AI-LEARNING-01 — Human-first learning workflow (shared rule)
+
+The single learning contract shared by **Receipt AI** and **POS AI** (and any future document AI):
+
+- **Unknown documents must ask the user what they are** — never guess a document's type.
+- **User classifies the document:** `expense receipt` · `POS/Z-report sales receipt` · `bank/card slip` · `other`.
+- **User confirms** vendor/source, category, payment method, and **posting destination** before anything is stored.
+- **System stores the approved pattern** (document type + source signature + confirmed mapping).
+- **Future similar documents are prefilled** from the stored pattern (suggestion only).
+- **Trusted auto-post is allowed only after** repeated approvals **and** high confidence **and** owner enablement **and** audit-log capture **and** void/reversal safety. Absent any one of these → fall back to review.
+
+This rule governs the shared learning engine ([RECEIPT-AI-05](#receipt-ai--receipt-intelligence-pipeline)); POS AI reuses it rather than inventing a parallel learner.
+
+### POS-AI — Daily POS / Z-Report Intelligence
+
+**Status:** 📋 Future — **first release = suggest/review only**; trusted auto-post is a later gated mode. Reuses the Receipt-AI document-understanding + learning pattern.
+
+| ID | Name | Summary |
+|----|------|---------|
+| **POS-AI-01** | Daily POS/Z-Report OCR | Upload POS daily report / Z-report / system sales receipt → extract date, cash sales, card sales, credit sales (if present), refunds, voids, tax, totals. **First phase: suggest only; user approves.** |
+| **POS-AI-02** | POS Source Learning | After user approval, learn the POS **format/source**, **where cash/card totals appear**, and whether the report is a **daily total**, **shift total**, or **terminal total**. |
+| **POS-AI-03** | Trusted POS Auto-Post | Owner-controlled; only after enough approvals + high confidence. Posts via **existing sales/posting logic**: Cash sales → **Cash**; Card sales → **Card Sales Clearing**; Credit sales → **Receivables** (if supported). Must be **audit-logged** and **void/reversal safe**. |
+| **POS-AI-04** | Duplicate Z-Report Protection | Prevent posting the same POS daily report twice via **date / source / terminal / total / hash** matching. |
+
+### POS auto-post safety rules (hard gates)
+
+- **Never auto-post an unknown format.**
+- **Never auto-post unclear dates.**
+- **Never auto-post a duplicate daily report.**
+- **Never auto-post mismatched totals** (line/section sums must reconcile to the stated total).
+- **Always fall back to review** when any gate is not satisfied.
+
+### Priority queue note
+
+- **Receipt AI and POS AI share the same learning engine** (AI-LEARNING-01 / RECEIPT-AI-05) — one document-understanding + pattern-store, two document families.
+- **Receipt AI goes first** to build document understanding (classification, source signature, confirm-then-store, confidence).
+- **POS AI reuses that pattern later** — it sequences **after the RECEIPT-AI learning/confidence chain** (after RECEIPT-AI-05/06) and before/alongside BANKING-UX-05, sharing the same confidence + owner-enablement + audit + void gates. No separate learner is built for POS.
+
+---
+
 ## Future Architecture / Long-Term Roadmap
 
 Design direction and future-state targets only. **Does not change current development priorities.** Streamlit remains the primary application until migration readiness is achieved.
