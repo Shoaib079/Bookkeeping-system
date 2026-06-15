@@ -1,7 +1,7 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** 2026-06-05 (ROADMAP-UPDATE-01 — approved future work queue: DASH-CASH · RECEIPT-AI · BANKING-UX-05 · AUTH-SESSION-02 · DASH-KPI · AI-BOOKKEEPER)  
+**Last updated:** 2026-06-15 (POS-CONFIG-01 — sales source & reconciliation settings spec)  
 **Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
@@ -225,6 +225,8 @@ No implementation before roadmap approval.
 | **DASH-CASH-01** — Split Liquid Funds | 🟡 **Audited** · S1 read helper ✅ · S2+ UI pending — GL 1000–1003 / 1010–1013; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
 | **AUTH-SESSION-02** — Remember Device / Session Hardening | 📋 **Future** — after AUTH-SESSION-01; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) · [AUTH_SESSION_01_AUDIT](./docs/AUTH_SESSION_01_AUDIT.md) |
 | **RECEIPT-AI-01 … RECEIPT-AI-08** — Receipt OCR & learning pipeline | 📋 **Future** — assist/review first; trusted auto-post last; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
+| **POS-CONFIG-01** — Sales Source & Reconciliation Settings | 📋 **Spec approved** — per-company `pos.*` settings; see [§ POS-CONFIG-01](#pos-config-01--sales-source--reconciliation-settings) · [docs/POS_CONFIG_01_SPEC.md](./docs/POS_CONFIG_01_SPEC.md) |
+| **POS-AI-01 … POS-AI-04** — Daily POS / Z-report intelligence | 📋 **Future** — after POS-CONFIG-01-IMPL-1; see [§ ROADMAP-UPDATE-02](#roadmap-update-02--ai-learning--posz-report-queue) |
 | **BANKING-UX-05** — AI Statement Matching | 📋 **Future** — suggest + learn; user approval first; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
 | **DASH-KPI-01 … DASH-KPI-03** — Dashboard KPI extensions | 📋 **Future** — forecast · runway · sales-by-payment-type; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
 | **AI-BOOKKEEPER-01** — Business Explanation AI | 📋 **Future** — read-only explanations; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
@@ -2577,6 +2579,49 @@ This rule governs the shared learning engine ([RECEIPT-AI-05](#receipt-ai--recei
 - **Receipt AI and POS AI share the same learning engine** (AI-LEARNING-01 / RECEIPT-AI-05) — one document-understanding + pattern-store, two document families.
 - **Receipt AI goes first** to build document understanding (classification, source signature, confirm-then-store, confidence).
 - **POS AI reuses that pattern later** — it sequences **after the RECEIPT-AI learning/confidence chain** (after RECEIPT-AI-05/06) and before/alongside BANKING-UX-05, sharing the same confidence + owner-enablement + audit + void gates. No separate learner is built for POS.
+- **POS-CONFIG-01** (per-company `pos.*` settings) **precedes POS-AI implementation** — settings determine verification source, duplicate keys, and auto-post policy ([§ POS-CONFIG-01](#pos-config-01--sales-source--reconciliation-settings)).
+
+---
+
+## POS-CONFIG-01 — Sales Source & Reconciliation Settings
+
+**Status:** 📋 **Spec approved (documentation only — 2026-06-15)** — no registry/UI/schema change from this section alone.
+
+**Purpose:** Allow **each company** to configure how sales are imported, verified, and reconciled. **No company-wide assumptions.** **Settings determine AI behaviour.**
+
+**Future UI:** **Settings → Sales & POS Configuration**
+
+**Spec:** [docs/POS_CONFIG_01_SPEC.md](./docs/POS_CONFIG_01_SPEC.md)
+
+### Configuration domains
+
+| Domain | Options (summary) |
+|--------|-------------------|
+| **Sales Source** | External restaurant system · Built-in ERP/POS · Hybrid |
+| **Verification Source** | POS Z-report · Terminal slips · System report · Bank settlement · None |
+| **Card Verification Mode** | Z-report · Terminal slips · Bank statement · Manual only |
+| **Cash Source** | System report · ERP sales · Manual cash count · Z-report · Hybrid |
+| **Duplicate Protection** | Date · Terminal ID · Report number · Batch number · Total · Hash |
+| **Auto-post** | Disabled · Suggest only · Owner approval required · Trusted auto-post |
+| **Document Classification** | Terminal slip · Z-report · Daily system report · Shift report · Manual cash count · Unknown |
+| **Workflow Mode** | External sales workflow · ERP/POS workflow |
+
+### Rules (locked)
+
+- Per-`company_id` only — explicit `company_id` in config services.
+- Default auto-post = **suggest only**; trusted auto-post requires owner enablement + learning history + audit + void safety (inherits AI-LEARNING-01).
+- Vendor-neutral core — free-text `source_name`; no named POS in posting paths ([VENDOR-NEUTRAL-01](#vendor-neutral-01--vendor-neutral-architecture-rule)).
+- Complements existing `banking.card_settlement_enabled` and [DAILY-SALES-CLOSE-01](#daily-sales-close-01--external-sales-verification-dsc) — does not replace them in Phase A.
+
+### Implementation slices
+
+| Slice | Scope |
+|-------|--------|
+| **POS-CONFIG-01-AUDIT** | ✅ Spec + roadmap + contract tests |
+| **POS-CONFIG-01-IMPL-1** | Registry `pos.*` keys + `get_pos_config(company_id)` DTO |
+| **POS-CONFIG-01-IMPL-2** | Settings UI page |
+| **POS-CONFIG-01-IMPL-3** | Wire DSC + banking to read `pos.*` |
+| **POS-CONFIG-01-IMPL-4** | POS-AI consumes config DTO |
 
 ---
 
@@ -2808,6 +2853,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-15 | **POS-CONFIG-01** — Sales Source & Reconciliation Settings spec approved (docs only): per-company `pos.*` configuration for sales source, verification source, card/cash verification modes, duplicate protection keys, auto-post policy, document classification, and workflow mode. **Rules:** no company-wide assumptions; settings determine AI behaviour; default suggest-only; complements `banking.*` + DSC. **Sequencing:** POS-CONFIG-01-IMPL-1 before POS-AI-01. Spec: [docs/POS_CONFIG_01_SPEC.md](./docs/POS_CONFIG_01_SPEC.md). No `app.py`/schema change. |
 | 2026-06-05 | **ROADMAP-UPDATE-01** — Approved future work queue recorded (docs only): **DASH-CASH-01** (audited; S1 `compute_liquid_position` shipped; UI pending) · **AUTH-SESSION-02** (remember device + session hardening after AUTH-SESSION-01) · **RECEIPT-AI-01–08** (OCR → learning → confidence → owner-gated trusted auto-post last) · **BANKING-UX-05** (AI statement matching; approval-first) · **DASH-KPI-01–03** (forecast, runway, sales-by-payment-type) · **AI-BOOKKEEPER-01** (read-only business explanations). **Rules locked:** first AI release = assist/review; auto-post requires learning history + confidence + owner enablement + audit + void safety; service-first / FastAPI-ready / no Streamlit business logic. **Priority order:** DASH-CASH-01 → RECEIPT-AI audit → RECEIPT-AI 02/03/04 → 05/06/08 → 07 trusted auto-post → BANKING-UX-05 → AUTH-SESSION-02 → DASH-KPI → AI-BOOKKEEPER → FastAPI → React. No runtime code from this update. |
 | 2026-06-14 | **P2-HARDEN-01 recorded** — Company Stamp Audit: audit API `company_id` stamping across P2 write paths; Priority High, Risk Low, no intended behavior changes. Triggered by P2.9 `PartnerProfitAllocation` finding ([P2_AUDIT_01_LEDGER](./docs/P2_AUDIT_01_LEDGER.md)). Register: [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md). |
 | 2026-06-14 | **ROADMAP-PRINCIPLES-01** — **ERP Core Principles (Locked)** recorded: 10 architectural principles learned during Streamlit ERP development (business logic first · explicit `company_id` · void/reverse/audit · form state rules · RETENTION-01 · date ownership · desktop/mobile unity · configurable ERP · commit ownership · discovery before implementation). **BANKING-UX-04** Configurable Banking Workflow added (statement-first / hybrid / manual-first). **DATE CONTROL** future React UX spec locked (single field, focus-opens calendar). Docs only — no code. Cross-links: [ERP_DS_04](./docs/ERP_DS_04_MASTER_DESIGN_SYSTEM.md) · [ERP_DS_05](./docs/ERP_DS_05_REACT_ARCHITECTURE.md) · [FASTAPI_P0_5D](./docs/FASTAPI_P0_5D_COMMIT_OWNERSHIP_PLAN.md). |
