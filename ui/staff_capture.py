@@ -14,6 +14,7 @@ import streamlit as st
 
 from models import TransactionCategory, TransactionSubcategory
 from paths import UPLOADS_DIR, resolve_data_path
+from services import receipt_ai_adapter as rcpt_adapt
 from services import staff_capture as sc_svc
 from ui import date_input as date_ui
 from ui.section import section_header_html
@@ -29,6 +30,21 @@ def _actor(session) -> tuple[int, str | None]:
     erp = _erp()
     user = erp._current_user() or {}
     return int(user.get("id") or 0), user.get("username")
+
+
+def _handle_receipt_result(erp, result: rcpt_adapt.ReceiptDraftResult) -> bool:
+    if result.error:
+        st.error(result.error)
+        return False
+    for code in result.warnings:
+        if code == "duplicate_attachment":
+            st.warning(erp._t("sc.rcpt.warn.duplicate_attachment"))
+    if result.create_suggestions:
+        labels = ", ".join(f"{c.kind}: {c.label}" for c in result.create_suggestions)
+        st.info(f"{erp._t('sc.rcpt.hint.create_suggestions')} ({labels})")
+    if result.ok:
+        st.success(erp._t("sc.rcpt.msg.created"))
+    return result.ok
 
 
 def _handle_mutation(erp, result: sc_svc.MutationResult) -> bool:
@@ -96,6 +112,116 @@ def _draft_payload_from_form(
     )
 
 
+def _render_receipt_capture(
+    session,
+    company_id: int,
+    actor_id: int,
+    performed_by: str | None,
+) -> None:
+    """Thin Receipt capture — manual fields + upload → draft only (IMPL-3a)."""
+    erp = _erp()
+    if not rcpt_adapt.is_receipt_capture_enabled(session, company_id):
+        return
+
+    settings = erp.load_settings()
+    currency = settings.get("currency", "TRY")
+    today = datetime.date.today()
+
+    with st.expander(erp._t("sc.rcpt.section"), expanded=False):
+        st.caption(erp._t("sc.rcpt.caption"))
+
+        uploaded = st.file_uploader(
+            erp._t("sc.field.receipt"),
+            type=["jpg", "jpeg", "png", "webp", "pdf"],
+            key="sc_rcpt_upload",
+        )
+
+        vendor_text = st.text_input(erp._t("sc.field.vendor"), key="sc_rcpt_vendor")
+        date_ui.render_preferred_date_input(
+            erp._t("sc.field.date"),
+            "sc_rcpt_date",
+            default=today,
+            invalid_message=erp._t("txn.date_invalid"),
+        )
+        receipt_date = date_ui.parse_bound_date("sc_rcpt_date") or today
+        amount = erp.amount_input(erp._t("sc.field.amount"), key="sc_rcpt_amount")
+        currency_val = st.text_input(
+            erp._t("sc.field.currency"),
+            value=currency,
+            key="sc_rcpt_currency",
+        )
+        payment_labels = [
+            erp._t("sc.rcpt.payment.cash"),
+            erp._t("sc.rcpt.payment.card"),
+            erp._t("sc.rcpt.payment.unknown"),
+        ]
+        payment_map = {
+            payment_labels[0]: "Cash",
+            payment_labels[1]: "Card",
+            payment_labels[2]: "Unknown",
+        }
+        payment_label = st.selectbox(
+            erp._t("sc.field.payment"),
+            payment_labels,
+            key="sc_rcpt_payment",
+        )
+        payment_method = payment_map[payment_label]
+
+        cats = _expense_categories(session, erp)
+        cat_names = [c.name for c in cats]
+        cat_ids = [c.id for c in cats]
+        cat_id = None
+        sub_id = None
+        if cat_names:
+            cat_label = st.selectbox(
+                erp._t("sc.field.category"),
+                cat_names,
+                key="sc_rcpt_cat_name",
+            )
+            cat_id = cat_ids[cat_names.index(cat_label)]
+            subcats = _expense_subcategories(session, erp, cat_id)
+            sub_names = [s.name for s in subcats]
+            sub_ids = [s.id for s in subcats]
+            if sub_names:
+                sub_label = st.selectbox(
+                    erp._t("sc.field.subcategory"),
+                    sub_names,
+                    key="sc_rcpt_sub_name",
+                )
+                sub_id = sub_ids[sub_names.index(sub_label)]
+
+        if st.button(erp._t("sc.rcpt.action.create_draft"), key="sc_rcpt_create"):
+            if not uploaded:
+                st.error(erp._t("sc.rcpt.err.receipt_required"))
+                return
+            if not erp._can("upload_receipts"):
+                st.error(erp._t("sc.no_permission"))
+                return
+            mime = (
+                uploaded.type
+                or mimetypes.guess_type(uploaded.name)[0]
+                or "application/octet-stream"
+            )
+            result = rcpt_adapt.create_receipt_capture_draft(
+                session,
+                company_id,
+                actor_id,
+                vendor_text=vendor_text,
+                receipt_date=receipt_date,
+                total_amount=amount,
+                currency=currency_val,
+                payment_method=payment_method,
+                tx_category_id=cat_id,
+                tx_subcategory_id=sub_id,
+                uploads_root=UPLOADS_DIR,
+                file_bytes=uploaded.getvalue(),
+                attachment_name=uploaded.name,
+                attachment_mime=mime,
+                performed_by=performed_by,
+            )
+            _handle_receipt_result(erp, result)
+
+
 def _load_draft_into_session(draft: sc_svc.ExpenseDraftView) -> None:
     st.session_state["sc_edit_draft_id"] = draft.id
     st.session_state["sc_form_desc"] = draft.description or ""
@@ -121,6 +247,8 @@ def _render_submit_form(session, company_id: int, actor_id: int, performed_by: s
     st.caption(erp._t("sc.submit.caption"))
     if draft and draft.status == "returned" and draft.review_note:
         st.info(f"{erp._t('sc.field.review_note')}: {draft.review_note}")
+
+    _render_receipt_capture(session, company_id, actor_id, performed_by)
 
     date_ui.render_preferred_date_input(
         erp._t("sc.field.date"),

@@ -406,6 +406,19 @@ SETTINGS: tuple[SettingDef, ...] = (
         legacy_key="banking_show_accounting_previews",
         audit=False,
     ),
+    # ── Receipt AI (RECEIPT-AI-01-IMPL-3a) — default OFF ─────────────────────
+    SettingDef(
+        key="receipt_ai.capture_enabled",
+        scope="company",
+        type="bool",
+        group="receipt_ai",
+        label_key="settings.receipt_ai.capture_enabled",
+        default=False,
+        storage="company_setting",
+        legacy_key="receipt_ai.capture_enabled",
+        audit=True,
+        description="Show Receipt capture entry on Staff Expenses (draft-first; no auto-post).",
+    ),
     SettingDef(
         key="banking.queue_density",
         scope="user",
@@ -669,6 +682,7 @@ LEGACY_COMPANY_SETTING_KEYS = frozenset(
         "banking.batch_eligible_kinds",
         "banking.review_required_kinds",
         "banking.batch_confidence_threshold",
+        "receipt_ai.capture_enabled",
     }
 )
 LEGACY_COMPANY_DIRECT_KEYS = frozenset({"company_name", "company_email", "company_phone"})

@@ -27,6 +27,11 @@ SERVICE_CALLS = (
     "EXPENSE_DRAFT_TYPE",
 )
 
+ADAPTER_CALLS = (
+    "is_receipt_capture_enabled",
+    "create_receipt_capture_draft",
+)
+
 FORBIDDEN_UI_TOKENS = (
     "ExpenseDraft(",
     "DraftAttachment(",
@@ -61,8 +66,11 @@ def test_renderer_module_exists():
 
 def test_renderer_calls_service_only(ui_src: str):
     assert "services import staff_capture" in ui_src or "services.staff_capture" in ui_src
+    assert "receipt_ai_adapter" in ui_src
     for fn in SERVICE_CALLS:
         assert fn in ui_src, f"Expected service call {fn!r} in UI renderer"
+    for fn in ADAPTER_CALLS:
+        assert fn in ui_src, f"Expected adapter call {fn!r} in UI renderer"
     for token in FORBIDDEN_UI_TOKENS:
         assert token not in ui_src, f"Forbidden token {token!r} in UI renderer"
 

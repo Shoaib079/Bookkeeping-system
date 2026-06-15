@@ -1,4 +1,4 @@
-"""RECEIPT-AI-01-IMPL-2 — bridge Receipt AI suggestions into ExpenseDraft pipeline.
+"""RECEIPT-AI-01-IMPL-2/3a — bridge Receipt AI suggestions into ExpenseDraft pipeline.
 
 ReceiptExtraction → DraftSuggestion → ExpenseDraftInput → ExpenseDraft (+ optional
 DraftAttachment). **Draft only** — never submit, approve, or post.
@@ -12,17 +12,21 @@ import datetime
 import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
-from models import DraftAttachment, ExpenseDraft
+from models import DraftAttachment, ExpenseDraft, Vendor
+from registry.service import get_setting
 from services import receipt_ai as rcpt
 from services import staff_capture as sc
 from sqlalchemy.orm import Session
+
+RECEIPT_CAPTURE_SETTING = "receipt_ai.capture_enabled"
 
 # Re-export for callers building suggestions before persistence.
 DraftSuggestion = rcpt.DraftSuggestion
 CreateSuggestion = rcpt.CreateSuggestion
 PAYMENT_PREFILL_THRESHOLD = rcpt.PAYMENT_PREFILL_THRESHOLD
+ManualPaymentMethod = Literal["Cash", "Card", "Unknown"]
 
 
 @dataclass(frozen=True)
@@ -92,6 +96,118 @@ def _company_attachment_hashes(session: Session, company_id: int) -> list[str]:
         .all()
     )
     return [row[0] for row in rows]
+
+
+def is_receipt_capture_enabled(session: Session, company_id: int) -> bool:
+    """Company feature flag — controls Receipt capture visibility only."""
+    return bool(get_setting(session, RECEIPT_CAPTURE_SETTING, company_id=company_id))
+
+
+def _vendor_exists(session: Session, company_id: int, vendor_text: str | None) -> bool:
+    signature = rcpt.normalize_vendor_signature(vendor_text)
+    if not signature:
+        return False
+    rows = (
+        session.query(Vendor.name)
+        .filter(Vendor.company_id == company_id, Vendor.is_active.is_(True))
+        .all()
+    )
+    return any(rcpt.normalize_vendor_signature(name) == signature for (name,) in rows)
+
+
+def build_manual_draft_suggestion(
+    session: Session,
+    company_id: int,
+    *,
+    vendor_text: str,
+    receipt_date: datetime.date,
+    total_amount: float,
+    currency: str,
+    payment_method: ManualPaymentMethod,
+    tx_category_id: int | None = None,
+    tx_subcategory_id: int | None = None,
+) -> rcpt.DraftSuggestion:
+    """Manual/fake-extractor path — user-entered fields, no OCR/AI."""
+    if payment_method == "Cash":
+        pay_method = rcpt.PAYMENT_CASH
+        pay_confidence = 1.0
+    elif payment_method == "Card":
+        pay_method = rcpt.PAYMENT_CARD
+        pay_confidence = 1.0
+    else:
+        pay_method = rcpt.PAYMENT_UNKNOWN
+        pay_confidence = 0.0
+
+    extraction = rcpt.ReceiptExtraction(
+        vendor_text=(vendor_text or "").strip() or None,
+        receipt_date=receipt_date,
+        total_amount=total_amount,
+        currency=(currency or "").strip() or None,
+        confidence=1.0,
+        payment_method=pay_method,
+        payment_confidence=pay_confidence,
+    )
+    return rcpt.map_extraction_to_draft_suggestion(
+        extraction,
+        existing_tx_category_id=tx_category_id,
+        existing_tx_subcategory_id=tx_subcategory_id,
+        vendor_exists=_vendor_exists(session, company_id, vendor_text),
+    )
+
+
+def create_receipt_capture_draft(
+    session: Session,
+    company_id: int,
+    actor_id: int,
+    *,
+    vendor_text: str,
+    receipt_date: datetime.date,
+    total_amount: float,
+    currency: str,
+    payment_method: ManualPaymentMethod,
+    tx_category_id: int | None = None,
+    tx_subcategory_id: int | None = None,
+    uploads_root: Path | None = None,
+    file_bytes: bytes | None = None,
+    attachment_name: str = "receipt",
+    attachment_mime: str | None = None,
+    performed_by: str | None = None,
+) -> ReceiptDraftResult:
+    """IMPL-3a entry — manual fields → draft + optional attachment. Never posts."""
+    if not is_receipt_capture_enabled(session, company_id):
+        return ReceiptDraftResult(
+            draft_id=None,
+            error="Receipt capture is not enabled for this company.",
+        )
+    if total_amount <= 0:
+        return ReceiptDraftResult(draft_id=None, error="Amount must be greater than zero.")
+    if not (currency or "").strip():
+        return ReceiptDraftResult(draft_id=None, error="Currency is required.")
+
+    suggestion = build_manual_draft_suggestion(
+        session,
+        company_id,
+        vendor_text=vendor_text,
+        receipt_date=receipt_date,
+        total_amount=total_amount,
+        currency=currency,
+        payment_method=payment_method,
+        tx_category_id=tx_category_id,
+        tx_subcategory_id=tx_subcategory_id,
+    )
+    return create_expense_draft_from_suggestion(
+        session,
+        company_id,
+        actor_id,
+        suggestion,
+        uploads_root=uploads_root,
+        file_bytes=file_bytes,
+        attachment_name=attachment_name,
+        attachment_mime=attachment_mime,
+        default_currency=currency.strip(),
+        fallback_date=receipt_date,
+        performed_by=performed_by,
+    )
 
 
 def create_expense_draft_from_suggestion(
