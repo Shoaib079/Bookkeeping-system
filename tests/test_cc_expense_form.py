@@ -13,6 +13,7 @@ if "streamlit" not in sys.modules:
 sys.modules["streamlit"].session_state = {}
 
 from db import Base
+from utc_datetime import utc_now_naive
 import models
 import app as erp_app
 from reconciliation.company_card import cc_subledger_stmt_ref
@@ -53,7 +54,7 @@ def _company(db, *, cc_enabled: bool = True, with_card: bool = True):
         name="Acme",
         slug="acme",
         is_active=True,
-        created_at=datetime.datetime.utcnow(),
+        created_at=utc_now_naive(),
     )
     db.add(co)
     db.commit()

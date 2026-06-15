@@ -17,6 +17,7 @@ import streamlit as st
 from sqlalchemy import case, event, func, text
 
 from db import Base, SessionLocal, engine
+from utc_datetime import utc_now_naive
 from exports import (
     df_to_excel_bytes,
     df_to_pdf_bytes,
@@ -2176,7 +2177,7 @@ def _migrate_create_default_company(session) -> None:
     else:
         session.execute(
             text("INSERT INTO companies (name, slug, is_active, created_at) VALUES (:n, 'company_1', 1, :ts)"),
-            {"n": company_name, "ts": datetime.datetime.utcnow()},
+            {"n": company_name, "ts": utc_now_naive()},
         )
         session.flush()
         cid = session.execute(
@@ -2278,7 +2279,7 @@ def _migrate_users_to_company_users(session) -> None:
     cid = row[0]
 
     users = session.query(User).all()
-    now = datetime.datetime.utcnow()
+    now = utc_now_naive()
     for u in users:
         role = u.role or "viewer"
         session.execute(

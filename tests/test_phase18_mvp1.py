@@ -15,6 +15,7 @@ if "streamlit" not in sys.modules or isinstance(sys.modules["streamlit"], MagicM
 sys.modules["streamlit"].session_state = {}
 
 from db import Base
+from utc_datetime import utc_now_naive
 import models
 import app as erp_app
 from registry.coa_seed import ensure_accounts_for_company
@@ -40,7 +41,7 @@ def _make_company(db, slug="acme"):
         name="Acme Ltd",
         slug=slug,
         is_active=True,
-        created_at=datetime.datetime.utcnow(),
+        created_at=utc_now_naive(),
     )
     db.add(co)
     db.commit()

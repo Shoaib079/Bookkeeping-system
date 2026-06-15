@@ -13,6 +13,7 @@ if "streamlit" not in sys.modules:
 sys.modules["streamlit"].session_state = {}
 
 from db import Base
+from utc_datetime import utc_now_naive
 import models
 import app as erp_app
 from reconciliation.company_card import (
@@ -65,7 +66,7 @@ def _company(db):
         name="Acme",
         slug="acme",
         is_active=True,
-        created_at=datetime.datetime.utcnow(),
+        created_at=utc_now_naive(),
     )
     db.add(co)
     db.commit()
@@ -107,7 +108,7 @@ def _stmt_row(db, co, ba, *, amount=300.0, desc="KK ODEME"):
         flagged_count=0,
         error_count=0,
         currency="TRY",
-        created_at=datetime.datetime.utcnow(),
+        created_at=utc_now_naive(),
     )
     db.add(imp)
     db.flush()
@@ -123,7 +124,7 @@ def _stmt_row(db, co, ba, *, amount=300.0, desc="KK ODEME"):
         currency="TRY",
         original_amount=amount,
         parsed_successfully=True,
-        created_at=datetime.datetime.utcnow(),
+        created_at=utc_now_naive(),
     )
     db.add(row)
     db.commit()
@@ -288,7 +289,7 @@ class TestPosting:
             advance_account_id=adv.id,
             is_active=True,
             company_id=co.id,
-            created_at=datetime.datetime.utcnow(),
+            created_at=utc_now_naive(),
         )
         db.add(partner)
         db.commit()

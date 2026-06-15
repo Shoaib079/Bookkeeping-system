@@ -17,6 +17,7 @@ sys.modules["streamlit"].session_state = {}
 
 import app as erp
 from db import Base
+from utc_datetime import utc_now_naive
 import models
 from reconciliation.clearing_visibility import compute_clearing_visibility
 from reconciliation.pos_settlement_preview import compute_pos_settlement_preview
@@ -75,7 +76,7 @@ def _company(db):
         name="Acme",
         slug="acme",
         is_active=True,
-        created_at=datetime.datetime.utcnow(),
+        created_at=utc_now_naive(),
     )
     db.add(co)
     db.commit()
@@ -177,7 +178,7 @@ class TestComputeClearingVisibility:
             flagged_count=0,
             error_count=0,
             currency="TRY",
-            created_at=datetime.datetime.utcnow(),
+            created_at=utc_now_naive(),
         )
         db.add(imp)
         db.flush()
@@ -193,7 +194,7 @@ class TestComputeClearingVisibility:
             currency="TRY",
             original_amount=200.0,
             parsed_successfully=True,
-            created_at=datetime.datetime.utcnow(),
+            created_at=utc_now_naive(),
         )
         db.add(row)
         db.commit()

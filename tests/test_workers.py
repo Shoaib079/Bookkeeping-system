@@ -15,6 +15,7 @@ sys.modules["streamlit"].session_state = {}
 from db import Base
 import models
 import app as erp_app
+from utc_datetime import utc_now_naive
 
 
 @pytest.fixture()
@@ -53,7 +54,7 @@ def _company(db):
         name="Acme",
         slug="acme",
         is_active=True,
-        created_at=datetime.datetime.utcnow(),
+        created_at=utc_now_naive(),
     )
     db.add(co)
     db.commit()

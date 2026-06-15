@@ -13,6 +13,7 @@ if "streamlit" not in sys.modules:
     sys.modules["streamlit"].session_state = {}
 
 from db import Base
+from utc_datetime import utc_now_naive
 import models
 from registry.loader import (
     get_module_def,
@@ -53,7 +54,7 @@ def _seed_company(db, *, currency="TRY", tax_rate="18.0", financial_year="2026")
         email="a@acme.test",
         phone="+90 555",
         is_active=True,
-        created_at=datetime.datetime.utcnow(),
+        created_at=utc_now_naive(),
     )
     db.add(co)
     db.flush()
@@ -155,7 +156,7 @@ class TestRegistryService:
     def test_evaluate_lock_blocks_currency_after_first_post(self):
         result = evaluate_lock(
             "accounting.base_currency",
-            milestones={"first_posted_at": datetime.datetime.utcnow()},
+            milestones={"first_posted_at": utc_now_naive()},
         )
         assert result["allowed"] is False
         assert result["level"] == "block"

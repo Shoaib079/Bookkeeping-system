@@ -13,6 +13,7 @@ if "streamlit" not in sys.modules:
 sys.modules["streamlit"].session_state = {}
 
 from db import Base
+from utc_datetime import utc_now_naive
 import models
 import app as erp_app
 from registry.service import set_setting
@@ -67,7 +68,7 @@ def _company(db, *, cc_enabled: bool):
         name="Acme",
         slug="acme",
         is_active=True,
-        created_at=datetime.datetime.utcnow(),
+        created_at=utc_now_naive(),
     )
     db.add(co)
     db.commit()

@@ -17,6 +17,7 @@ sys.modules["streamlit"].session_state = {}
 
 import app as erp
 from db import Base
+from utc_datetime import utc_now_naive
 import models
 from reconciliation.clearing import fetch_unsettled_card_sales_for_visibility
 from reconciliation.clearing_visibility import compute_clearing_visibility
@@ -90,7 +91,7 @@ def _company(db):
         name="Acme",
         slug="acme",
         is_active=True,
-        created_at=datetime.datetime.utcnow(),
+        created_at=utc_now_naive(),
     )
     db.add(co)
     db.commit()
