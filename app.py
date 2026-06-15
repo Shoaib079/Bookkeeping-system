@@ -383,6 +383,7 @@ from models import (
     UserPermissionOverride,
     ExpenseDraft,
     DraftAttachment,
+    ReceiptDraftSuggestion,
     Vendor,
     YearEndClose,
 )
@@ -2067,6 +2068,9 @@ def migrate_schema(session):
         "CREATE INDEX IF NOT EXISTS ix_expdraft_expense_ref    ON expense_drafts                   (expense_record_id)",
         "CREATE INDEX IF NOT EXISTS ix_draftatt_company_id     ON draft_attachments                (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_draftatt_draft          ON draft_attachments                (draft_type, draft_id)",
+        "CREATE INDEX IF NOT EXISTS ix_rcptsugg_company_id     ON receipt_draft_suggestions        (company_id)",
+        "CREATE INDEX IF NOT EXISTS ix_rcptsugg_draft_id       ON receipt_draft_suggestions        (draft_id)",
+        "CREATE INDEX IF NOT EXISTS ix_rcptsugg_attachment_sha ON receipt_draft_suggestions        (attachment_sha256)",
         "CREATE INDEX IF NOT EXISTS ix_txcat_company_id        ON transaction_categories         (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_txsub_company_id        ON transaction_subcategories      (company_id)",
         "CREATE INDEX IF NOT EXISTS ix_retmpl_company_id       ON recurring_expense_templates    (company_id)",

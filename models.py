@@ -1223,3 +1223,32 @@ class DraftAttachment(Base):
     sha256 = Column(String(64), nullable=False)
 
     uploaded_by = relationship("User", foreign_keys=[uploaded_by_id])
+
+
+class ReceiptDraftSuggestion(Base):
+    """Immutable original Receipt-AI suggestion at draft creation (correction-learning)."""
+    __tablename__ = "receipt_draft_suggestions"
+    __table_args__ = (
+        UniqueConstraint("company_id", "draft_id", name="uq_rcpt_suggestion_company_draft"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, nullable=False, index=True)
+    draft_id = Column(Integer, nullable=False, index=True)
+    attachment_sha256 = Column(String(64), nullable=True, index=True)
+    vendor_signature = Column(String(200), nullable=True)
+    vendor_text = Column(String(500), nullable=True)
+    suggested_category_id = Column(Integer, nullable=True)
+    suggested_subcategory_id = Column(Integer, nullable=True)
+    suggested_payment_method = Column(String(20), nullable=True)
+    suggested_payment_confidence = Column(Float, nullable=True)
+    suggested_payment_evidence_json = Column(Text, nullable=True)
+    suggested_items_json = Column(Text, nullable=True)
+    extraction_confidence = Column(Float, nullable=True)
+    raw_text = Column(Text, nullable=True)
+    source = Column(String(30), nullable=False, default="manual")
+    snapshot_json = Column(Text, nullable=False)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, nullable=False)
+
+    created_by = relationship("User", foreign_keys=[created_by_id])

@@ -17,6 +17,7 @@ from typing import Any, Literal
 from models import DraftAttachment, ExpenseDraft, Vendor
 from registry.service import get_setting
 from services import receipt_ai as rcpt
+from services import receipt_suggestion_capture as rsc
 from services import staff_capture as sc
 from sqlalchemy.orm import Session
 
@@ -236,6 +237,10 @@ def create_receipt_capture_draft(
             default_currency=draft_currency,
             fallback_date=draft_date,
             performed_by=performed_by,
+            capture_original_suggestion=True,
+            suggestion_source="sample_extractor",
+            vendor_text=extraction.vendor_text or suggestion.description,
+            raw_text=extraction.raw_text,
         )
 
     if total_amount <= 0:
@@ -268,6 +273,9 @@ def create_receipt_capture_draft(
         default_currency=currency.strip(),
         fallback_date=receipt_date,
         performed_by=performed_by,
+        capture_original_suggestion=True,
+        suggestion_source="manual",
+        vendor_text=vendor_text or suggestion.description,
     )
 
 
@@ -284,6 +292,10 @@ def create_expense_draft_from_suggestion(
     default_currency: str = "USD",
     fallback_date: datetime.date | None = None,
     performed_by: str | None = None,
+    capture_original_suggestion: bool = False,
+    suggestion_source: rsc.SuggestionSource = "manual",
+    vendor_text: str | None = None,
+    raw_text: str | None = None,
 ) -> ReceiptDraftResult:
     """Persist an expense draft (status ``draft``) from a receipt suggestion.
 
@@ -334,6 +346,7 @@ def create_expense_draft_from_suggestion(
     attachment_id: int | None = None
     duplicate_attachment = False
     warnings: list[str] = list(created.warnings)
+    attachment_sha256: str | None = None
 
     if file_bytes is not None:
         if uploads_root is None:
@@ -345,6 +358,7 @@ def create_expense_draft_from_suggestion(
                 create_suggestions=tuple(suggestion.create_suggestions),
             )
         digest = hashlib.sha256(file_bytes).hexdigest()
+        attachment_sha256 = digest
         if rcpt.detect_duplicate_by_sha256(digest, _company_attachment_hashes(session, company_id)):
             duplicate_attachment = True
             warnings.append("duplicate_attachment")
@@ -381,6 +395,30 @@ def create_expense_draft_from_suggestion(
                     warnings=tuple(warnings),
                 )
             attachment_id = attached.record_id
+
+    if capture_original_suggestion:
+        captured = rsc.capture_draft_suggestion(
+            session,
+            company_id,
+            draft_id,
+            suggestion,
+            created_by_id=actor_id,
+            source=suggestion_source,
+            attachment_sha256=attachment_sha256,
+            vendor_text=vendor_text,
+            raw_text=raw_text,
+        )
+        if not captured.captured and captured.skip_reason != "suggestion already captured for draft":
+            return ReceiptDraftResult(
+                draft_id=draft_id,
+                error=captured.skip_reason or "Failed to capture original suggestion.",
+                attachment_id=attachment_id,
+                duplicate_attachment=duplicate_attachment,
+                payment_prefilled=suggestion.payment_prefilled,
+                user_must_choose_payment=suggestion.user_must_choose_payment,
+                create_suggestions=tuple(suggestion.create_suggestions),
+                warnings=tuple(warnings),
+            )
 
     return ReceiptDraftResult(
         draft_id=draft_id,
