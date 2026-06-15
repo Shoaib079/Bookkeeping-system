@@ -107,7 +107,9 @@ def test_people_hub_open_from_more_not_duplicated():
     assert ("open_hub", "people", None, "nav.mobile.hub.people") in more
     page_keys = [p for k, p, *_ in more if k == "page"]
     assert "Customers" not in page_keys
-    assert "Members" not in page_keys
+    assert "Members" in page_keys
+    people_pages = [p for k, p, *_ in erp._MOBILE_HUB_CONFIG["people"] if k == "page"]
+    assert "Members" not in people_pages
 
 
 def test_statement_reports_in_reports_hub_only():

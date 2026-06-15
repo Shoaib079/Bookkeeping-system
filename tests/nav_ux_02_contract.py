@@ -10,21 +10,29 @@ import app as erp
 from registry.nav_keys import (
     ALL_NAV_PAGE_KEYS,
     LEGACY_NAV_ALIASES,
+    NAV_AUDIT_LOG,
+    NAV_BACKUP_RESTORE,
     NAV_BANKING,
     NAV_BALANCE_SHEET,
     NAV_CASH_FLOW,
+    NAV_COMPANY_SETTINGS,
+    NAV_CUSTOMERS,
     NAV_EXPENSES,
     NAV_HOME,
     NAV_INVENTORY,
     NAV_MEMBERS,
     NAV_MY_ACCOUNT,
     NAV_NEW_TRANSACTION,
+    NAV_PARTNER_ACCOUNTS,
     NAV_PAYABLES,
+    NAV_PERMISSIONS,
     NAV_PROFIT_LOSS,
     NAV_RECEIVABLES,
     NAV_REPORTS,
     NAV_SALES,
     NAV_TXN_LEDGER,
+    NAV_VENDORS,
+    NAV_WORKERS,
 )
 
 # NAV-UX-02-S3 — financial statements: canonical routes + shortcut doors (not duplicate renders).
@@ -36,6 +44,24 @@ STATEMENT_REACT_ROUTES: dict[str, str] = {
     NAV_PROFIT_LOSS: "/reports/profit-loss",
     NAV_BALANCE_SHEET: "/reports/balance-sheet",
     NAV_CASH_FLOW: "/reports/cash-flow",
+}
+# NAV-UX-02-S4 — Members mobile placement aligned with Settings/Admin domain.
+PEOPLE_HUB_OPERATIONAL_KEYS: frozenset[str] = frozenset(
+    {
+        NAV_CUSTOMERS,
+        NAV_VENDORS,
+        NAV_RECEIVABLES,
+        NAV_PAYABLES,
+        NAV_WORKERS,
+        NAV_PARTNER_ACCOUNTS,
+    }
+)
+SETTINGS_ADMIN_REACT_ROUTES: dict[str, str] = {
+    NAV_MEMBERS: "/settings/members",
+    NAV_AUDIT_LOG: "/settings/audit-log",
+    NAV_COMPANY_SETTINGS: "/settings/company",
+    NAV_PERMISSIONS: "/settings/permissions",
+    NAV_BACKUP_RESTORE: "/settings/backup-restore",
 }
 # Multi-surface entry is intentional: accordion (canonical home) + mobile hub (shortcut).
 DOCUMENTED_CANONICAL_WITH_SHORTCUTS: frozenset[str] = STATEMENT_CANONICAL_KEYS
@@ -50,7 +76,6 @@ DOCUMENTED_DUPLICATE_WORKFLOWS: dict[str, frozenset[str]] = {
     "ar": frozenset({NAV_RECEIVABLES}),
     "ap": frozenset({NAV_PAYABLES}),
     "new_txn": frozenset({NAV_NEW_TRANSACTION}),
-    "members": frozenset({NAV_MEMBERS}),
     "reports_shortcuts": frozenset({NAV_SALES, NAV_EXPENSES}),
 }
 

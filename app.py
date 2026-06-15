@@ -3412,7 +3412,6 @@ _MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
         ("page", NAV_PAYABLES, None, None),
         ("page", NAV_WORKERS, None, None),
         ("page", NAV_PARTNER_ACCOUNTS, None, None),
-        ("page", NAV_MEMBERS, None, None),
     ],
     "more": [
         ("open_hub", "people", None, "nav.mobile.hub.people"),
@@ -3423,6 +3422,7 @@ _MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
         ("page", NAV_INVENTORY, None, None),
         ("section", "admin", None, "nav.mobile.section.admin"),
         ("page", NAV_COMPANY_SETTINGS, None, None),
+        ("page", NAV_MEMBERS, None, None),
         ("page", NAV_BACKUP_RESTORE, None, None),
         ("page", NAV_AUDIT_LOG, None, None),
     ],
