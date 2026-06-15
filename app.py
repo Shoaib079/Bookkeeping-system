@@ -3272,6 +3272,17 @@ _LEGACY_NAV_TO_REPORTS_EXEC = {
     "📅 Today's Summary": "today_summary",
 }
 
+_NAV_LEGACY_LOGGER = logging.getLogger("nav.legacy")
+
+
+def _log_legacy_nav_hit(kind: str, **fields: str) -> None:
+    """NAV-UX-02-S6 — behavior-neutral telemetry when a legacy nav substitution fires."""
+    if fields:
+        detail = " ".join(f"{key}={value!r}" for key, value in sorted(fields.items()))
+        _NAV_LEGACY_LOGGER.info("legacy_nav_hit kind=%s %s", kind, detail)
+    else:
+        _NAV_LEGACY_LOGGER.info("legacy_nav_hit kind=%s", kind)
+
 _NAV_GROUP_KEYS = {
     "transactions": "nav.group.transactions",
     "people": "nav.group.people",
@@ -26465,12 +26476,24 @@ def main():
 
     _raw_nav = st.session_state.get("nav_selection", NAV_HOME)
     if _raw_nav in _LEGACY_NAV_TO_REPORTS_EXEC:
+        _exec_sel = _LEGACY_NAV_TO_REPORTS_EXEC[_raw_nav]
+        _log_legacy_nav_hit(
+            "reports_exec",
+            raw_key=_raw_nav,
+            exec_sel=_exec_sel,
+            target=NAV_REPORTS,
+        )
         st.session_state["nav_selection"] = NAV_REPORTS
-        st.session_state["rpt_exec_sel"] = _LEGACY_NAV_TO_REPORTS_EXEC[_raw_nav]
+        st.session_state["rpt_exec_sel"] = _exec_sel
         selection = NAV_REPORTS
     else:
         selection = normalize_nav_key(_raw_nav)
         if selection != _raw_nav:
+            _log_legacy_nav_hit(
+                "alias_normalize",
+                raw_key=_raw_nav,
+                canonical_key=selection,
+            )
             st.session_state["nav_selection"] = selection
     if selection not in _allowed:
         st.session_state["nav_selection"] = NAV_HOME
@@ -26484,6 +26507,12 @@ def main():
 
     # Legacy nav key — statement import now lives on Banking → Statement import tab.
     if st.session_state.get("nav_selection") == "Bank Statement Import":
+        _log_legacy_nav_hit(
+            "bank_statement_import",
+            raw_key="Bank Statement Import",
+            target=NAV_BANKING,
+            banking_section="import",
+        )
         st.session_state["nav_selection"] = NAV_BANKING
         st.session_state["banking_section"] = "import"
         selection = NAV_BANKING
@@ -26491,12 +26520,24 @@ def main():
     # Legacy Accounting Tools picker → statement or Books routes (AD-UI-001 D1 / D2-P1).
     _legacy_exec = st.session_state.get("rpt_exec_sel")
     if _legacy_exec in _LEGACY_RPT_EXEC_TO_STATEMENT:
-        st.session_state["nav_selection"] = _LEGACY_RPT_EXEC_TO_STATEMENT[_legacy_exec]
+        _stmt_target = _LEGACY_RPT_EXEC_TO_STATEMENT[_legacy_exec]
+        _log_legacy_nav_hit(
+            "rpt_exec_statement",
+            rpt_exec_sel=_legacy_exec,
+            target=_stmt_target,
+        )
+        st.session_state["nav_selection"] = _stmt_target
         st.session_state.pop("rpt_exec_sel", None)
         st.session_state.pop("mob_reports_tab", None)
         selection = st.session_state["nav_selection"]
     elif _legacy_exec in _LEGACY_RPT_EXEC_TO_BOOKS:
-        st.session_state["nav_selection"] = _LEGACY_RPT_EXEC_TO_BOOKS[_legacy_exec]
+        _books_target = _LEGACY_RPT_EXEC_TO_BOOKS[_legacy_exec]
+        _log_legacy_nav_hit(
+            "rpt_exec_books",
+            rpt_exec_sel=_legacy_exec,
+            target=_books_target,
+        )
+        st.session_state["nav_selection"] = _books_target
         st.session_state.pop("rpt_exec_sel", None)
         st.session_state.pop("mob_reports_tab", None)
         selection = st.session_state["nav_selection"]
