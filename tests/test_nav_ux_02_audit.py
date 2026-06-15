@@ -89,8 +89,9 @@ def test_records_key_findings(doc_text):
     assert "today's summary" in lowered and "orphan" in lowered, (
         "Audit must record the Today's Summary orphan route"
     )
-    assert "staff expenses" in lowered and "owner-only" in lowered, (
-        "Audit must record the Staff Expenses role mismatch"
+    assert "staff expenses" in lowered, "Audit must record Staff Expenses"
+    assert "permission" in lowered or "submit_expense_drafts" in lowered, (
+        "Audit must record Staff Expenses permission-derived nav (S5)"
     )
     assert "statements" in lowered and "canonical" in lowered, (
         "Audit must classify statements as canonical routes"
@@ -118,7 +119,7 @@ def test_statements_not_classified_as_duplicate_render(doc_text):
 def test_implementation_slices_not_implemented(doc_text):
     lowered = doc_text.lower()
     assert "do not implement" in lowered, "Slices must be marked do-not-implement"
-    for slice_id in ("nav-ux-02-s1", "nav-ux-02-s3", "nav-ux-02-s7"):
+    for slice_id in ("nav-ux-02-s1", "nav-ux-02-s3", "nav-ux-02-s4", "nav-ux-02-s5", "nav-ux-02-s7"):
         assert slice_id in lowered, f"Implementation slices must include {slice_id}"
 
 

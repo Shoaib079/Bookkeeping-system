@@ -90,14 +90,9 @@ def test_today_summary_not_treated_as_hidden_route():
     assert NAV_TODAY_SUMMARY not in surfaces
 
 
-def test_documented_role_purpose_review_matches_live_gates():
-    """Record-only: Staff Expenses is owner-only (audit flag for intent review)."""
-    owner_pages = set(erp._NAV_ROLE_PAGES["owner"])
-    manager_pages = set(erp._NAV_ROLE_PAGES["manager"])
-    for page_key in DOCUMENTED_ROLE_PURPOSE_REVIEW:
-        assert page_key in owner_pages
-        assert page_key not in manager_pages
-        assert page_key not in erp._NAV_ROLE_PAGES["cashier"]
+def test_documented_role_purpose_review_resolved_after_s5():
+    """S5: Staff Expenses nav is permission-derived; no open role/purpose review flags."""
+    assert DOCUMENTED_ROLE_PURPOSE_REVIEW == frozenset()
 
 
 def test_documented_duplicate_workflow_clusters_have_multiple_entry_kinds():

@@ -1,6 +1,6 @@
 # NAV-UX-02 — Sidebar & Navigation Audit
 
-**Mode:** Audit + S1/S2/S3/S4 validation. **S2 implemented (2026-06):** Today's Summary dispatch route retired; see `docs/NAV_UX_02_S2_IMPLEMENTATION.md`. **S3 implemented (2026-06):** Financial statements formalized as canonical routes + shortcut doors; see `docs/NAV_UX_02_S3_STATEMENTS_CONSOLIDATION_PLAN.md` + `tests/test_nav_ux_02_s3_statements_structural_contract.py`. **S4 implemented (2026-06):** Members moved on mobile from People hub → More/Admin; see `docs/NAV_UX_02_S4_MEMBERS_AUDIT_CONSISTENCY_PLAN.md` + `tests/test_nav_ux_02_s4_members_audit_structural_contract.py`.
+**Mode:** Audit + S1/S2/S3/S4/S5 validation. **S2 implemented (2026-06):** Today's Summary dispatch route retired; see `docs/NAV_UX_02_S2_IMPLEMENTATION.md`. **S3 implemented (2026-06):** Financial statements formalized as canonical routes + shortcut doors; see `docs/NAV_UX_02_S3_STATEMENTS_CONSOLIDATION_PLAN.md` + `tests/test_nav_ux_02_s3_statements_structural_contract.py`. **S4 implemented (2026-06):** Members moved on mobile from People hub → More/Admin; see `docs/NAV_UX_02_S4_MEMBERS_AUDIT_CONSISTENCY_PLAN.md` + `tests/test_nav_ux_02_s4_members_audit_structural_contract.py`. **S5 implemented (2026-06):** Staff Expenses nav visibility permission-derived; see `docs/NAV_UX_02_S5_STAFF_EXPENSES_ROLE_PLAN.md` + `tests/test_nav_ux_02_s5_staff_expenses_structural_contract.py`.
 **Source of truth:** `_PAGE_DISPATCH` (`app.py:26520`), `_NAV_ACCORDION` (`app.py:3426`), `_NAV_DIRECT_PAGES` (`app.py:3480`), `_NAV_ROLE_PAGES` (`app.py:3490`), `_MOBILE_BOTTOM_NAV` (`app.py:3364`), `_MOBILE_HUB_CONFIG` (`app.py:3383`), `registry/nav_keys.py` (route keys + legacy aliases).
 
 ## 1. Audit plan
@@ -27,7 +27,7 @@ Role gate legend: **O**=owner, **M**=manager, **C**=cashier, **P**=partner, **V*
 | Transaction Ledger | render_transaction_ledger_page | sidebar-direct + reports hub | O M C P V | Transactions | sidebar-item | `/transactions/ledger` |
 | Sales | render_sales | sidebar-accordion `transactions` | O M C P | Sales | sidebar-item | `/sales` |
 | Expenses | render_expenses | sidebar-accordion `transactions` | O M C | Expenses | sidebar-item | `/expenses` |
-| Staff Expenses | render_staff_expense_capture | sidebar-accordion `transactions` | **O only** | Expenses | sidebar-item | `/expenses/staff-capture` |
+| Staff Expenses | render_staff_expense_capture | sidebar-accordion `transactions` | **permission** (`submit_expense_drafts` ∨ `approve_expense_drafts`) | Expenses | sidebar-item | `/expenses/staff-capture` |
 | Recurring Expenses | render_recurring_expenses | sidebar-accordion `transactions` | O M C | Expenses | sidebar-item | `/expenses/recurring` |
 | Purchases | render_purchases | sidebar-accordion `transactions` | O M C | Purchases | sidebar-item | `/purchases` |
 | Cash Reconciliation | render_cash_reconciliation | accordion `close_day` + money hub | O M C | Closings | sidebar-item | `/closings/cash-recon` |
@@ -119,7 +119,7 @@ Multiple entry points reaching the **same workflow** (record-only; not defects, 
 | **Dashboard** | Home, Today's Summary | Today's Summary is orphaned (see §5) |
 | **Transactions** | New Transaction, Transaction Ledger | entry + lookup |
 | **Sales** | Sales | |
-| **Expenses** | Expenses, Staff Expenses, Recurring Expenses | Staff Expenses owner-only despite "staff" purpose |
+| **Expenses** | Expenses, Staff Expenses, Recurring Expenses | Staff Expenses nav is permission-derived (submit/approve); page enforces same gate |
 | **Purchases** | Purchases | |
 | **Closings** | Cash Reconciliation, External Sales Verification, End-of-Day Close | |
 | **Recipe Costing** | Ingredients, Recipes, Cost Breakdown, Menu Items | industry-optional module |
@@ -135,7 +135,7 @@ Multiple entry points reaching the **same workflow** (record-only; not defects, 
 ## 5. Notable findings (record-only)
 
 - **Orphan route (resolved S2):** `Today's Summary` dispatch route **retired**; `render_today_summary` reachable via Reports exec + legacy reroute to `NAV_REPORTS`.
-- **Role/purpose mismatch:** `Staff Expenses` (staff capture) is **owner-only** (absent from manager/cashier role lists) — the "staff" workflow is not visible to staff roles. Flag for intent review.
+- **Role/purpose mismatch (resolved S5):** Staff Expenses nav visibility now matches the page gate — shown iff `submit_expense_drafts` or `approve_expense_drafts` (default: owner, manager, cashier). Approval remains the GL-posting boundary behind `approve_expense_drafts`.
 - **Cross-surface inconsistency (resolved S4):** `Members` now lives under **Settings** on desktop **and** **More→Admin** on mobile (removed from People hub). `Audit Log` remains owner+manager while other Settings config pages are owner-only — documented oversight exception.
 - **Legacy reroutes still active:** `"Bank Statement Import"` key, `rpt_exec_sel` → statement/Books mappings — historical entry points kept for back-compat; candidates for documentation + eventual removal.
 - **Statements multi-door (S3 resolved):** P&L/BS/CF are **single canonical routes** with desktop accordion as home; mobile hub + legacy `rpt_exec_sel` are **shortcut doors** — not duplicate renders. Reports page tabs exclude statements.
@@ -159,15 +159,15 @@ A doc-contract test for this audit (existence + sections + inventory coverage) s
 - **NAV-UX-02-S2 — resolve the orphan:** **Implemented (S2-IMPL)** — retired dispatch route; Reports exec + legacy reroute preserved.
 - **NAV-UX-02-S3 — statements consolidation:** **Implemented (S3-IMPL-1)** — canonical routes + shortcut doors formalized; contract tests in `tests/test_nav_ux_02_s3_statements_structural_contract.py`; React paths `/reports/profit-loss`, `/reports/balance-sheet`, `/reports/cash-flow`.
 - **NAV-UX-02-S4 — cross-surface consistency:** **Implemented (S4-IMPL-1)** — Members relocated on mobile from People hub → More/Admin; People hub operational records only; contract tests in `tests/test_nav_ux_02_s4_members_audit_structural_contract.py`; React `/settings/members` preserved.
-- **NAV-UX-02-S5 — role/purpose review:** confirm intended visibility of Staff Expenses (and any owner-only operational page) with the role matrix.
+- **NAV-UX-02-S5 — role/purpose review:** **Implemented (S5-IMPL-1)** — Staff Expenses nav permission-derived; default mapping verified (`submit`: owner/manager/cashier; `approve`: owner/manager); contract tests in `tests/test_nav_ux_02_s5_staff_expenses_structural_contract.py`.
 - **NAV-UX-02-S6 — legacy reroute retirement:** document, then remove `"Bank Statement Import"` / `rpt_exec_sel` mappings once telemetry shows no use.
 - **NAV-UX-02-S7 — React route map adoption:** freeze the §2 `react_route` column as the migration contract (1:1 route_key→path) for the FastAPI+React front end.
 
 ## No-change statement (NAV-UX-02 audit)
 
-- **Audit only — S4-IMPL-1 relocated Members on mobile only; desktop sidebar unchanged; no route renamed; no page deleted; no role gate changed; no render change; no cleanup performed.**
+- **Audit only — S5-IMPL-1 permission-derived Staff Expenses nav only; no `_NAV_ROLE_PAGES` template change; no role gate changed; no route renamed; no page deleted; no render change; no cleanup performed.**
 - Inventory, duplicate report, ownership map, test recommendations, and slices are **planning artifacts only**; execution is gated to the S1–S7 slices above.
 
 ---
 
-*Audit + S1/S2/S3/S4 validation. S4: Members mobile placement aligned with Settings/Admin (More→Admin); People hub operational records only. React contract: /settings/members (not /people/members). Key open findings: Staff Expenses owner-only; Audit Log manager-visible oversight exception; legacy Bank Statement Import / rpt_exec_sel reroutes remain (retirement deferred).*
+*Audit + S1/S2/S3/S4/S5 validation. S5: Staff Expenses nav matches page permissions (submit ∨ approve). Key open findings: Audit Log manager-visible oversight exception; legacy Bank Statement Import / rpt_exec_sel reroutes remain (retirement deferred).*

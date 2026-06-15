@@ -3062,6 +3062,29 @@ def _can(action: str) -> bool:
         sess.close()
 
 
+def _can_view_staff_expense_capture() -> bool:
+    """NAV-UX-02-S5 — show Staff Expenses nav iff page permissions allow access."""
+    return _can("submit_expense_drafts") or _can("approve_expense_drafts")
+
+
+def _apply_permission_nav_overrides(
+    allowed: set[str],
+    *,
+    hidden: set[str] | None = None,
+) -> set[str]:
+    """Adjust role-based nav allow-list with permission-derived entries."""
+    out = set(allowed)
+    hidden = hidden or set()
+    if NAV_STAFF_EXPENSE_CAPTURE in hidden:
+        out.discard(NAV_STAFF_EXPENSE_CAPTURE)
+        return out
+    if _can_view_staff_expense_capture():
+        out.add(NAV_STAFF_EXPENSE_CAPTURE)
+    else:
+        out.discard(NAV_STAFF_EXPENSE_CAPTURE)
+    return out
+
+
 def build_streamlit_request_context(session) -> RequestContext | None:
     """FASTAPI-P0.1 — build explicit context from ambient Streamlit session helpers."""
     u = _current_user()
@@ -26435,7 +26458,10 @@ def main():
     _allowed = set(_NAV_ROLE_PAGES.get(_nav_role, [NAV_HOME]))
 
     with get_session() as _nav_session:
-        _allowed -= _module_hidden_nav_pages(_nav_session)
+        _hidden_nav = _module_hidden_nav_pages(_nav_session)
+        _allowed -= _hidden_nav
+
+    _allowed = _apply_permission_nav_overrides(_allowed, hidden=_hidden_nav)
 
     _raw_nav = st.session_state.get("nav_selection", NAV_HOME)
     if _raw_nav in _LEGACY_NAV_TO_REPORTS_EXEC:

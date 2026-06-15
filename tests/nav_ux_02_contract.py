@@ -63,6 +63,10 @@ SETTINGS_ADMIN_REACT_ROUTES: dict[str, str] = {
     NAV_PERMISSIONS: "/settings/permissions",
     NAV_BACKUP_RESTORE: "/settings/backup-restore",
 }
+STAFF_EXPENSE_NAV_PERMISSIONS: frozenset[str] = frozenset(
+    {"submit_expense_drafts", "approve_expense_drafts"}
+)
+STAFF_EXPENSE_REACT_ROUTE = "/expenses/staff-capture"
 # Multi-surface entry is intentional: accordion (canonical home) + mobile hub (shortcut).
 DOCUMENTED_CANONICAL_WITH_SHORTCUTS: frozenset[str] = STATEMENT_CANONICAL_KEYS
 
@@ -95,8 +99,8 @@ DOCUMENTED_PROGRAMMATIC_NAV = frozenset(
     }
 )
 
-# Documented role/purpose review flags (audit §5) — behavior not changed in S1.
-DOCUMENTED_ROLE_PURPOSE_REVIEW = frozenset({erp.NAV_STAFF_EXPENSE_CAPTURE})
+# Documented role/purpose review flags (audit §5) — empty after NAV-UX-02-S5.
+DOCUMENTED_ROLE_PURPOSE_REVIEW = frozenset()
 
 # Mobile hub non-page entry kinds → expected route targets.
 MOBILE_HUB_ENTRY_TARGETS: dict[str, str] = {
