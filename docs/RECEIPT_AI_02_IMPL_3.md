@@ -38,7 +38,7 @@ The learning service still passes string `target_value`; the store encodes/decod
 
 ## Next slices
 
-- **RECEIPT-AI-02-IMPL-4** — void-aware reconciliation (decrement / correction_count).
+- **RECEIPT-AI-02-IMPL-4** — void-aware reconciliation — see [RECEIPT_AI_02_IMPL_4.md](./RECEIPT_AI_02_IMPL_4.md).
 - **RECEIPT-AI-02-IMPL-5** — surface learned suggestions in capture UI (still approval-first).
 
 ## Run

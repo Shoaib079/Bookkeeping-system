@@ -1,8 +1,10 @@
-"""RECEIPT-AI-02-IMPL-3 — persistent LearningStore over ReceiptLearningMap.
+"""RECEIPT-AI-02-IMPL-3/4 — persistent LearningStore over ReceiptLearningMap.
 
 Implements the :class:`services.receipt_learning.LearningStore` protocol using the
-``receipt_learning_map`` table. Service-level ``record_approval`` / ``suggest_for_vendor``
-work unchanged; **not** wired to ``approve_expense_draft`` in this slice.
+``receipt_learning_map`` table. Supports approval hits and void reversals via
+:meth:`PersistentLearningStore.decrement_approval_hit`.
+
+**Not** wired to ``approve_expense_draft`` or ``void_expense`` in this slice.
 
 No Streamlit, no auto-post, no posting changes.
 """
@@ -155,6 +157,43 @@ class PersistentLearningStore:
             row.last_approved_at = approved_at
             row.updated_at = now
             row.is_active = True
+        self._session.flush()
+        _refresh_confidence_for_signature(
+            self._session, company_id, signature_type, signature_key
+        )
+        self._session.commit()
+        self._session.refresh(row)
+        return _row_to_learning_record(row)
+
+    def decrement_approval_hit(
+        self,
+        company_id: int,
+        signature_type: learn.SignatureType,
+        signature_key: str,
+        target_value: str,
+        *,
+        voided_at: datetime.datetime,
+    ) -> learn.LearningRecord | None:
+        target_kind, target_id, target_val = _encode_target(signature_type, target_value)
+        row = (
+            self._session.query(ReceiptLearningMap)
+            .filter(
+                ReceiptLearningMap.company_id == company_id,
+                ReceiptLearningMap.signature_type == signature_type,
+                ReceiptLearningMap.signature_key == signature_key,
+                ReceiptLearningMap.target_kind == target_kind,
+                ReceiptLearningMap.target_id == target_id,
+                ReceiptLearningMap.target_value == target_val,
+            )
+            .first()
+        )
+        if row is None or row.approval_count <= 0:
+            return None
+        row.approval_count -= 1
+        row.correction_count += 1
+        row.updated_at = datetime.datetime.now()
+        if row.approval_count == 0:
+            row.is_active = False
         self._session.flush()
         _refresh_confidence_for_signature(
             self._session, company_id, signature_type, signature_key

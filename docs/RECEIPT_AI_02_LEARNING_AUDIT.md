@@ -87,7 +87,7 @@ Numbers are policy, not hard-coded accounting; they live behind config.
 - **RECEIPT-AI-02-IMPL-1 — pure learning service (no table):** ✅ `services/receipt_learning.py` + in-memory store — see [RECEIPT_AI_02_IMPL_1.md](./RECEIPT_AI_02_IMPL_1.md).
 - **RECEIPT-AI-02-IMPL-2 — capture original suggestion:** ✅ `ReceiptDraftSuggestion` table + `services/receipt_suggestion_capture.py` — see [RECEIPT_AI_02_IMPL_2.md](./RECEIPT_AI_02_IMPL_2.md). Closes the captured-suggestion gap for future correction-learning; **does not learn yet**.
 - **RECEIPT-AI-02-IMPL-3 — persistent `receipt_learning_map`:** ✅ `ReceiptLearningMap` table + `services/receipt_learning_store.py` — see [RECEIPT_AI_02_IMPL_3.md](./RECEIPT_AI_02_IMPL_3.md). Store implements `LearningStore`; **not wired** to approval flow yet.
-- **RECEIPT-AI-02-IMPL-4 — void-aware reconciliation:** decrement learning on void/reversal.
+- **RECEIPT-AI-02-IMPL-4 — void-aware reconciliation:** ✅ `record_void_reversal` + `decrement_approval_hit` — see [RECEIPT_AI_02_IMPL_4.md](./RECEIPT_AI_02_IMPL_4.md). **Not wired** to `void_expense` yet.
 - **RECEIPT-AI-02-IMPL-5 — surface suggestions in capture UI:** prefill from learned mappings (still approval-first). Auto-post remains a separate, later, owner-gated slice (RECEIPT-AI-07).
 
 ## 8. Risk assessment
