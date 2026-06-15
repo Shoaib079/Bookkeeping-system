@@ -1,7 +1,6 @@
 # POSTING-SERVICE-01 — Status
 
-**Last updated:** 2026-06-05  
-**Source of truth:** confirmed repository snapshot at commit `e0c2fff`.
+**Last updated:** 2026-06-05 (DOCS-MIGRATION-CHECKPOINT-01 register alignment)
 
 ---
 

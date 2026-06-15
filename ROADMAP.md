@@ -1,7 +1,7 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** 2026-06-15 (POS-CONFIG-01 — sales source & reconciliation settings spec)  
+**Last updated:** 2026-06-05 (ROADMAP-SYNC-01 — service-extraction register + paused-work gates)  
 **Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
@@ -153,7 +153,7 @@ No implementation before roadmap approval.
 | Company creation (14D-D) | ✅ Complete |
 | Sidebar uses company role (nav fix) | ✅ Complete |
 | Simplified Company Setup UI | ✅ Complete (Expert policies stub) |
-| Automated tests | ✅ **1217 passing, 2 xfailed** (run `pytest tests/` on host) |
+| Automated tests | ✅ **3883 passing, 9 skipped, 2 xfailed** (run `pytest tests/` on host) |
 | Member management (14D-E) | ✅ Complete |
 | Member roster polish (14D-F) | ✅ Complete |
 | Setup wizard v1 (14D-G) | ✅ Complete — **superseded by SETUP-01** |
@@ -220,13 +220,23 @@ No implementation before roadmap approval.
 | **RECIPE-COSTING-01** | ✅ **RC-P1–P2A complete** · 📋 **RC-P2B–P3 pending** · 🔮 **RC-AI-01 optional (future)** — ingredient/recipe costing + menu profitability basics; see [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-RC-*) |
 | **USER-ACCESS-01** | ✅ **UA-P1 complete** · 📋 **UA-P1b pending** — permission override service + effective resolver; see [docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-UA-*) |
 | **STAFF-CAPTURE-01** | ✅ **SC-P1 complete** · ✅ **SC-P1b complete** · 📋 **SC-P2 pending** · 📋 **SC-P3 pending** — expense draft service + thin Streamlit UI (submit · receipts · inbox); see [docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-SC-*) |
-| **FUTURE-MIGRATION-AUDIT-01** | 📊 **Recorded** — FastAPI readiness **62/100**; keystone **POSTING-SERVICE-01**; see [§ FUTURE-MIGRATION-AUDIT-01](#future-migration-audit-01--fastapi-readiness-audit) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
+| **POSTING-SERVICE-01** | ✅ **Complete** — PS-P0–P6-5; `services/posting.py` + app shims; **PS-P7 hardening deferred, not a blocker** · [POSTING_SERVICE_01_STATUS](./docs/POSTING_SERVICE_01_STATUS.md) |
+| **REPORTS-SERVICE-01** | 🟡 **Partial** — query/read layer in `services/read_*`; Streamlit presentation (`render_*`, trial balance loop) remains in `app.py` until React |
+| **BANKING-SERVICE-01** | 🟡 **Partial** — `write_banking` + `write_reconciliation` + `read_reconciliation` shipped; `match_post` / `company_card` `_app()` coupling remains; **BS-02-CHAR ✅** · next: BS-02 extraction · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) |
+| **FastAPI foundation** | 🟡 **Partial (strong)** — P0/P1/P2 routes + 38+ `test_fastapi_*` files; writes feature-flagged; Streamlit primary; **not production-complete** |
+| **PostgreSQL runtime** | 🟡 **Partial / test-only** — SQLite remains runtime; PG test-only; Alembic authority feature-flagged; **MONEY-DECIMAL-01 remains blocker** |
+| **React migration** | ⬜ **Not started** — `ERP_DS_05` spec only; no SPA |
+| **FULL-SERVICE-READINESS-AUDIT** | ✅ **Recorded (2026-06-05)** — whole-repo service-extraction snapshot · [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) |
+| **DOCS-MIGRATION-CHECKPOINT-01** | ✅ **Recorded (2026-06)** — register drift fix after FASTAPI-READINESS-CHECKPOINT · [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) |
+| **FUTURE-MIGRATION-AUDIT-01** | 📊 **Recorded (2026-06-13 baseline)** — score **62/100**; historical snapshot — blocker list superseded by [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
 | **P2-HARDEN-01** — Company Stamp Audit | 📋 **High** · Low risk — audit API `company_id` stamping on P2 write paths; no intended behavior change · see [§ P2-HARDEN-01](#p2-harden-01--company-stamp-audit) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) · [P2_AUDIT_01_LEDGER](./docs/P2_AUDIT_01_LEDGER.md) |
-| **DASH-CASH-01** — Split Liquid Funds | 🟡 **Audited** · S1 read helper ✅ · S2+ UI pending — GL 1000–1003 / 1010–1013; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
-| **AUTH-SESSION-02** — Remember Device / Session Hardening | 📋 **Future** — after AUTH-SESSION-01; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) · [AUTH_SESSION_01_AUDIT](./docs/AUTH_SESSION_01_AUDIT.md) |
-| **RECEIPT-AI-01 … RECEIPT-AI-08** — Receipt OCR & learning pipeline | 📋 **Future** — assist/review first; trusted auto-post last; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
-| **POS-CONFIG-01** — Sales Source & Reconciliation Settings | 📋 **Spec approved** — per-company `pos.*` settings; see [§ POS-CONFIG-01](#pos-config-01--sales-source--reconciliation-settings) · [docs/POS_CONFIG_01_SPEC.md](./docs/POS_CONFIG_01_SPEC.md) |
-| **POS-AI-01 … POS-AI-04** — Daily POS / Z-report intelligence | 📋 **Future** — after POS-CONFIG-01-IMPL-1; see [§ ROADMAP-UPDATE-02](#roadmap-update-02--ai-learning--posz-report-queue) |
+| **DASH-CASH-01** — Split Liquid Funds | ✅ **S1/S2 complete** — `compute_liquid_position` + dashboard UI shipped |
+| **AUTH-SESSION-02** — Session hardening | 🟡 **Partial** — audit ✅ · IMPL-1 session policy ✅ · IMPL-2 browser-session policy wiring ✅ · idle extension / remember-device / revocation **not started** · [AUTH_SESSION_02_AUDIT](./docs/AUTH_SESSION_02_AUDIT.md) |
+| **RECEIPT-AI-01** | ✅ **Complete** — service seam + adapter + fake extractor (IMPL-1/2/3a/3b/3c) · no real OCR provider |
+| **RECEIPT-AI-02** | ✅ **IMPL-1–5 complete** — learning store + prefill loop; **approval/void hooks deferred** · no auto-post |
+| **RECEIPT-AI-03 … RECEIPT-AI-08** | 📋 **Future** — vendor detection · item extraction · confidence · trusted auto-post last |
+| **POS-CONFIG-01** — Sales Source & Reconciliation Settings | ✅ **Spec/audit complete** — per-company `pos.*` settings; IMPL-1+ pending · [docs/POS_CONFIG_01_SPEC.md](./docs/POS_CONFIG_01_SPEC.md) |
+| **POS-AI / POS automation** | ⏸️ **ROADMAP ONLY — paused** — POS AI · Z-report · terminal slips · cash/card reconciliation automation · **do not implement until user explicitly requests** · [§ Paused](#paused--do-not-start-without-user-approval) |
 | **BANKING-UX-05** — AI Statement Matching | 📋 **Future** — suggest + learn; user approval first; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
 | **DASH-KPI-01 … DASH-KPI-03** — Dashboard KPI extensions | 📋 **Future** — forecast · runway · sales-by-payment-type; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
 | **AI-BOOKKEEPER-01** — Business Explanation AI | 📋 **Future** — read-only explanations; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
@@ -237,34 +247,103 @@ No implementation before roadmap approval.
 
 **Use the system daily** — build only what causes friction during real bookkeeping.
 
-**FUTURE-MIGRATION-AUDIT-01: ✅ Complete (2026-06-13) — migration readiness score 62/100.**
-Key blocker: **POSTING-SERVICE-01** (extract `create_journal_entry` + `post_*`/`void_*`/close
-core from app.py into `services/posting.py`; commit discipline moves to callers). Everything
-else queues behind it: MONEY-DECIMAL-01 · ALEMBIC-01 · BANKING-SERVICE-01 ·
-REPORTS-SERVICE-01 · CONTEXT-AUDIT-01.
+**Test baseline:** `pytest tests/` — **3883 passed**, 9 skipped, 2 xfailed.
 
-**🚧 BUILD GATE (active):** Do **not** build large new Streamlit UI surfaces before the
-posting/reporting extraction. Allowed: OBS-01 friction fixes, service-first screen-light
-phases (RC-P2B/P3 class), thin UI over existing services. Screens are the layer React
-replaces — invest in services, not chrome.
+**Register sources:** [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) · [FASTAPI_READINESS_CHECKPOINT](./docs/FASTAPI_READINESS_CHECKPOINT.md) · [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md).
 
-**Next recommended active item:** **DASH-CASH-01-S2** (dashboard UI over `compute_liquid_position`) per [ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue), or **POSTING-SERVICE-01** / OBS-01 friction fixes when extraction is the bottleneck.
+**Current priority (ordered):**
 
-**Approved future queue (docs only — 2026-06-05):** See **[ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue)** for the full priority-ordered backlog (DASH-CASH → RECEIPT-AI → BANKING-UX-05 → AUTH-SESSION-02 → DASH-KPI → AI-BOOKKEEPER → FastAPI → React). AI receipt **auto-post is not first release** — assist/review mode ships first.
+1. **Keep `ROADMAP.md` accurate** after each audit/implementation checkpoint (ROADMAP-SYNC-01 hygiene rule).
+2. **BANKING-SERVICE-01-BS-02** — replace `match_post` `_app().get_account_by_name` with `services.posting.get_account_by_name` (**BS-02-CHAR ✅** — `test_banking_service01_char_match_post_account_resolution.py`).
+3. **BANKING-SERVICE-01-BS-04-CHAR** — Streamlit manual bank path vs `write_banking` parity characterization.
+4. **AUTH-SESSION-02-IMPL-3** — idle extension characterization + wiring (`should_extend_idle`).
+5. **P2-HARDEN-01** — `company_id` stamping audit across FastAPI `write_*` services.
+6. **MONEY-DECIMAL-01** — prepare for PostgreSQL runtime (`Float` → `Decimal`).
+7. **PostgreSQL runtime cutover** — after decimal + Alembic authority bake-in.
+8. **React migration** — Phase D after API/service hardening.
+
+| Task | Status |
+|------|--------|
+| **POSTING-SERVICE-01** | ✅ Complete — kernel in `services/posting.py`; app shims; PS-P7 deferred, not blocker |
+| **REPORTS-SERVICE-01** | 🟡 Partial — `services/read_*` computes; Streamlit `render_*` until React |
+| **BANKING-SERVICE-01** | 🟡 Partial — `write_banking` + `write_reconciliation`; `match_post`/`company_card` `_app()` debt |
+| **AUTH-SESSION-02** | 🟡 Partial — IMPL-1/2 ✅; idle/remember/revocation open |
+| **RECEIPT-AI-01** | ✅ Complete — service seam; no OCR provider |
+| **RECEIPT-AI-02** | ✅ IMPL-1–5 complete — prefill loop; approval/void hooks deferred |
+| **FastAPI foundation** | 🟡 Partial (strong) — P0–P2; writes flag-gated; not production-complete |
+| **PostgreSQL runtime** | 🟡 Partial / test-only — SQLite runtime; MONEY-DECIMAL-01 blocker |
+| **React migration** | ⬜ Not started — specs only |
+
+**🚧 BUILD GATE (active):** Do **not** build large new Streamlit UI surfaces before **banking service extraction** and **API hardening** land. Allowed: OBS-01 friction fixes, service-first screen-light phases (RC-P2B/P3 class), thin UI over existing services. Screens are the layer React replaces — invest in services, not chrome.
+
+**⏸️ PAUSED (user gate):** POS AI · Z-report processing · terminal receipt processing · cash/card reconciliation automation · multi-POS automation · POS auto-post · real OCR/AI provider · trusted receipt auto-post — see [§ Paused / Do Not Start](#paused--do-not-start-without-user-approval).
+
+**Approved future queue (docs only — 2026-06-05):** See **[ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue)** for DASH-KPI · BANKING-UX-05 · AI-BOOKKEEPER backlog. AI receipt **auto-post is not first release** — assist/review mode ships first.
 
 **CSS architecture cleanup:** **MOBILE-14 closed.** Optional follow-up: M3/M4 suppression-rule relocation in `widgets.css` (not blockers). **CSS-01** / **CSS-02** remain the ongoing ownership standard.
 
 **Observe during use (do not build yet):** Dashboard quick actions, worker advance mobile parity, BANK-01 reality audit (after weeks of real card/bank activity). Log friction in **[OBS-01](#obs-01--operational-friction-log)** as it happens.
 
-**Deferred:** Inventory expansion, procurement, CRM, BI, PostgreSQL — until real usage demands them.
+**Deferred:** Inventory expansion, procurement, CRM, BI — until real usage demands them.
 
 **Do NOT start (future projects — see [FUTURE UX / NAVIGATION VISION](#future-ux--navigation-vision)):** Banking redesign · Reports redesign · Mobile shell redesign · Navigation redesign · More Hub redesign · Sidebar redesign.
 
-**Next Banking work (before Banking redesign or new Banking features):** observe daily friction via **[OBS-01](#obs-01--operational-friction-log)**.
-
-**Current focus stays on:** (1) Accounting stability · (2) Daily-use workflow testing · (3) Banking observation · (4) UX cleanup · (5) Real-world usage feedback.
-
 **Success metric:** Daily sales, expenses, and purchases are easy to enter; banking is understandable; month-end is fast; company switching is reliable — not feature count.
+
+---
+
+## Paused / Do Not Start Without User Approval
+
+**Status:** Active gate (ROADMAP-SYNC-01, 2026-06-05)
+
+The following are **documented on the roadmap only**. Do **not** implement until the user explicitly requests them:
+
+| Area | Scope |
+|------|--------|
+| **POS-AI** | Daily POS / Z-report OCR · source learning · trusted POS auto-post |
+| **Z-report processing** | Upload · parse · suggest · post automation |
+| **Terminal receipt processing** | Slip OCR · terminal-level totals |
+| **Cash/card reconciliation automation** | Multi-source auto-match beyond current manual match/post |
+| **Multi-POS automation** | Cross-terminal aggregation · auto-post |
+| **POS auto-post** | Any autonomous sales posting from POS documents |
+| **Real OCR/AI provider integration** | External vision/LLM adapters for receipts or POS |
+| **Trusted receipt auto-post** | RECEIPT-AI-07 class owner-gated auto-posting |
+
+**Allowed without this gate:** characterization tests · audits · docs · registry keys · suggest/prefill flows that require user approval.
+
+---
+
+## Completed recent milestones
+
+| Milestone | Status |
+|-----------|--------|
+| **NAV-UX-02** S1–S6 | ✅ Structural contracts · statements consolidation · Members mobile · Staff Expenses permissions · legacy telemetry |
+| **AUTH-SESSION-01** | ✅ Session restore + company revalidation |
+| **AUTH-SESSION-02** IMPL-1/2 | ✅ `session_policy` + browser-session TTL wiring |
+| **DASH-CASH-01** S1/S2 | ✅ `compute_liquid_position` + dashboard UI |
+| **RECEIPT-AI-01** IMPL-1/2/3a/3b/3c | ✅ Service seam + adapter + fake extractor |
+| **RECEIPT-AI-02** IMPL-1/2/3/4/5 | ✅ Learning store + suggestion capture + prefill (approval/void hooks deferred) |
+| **POS-CONFIG-01** audit/spec | ✅ Per-company `pos.*` settings spec |
+| **FULL-SERVICE-READINESS-AUDIT** | ✅ Whole-repo extraction snapshot |
+| **BANKING-SERVICE-01** audit | ✅ Banking/reconciliation readiness map |
+| **BANKING-SERVICE-01-BS-02-CHAR** | ✅ `match_post` account-resolution characterization tests |
+| **POSTING-SERVICE-01** | ✅ PS-P0–P6-5 complete |
+
+---
+
+## Roadmap hygiene rule
+
+**Status:** Active (ROADMAP-SYNC-01)
+
+After **every** audit or implementation checkpoint:
+
+1. Update **`ROADMAP.md`** (status at a glance + current priority).
+2. Update the **relevant status doc** (e.g. `POSTING_SERVICE_01_STATUS.md`, `BANKING_SERVICE_01_AUDIT.md`).
+3. Add or update a **doc contract test** (`tests/test_*_sync_*.py` or checkpoint test).
+4. **Commit + tag** the checkpoint (when the user requests a commit).
+5. **Never leave stale blockers unmarked** — if code says complete, the roadmap must not still list it as open.
+
+Contract tests: `tests/test_roadmap_sync_01.py` · `tests/test_docs_migration_checkpoint_01.py` · `tests/test_full_service_readiness_audit.py` · `tests/test_banking_service_01_audit.py`.
 
 ---
 
@@ -2713,50 +2792,49 @@ Migration target is future-state only and does not change current development pr
 
 ### FUTURE-MIGRATION-AUDIT-01 — FastAPI Readiness Audit
 
-**Status:** Recorded (independent architectural review — Claude, 2026-06-13)
+**Status:** Recorded (independent architectural review — Claude, 2026-06-13). **Superseded for blocker/keystone truth by** [DOCS-MIGRATION-CHECKPOINT-01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) (2026-06).
 
-**Migration readiness score:** **62 / 100**
+**Migration readiness score:** **62 / 100** (historical baseline — not re-scored here)
 
 Does **not** authorize FastAPI/React implementation start. Baseline assessment only — satisfies the *readiness review* input to [FUTURE-MIGRATION-01](#future-migration-01) decision gate; full gate still requires strategy reconfirmation at implementation time.
 
-| Dimension | Assessment |
-|-----------|------------|
-| **Strength** | New `services/` modules are **FastAPI-ready** — explicit `company_id`/`user_id`, serializable DTOs, no Streamlit in services, contract tests (DSC-P1, RC-P1, UA-P1, SC-P1 exemplars) |
-| **Main blocker** | **`app.py` posting engine** — `create_journal_entry`, balance updates, void/reversal, and `post_*` convenience wrappers remain in the ~26k-line monolith; API cannot expose posting without extraction |
-| **Keystone next task** | **[POSTING-SERVICE-01](#posting-service-01--keystone-migration-task)** — extract posting into a shared `services/` module; unlocks Staff Capture `post_fn` wiring, FastAPI Phase B, and incremental UI thinning |
+| Dimension | Assessment (2026-06-13 baseline) | Updated (DOCS-MIGRATION-CHECKPOINT-01) |
+|-----------|-----------------------------------|----------------------------------------|
+| **Strength** | New `services/` modules FastAPI-ready — explicit IDs, DTOs, contract tests | Unchanged |
+| **Main blocker (historical)** | `app.py` posting engine | **Resolved** — POSTING-SERVICE-01 complete |
+| **Current focus** | — | Banking extraction, API hardening, session idle, decimal/PG |
 
-**Also tracked (migration prep — not active implementation):**
+**Also tracked (migration prep — status per DOCS-MIGRATION-CHECKPOINT-01):**
 
-| ID | Scope |
-|----|--------|
-| [POSTING-SERVICE-01](#posting-service-01--keystone-migration-task) | Extract GL posting engine from `app.py` |
-| [MONEY-DECIMAL-01](#money-decimal-01) | `Float` → `Decimal` for money fields (models + services) |
-| [ALEMBIC-01](#alembic-01) | Alembic migrations replace incremental `migrate_schema()` |
-| [BANKING-SERVICE-01](#banking-service-01) | Extract banking subledger logic to `services/` |
-| [REPORTS-SERVICE-01](#reports-service-01) | Extract report queries/aggregations to `services/` |
-| [CONTEXT-AUDIT-01](#context-audit-01) | Audit Streamlit `_erp()` / session-context coupling in `ui/` |
+| ID | Scope | Status |
+|----|--------|--------|
+| [POSTING-SERVICE-01](#posting-service-01--keystone-migration-task) | GL posting engine | ✅ Complete |
+| [MONEY-DECIMAL-01](#money-decimal-01) | `Float` → `Decimal` | Open |
+| [ALEMBIC-01](#alembic-01) | Alembic replaces `migrate_schema()` | Open |
+| [BANKING-SERVICE-01](#banking-service-01) | Banking subledger logic | 🟡 Partial |
+| [REPORTS-SERVICE-01](#reports-service-01) | Report query/aggregation | 🟡 Partial (query layer) |
+| [CONTEXT-AUDIT-01](#context-audit-01) | Streamlit `_erp()` / session coupling | Open |
 
 Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § FUTURE-MIGRATION-AUDIT-01](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#future-migration-audit-01-2026-06-13).
 
-**🚧 Build gate (owner decision, 2026-06-13):** no large new Streamlit UI surfaces before
-the posting/reporting extraction lands. Allowed meanwhile: OBS-01 friction fixes,
-service-first screen-light phases, thin UI over existing services. See
-[§ Current priority](#current-priority).
+**🚧 Build gate (owner decision, 2026-06-13, updated 2026-06):** no large new Streamlit UI surfaces before **banking extraction** and **API hardening** land. Allowed meanwhile: OBS-01 friction fixes, service-first screen-light phases, thin UI over existing services. See [§ Current priority](#current-priority).
 
 #### POSTING-SERVICE-01 — Keystone migration task
 
-**Priority:** Critical (migration prep)  
-**Status:** 🟢 **PS-P2a shipped** (2026-06-05) — `get_account_by_name`, sales `post_*` trio (`post_cash_sale`, `post_card_sale`, `post_credit_sale`), and `card_settlement_on` extracted to `services/posting.py`; app.py keeps byte-compatible shims (`company_id` from ambient session). PS-P1 JE kernel shipped 2026-06-13 (`2a639dd`); PS-P0 characterization (`fc15ce3`). **Next:** PS-P2b (expense/purchase/payable `post_*` wave) — not started.
+**Priority:** Critical (migration prep) — **complete**  
+**Status:** ✅ **Complete** (PS-P0 through PS-P6-5; PS-P7 hardening deferred). Source of truth: [POSTING_SERVICE_01_STATUS.md](./docs/POSTING_SERVICE_01_STATUS.md).
 
-Extract the accounting posting engine from `app.py` into a reusable service (e.g. `services/posting.py`):
+Extract the accounting posting engine from `app.py` into a reusable service (`services/posting.py`):
 
-- `create_journal_entry` + balance rules (normal/contra)
-- Fiscal-period close guard
-- Void/reversal via `create_reversing_journal_entry`
-- Convenience wrappers (`post_cash_sale`, `post_purchase`, `post_expense`, …) as thin callers
-- Streamlit and FastAPI both call the same module; Staff Capture `post_fn` wires here (TD-SC-01)
+- `create_journal_entry` + balance rules (normal/contra) — **shipped**
+- Fiscal-period close guard — **shipped**
+- Void/reversal via `create_reversing_journal_entry` — **shipped**
+- Convenience wrappers (`post_cash_sale`, `post_purchase`, `post_expense`, …) — **shipped**
+- Streamlit and FastAPI both call the same module; Staff Capture `post_fn` wires here (TD-SC-01) — **shipped**
 
-**Gate:** Contract tests against existing posting tests; zero GL behaviour change.
+**Deferred:** PS-P7 — commit ownership (TD-PS-01), DTO cleanup (TD-PS-03), reconciliation `_app()` imports (TD-POSTING-06).
+
+**Gate:** Contract tests against existing posting tests; zero GL behaviour change — **met** (`tests/test_posting_service01_*.py`).
 
 #### MONEY-DECIMAL-01
 
@@ -2775,16 +2853,12 @@ Introduce Alembic revision chain; retire silent `ALTER TABLE` / `CREATE INDEX IF
 #### BANKING-SERVICE-01
 
 **Priority:** High (migration prep)  
-**Status:** Open
-
-Extract banking subledger business logic (statement import matching, CC sync, reconciliation health) from `app.py` into `services/`. UI presentation already partially extracted (`ui/banking.py` — UI-STAB-02).
+**Status:** 🟡 **Partial** — `services/write_banking.py` (manual deposit/withdrawal/transfer) + `services/write_reconciliation.py` (match/unmatch API) + `services/read_reconciliation.py` shipped. **Open:** `reconciliation/match_post.py` and `reconciliation/company_card.py` `_app()` coupling (8 + 3 sites); Streamlit `render_banking` duplicate manual path; balance ownership asymmetry (TD-PS-08). **BS-02-CHAR ✅** — account-resolution characterization before `_app()` removal. Audit: [BANKING_SERVICE_01_AUDIT.md](./docs/BANKING_SERVICE_01_AUDIT.md).
 
 #### REPORTS-SERVICE-01
 
 **Priority:** Medium (migration prep)  
-**Status:** Open
-
-Extract report query/aggregation logic from `app.py` into read-only `services/` modules; React report modules consume the same APIs later.
+**Status:** 🟡 **Partial** — core read computations extracted via FASTAPI-P0 `services/read_*` (`read_reports`, `read_ledger`, `read_ar_ap`, `read_partner_statement`, `read_balances`, `read_reconciliation`). Streamlit **presentation** (`render_*` in `app.py`) remains by design until React Phase D.
 
 #### CONTEXT-AUDIT-01
 
@@ -2854,6 +2928,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **ROADMAP-SYNC-01** — Register sync from [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) + [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md): POSTING complete; REPORTS/BANKING/AUTH-SESSION/FastAPI/PG partial; RECEIPT-AI-01 + RECEIPT-AI-02 IMPL-1–5 complete; POS-AI/Z-report/cash-card automation **paused until user explicitly requests**; current priority reordered (BS-02 → BS-04 char → AUTH-SESSION-IMPL-3 → P2-HARDEN-01 → MONEY-DECIMAL-01 → PG → React); roadmap hygiene rule + `test_roadmap_sync_01.py`. Test baseline: **3883 passed**. Docs only. |
 | 2026-06-15 | **POS-CONFIG-01** — Sales Source & Reconciliation Settings spec approved (docs only): per-company `pos.*` configuration for sales source, verification source, card/cash verification modes, duplicate protection keys, auto-post policy, document classification, and workflow mode. **Rules:** no company-wide assumptions; settings determine AI behaviour; default suggest-only; complements `banking.*` + DSC. **Sequencing:** POS-CONFIG-01-IMPL-1 before POS-AI-01. Spec: [docs/POS_CONFIG_01_SPEC.md](./docs/POS_CONFIG_01_SPEC.md). No `app.py`/schema change. |
 | 2026-06-05 | **ROADMAP-UPDATE-01** — Approved future work queue recorded (docs only): **DASH-CASH-01** (audited; S1 `compute_liquid_position` shipped; UI pending) · **AUTH-SESSION-02** (remember device + session hardening after AUTH-SESSION-01) · **RECEIPT-AI-01–08** (OCR → learning → confidence → owner-gated trusted auto-post last) · **BANKING-UX-05** (AI statement matching; approval-first) · **DASH-KPI-01–03** (forecast, runway, sales-by-payment-type) · **AI-BOOKKEEPER-01** (read-only business explanations). **Rules locked:** first AI release = assist/review; auto-post requires learning history + confidence + owner enablement + audit + void safety; service-first / FastAPI-ready / no Streamlit business logic. **Priority order:** DASH-CASH-01 → RECEIPT-AI audit → RECEIPT-AI 02/03/04 → 05/06/08 → 07 trusted auto-post → BANKING-UX-05 → AUTH-SESSION-02 → DASH-KPI → AI-BOOKKEEPER → FastAPI → React. No runtime code from this update. |
 | 2026-06-14 | **P2-HARDEN-01 recorded** — Company Stamp Audit: audit API `company_id` stamping across P2 write paths; Priority High, Risk Low, no intended behavior changes. Triggered by P2.9 `PartnerProfitAllocation` finding ([P2_AUDIT_01_LEDGER](./docs/P2_AUDIT_01_LEDGER.md)). Register: [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md). |
@@ -2908,7 +2983,8 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 | 2026-06-05 | **FUTURE-MIGRATION-01** approved as long-term direction only — React + FastAPI + service layer + PostgreSQL target stack. Streamlit remains primary until pre-migration requirements and decision gate are met. No change to active module priorities. |
 | 2026-06-05 | **ARCHITECTURE-PROTECTION-01** active immediately — all new modules service-first (models → services → tests → minimal UI). Streamlit must not own business logic; pause before deep UI for auth, staff portal, uploads, approval workflows. |
 | 2026-06-13 | **VENDOR-NEUTRAL-01** active immediately — core architecture must not depend on named POS/vendor products; generic External Sales Source pattern (`source_name` free text, optional `source_type` category). Vendor names allowed in documentation examples only; future adapters live outside core. Cross-links ARCHITECTURE-PROTECTION-01 and FUTURE-MIGRATION-01. Audit (2026-06-13): no vendor leakage in production code. |
-| 2026-06-13 | **FUTURE-MIGRATION-AUDIT-01 recorded** — independent FastAPI readiness audit (Claude): score **62/100**; new service modules FastAPI-ready; main blocker `app.py` posting engine; keystone **POSTING-SERVICE-01**; also track MONEY-DECIMAL-01, ALEMBIC-01, BANKING-SERVICE-01, REPORTS-SERVICE-01, CONTEXT-AUDIT-01. Register: [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md). Does not start FastAPI/React implementation. |
+| 2026-06-05 | **DOCS-MIGRATION-CHECKPOINT-01** — register drift fix after FASTAPI-READINESS-CHECKPOINT: **POSTING-SERVICE-01 ✅ complete**; **REPORTS-SERVICE-01 / BANKING-SERVICE-01 🟡 partial**; FastAPI foundation partial (not complete); PostgreSQL test-only; React not started. Critical path: AUTH-SESSION-02-IMPL-3 → BANKING-SERVICE-01 → P2-HARDEN-01 → MONEY-DECIMAL-01 → PG cutover → React. Doc: [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md). Contract: `test_docs_migration_checkpoint_01.py`. No runtime code. |
+| 2026-06-13 | **FUTURE-MIGRATION-AUDIT-01 recorded** — independent FastAPI readiness audit (Claude): score **62/100**; new service modules FastAPI-ready; main blocker `app.py` posting engine; keystone **POSTING-SERVICE-01**; also track MONEY-DECIMAL-01, ALEMBIC-01, BANKING-SERVICE-01, REPORTS-SERVICE-01, CONTEXT-AUDIT-01. Register: [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md). Does not start FastAPI/React implementation. *(Blocker list superseded 2026-06 by DOCS-MIGRATION-CHECKPOINT-01.)* |
 | 2026-06-05 | **POSTING-SERVICE-01 PS-P2a complete** — `get_account_by_name`, sales `post_*` trio, `card_settlement_on` → `services/posting.py`; app.py shims unchanged signatures. `test_posting_service01_p2a.py` (18). PS-P2b (expense/purchase/payable) pending. Host `pytest tests/` — **1595 passed, 2 xfailed**. |
 | 2026-06-13 | **STAFF-CAPTURE-01 SC-P1b complete** — `ui/staff_capture.py` (submit · my submissions · approval inbox), `NAV_STAFF_EXPENSE_CAPTURE`, `app._staff_capture_post_expense_draft` posting seam, EN/TR `sc.*` locales, `test_staff_capture01_ui_contract.py` (11). SC-P2 · SC-P3 pending. Host `pytest tests/` — **1551 passed, 2 xfailed**. |
 | 2026-06-13 | **STAFF-CAPTURE-01 SC-P1 complete** — `ExpenseDraft` / `DraftAttachment` models, `services/staff_capture.py` (lifecycle, attachments, DTOs, injected `post_fn` approval, separation of duties), SC permission keys in `services/user_access.py`, tests (`test_staff_capture01_models.py`, `test_staff_capture01_drafts.py`, `test_staff_capture01_approval.py`). SC-P1b · SC-P2 · SC-P3 pending. Host `pytest tests/` — **1540 passed, 2 xfailed**. |

@@ -255,26 +255,39 @@ PS-P5 shipped 2026-06-13 — `compute_sale_balance_status` + `post_receivable_pa
 
 Independent architectural review (Claude) — baseline FastAPI/React readiness assessment. **Does not authorize migration implementation.**
 
-**Migration readiness score:** **62 / 100**
+**Migration readiness score:** **62 / 100** (historical baseline)
 
-| Finding | Detail |
-|---------|--------|
-| **Strength** | New `services/` modules are **FastAPI-ready** — `daily_sales_close`, `recipe_costing`, `user_access`, `staff_capture` follow MIGRATION-READINESS-01 (explicit IDs, DTOs, no Streamlit, contract tests) |
-| **Main blocker** | **`app.py` posting engine** — void/reversal and most `post_*` wrappers remain in the monolith; PS-P2a moved sales family only |
-| **Keystone next task** | **POSTING-SERVICE-01** — extract posting into shared `services/` module; prerequisite for API posting parity, Staff Capture `post_fn` (TD-SC-01), and FastAPI Phase B |
+**Superseded for blocker/keystone/status truth by:** [DOCS_MIGRATION_CHECKPOINT_01.md](./DOCS_MIGRATION_CHECKPOINT_01.md) (DOCS-MIGRATION-CHECKPOINT-01, 2026-06).
+
+| Finding | Detail (2026-06-13 baseline) | Updated (2026-06) |
+|---------|------------------------------|-------------------|
+| **Strength** | New `services/` modules FastAPI-ready — MIGRATION-READINESS-01 exemplars | Unchanged |
+| **Main blocker (historical)** | `app.py` posting engine; PS-P2a sales only | **Resolved** — POSTING-SERVICE-01 complete |
+| **Keystone (historical)** | POSTING-SERVICE-01 | **Complete** — see [POSTING_SERVICE_01_STATUS.md](./POSTING_SERVICE_01_STATUS.md) |
 
 ### Tracked migration tasks (FUTURE-MIGRATION-AUDIT-01)
 
 | ID | Item | Priority | Status | When / trigger |
 |----|------|----------|--------|----------------|
-| **POSTING-SERVICE-01** | Extract GL posting engine from `app.py` (`create_journal_entry`, reversals, `post_*` wrappers) | **Critical** | Open | Before FastAPI Phase B; keystone migration task |
+| **POSTING-SERVICE-01** | Extract GL posting engine from `app.py` (`create_journal_entry`, reversals, `post_*` wrappers) | **Critical** | **Complete** | PS-P0–P6-5 shipped; PS-P7 hardening deferred |
 | **MONEY-DECIMAL-01** | `Float` → `Decimal` for money fields across models and services | High | Open | Pre-PostgreSQL; aligns with TD-MIG-04 |
 | **ALEMBIC-01** | Alembic revision chain replaces incremental `migrate_schema()` | Medium | Open | Multi-env FastAPI deployment |
-| **BANKING-SERVICE-01** | Extract banking subledger business logic to `services/` | High | Open | After POSTING-SERVICE-01 |
-| **REPORTS-SERVICE-01** | Extract report queries/aggregations to read-only `services/` | Medium | Open | Before React reports module |
+| **BANKING-SERVICE-01** | Extract banking subledger business logic to `services/` | High | **Partial** | `services/write_banking.py` manual API writes shipped; recon/import/balance ownership (TD-PS-08) open |
+| **REPORTS-SERVICE-01** | Extract report queries/aggregations to read-only `services/` | Medium | **Partial** | Query layer in `services/read_*` (FASTAPI-P0); Streamlit presentation in `app.py` by design |
 | **CONTEXT-AUDIT-01** | Audit `_erp()` / session-context coupling in `ui/`; plan injected context | Medium | Open | FastAPI Phase D; relates to TD-DSC-08, TD-UA-04, TD-SC-03/04 |
 
-**Related roadmap:** [ROADMAP.md § FUTURE-MIGRATION-AUDIT-01](../ROADMAP.md#future-migration-audit-01--fastapi-readiness-audit)
+### Critical path (migration prep — DOCS-MIGRATION-CHECKPOINT-01)
+
+1. **AUTH-SESSION-02-IMPL-3** — idle extension of `auth_expires`
+2. **BANKING-SERVICE-01** — extraction audit; balance ownership; `_app()` removal
+3. **P2-HARDEN-01** — API `company_id` stamp audit
+4. **MONEY-DECIMAL-01**
+5. **PostgreSQL runtime cutover** (SQLite remains production today)
+6. **React migration** — not started (`ERP_DS_05` spec only)
+
+**FastAPI foundation:** partial — P0–P2 exist; write routes feature-flagged; **not complete**. **PostgreSQL runtime:** test-only validation; **not complete**.
+
+**Related roadmap:** [ROADMAP.md § FUTURE-MIGRATION-AUDIT-01](../ROADMAP.md#future-migration-audit-01--fastapi-readiness-audit) · [DOCS_MIGRATION_CHECKPOINT_01.md](./DOCS_MIGRATION_CHECKPOINT_01.md)
 
 ---
 
@@ -561,7 +574,7 @@ Discovered during P2.9 closing write API — logged in [P2_AUDIT_01_LEDGER.md](.
 
 **UA-P1** (`services/user_access.py`) and **SC-P1** (`services/staff_capture.py`) extend the pattern — permission resolver and staff capture with injected `post_fn` posting seam.
 
-Audit source: DSC-P1 migration readiness review (2026-06-05); **FUTURE-MIGRATION-AUDIT-01** independent FastAPI readiness audit (2026-06-13) — score **62/100**, keystone **POSTING-SERVICE-01**.
+Audit source: DSC-P1 migration readiness review (2026-06-05); **FUTURE-MIGRATION-AUDIT-01** independent FastAPI readiness audit (2026-06-13) — score **62/100** (historical). **Register truth:** [DOCS_MIGRATION_CHECKPOINT_01.md](./DOCS_MIGRATION_CHECKPOINT_01.md) (2026-06) — POSTING-SERVICE-01 complete; REPORTS/BANKING partial.
 
 ---
 
