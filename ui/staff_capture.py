@@ -149,6 +149,42 @@ def _render_receipt_capture(
             )
 
         vendor_text = st.text_input(erp._t("sc.field.vendor"), key="sc_rcpt_vendor")
+
+        effective_vendor = rcpt_adapt.resolve_receipt_capture_vendor(
+            vendor_text=vendor_text,
+            use_sample_extraction=use_sample,
+            attachment_name=uploaded.name if uploaded else None,
+            sample_text=(sample_text or "").strip() or None,
+            default_currency=currency,
+        )
+        learned = rcpt_adapt.get_learned_receipt_suggestion(
+            session, company_id, effective_vendor
+        )
+        vendor_norm = (effective_vendor or "").strip().casefold()
+        if st.session_state.get("sc_rcpt_learn_vendor") != vendor_norm:
+            st.session_state["sc_rcpt_learn_vendor"] = vendor_norm
+            if learned and learned.prefill_category and learned.suggested_category_id:
+                st.session_state.pop("sc_rcpt_cat_name", None)
+            if learned and learned.prefill_subcategory and learned.suggested_subcategory_id:
+                st.session_state.pop("sc_rcpt_sub_name", None)
+
+        if learned and learned.explanation:
+            if learned.prefill_category or learned.prefill_subcategory:
+                st.caption(
+                    f"{erp._t('sc.rcpt.learned.prefill')} {learned.explanation}"
+                )
+            elif learned.category_tier == "manual" and learned.category_confidence is not None:
+                st.caption(
+                    f"{erp._t('sc.rcpt.learned.low_confidence')} "
+                    f"({learned.category_confidence:.0f}%)"
+                )
+            if learned.suggested_payment_method:
+                st.caption(
+                    f"{erp._t('sc.rcpt.learned.payment_advisory')} "
+                    f"{learned.suggested_payment_method} "
+                    f"({learned.payment_confidence or 0:.0f}%)"
+                )
+
         date_ui.render_preferred_date_input(
             erp._t("sc.field.date"),
             "sc_rcpt_date",
@@ -185,9 +221,17 @@ def _render_receipt_capture(
         cat_id = None
         sub_id = None
         if cat_names:
+            default_cat_idx = 0
+            if (
+                learned
+                and learned.prefill_category
+                and learned.suggested_category_id in cat_ids
+            ):
+                default_cat_idx = cat_ids.index(learned.suggested_category_id)
             cat_label = st.selectbox(
                 erp._t("sc.field.category"),
                 cat_names,
+                index=default_cat_idx,
                 key="sc_rcpt_cat_name",
             )
             cat_id = cat_ids[cat_names.index(cat_label)]
@@ -195,9 +239,17 @@ def _render_receipt_capture(
             sub_names = [s.name for s in subcats]
             sub_ids = [s.id for s in subcats]
             if sub_names:
+                default_sub_idx = 0
+                if (
+                    learned
+                    and learned.prefill_subcategory
+                    and learned.suggested_subcategory_id in sub_ids
+                ):
+                    default_sub_idx = sub_ids.index(learned.suggested_subcategory_id)
                 sub_label = st.selectbox(
                     erp._t("sc.field.subcategory"),
                     sub_names,
+                    index=default_sub_idx,
                     key="sc_rcpt_sub_name",
                 )
                 sub_id = sub_ids[sub_names.index(sub_label)]

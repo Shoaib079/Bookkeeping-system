@@ -18,6 +18,7 @@ from models import DraftAttachment, ExpenseDraft, Vendor
 from registry.service import get_setting
 from services import receipt_ai as rcpt
 from services import receipt_suggestion_capture as rsc
+from services import receipt_learning_prefill as rlp
 from services import staff_capture as sc
 from sqlalchemy.orm import Session
 
@@ -42,6 +43,7 @@ class ReceiptDraftResult:
     user_must_choose_payment: bool = False
     create_suggestions: tuple[rcpt.CreateSuggestion, ...] = field(default_factory=tuple)
     warnings: tuple[str, ...] = field(default_factory=tuple)
+    learned_prefill_applied: bool = False
 
     @property
     def ok(self) -> bool:
@@ -57,8 +59,62 @@ class ReceiptDraftResult:
             "user_must_choose_payment": self.user_must_choose_payment,
             "create_suggestions": [c.to_dict() for c in self.create_suggestions],
             "warnings": list(self.warnings),
+            "learned_prefill_applied": self.learned_prefill_applied,
             "ok": self.ok,
         }
+
+
+def resolve_receipt_capture_vendor(
+    *,
+    vendor_text: str = "",
+    use_sample_extraction: bool = False,
+    attachment_name: str | None = None,
+    sample_text: str | None = None,
+    default_currency: str = "TRY",
+) -> str:
+    """Vendor text for learning lookup — manual entry or sample filename parse."""
+    if use_sample_extraction and attachment_name:
+        extraction = rcpt.extract_receipt_with(
+            rcpt.fake_receipt_extractor,
+            filename=attachment_name,
+            text=sample_text,
+            default_currency=default_currency,
+        )
+        return (extraction.vendor_text or vendor_text or "").strip()
+    return (vendor_text or "").strip()
+
+
+def get_learned_receipt_suggestion(
+    session: Session,
+    company_id: int,
+    vendor_signature: str | None,
+    **kwargs: Any,
+) -> rlp.LearnedReceiptSuggestion | None:
+    """Re-export — learned prefill helper for Receipt Capture."""
+    return rlp.get_learned_receipt_suggestion(
+        session, company_id, vendor_signature, **kwargs
+    )
+
+
+def _apply_learned_capture_prefill(
+    session: Session,
+    company_id: int,
+    vendor_text: str,
+    *,
+    tx_category_id: int | None,
+    tx_subcategory_id: int | None,
+) -> tuple[int | None, int | None, bool]:
+    learned = rlp.get_learned_receipt_suggestion(session, company_id, vendor_text)
+    cat, sub = rlp.apply_learned_category_prefill(
+        learned,
+        tx_category_id=tx_category_id,
+        tx_subcategory_id=tx_subcategory_id,
+    )
+    applied = learned is not None and (
+        (tx_category_id is None and cat is not None)
+        or (tx_subcategory_id is None and sub is not None)
+    )
+    return cat, sub, applied
 
 
 def suggestion_to_expense_draft_input(
@@ -194,12 +250,14 @@ def create_receipt_capture_draft(
     sample_text: str | None = None,
     sample_payload: dict[str, Any] | None = None,
 ) -> ReceiptDraftResult:
-    """IMPL-3a/3c entry — manual fields or fake extractor → draft. Never posts."""
+    """IMPL-3a/3c/5 entry — manual fields or fake extractor → draft. Never posts."""
     if not is_receipt_capture_enabled(session, company_id):
         return ReceiptDraftResult(
             draft_id=None,
             error="Receipt capture is not enabled for this company.",
         )
+
+    learned_applied = False
 
     if use_sample_extraction:
         if not attachment_name:
@@ -216,6 +274,14 @@ def create_receipt_capture_draft(
                 draft_id=None,
                 error="Sample extraction could not determine a valid amount.",
             )
+        vendor_for_learn = extraction.vendor_text or vendor_text
+        tx_category_id, tx_subcategory_id, learned_applied = _apply_learned_capture_prefill(
+            session,
+            company_id,
+            vendor_for_learn,
+            tx_category_id=tx_category_id,
+            tx_subcategory_id=tx_subcategory_id,
+        )
         suggestion = build_draft_suggestion_from_extraction(
             session,
             company_id,
@@ -241,6 +307,7 @@ def create_receipt_capture_draft(
             suggestion_source="sample_extractor",
             vendor_text=extraction.vendor_text or suggestion.description,
             raw_text=extraction.raw_text,
+            learned_prefill_applied=learned_applied,
         )
 
     if total_amount <= 0:
@@ -249,6 +316,14 @@ def create_receipt_capture_draft(
         return ReceiptDraftResult(draft_id=None, error="Currency is required.")
     if receipt_date is None:
         receipt_date = datetime.date.today()
+
+    tx_category_id, tx_subcategory_id, learned_applied = _apply_learned_capture_prefill(
+        session,
+        company_id,
+        vendor_text,
+        tx_category_id=tx_category_id,
+        tx_subcategory_id=tx_subcategory_id,
+    )
 
     suggestion = build_manual_draft_suggestion(
         session,
@@ -276,6 +351,7 @@ def create_receipt_capture_draft(
         capture_original_suggestion=True,
         suggestion_source="manual",
         vendor_text=vendor_text or suggestion.description,
+        learned_prefill_applied=learned_applied,
     )
 
 
@@ -296,6 +372,7 @@ def create_expense_draft_from_suggestion(
     suggestion_source: rsc.SuggestionSource = "manual",
     vendor_text: str | None = None,
     raw_text: str | None = None,
+    learned_prefill_applied: bool = False,
 ) -> ReceiptDraftResult:
     """Persist an expense draft (status ``draft``) from a receipt suggestion.
 
@@ -428,4 +505,5 @@ def create_expense_draft_from_suggestion(
         user_must_choose_payment=suggestion.user_must_choose_payment,
         create_suggestions=tuple(suggestion.create_suggestions),
         warnings=tuple(warnings),
+        learned_prefill_applied=learned_prefill_applied,
     )
