@@ -395,6 +395,7 @@ from services.context import RequestContext, build_request_context
 from services.read_balances import (
     calculate_account_balance as _read_calculate_account_balance,
     calculate_account_balance_for_period as _read_calculate_account_balance_for_period,
+    compute_liquid_position as _compute_liquid_position,
 )
 from services import read_reports as _read_reports_svc
 from services import read_ledger as _read_ledger_svc
@@ -10950,6 +10951,28 @@ def amount_input(label, key, placeholder="0.00", container=None, default=None):
     return result
 
 
+_DASH_LIQUID_CCY_SYMBOL = {"TRY": "₺", "USD": "$", "EUR": "€", "GBP": "£"}
+
+
+def _dash_liquid_primary_amount(by_currency: dict[str, float], primary_currency: str) -> float:
+    """Primary-currency amount for dashboard liquid KPIs (zero when absent)."""
+    return by_currency.get(primary_currency, 0.0)
+
+
+def _dash_liquid_secondary_chips(
+    by_currency: dict[str, float],
+    primary_currency: str,
+) -> str:
+    """HTML sub-line: secondary currency chips excluding the company primary."""
+    parts: list[str] = []
+    for ccy in sorted(by_currency):
+        if ccy == primary_currency:
+            continue
+        sym = _DASH_LIQUID_CCY_SYMBOL.get(ccy, ccy)
+        parts.append(f"{ccy} {sym}{by_currency[ccy]:,.2f}")
+    return " · ".join(parts)
+
+
 def render_dashboard(session):
     settings    = load_settings()
     company     = settings.get("company_name", "My Company")
@@ -11027,18 +11050,12 @@ def render_dashboard(session):
     outstanding_pay  = cq(session, Payable).with_entities(func.sum(Payable.amount - func.coalesce(Payable.paid_amount, 0.0))).filter(Payable.paid == False, Payable.is_void == False).scalar() or 0.0
     open_payables_count = cq(session, Payable).with_entities(func.count(Payable.id)).filter(Payable.paid == False, Payable.is_void == False).scalar() or 0
 
-    # Step 11 — Per-currency wallet positions from BankAccount.currency
-    _all_bank_accts = (
-        cq(session, BankAccount).filter_by(is_active=True).order_by(BankAccount.name).all()
+    # DASH-CASH-01 — GL liquid position (1000–1003 cash · 1010–1013 bank; as-of today)
+    _liquid = _compute_liquid_position(
+        session,
+        company_id=current_company_required(),
+        as_of=today,
     )
-    from collections import defaultdict as _dd
-    _cash_positions: dict = {}
-    for _ba in _all_bank_accts:
-        _ccy = getattr(_ba, "currency", None) or currency
-        if _ccy not in _cash_positions:
-            _cash_positions[_ccy] = {"total": 0.0, "accounts": []}
-        _cash_positions[_ccy]["total"] += _ba.balance or 0.0
-        _cash_positions[_ccy]["accounts"].append((_ba.name, _ba.balance or 0.0))
 
     # Step 8.6 — AR aging buckets
     _open_sales = cq(session, Sale).filter(Sale.sale_type == "Credit", Sale.is_void == False, Sale.status != "Paid").all()
@@ -11125,7 +11142,10 @@ def render_dashboard(session):
 
     def _fmt(v, c): return f"{c} {v:,.2f}"
 
-    _flag = {"TRY": "🇹🇷", "USD": "🇺🇸", "EUR": "🇪🇺", "GBP": "🇬🇧"}
+    _liq_cash_pri = _dash_liquid_primary_amount(_liquid.cash_by_currency, currency)
+    _liq_bank_pri = _dash_liquid_primary_amount(_liquid.bank_by_currency, currency)
+    _liq_total_pri = _dash_liquid_primary_amount(_liquid.total_by_currency, currency)
+    _liq_as_of = _t("dash.liquid.as_of", date=today.strftime("%d %b %Y"))
 
     # ── Welcome banner (desktop) + compact mobile greeting ────────────────────
     _me   = _current_user()
@@ -11211,6 +11231,27 @@ def render_dashboard(session):
                 use_container_width=True,
             ):
                 st.session_state["nav_selection"] = NAV_PAYABLES
+                st.rerun()
+
+    # Mobile liquid funds — Cash | Bank (GL as-of today)
+    with st.container(border=False, key="erp_mob_liquid"):
+        st.markdown('<div class="erp-dash-mobile-liquid-host"></div>', unsafe_allow_html=True)
+        _mliq1, _mliq2 = st.columns(2, gap="small")
+        with _mliq1:
+            if st.button(
+                f"💵 {_t('dash.kpi.cash_in_hand')}\n{_fmt(_liq_cash_pri, currency)}",
+                key="mob_dash_cash",
+                use_container_width=True,
+            ):
+                st.session_state["nav_selection"] = NAV_CASH_RECONCILIATION
+                st.rerun()
+        with _mliq2:
+            if st.button(
+                f"🏦 {_t('dash.kpi.bank_balance')}\n{_fmt(_liq_bank_pri, currency)}",
+                key="mob_dash_bank",
+                use_container_width=True,
+            ):
+                st.session_state["nav_selection"] = NAV_BANKING
                 st.rerun()
 
     _render_mobile_quick_create()
@@ -11352,25 +11393,34 @@ def render_dashboard(session):
                               "variant": "warning", "sub": _ap_sub}])
 
         with _c3:
-            st.markdown(_sec("Cash & Bank"), unsafe_allow_html=True)
-            if _cash_positions:
-                for _ccy, _pos in sorted(_cash_positions.items()):
-                    _bal = _pos["total"]
-                    _bal_tone = "positive" if _bal >= 0 else "negative"
-                    _acct_line = "  ·  ".join(f"{n}: {_ccy} {b:,.2f}" for n, b in _pos["accounts"])
-                    st.markdown(
-                        f'<div class="erp-dash-cash-row">'
-                        f'<div class="erp-dash-cash-head">'
-                        f'<span class="erp-dash-cash-currency">'
-                        f'{_flag.get(_ccy,"🏦")} {_ccy}</span>'
-                        f'<span class="erp-dash-cash-balance erp-dash-cash-balance--{_bal_tone}">'
-                        f'{_fmt(_bal, _ccy)}</span></div>'
-                        f'<div class="erp-dash-cash-accounts">{_acct_line}</div>'
-                        f'</div>',
-                        unsafe_allow_html=True,
-                    )
-            else:
-                st.info(_t("txn.no_bank_accounts"))
+            st.markdown(_sec(_t("dash.liquid_funds")), unsafe_allow_html=True)
+            _cash_chip_sub = _dash_liquid_secondary_chips(_liquid.cash_by_currency, currency)
+            _bank_chip_sub = _dash_liquid_secondary_chips(_liquid.bank_by_currency, currency)
+            _total_chip_sub = _dash_liquid_secondary_chips(_liquid.total_by_currency, currency)
+            render_kpi_grid([
+                {
+                    "label": _t("dash.kpi.cash_in_hand"),
+                    "value": _fmt(_liq_cash_pri, currency),
+                    "variant": "success",
+                    "sub": _cash_chip_sub or _liq_as_of,
+                },
+                {
+                    "label": _t("dash.kpi.bank_balance"),
+                    "value": _fmt(_liq_bank_pri, currency),
+                    "variant": "info",
+                    "sub": _bank_chip_sub or _liq_as_of,
+                },
+                {
+                    "label": _t("dash.kpi.total_liquid"),
+                    "value": _fmt(_liq_total_pri, currency),
+                    "variant": "text",
+                    "sub": (
+                        f"{_total_chip_sub} · {_liq_as_of}"
+                        if _total_chip_sub
+                        else _liq_as_of
+                    ),
+                },
+            ])
 
     # ── Bottom: Recent Activity (left wide) + Insights (right) ───────────────
     _bleft, _bright = st.columns([7, 5])
