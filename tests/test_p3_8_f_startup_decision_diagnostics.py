@@ -93,10 +93,21 @@ def test_doc_covers_required_topics():
         assert topic in text_doc, f"Doc missing topic: {topic!r}"
 
 
-def test_migrate_schema_still_runs_before_diagnostics():
-    main_src = inspect.getsource(__import__("app", fromlist=["main"]).main)
-    assert main_src.index("migrate_schema(_boot_session)") < main_src.index(
-        "_log_schema_startup_diagnostic(_boot_session)"
+def test_migrate_schema_still_runs_before_diagnostics_when_flag_off():
+    wiring_src = inspect.getsource(
+        __import__(
+            "services.schema_startup_wiring",
+            fromlist=["run_schema_startup_in_session"],
+        ).run_schema_startup_in_session
+    )
+    assert wiring_src.index("migrate_schema_fn(session)") < wiring_src.index("log_fn(session)")
+
+
+def test_flag_off_path_uses_dispatcher_in_app():
+    app_text = APP_PATH.read_text(encoding="utf-8")
+    assert "_run_schema_startup(_boot_session)" in app_text
+    assert "migrate_schema(_boot_session)" not in app_text.replace(
+        "migrate_schema_fn=migrate_schema", ""
     )
 
 
@@ -199,19 +210,12 @@ def test_no_alembic_upgrade_or_stamp_execution_path():
     assert "migrate_schema(" not in log_src
 
 
-def test_app_does_not_branch_on_decision_action():
+def test_app_branches_through_dispatcher_not_inline_decision():
     app_text = APP_PATH.read_text(encoding="utf-8")
+    assert "_run_schema_startup(_boot_session)" in app_text
     assert "decide_schema_startup_action" not in app_text
     assert "build_schema_startup_decision" not in app_text
-    for token in (
-        "decision.action",
-        "decision['action']",
-        "blocks_startup",
-        "ACTION_ALEMBIC_UPGRADE_HEAD",
-        "ACTION_REQUIRE_STAMP",
-        "ACTION_FAIL_CLOSED",
-    ):
-        assert token not in app_text
+    assert "run_upgrade_head(" not in app_text
 
 
 def test_decision_action_not_executed(memory_engine):

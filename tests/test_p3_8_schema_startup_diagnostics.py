@@ -165,10 +165,14 @@ def test_migrate_schema_still_called_at_startup():
     main_src = inspect.getsource(
         __import__("app", fromlist=["main"]).main
     )
-    assert "migrate_schema(_boot_session)" in main_src
-    assert main_src.index("migrate_schema(_boot_session)") < main_src.index(
-        "_log_schema_startup_diagnostic(_boot_session)"
+    assert "_run_schema_startup(_boot_session)" in main_src
+    wiring_src = inspect.getsource(
+        __import__(
+            "services.schema_startup_wiring",
+            fromlist=["run_schema_startup_in_session"],
+        ).run_schema_startup_in_session
     )
+    assert "migrate_schema_fn(session)" in wiring_src
 
 
 def test_startup_has_no_alembic_upgrade_or_stamp():

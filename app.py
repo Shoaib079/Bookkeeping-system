@@ -26285,6 +26285,17 @@ def _log_schema_startup_diagnostic(session) -> None:
     log_schema_startup_decision_diagnostics(session)
 
 
+def _run_schema_startup(session) -> None:
+    """P3.8-K2 — flag-gated schema startup (migrate_schema or authoritative path)."""
+    from services.schema_startup_wiring import run_schema_startup_in_session
+
+    run_schema_startup_in_session(
+        session,
+        migrate_schema_fn=migrate_schema,
+        log_diagnostics_fn=_log_schema_startup_diagnostic,
+    )
+
+
 def main():
     # Always use the project folder for DB, uploads, and backups — not the shell cwd.
     os.chdir(PROJECT_ROOT)
@@ -26293,10 +26304,14 @@ def main():
     _phase14a_milestone_backup()      # one-time backup before first migration run
     _phase14a_rebuild_tables()        # chart_of_accounts + products: remove inline UNIQUE, add company_id
 
+    # ── P3.8-K2: authoritative schema step before boot session (subprocess safe) ─
+    from services.schema_startup_wiring import prepare_schema_startup_authoritative
+
+    prepare_schema_startup_authoritative()
+
     # ── Run startup tasks (schema + seeds) before anything else ───────────────
     with get_session() as _boot_session:
-        migrate_schema(_boot_session)
-        _log_schema_startup_diagnostic(_boot_session)
+        _run_schema_startup(_boot_session)
         initialize_chart_of_accounts(_boot_session)
         migrate_sales(_boot_session)
         migrate_expenses(_boot_session)
