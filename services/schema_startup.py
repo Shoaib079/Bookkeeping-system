@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, TypedDict
 
+from sqlalchemy import inspect
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import Session
 
@@ -387,3 +388,108 @@ def format_schema_startup_line(diagnostic: SchemaStartupDiagnostic) -> str:
         f"head_revision={diagnostic['head_revision']!r} — "
         f"{diagnostic['message']}"
     )
+
+
+_CORE_APP_TABLE = "journal_entries"
+
+
+def infer_is_new_database(session_or_engine: Session | Engine | Connection) -> bool:
+    """Read-only: True when core application tables are absent (empty/fresh DB)."""
+    if isinstance(session_or_engine, Session):
+        bind = session_or_engine.get_bind()
+    else:
+        bind = session_or_engine
+    connection = _connection_from_bind_for_inspect(bind)
+    owns_connection = not isinstance(bind, Connection)
+    try:
+        return not inspect(connection).has_table(_CORE_APP_TABLE)
+    finally:
+        if owns_connection:
+            connection.close()
+
+
+def _connection_from_bind_for_inspect(bind: Engine | Connection) -> Connection:
+    if isinstance(bind, Connection):
+        return bind
+    return bind.connect()
+
+
+class SchemaStartupDiagnosticsBundle(TypedDict):
+    diagnostic: SchemaStartupDiagnostic
+    decision: SchemaStartupDecision
+    would_block_startup: bool
+
+
+def build_schema_startup_decision(
+    session_or_engine: Session | Engine | Connection,
+    *,
+    environ: Mapping[str, str] | None = None,
+    is_new_db: bool | None = None,
+    backup_available: bool = False,
+    confirmation_given: bool = False,
+    versions_dir: Path | None = None,
+) -> SchemaStartupDiagnosticsBundle:
+    """Build diagnostic + pure decision snapshot; does not execute the action."""
+    diagnostic = get_schema_startup_diagnostic(
+        session_or_engine,
+        versions_dir=versions_dir,
+    )
+    if isinstance(session_or_engine, Session):
+        bind = session_or_engine.get_bind()
+    else:
+        bind = session_or_engine
+
+    resolved_is_new_db = (
+        infer_is_new_database(session_or_engine)
+        if is_new_db is None
+        else is_new_db
+    )
+    dialect = bind.dialect.name
+    decision = decide_schema_startup_action(
+        flag_authoritative=is_alembic_authoritative_enabled(environ),
+        schema_status=diagnostic["status"],
+        is_new_db=resolved_is_new_db,
+        dialect=dialect,
+        backup_available=backup_available,
+        confirmation_given=confirmation_given,
+        db_revision=diagnostic["db_revision"],
+        head_revision=diagnostic["head_revision"],
+    )
+    return SchemaStartupDiagnosticsBundle(
+        diagnostic=diagnostic,
+        decision=decision,
+        would_block_startup=decision.blocks_startup,
+    )
+
+
+def log_schema_startup_decision_diagnostics(
+    session_or_engine: Session | Engine | Connection,
+    *,
+    environ: Mapping[str, str] | None = None,
+    is_new_db: bool | None = None,
+    backup_available: bool = False,
+    confirmation_given: bool = False,
+    versions_dir: Path | None = None,
+    logger: logging.Logger | None = None,
+) -> SchemaStartupDiagnosticsBundle:
+    """Log schema diagnostic + decision (P3.8-F); never executes or blocks startup."""
+    log = logger or _LOG
+    bundle = build_schema_startup_decision(
+        session_or_engine,
+        environ=environ,
+        is_new_db=is_new_db,
+        backup_available=backup_available,
+        confirmation_given=confirmation_given,
+        versions_dir=versions_dir,
+    )
+    diagnostic = bundle["diagnostic"]
+    decision = bundle["decision"]
+    log.info("[schema] %s", diagnostic["message"])
+    log.info(
+        "[schema] decision action=%s would_block_startup=%s "
+        "(diagnostics only; not enforced) — %s",
+        decision.action,
+        bundle["would_block_startup"],
+        decision.message,
+    )
+    return bundle

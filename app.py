@@ -26279,10 +26279,10 @@ def _early_dev_auto_login() -> str | None:
 
 
 def _log_schema_startup_diagnostic(session) -> None:
-    """P3.8-A — read-only Alembic schema status log (no upgrade/stamp)."""
-    from services.schema_startup import log_schema_startup_diagnostic
+    """P3.8-A/F — read-only schema status + decision diagnostics (no upgrade/stamp)."""
+    from services.schema_startup import log_schema_startup_decision_diagnostics
 
-    log_schema_startup_diagnostic(session)
+    log_schema_startup_decision_diagnostics(session)
 
 
 def main():
