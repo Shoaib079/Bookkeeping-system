@@ -2464,13 +2464,14 @@ Restaurant (POS, recipes), retail (barcode), services (projects), tourism (booki
 
 ### AUTH-SESSION-02 — Remember Device / Session Hardening
 
-**Status:** 📋 Future enhancement — after [AUTH-SESSION-01](./docs/AUTH_SESSION_01_AUDIT.md) (restore cookie + operator docs shipped).
+**Status:** 📋 **Audited (2026-06)** — see [AUTH_SESSION_02_AUDIT.md](./docs/AUTH_SESSION_02_AUDIT.md). Implementation not started.
 
 **Scope (future):**
 
-- Optional **remember-this-device** toggle (per login)
-- Configurable **idle timeout** and **absolute session expiry**
+- Optional **remember-this-device** toggle (per login; default off)
+- Split **idle timeout** vs **absolute session expiry** (fix `auth_expires` non-sliding gap)
 - Future **FastAPI HttpOnly cookie** + JWT refresh integration (unify with `services/tokens.py`)
+- Server revocation (`token_version`, optional `user_sessions` table)
 - Aligns with AUTH-SESSION-01-IMPL-3 / IMPL-4 backlog in [AUTH_SESSION_01_IMPLEMENTATION.md](./docs/AUTH_SESSION_01_IMPLEMENTATION.md)
 
 **Not in scope now:** weakening restore secret requirements or removing void/audit session rules.

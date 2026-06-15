@@ -78,8 +78,8 @@ Streamlit `st.session_state` is bound to a single browser-tab websocket session;
 
 - **AUTH-SESSION-01-IMPL-1 — enable + document (config):** **Implemented (2026-06)** — `docs/AUTH_SESSION_01_OPERATOR.md` + `tests/test_auth_session_01_impl_contract.py`; set `ERP_SESSION_RESTORE_SECRET` in deployment. No code change.
 - **AUTH-SESSION-01-IMPL-2 — test hardening:** extend the restore tests with the §6 cases (secret-unset no-op, tamper/expiry/ph_frag rejection, logout-blocks-restore).
-- **AUTH-SESSION-01-IMPL-3 — optional "remember this device":** per-login toggle controlling cookie write + TTL (idle vs absolute split). **Roadmap:** [AUTH-SESSION-02](../ROADMAP.md#auth-session-02--remember-device--session-hardening) (ROADMAP-UPDATE-01).
-- **AUTH-SESSION-01-IMPL-4 — HttpOnly hardening (FastAPI migration):** move cookie-setting server-side and HttpOnly; unify with the JWT access+refresh model (`services/tokens.py`) for the React front end. **Roadmap:** AUTH-SESSION-02.
+- **AUTH-SESSION-01-IMPL-3 — optional "remember this device":** per-login toggle controlling cookie write + TTL (idle vs absolute split). **Planned:** [AUTH-SESSION-02](./AUTH_SESSION_02_AUDIT.md).
+- **AUTH-SESSION-01-IMPL-4 — HttpOnly hardening (FastAPI migration):** move cookie-setting server-side and HttpOnly; unify with the JWT access+refresh model (`services/tokens.py`) for the React front end. **Planned:** [AUTH-SESSION-02](./AUTH_SESSION_02_AUDIT.md).
 
 ## 8. Risk assessment
 
