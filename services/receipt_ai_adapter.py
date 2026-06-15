@@ -115,6 +115,23 @@ def _vendor_exists(session: Session, company_id: int, vendor_text: str | None) -
     return any(rcpt.normalize_vendor_signature(name) == signature for (name,) in rows)
 
 
+def build_draft_suggestion_from_extraction(
+    session: Session,
+    company_id: int,
+    extraction: rcpt.ReceiptExtraction,
+    *,
+    tx_category_id: int | None = None,
+    tx_subcategory_id: int | None = None,
+) -> rcpt.DraftSuggestion:
+    """Map an extraction to a draft suggestion with company-scoped vendor lookup."""
+    return rcpt.map_extraction_to_draft_suggestion(
+        extraction,
+        existing_tx_category_id=tx_category_id,
+        existing_tx_subcategory_id=tx_subcategory_id,
+        vendor_exists=_vendor_exists(session, company_id, extraction.vendor_text),
+    )
+
+
 def build_manual_draft_suggestion(
     session: Session,
     company_id: int,
@@ -160,11 +177,11 @@ def create_receipt_capture_draft(
     company_id: int,
     actor_id: int,
     *,
-    vendor_text: str,
-    receipt_date: datetime.date,
-    total_amount: float,
-    currency: str,
-    payment_method: ManualPaymentMethod,
+    vendor_text: str = "",
+    receipt_date: datetime.date | None = None,
+    total_amount: float = 0.0,
+    currency: str = "",
+    payment_method: ManualPaymentMethod = "Cash",
     tx_category_id: int | None = None,
     tx_subcategory_id: int | None = None,
     uploads_root: Path | None = None,
@@ -172,17 +189,61 @@ def create_receipt_capture_draft(
     attachment_name: str = "receipt",
     attachment_mime: str | None = None,
     performed_by: str | None = None,
+    use_sample_extraction: bool = False,
+    sample_text: str | None = None,
+    sample_payload: dict[str, Any] | None = None,
 ) -> ReceiptDraftResult:
-    """IMPL-3a entry — manual fields → draft + optional attachment. Never posts."""
+    """IMPL-3a/3c entry — manual fields or fake extractor → draft. Never posts."""
     if not is_receipt_capture_enabled(session, company_id):
         return ReceiptDraftResult(
             draft_id=None,
             error="Receipt capture is not enabled for this company.",
         )
+
+    if use_sample_extraction:
+        if not attachment_name:
+            return ReceiptDraftResult(draft_id=None, error="Filename is required for sample extraction.")
+        extraction = rcpt.extract_receipt_with(
+            rcpt.fake_receipt_extractor,
+            filename=attachment_name,
+            text=sample_text,
+            payload=sample_payload,
+            default_currency=(currency or "TRY").strip() or "TRY",
+        )
+        if extraction.total_amount is None or extraction.total_amount <= 0:
+            return ReceiptDraftResult(
+                draft_id=None,
+                error="Sample extraction could not determine a valid amount.",
+            )
+        suggestion = build_draft_suggestion_from_extraction(
+            session,
+            company_id,
+            extraction,
+            tx_category_id=tx_category_id,
+            tx_subcategory_id=tx_subcategory_id,
+        )
+        draft_date = extraction.receipt_date or receipt_date or datetime.date.today()
+        draft_currency = (extraction.currency or currency or "TRY").strip()
+        return create_expense_draft_from_suggestion(
+            session,
+            company_id,
+            actor_id,
+            suggestion,
+            uploads_root=uploads_root,
+            file_bytes=file_bytes,
+            attachment_name=attachment_name,
+            attachment_mime=attachment_mime,
+            default_currency=draft_currency,
+            fallback_date=draft_date,
+            performed_by=performed_by,
+        )
+
     if total_amount <= 0:
         return ReceiptDraftResult(draft_id=None, error="Amount must be greater than zero.")
     if not (currency or "").strip():
         return ReceiptDraftResult(draft_id=None, error="Currency is required.")
+    if receipt_date is None:
+        receipt_date = datetime.date.today()
 
     suggestion = build_manual_draft_suggestion(
         session,

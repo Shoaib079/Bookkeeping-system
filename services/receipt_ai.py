@@ -346,3 +346,99 @@ def detect_duplicate_by_sha256(
     if not sha256:
         return False
     return sha256 in set(known_hashes)
+
+
+# ── Fake extractor (IMPL-3c) — deterministic, no network/OCR/AI ───────────────
+
+_FILENAME_PAYMENT_TOKENS: dict[str, PaymentMethod] = {
+    "cash": PAYMENT_CASH,
+    "nakit": PAYMENT_CASH,
+    "card": PAYMENT_CARD,
+    "kart": PAYMENT_CARD,
+    "visa": PAYMENT_CARD,
+    "pos": PAYMENT_CARD,
+    "unknown": PAYMENT_UNKNOWN,
+    "unk": PAYMENT_UNKNOWN,
+}
+
+
+def _parse_fake_filename(filename: str) -> tuple[str | None, float | None, PaymentMethod, list[str]]:
+    """Parse ``VENDOR_AMOUNT_payment.ext`` — e.g. ``BIM_450_cash.jpg``."""
+    stem = filename.rsplit("/", maxsplit=1)[-1].rsplit("\\", maxsplit=1)[-1]
+    if "." in stem:
+        stem = stem.rsplit(".", maxsplit=1)[0]
+    parts = [p.strip() for p in stem.split("_") if p.strip()]
+    vendor: str | None = parts[0] if parts else None
+    amount: float | None = None
+    if len(parts) >= 2:
+        try:
+            amount = float(parts[1].replace(",", "."))
+        except ValueError:
+            amount = None
+    payment: PaymentMethod = PAYMENT_UNKNOWN
+    evidence: list[str] = []
+    if len(parts) >= 3:
+        token = parts[2].casefold()
+        mapped = _FILENAME_PAYMENT_TOKENS.get(token)
+        if mapped is not None:
+            payment = mapped
+            evidence.append(f"FILENAME:{token.upper()}")
+    return vendor, amount, payment, evidence
+
+
+def fake_receipt_extractor(
+    *,
+    filename: str | None = None,
+    text: str | None = None,
+    payload: dict[str, Any] | None = None,
+    default_currency: str | None = None,
+) -> ReceiptExtraction:
+    """Built-in deterministic extractor for Receipt Capture (no OCR/AI/network).
+
+    Filename tokens: ``VENDOR_AMOUNT_payment.ext`` (``BIM_450_cash.jpg``).
+    Optional ``text`` supplements payment detection. ``payload`` supports tests.
+    """
+    if payload is not None:
+        pay_method = payload.get("payment_method", PAYMENT_UNKNOWN)
+        pay_conf = float(payload.get("payment_confidence", 0.0))
+        pay_evidence = list(payload.get("payment_evidence") or [])
+        receipt_date = payload.get("receipt_date")
+        if isinstance(receipt_date, str):
+            receipt_date = datetime.date.fromisoformat(receipt_date)
+        return ReceiptExtraction(
+            vendor_text=payload.get("vendor_text"),
+            receipt_date=receipt_date,
+            total_amount=payload.get("total_amount"),
+            tax_amount=payload.get("tax_amount"),
+            currency=payload.get("currency") or default_currency,
+            line_items=list(payload.get("line_items") or []),
+            confidence=float(payload.get("confidence", 1.0)),
+            raw_text=payload.get("raw_text"),
+            payment_method=pay_method,
+            payment_confidence=pay_conf,
+            payment_evidence=pay_evidence,
+        )
+
+    vendor, amount, payment, evidence = _parse_fake_filename(filename or "")
+    raw_text = (text or "").strip() or None
+    pay_confidence = 0.0
+
+    if payment in (PAYMENT_CASH, PAYMENT_CARD) and evidence:
+        pay_confidence = 1.0
+    elif raw_text:
+        detected = detect_payment_method(raw_text)
+        if detected.payment_method != PAYMENT_UNKNOWN or detected.payment_evidence:
+            payment = detected.payment_method
+            pay_confidence = detected.payment_confidence
+            evidence = list(detected.payment_evidence)
+
+    return ReceiptExtraction(
+        vendor_text=vendor,
+        total_amount=amount,
+        currency=default_currency,
+        confidence=1.0,
+        raw_text=raw_text,
+        payment_method=payment,
+        payment_confidence=pay_confidence,
+        payment_evidence=evidence,
+    )

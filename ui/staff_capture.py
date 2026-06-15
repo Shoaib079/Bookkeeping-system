@@ -136,6 +136,18 @@ def _render_receipt_capture(
             key="sc_rcpt_upload",
         )
 
+        use_sample = st.checkbox(
+            erp._t("sc.rcpt.use_sample_extraction"),
+            key="sc_rcpt_use_sample",
+        )
+        sample_text = ""
+        if use_sample:
+            st.caption(erp._t("sc.rcpt.sample_hint"))
+            sample_text = st.text_area(
+                erp._t("sc.rcpt.sample_text"),
+                key="sc_rcpt_sample_text",
+            )
+
         vendor_text = st.text_input(erp._t("sc.field.vendor"), key="sc_rcpt_vendor")
         date_ui.render_preferred_date_input(
             erp._t("sc.field.date"),
@@ -218,6 +230,8 @@ def _render_receipt_capture(
                 attachment_name=uploaded.name,
                 attachment_mime=mime,
                 performed_by=performed_by,
+                use_sample_extraction=use_sample,
+                sample_text=(sample_text or "").strip() or None,
             )
             _handle_receipt_result(erp, result)
 
