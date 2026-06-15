@@ -116,11 +116,14 @@ def _gate_requirements(
     require_backup: bool,
     require_confirmation: bool,
     production_database: bool,
+    is_strict_new_empty: bool = False,
 ) -> tuple[bool, bool]:
     if action == ACTION_VERIFY_ONLY:
         return False, False
 
     if action == ACTION_UPGRADE_HEAD and not is_populated:
+        if is_strict_new_empty:
+            return False, False
         if production_database:
             return True, True
         return False, False
@@ -140,8 +143,9 @@ def _gate_requirements(
             needs_confirmation = True
 
     if production_database and action in {ACTION_UPGRADE_HEAD, ACTION_STAMP}:
-        needs_backup = True
-        needs_confirmation = True
+        if not (action == ACTION_UPGRADE_HEAD and not is_populated and is_strict_new_empty):
+            needs_backup = True
+            needs_confirmation = True
 
     return needs_backup, needs_confirmation
 
@@ -155,6 +159,7 @@ def evaluate_migration_gate(
     confirmation_value: str | None = None,
     require_backup: bool = False,
     require_confirmation: bool = False,
+    is_strict_new_empty: bool = False,
 ) -> MigrationGateDecision:
     """Validate backup/confirmation preconditions; does not execute migrations."""
     action_norm = action.strip().lower()
@@ -179,6 +184,7 @@ def evaluate_migration_gate(
         require_backup=require_backup,
         require_confirmation=require_confirmation,
         production_database=production_database,
+        is_strict_new_empty=is_strict_new_empty,
     )
 
     backup_status = validate_backup_path(
@@ -203,10 +209,16 @@ def evaluate_migration_gate(
             production_database=production_database,
         )
 
-    if action_norm == ACTION_UPGRADE_HEAD and not is_populated and not production_database:
+    if action_norm == ACTION_UPGRADE_HEAD and not is_populated and (
+        is_strict_new_empty or not production_database
+    ):
         return MigrationGateDecision(
             allowed=True,
-            message="Empty database upgrade allowed without backup or confirmation.",
+            message=(
+                "Strict-new empty database upgrade allowed without backup or confirmation."
+                if is_strict_new_empty
+                else "Empty database upgrade allowed without backup or confirmation."
+            ),
             requires_backup=False,
             requires_confirmation=False,
             backup_valid=True,

@@ -17,7 +17,9 @@ from sqlalchemy import inspect
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import Session
 
+from services.schema_migration_gate import MigrationGateDecision
 from services.schema_version import (
+    ALEMBIC_VERSION_TABLE,
     STATUS_AHEAD_OF_CODE,
     STATUS_AT_HEAD,
     STATUS_BEHIND_HEAD,
@@ -390,11 +392,28 @@ def format_schema_startup_line(diagnostic: SchemaStartupDiagnostic) -> str:
     )
 
 
-_CORE_APP_TABLE = "journal_entries"
+
+def _application_table_names() -> tuple[str, ...]:
+    import inspect
+
+    import db
+    import models  # noqa: F401 — register ORM tables on ``db.Base``
+
+    names = tuple(sorted(db.Base.metadata.tables.keys()))
+    if names:
+        return names
+
+    # ``importlib.reload(db)`` in tests can detach ORM tables; read declared names.
+    declared = {
+        cls.__tablename__
+        for _, cls in inspect.getmembers(models, inspect.isclass)
+        if getattr(cls, "__tablename__", None)
+    }
+    return tuple(sorted(declared))
 
 
-def infer_is_new_database(session_or_engine: Session | Engine | Connection) -> bool:
-    """Read-only: True when core application tables are absent (empty/fresh DB)."""
+def count_application_tables(session_or_engine: Session | Engine | Connection) -> int:
+    """Read-only count of ORM application tables present in the database."""
     if isinstance(session_or_engine, Session):
         bind = session_or_engine.get_bind()
     else:
@@ -402,10 +421,53 @@ def infer_is_new_database(session_or_engine: Session | Engine | Connection) -> b
     connection = _connection_from_bind_for_inspect(bind)
     owns_connection = not isinstance(bind, Connection)
     try:
-        return not inspect(connection).has_table(_CORE_APP_TABLE)
+        inspector = inspect(connection)
+        return sum(
+            1 for table in _application_table_names() if inspector.has_table(table)
+        )
     finally:
         if owns_connection:
             connection.close()
+
+
+def has_alembic_version_table(session_or_engine: Session | Engine | Connection) -> bool:
+    """Read-only check for ``alembic_version`` table presence."""
+    if isinstance(session_or_engine, Session):
+        bind = session_or_engine.get_bind()
+    else:
+        bind = session_or_engine
+    connection = _connection_from_bind_for_inspect(bind)
+    owns_connection = not isinstance(bind, Connection)
+    try:
+        return inspect(connection).has_table(ALEMBIC_VERSION_TABLE)
+    finally:
+        if owns_connection:
+            connection.close()
+
+
+def infer_is_new_database(session_or_engine: Session | Engine | Connection) -> bool:
+    """Read-only: True only when no ``alembic_version`` and zero ORM app tables."""
+    if has_alembic_version_table(session_or_engine):
+        return False
+    return count_application_tables(session_or_engine) == 0
+
+
+_RUNNER_DECISION_ACTIONS: frozenset[str] = frozenset(
+    {ACTION_ALEMBIC_UPGRADE_HEAD, ACTION_REQUIRE_STAMP}
+)
+
+
+def is_production_runner_authorized(
+    flag_authoritative: bool,
+    decision: SchemaStartupDecision,
+    gate_decision: MigrationGateDecision,
+) -> bool:
+    """True only when flag is on, decision requires runner execution, and gate allows."""
+    return (
+        flag_authoritative
+        and decision.action in _RUNNER_DECISION_ACTIONS
+        and gate_decision.allowed
+    )
 
 
 def _connection_from_bind_for_inspect(bind: Engine | Connection) -> Connection:
