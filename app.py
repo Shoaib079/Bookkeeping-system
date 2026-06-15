@@ -5712,6 +5712,10 @@ def _staff_capture_post_expense_draft(session, view) -> "sc.ExpensePostResult":
     """TD-SC-01 posting seam — wire approved expense draft to existing save/post path."""
     from services import staff_capture as sc
 
+    pay_err = sc.validate_approval_payment_method(view.payment_method)
+    if pay_err:
+        return sc.ExpensePostResult(expense_record_id=None, error=pay_err)
+
     cat = session.get(TransactionCategory, view.tx_category_id) if view.tx_category_id else None
     sub = (
         session.get(TransactionSubcategory, view.tx_subcategory_id)

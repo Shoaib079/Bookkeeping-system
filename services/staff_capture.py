@@ -38,6 +38,8 @@ V1_PAYMENT_METHODS: frozenset[str] = frozenset({"Cash"})
 # Draft capture (receipt-AI / staff pre-submit) may store Card or Unknown for user follow-up.
 DRAFT_PAYMENT_METHODS: frozenset[str] = frozenset({"Cash", "Card", "Unknown"})
 
+APPROVAL_PAYMENT_RESOLVE_MSG = "Resolve payment method before approval"
+
 MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
 MAX_ATTACHMENTS_PER_DRAFT = 5
 ALLOWED_ATTACHMENT_MIMES: frozenset[str] = frozenset(
@@ -258,6 +260,13 @@ def validate_expense_payload(
         return "Amount must be greater than zero."
     if not (payload.currency or "").strip():
         return "Currency is required."
+    return None
+
+
+def validate_approval_payment_method(payment_method: str) -> str | None:
+    """Approval posts Cash only — Card/Unknown drafts must be resolved first."""
+    if payment_method not in V1_PAYMENT_METHODS:
+        return APPROVAL_PAYMENT_RESOLVE_MSG
     return None
 
 
@@ -630,6 +639,10 @@ def approve_expense_draft(
         return MutationResult(record_id=row.expense_record_id)
     if row.status != "submitted":
         return MutationResult(record_id=None, error=f"Cannot approve from status {row.status!r}.")
+
+    pay_err = validate_approval_payment_method(row.payment_method)
+    if pay_err:
+        return MutationResult(record_id=None, error=pay_err)
 
     payload = ExpenseDraftInput(
         date=row.date,
