@@ -35,6 +35,8 @@ TERMINAL_STATUSES: frozenset[str] = frozenset({"approved", "rejected"})
 
 EXPENSE_DRAFT_TYPE: DraftType = "expense"
 V1_PAYMENT_METHODS: frozenset[str] = frozenset({"Cash"})
+# Draft capture (receipt-AI / staff pre-submit) may store Card or Unknown for user follow-up.
+DRAFT_PAYMENT_METHODS: frozenset[str] = frozenset({"Cash", "Card", "Unknown"})
 
 MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
 MAX_ATTACHMENTS_PER_DRAFT = 5
@@ -245,9 +247,13 @@ def validate_expense_payload(
     payload: ExpenseDraftInput,
     *,
     require_amount: bool = True,
+    allowed_payment_methods: frozenset[str] | None = None,
 ) -> str | None:
-    if payload.payment_method not in V1_PAYMENT_METHODS:
-        return "Only Cash payment method is supported in v1."
+    allowed = allowed_payment_methods if allowed_payment_methods is not None else V1_PAYMENT_METHODS
+    if payload.payment_method not in allowed:
+        if allowed is V1_PAYMENT_METHODS:
+            return "Only Cash payment method is supported in v1."
+        return f"Payment method {payload.payment_method!r} is not supported for drafts."
     if require_amount and payload.amount <= 0:
         return "Amount must be greater than zero."
     if not (payload.currency or "").strip():
@@ -384,7 +390,9 @@ def create_expense_draft(
 ) -> MutationResult:
     if not ua.has_permission(session, company_id, actor_id, "submit_expense_drafts"):
         return MutationResult(record_id=None, error="Permission denied: submit_expense_drafts.")
-    err = validate_expense_payload(payload, require_amount=False)
+    err = validate_expense_payload(
+        payload, require_amount=False, allowed_payment_methods=DRAFT_PAYMENT_METHODS
+    )
     if err:
         return MutationResult(record_id=None, error=err)
     now = datetime.datetime.now()
@@ -434,7 +442,9 @@ def update_expense_draft(
         return MutationResult(record_id=None, error="Permission denied: submit_expense_drafts.")
     if row.status not in EDITABLE_STATUSES:
         return MutationResult(record_id=None, error=f"Draft in status {row.status!r} cannot be edited.")
-    err = validate_expense_payload(payload, require_amount=False)
+    err = validate_expense_payload(
+        payload, require_amount=False, allowed_payment_methods=DRAFT_PAYMENT_METHODS
+    )
     if err:
         return MutationResult(record_id=None, error=err)
     row.date = payload.date
