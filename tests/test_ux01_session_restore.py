@@ -19,12 +19,19 @@ if "streamlit" not in sys.modules:
     _st_mock.session_state = {}
     _st_mock.context = MagicMock(cookies={})
     sys.modules["streamlit"] = _st_mock
+    sys.modules["streamlit.components"] = MagicMock()
+    sys.modules["streamlit.components.v1"] = MagicMock()
 else:
     _st_mock = sys.modules["streamlit"]
     if not isinstance(getattr(_st_mock, "session_state", None), dict):
         _st_mock.session_state = {}
     if not hasattr(_st_mock, "context"):
         _st_mock.context = MagicMock(cookies={})
+    if getattr(_st_mock, "__path__", None) is None:
+        if "streamlit.components" not in sys.modules:
+            sys.modules["streamlit.components"] = MagicMock()
+        if "streamlit.components.v1" not in sys.modules:
+            sys.modules["streamlit.components.v1"] = MagicMock()
 
 import app as erp
 import models
@@ -333,6 +340,17 @@ def test_main_wires_restore_before_auth_gate():
 def test_cookie_component_skipped_in_dev_mode(monkeypatch):
     erp.DEV_MODE = True
     called = []
-    monkeypatch.setattr(erp, "st", MagicMock(html=lambda *a, **k: called.append(True)))
+    monkeypatch.setattr(
+        sys.modules["streamlit.components.v1"],
+        "html",
+        lambda *a, **k: called.append(True),
+    )
     erp._render_session_restore_cookie(token="x")
     assert called == []
+
+
+def test_restore_cookie_uses_components_html():
+    src = inspect.getsource(erp._render_session_restore_cookie)
+    assert 'import_module("streamlit.components.v1")' in src
+    assert "components.html" in src
+    assert "st.html" not in src

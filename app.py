@@ -2859,7 +2859,10 @@ def _render_session_restore_cookie(*, token: str | None = None, clear: bool = Fa
             f'";path=/;max-age={max_age};SameSite=Lax"+s;'
             "})();"
         )
-    st.html(f"<script>{js}</script>", height=0, width=0)
+    import importlib
+
+    components = importlib.import_module("streamlit.components.v1")
+    components.html(f"<script>{js}</script>", height=0, width=0)
 
 
 def _mint_restore_token_for_user(session, user_id: int) -> str | None:
