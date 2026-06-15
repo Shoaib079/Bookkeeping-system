@@ -1,6 +1,6 @@
 # NAV-UX-02 — Sidebar & Navigation Audit
 
-**Mode:** Audit + S1/S2 validation. **S2 implemented (2026-06):** Today's Summary dispatch route retired; see `docs/NAV_UX_02_S2_IMPLEMENTATION.md`.
+**Mode:** Audit + S1/S2/S3 validation. **S2 implemented (2026-06):** Today's Summary dispatch route retired; see `docs/NAV_UX_02_S2_IMPLEMENTATION.md`. **S3 implemented (2026-06):** Financial statements formalized as canonical routes + shortcut doors; see `docs/NAV_UX_02_S3_STATEMENTS_CONSOLIDATION_PLAN.md` + `tests/test_nav_ux_02_s3_statements_structural_contract.py`.
 **Source of truth:** `_PAGE_DISPATCH` (`app.py:26520`), `_NAV_ACCORDION` (`app.py:3426`), `_NAV_DIRECT_PAGES` (`app.py:3480`), `_NAV_ROLE_PAGES` (`app.py:3490`), `_MOBILE_BOTTOM_NAV` (`app.py:3364`), `_MOBILE_HUB_CONFIG` (`app.py:3383`), `registry/nav_keys.py` (route keys + legacy aliases).
 
 ## 1. Audit plan
@@ -44,9 +44,9 @@ Role gate legend: **O**=owner, **M**=manager, **C**=cashier, **P**=partner, **V*
 | Inventory | render_inventory | sidebar-direct + more hub | O M | Inventory | sidebar-item | `/inventory` |
 | Banking | render_banking | sidebar-direct + money hub | O M C | Banking | sidebar-item (has sub-picker) | `/banking` |
 | Reports | render_reports | sidebar-direct + reports hub | O M C P V | Reports | sidebar-item (has tabs) | `/reports` |
-| Profit & Loss | render_profit_loss_page | accordion `statements` + reports hub | O M C P V | Reports | sidebar-item | `/reports/pl` |
-| Balance Sheet | render_balance_sheet_page | accordion `statements` + reports hub | O M C P V | Reports | sidebar-item | `/reports/balance-sheet` |
-| Cash Flow | render_cash_flow_page | accordion `statements` + reports hub | O M C P V | Reports | sidebar-item | `/reports/cash-flow` |
+| Profit & Loss | render_profit_loss_page | accordion `statements` (canonical) + reports hub (shortcut) | O M C P V | Reports | sidebar-item | `/reports/profit-loss` |
+| Balance Sheet | render_balance_sheet_page | accordion `statements` (canonical) + reports hub (shortcut) | O M C P V | Reports | sidebar-item | `/reports/balance-sheet` |
+| Cash Flow | render_cash_flow_page | accordion `statements` (canonical) + reports hub (shortcut) | O M C P V | Reports | sidebar-item | `/reports/cash-flow` |
 | General Ledger | render_general_ledger | accordion `accounting` | O M | Books | sidebar-item | `/books/general-ledger` |
 | Trial Balance | render_trial_balance | accordion `accounting` | O M | Books | sidebar-item | `/books/trial-balance` |
 | Journal Entries | render_journal_entries | accordion `accounting` | O M | Books | sidebar-item | `/books/journal-entries` |
@@ -78,7 +78,7 @@ Role gate legend: **O**=owner, **M**=manager, **C**=cashier, **P**=partner, **V*
 ### 2c. Mobile hubs — `_MOBILE_HUB_CONFIG`
 
 - **money** → close section (Cash Reconciliation, External Sales Verification, End-of-Day Close), bank section (Banking, Recon Health, Statement import).
-- **reports** → Profit & Loss, Balance Sheet, Cash Flow, Transaction Ledger, Sales report, Expenses report.
+- **reports** → Profit & Loss, Balance Sheet, Cash Flow (**shortcuts** to canonical statement routes), Transaction Ledger, Sales report, Expenses report.
 - **people** → Customers, Vendors, Receivables, Payables, Workers, Partner Accounts, Members.
 - **more** → opens People hub, Books accordion (accounting), History accordion (transactions), Inventory, Admin section (Company Settings, Backup & Restore, Audit Log).
 
@@ -87,7 +87,7 @@ Role gate legend: **O**=owner, **M**=manager, **C**=cashier, **P**=partner, **V*
 | control | parent_surface | control_type | opens_dialog | evidence |
 |---|---|---|---|---|
 | Banking section picker (cockpit/accounts/pos_settlement/import/settings) | Banking page | dropdown-picker (radio-like) | no | `app.py:21345`, opts `21336-21344` |
-| Reports tabs | Reports page | tabs | no | `app.py:19647`, `20040` |
+| Reports tabs | Reports page | tabs | no | `app.py:22631-22639`, `_REPORTS_MOB_TAB_IDS` `22555-22562` — **exec/sales/expenses/customers/vendors/banking/eod only; no P&L/BS/CF** |
 | Year-End Close tabs (Close Year / History) | Year-End Close | tabs | no | `app.py:8213` |
 | Partner Accounts tabs (contrib/drawings + per-partner) | Partner Accounts | tabs | no | `app.py:9135`, `10015` |
 | Workers tabs (workers/movements/summary) | Workers | tabs | no | `app.py:9568` |
@@ -104,7 +104,7 @@ Role gate legend: **O**=owner, **M**=manager, **C**=cashier, **P**=partner, **V*
 Multiple entry points reaching the **same workflow** (record-only; not defects, but cleanup candidates):
 
 1. **Banking** — `duplicate_workflow=banking`: sidebar-direct **Banking**, money-hub Banking entry, **and** legacy `"Bank Statement Import"` key rerouted to Banking + `banking_section="import"` (`app.py:26449`, `24864`, `3930`). Three entry points; statement import reachable as both a legacy route and a banking sub-section.
-2. **Financial statements** — `duplicate_workflow=statements`: Profit & Loss / Balance Sheet / Cash Flow appear as **top-level accordion `statements`**, inside the **Reports** page, **and** in the **mobile reports hub**. Plus legacy `rpt_exec_sel` mapping (`_LEGACY_RPT_EXEC_TO_STATEMENT`, `app.py:26456`).
+2. **Financial statements (S3 reclassified)** — **canonical routes** `NAV_PROFIT_LOSS` / `NAV_BALANCE_SHEET` / `NAV_CASH_FLOW` with desktop accordion `statements` as **canonical home** (one route → thin page wrapper → core renderer). **Shortcut doors only** (navigate, never render): mobile reports hub deep-links and legacy `rpt_exec_sel` reroute (`_LEGACY_RPT_EXEC_TO_STATEMENT`, `app.py:3235-3238`, `26467`). The **Reports page does not render statements** — its tabs are exec/sales/expenses/customers/vendors/banking/eod.
 3. **Transaction Ledger** — `duplicate_workflow=txn_ledger`: sidebar-direct, reports hub, and dashboard quick link (`app.py:11406`). Also legacy "Accounting Tools" picker → Books (`_LEGACY_RPT_EXEC_TO_BOOKS`).
 4. **Receivables / Payables** — `duplicate_workflow=ar` / `ap`: accordion `people`, mobile people hub, **and** dashboard quick-link buttons (`app.py:1293-1303`, `11162-11170`).
 5. **New Transaction** — `duplicate_workflow=new_txn`: sidebar-direct + mobile bottom ＋ button (`app.py:3642`, `15661`, `15932`). Expected redundancy (primary CTA) — keep, but note dual source.
@@ -125,7 +125,7 @@ Multiple entry points reaching the **same workflow** (record-only; not defects, 
 | **People** | Customers, Vendors, Receivables, Payables | |
 | **Inventory** | Inventory | |
 | **Banking** | Banking (+ cockpit/accounts/pos/import/settings sub-sections) | sub-nav via picker |
-| **Reports** | Reports, Profit & Loss, Balance Sheet, Cash Flow | statements duplicated top-level + in-page |
+| **Reports** | Reports, Profit & Loss, Balance Sheet, Cash Flow | statements are canonical routes under Reports domain; Reports page tabs are management analytics only |
 | **Books** | General Ledger, Trial Balance, Journal Entries, Fiscal Periods, Year-End Close, Budget, Chart of Accounts, Recon Health, Opening Balances | |
 | **Team & Partners** | Partner Accounts, Workers | |
 | **Settings** | Company Settings, Members, Permissions, Audit Log, Backup & Restore | mostly owner-only; Members/Audit cross-surface |
@@ -137,7 +137,7 @@ Multiple entry points reaching the **same workflow** (record-only; not defects, 
 - **Role/purpose mismatch:** `Staff Expenses` (staff capture) is **owner-only** (absent from manager/cashier role lists) — the "staff" workflow is not visible to staff roles. Flag for intent review.
 - **Cross-surface inconsistency:** `Members` lives under **Settings** on desktop but under the **People** hub on mobile; `Audit Log` is owner+manager while the rest of Settings is owner-only.
 - **Legacy reroutes still active:** `"Bank Statement Import"` key, `rpt_exec_sel` → statement/Books mappings — historical entry points kept for back-compat; candidates for documentation + eventual removal.
-- **Statements triple-exposed:** top-level accordion + Reports page + mobile hub — primary consolidation candidate.
+- **Statements multi-door (S3 resolved):** P&L/BS/CF are **single canonical routes** with desktop accordion as home; mobile hub + legacy `rpt_exec_sel` are **shortcut doors** — not duplicate renders. Reports page tabs exclude statements.
 
 ## 6. Contract-test recommendations (safe, additive only)
 
@@ -156,7 +156,7 @@ A doc-contract test for this audit (existence + sections + inventory coverage) s
 
 - **NAV-UX-02-S1 — structural contract tests** (safe now): add the §6 parity tests with an explicit `KNOWN_HIDDEN` allow-list. Pure assertions over existing dicts; no UI change.
 - **NAV-UX-02-S2 — resolve the orphan:** **Implemented (S2-IMPL)** — retired dispatch route; Reports exec + legacy reroute preserved.
-- **NAV-UX-02-S3 — statements consolidation:** pick one canonical home for P&L/BS/CF (top-level vs. inside Reports) and make the others explicit shortcuts; keep routes working.
+- **NAV-UX-02-S3 — statements consolidation:** **Implemented (S3-IMPL-1)** — canonical routes + shortcut doors formalized; contract tests in `tests/test_nav_ux_02_s3_statements_structural_contract.py`; React paths `/reports/profit-loss`, `/reports/balance-sheet`, `/reports/cash-flow`.
 - **NAV-UX-02-S4 — cross-surface consistency:** align Members/Audit placement and gates between desktop Settings and mobile People/More.
 - **NAV-UX-02-S5 — role/purpose review:** confirm intended visibility of Staff Expenses (and any owner-only operational page) with the role matrix.
 - **NAV-UX-02-S6 — legacy reroute retirement:** document, then remove `"Bank Statement Import"` / `rpt_exec_sel` mappings once telemetry shows no use.
@@ -164,9 +164,9 @@ A doc-contract test for this audit (existence + sections + inventory coverage) s
 
 ## No-change statement (NAV-UX-02 audit)
 
-- **No `app.py` navigation change; no route renamed; no page deleted; no role gate changed; no mobile nav changed; no cleanup performed.**
+- **Audit only — S3-IMPL-1 added contract tests and doc reclassification only; no `app.py` navigation change; no route renamed; no page deleted; no role gate changed; no mobile nav changed; no cleanup performed.**
 - Inventory, duplicate report, ownership map, test recommendations, and slices are **planning artifacts only**; execution is gated to the S1–S7 slices above.
 
 ---
 
-*Audit only — no UI/route/role/mobile change. Inventoried 44 dispatch routes + 5 mobile bottom slots + 4 hubs + in-page tabs/pickers/dialogs/header controls, each with label/route_key/render_fn/surface/role_gate/owner_area/control_type/parent_surface/opens_dialog/navigates_to/duplicate_workflow/daily_use_impact/react_route. Key findings: Today's Summary is an unreachable orphan route; Staff Expenses is owner-only despite its staff purpose; Members/Audit Log are cross-surface inconsistent; financial statements are triple-exposed (accordion + Reports + mobile hub); legacy "Bank Statement Import"/rpt_exec_sel reroutes remain. Seven duplicate-workflow entry-point clusters recorded. Proposed contract tests (dispatch↔keys parity with a documented KNOWN_HIDDEN, role-page validity, accordion integrity, mobile hub validity, legacy alias targets) and seven non-implemented cleanup slices (S1 structural tests → S7 React route map).*
+*Audit + S1/S2/S3 validation — no UI/route/role/mobile change from S3-IMPL-1. Inventoried dispatch routes + mobile bottom slots + hubs + in-page tabs/pickers/dialogs/header controls. S3 correction: financial statements are canonical routes (desktop Financial Statements accordion) with shortcut doors (mobile reports hub, legacy rpt_exec_sel reroute); Reports page does not render P&L/BS/CF. React contract: /reports/profit-loss, /reports/balance-sheet, /reports/cash-flow (1:1). Key open findings: Staff Expenses owner-only; Members/Audit cross-surface inconsistency; legacy Bank Statement Import / rpt_exec_sel reroutes remain (retirement deferred).*

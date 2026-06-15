@@ -11,6 +11,8 @@ from registry.nav_keys import (
     ALL_NAV_PAGE_KEYS,
     LEGACY_NAV_ALIASES,
     NAV_BANKING,
+    NAV_BALANCE_SHEET,
+    NAV_CASH_FLOW,
     NAV_EXPENSES,
     NAV_HOME,
     NAV_INVENTORY,
@@ -25,15 +27,25 @@ from registry.nav_keys import (
     NAV_TXN_LEDGER,
 )
 
+# NAV-UX-02-S3 — financial statements: canonical routes + shortcut doors (not duplicate renders).
+STATEMENT_CANONICAL_KEYS: frozenset[str] = frozenset(
+    {NAV_PROFIT_LOSS, NAV_BALANCE_SHEET, NAV_CASH_FLOW}
+)
+STATEMENT_DESKTOP_CANONICAL_GROUP = "statements"
+STATEMENT_REACT_ROUTES: dict[str, str] = {
+    NAV_PROFIT_LOSS: "/reports/profit-loss",
+    NAV_BALANCE_SHEET: "/reports/balance-sheet",
+    NAV_CASH_FLOW: "/reports/cash-flow",
+}
+# Multi-surface entry is intentional: accordion (canonical home) + mobile hub (shortcut).
+DOCUMENTED_CANONICAL_WITH_SHORTCUTS: frozenset[str] = STATEMENT_CANONICAL_KEYS
+
 # Documented hidden/orphan routes (audit §5) — empty after NAV-UX-02-S2 retirement.
 KNOWN_HIDDEN: frozenset[str] = frozenset()
 
 # Intentional multi-surface entry points (audit §3 duplicate_workflow).
 DOCUMENTED_DUPLICATE_WORKFLOWS: dict[str, frozenset[str]] = {
     "banking": frozenset({NAV_BANKING}),
-    "statements": frozenset(
-        {erp.NAV_PROFIT_LOSS, erp.NAV_BALANCE_SHEET, erp.NAV_CASH_FLOW}
-    ),
     "txn_ledger": frozenset({NAV_TXN_LEDGER}),
     "ar": frozenset({NAV_RECEIVABLES}),
     "ap": frozenset({NAV_PAYABLES}),

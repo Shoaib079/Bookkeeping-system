@@ -92,20 +92,33 @@ def test_records_key_findings(doc_text):
     assert "staff expenses" in lowered and "owner-only" in lowered, (
         "Audit must record the Staff Expenses role mismatch"
     )
-    assert "statements" in lowered, "Audit must record the statements duplication"
+    assert "statements" in lowered and "canonical" in lowered, (
+        "Audit must classify statements as canonical routes"
+    )
+    assert "shortcut" in lowered, "Audit must document statement shortcut doors"
 
 
 def test_duplicate_workflow_clusters(doc_text):
     lowered = doc_text.lower()
     assert "duplicate_workflow" in lowered, "Audit must use the duplicate_workflow field"
-    for wf in ("banking", "statements", "txn_ledger", "new_txn"):
+    for wf in ("banking", "txn_ledger", "new_txn"):
         assert wf in lowered, f"Duplicate report must include the {wf} cluster"
+
+
+def test_statements_not_classified_as_duplicate_render(doc_text):
+    lowered = doc_text.lower()
+    assert "does not render statements" in lowered or "does not render" in lowered, (
+        "Audit must state Reports page does not render statements"
+    )
+    assert "shortcut" in lowered and "canonical" in lowered, (
+        "Audit must classify statements as canonical + shortcut doors"
+    )
 
 
 def test_implementation_slices_not_implemented(doc_text):
     lowered = doc_text.lower()
     assert "do not implement" in lowered, "Slices must be marked do-not-implement"
-    for slice_id in ("nav-ux-02-s1", "nav-ux-02-s7"):
+    for slice_id in ("nav-ux-02-s1", "nav-ux-02-s3", "nav-ux-02-s7"):
         assert slice_id in lowered, f"Implementation slices must include {slice_id}"
 
 

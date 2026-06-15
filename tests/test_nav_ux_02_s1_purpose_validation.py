@@ -13,6 +13,7 @@ from registry.nav_keys import LEGACY_NAV_ALIASES, NAV_REPORTS, NAV_TODAY_SUMMARY
 from tests.nav_ux_02_contract import (
     DIALOG_FUNCTION_NAMES,
     DOCUMENTED_DUPLICATE_WORKFLOWS,
+    DOCUMENTED_CANONICAL_WITH_SHORTCUTS,
     DOCUMENTED_PROGRAMMATIC_NAV,
     DOCUMENTED_ROLE_PURPOSE_REVIEW,
     KNOWN_HIDDEN,
@@ -113,7 +114,11 @@ def test_documented_duplicate_workflow_clusters_have_multiple_entry_kinds():
 def test_undocumented_multi_entry_kinds_reported_not_enforced():
     """Informational guard — surfaces multi-entry pages outside audit duplicate set."""
     surfaces = page_surface_map()
-    documented = frozenset().union(*DOCUMENTED_DUPLICATE_WORKFLOWS.values()) | NAV_SURFACE_PARITY_OK
+    documented = (
+        frozenset().union(*DOCUMENTED_DUPLICATE_WORKFLOWS.values())
+        | NAV_SURFACE_PARITY_OK
+        | DOCUMENTED_CANONICAL_WITH_SHORTCUTS
+    )
     extras = []
     for page_key, surface_list in surfaces.items():
         if page_key in KNOWN_HIDDEN:
