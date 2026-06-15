@@ -1,7 +1,7 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** 2026-06-14 (ROADMAP-PRINCIPLES-01 — locked ERP core principles + BANKING-UX-04 + DATE CONTROL)  
+**Last updated:** 2026-06-05 (ROADMAP-UPDATE-01 — approved future work queue: DASH-CASH · RECEIPT-AI · BANKING-UX-05 · AUTH-SESSION-02 · DASH-KPI · AI-BOOKKEEPER)  
 **Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
@@ -222,6 +222,12 @@ No implementation before roadmap approval.
 | **STAFF-CAPTURE-01** | ✅ **SC-P1 complete** · ✅ **SC-P1b complete** · 📋 **SC-P2 pending** · 📋 **SC-P3 pending** — expense draft service + thin Streamlit UI (submit · receipts · inbox); see [docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-SC-*) |
 | **FUTURE-MIGRATION-AUDIT-01** | 📊 **Recorded** — FastAPI readiness **62/100**; keystone **POSTING-SERVICE-01**; see [§ FUTURE-MIGRATION-AUDIT-01](#future-migration-audit-01--fastapi-readiness-audit) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
 | **P2-HARDEN-01** — Company Stamp Audit | 📋 **High** · Low risk — audit API `company_id` stamping on P2 write paths; no intended behavior change · see [§ P2-HARDEN-01](#p2-harden-01--company-stamp-audit) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) · [P2_AUDIT_01_LEDGER](./docs/P2_AUDIT_01_LEDGER.md) |
+| **DASH-CASH-01** — Split Liquid Funds | 🟡 **Audited** · S1 read helper ✅ · S2+ UI pending — GL 1000–1003 / 1010–1013; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
+| **AUTH-SESSION-02** — Remember Device / Session Hardening | 📋 **Future** — after AUTH-SESSION-01; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) · [AUTH_SESSION_01_AUDIT](./docs/AUTH_SESSION_01_AUDIT.md) |
+| **RECEIPT-AI-01 … RECEIPT-AI-08** — Receipt OCR & learning pipeline | 📋 **Future** — assist/review first; trusted auto-post last; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
+| **BANKING-UX-05** — AI Statement Matching | 📋 **Future** — suggest + learn; user approval first; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
+| **DASH-KPI-01 … DASH-KPI-03** — Dashboard KPI extensions | 📋 **Future** — forecast · runway · sales-by-payment-type; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
+| **AI-BOOKKEEPER-01** — Business Explanation AI | 📋 **Future** — read-only explanations; see [§ ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue) |
 
 ---
 
@@ -240,7 +246,9 @@ posting/reporting extraction. Allowed: OBS-01 friction fixes, service-first scre
 phases (RC-P2B/P3 class), thin UI over existing services. Screens are the layer React
 replaces — invest in services, not chrome.
 
-**Next recommended active item:** **POSTING-SERVICE-01** (or OBS-01 friction fixes while it's scoped).
+**Next recommended active item:** **DASH-CASH-01-S2** (dashboard UI over `compute_liquid_position`) per [ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue), or **POSTING-SERVICE-01** / OBS-01 friction fixes when extraction is the bottleneck.
+
+**Approved future queue (docs only — 2026-06-05):** See **[ROADMAP-UPDATE-01](#roadmap-update-01--approved-future-work-queue)** for the full priority-ordered backlog (DASH-CASH → RECEIPT-AI → BANKING-UX-05 → AUTH-SESSION-02 → DASH-KPI → AI-BOOKKEEPER → FastAPI → React). AI receipt **auto-post is not first release** — assist/review mode ships first.
 
 **CSS architecture cleanup:** **MOBILE-14 closed.** Optional follow-up: M3/M4 suppression-rule relocation in `widgets.css` (not blockers). **CSS-01** / **CSS-02** remain the ongoing ownership standard.
 
@@ -2401,6 +2409,133 @@ Restaurant (POS, recipes), retail (barcode), services (projects), tourism (booki
 
 ---
 
+## ROADMAP-UPDATE-01 — Approved Future Work Queue
+
+**Status:** Approved (documentation only — 2026-06-05)  
+**Scope:** Record approved future epics. **No runtime implementation** from this update alone.
+
+### Architectural rules (all items below)
+
+- **Service-first:** Models → Services → Tests → thin UI → FastAPI → React. No Streamlit business logic.
+- **Explicit `company_id`** in services; serializable DTOs; contract tests.
+- **Accounting integrity:** void → reverse → audit; no silent deletes.
+- **Migration-safe:** FastAPI-ready reads/writes; React consumes same service layer later.
+- **AI assist mode first:** suggestion + human review before any auto-post or auto-match.
+- **Trusted auto-post / auto-match (when shipped):** requires learning history, confidence thresholds, **owner enablement**, full audit trail, and void/reversal safety. Never auto-post payroll, taxes, bank transfers, large expenses, unknown vendors, or multi-category uncertain receipts.
+
+### Priority order (execution sequence)
+
+| # | Epic | Notes |
+|---|------|--------|
+| 1 | **DASH-CASH-01** | Split liquid funds on Home dashboard |
+| 2 | **RECEIPT-AI-01** | Audit / discovery before build |
+| 3 | **RECEIPT-AI-02 / 03 / 04** | Learning · vendor detection · item extraction |
+| 4 | **RECEIPT-AI-05 / 06 / 08** | Learning engine · confidence · correction feedback |
+| 5 | **RECEIPT-AI-07** | Trusted vendor auto-post (owner-controlled; last in RECEIPT-AI chain) |
+| 6 | **BANKING-UX-05** | AI statement matching (approval-first) |
+| 7 | **AUTH-SESSION-02** | Remember device + session hardening |
+| 8 | **DASH-KPI-01 … 03** | Forecast · runway · sales-by-payment-type |
+| 9 | **AI-BOOKKEEPER-01** | Business explanation AI (read-only) |
+| 10 | **FastAPI foundation** | [FUTURE-MIGRATION-01](#future-architecture--long-term-roadmap) Phase B |
+| 11 | **React migration** | [FUTURE-MIGRATION-01](#future-architecture--long-term-roadmap) Phase D |
+
+---
+
+### DASH-CASH-01 — Split Liquid Funds
+
+**Status:** 🟡 Audited · **S1 read helper shipped** (`services/read_balances.compute_liquid_position`) · **S2+ UI pending**
+
+**Goal:** Show **Cash in Hand** separately from **Bank Balance** on Home dashboard + mobile chips — without changing posting or sub-ledger behavior.
+
+| Rule | Detail |
+|------|--------|
+| Cash in Hand | GL **1000–1003** (Cash family) |
+| Bank Balance | GL **1010–1013** (Bank family) |
+| Exclude | **1150** Card Sales Clearing · **2110** Credit Card Payable |
+| Source | GL journal-derived balances only (`calculate_account_balance` / `_for_period`) |
+| Scope | Company-scoped · as-of date aware · multi-currency buckets |
+| UI (pending) | Replace combined “Cash & Bank” sub-ledger column; desktop + mobile KPI chips |
+
+**Slices:** S1 read DTO ✅ · S2 Home UI · S3 mobile chips · S4 i18n · S5 contract tests · S6 optional GL vs sub-ledger hint.
+
+---
+
+### AUTH-SESSION-02 — Remember Device / Session Hardening
+
+**Status:** 📋 Future enhancement — after [AUTH-SESSION-01](./docs/AUTH_SESSION_01_AUDIT.md) (restore cookie + operator docs shipped).
+
+**Scope (future):**
+
+- Optional **remember-this-device** toggle (per login)
+- Configurable **idle timeout** and **absolute session expiry**
+- Future **FastAPI HttpOnly cookie** + JWT refresh integration (unify with `services/tokens.py`)
+- Aligns with AUTH-SESSION-01-IMPL-3 / IMPL-4 backlog in [AUTH_SESSION_01_IMPLEMENTATION.md](./docs/AUTH_SESSION_01_IMPLEMENTATION.md)
+
+**Not in scope now:** weakening restore secret requirements or removing void/audit session rules.
+
+---
+
+### RECEIPT-AI — Receipt Intelligence Pipeline
+
+**Status:** 📋 Future — **first release = assist/review only**; trusted auto-post is a later gated mode.
+
+| ID | Name | Summary |
+|----|------|---------|
+| **RECEIPT-AI-01** | Receipt OCR Pipeline | Upload receipt → OCR/extract vendor, date, amount, line items → suggest category/subcategory/vendor/items → **expense draft** → user approves before posting. **Never auto-post unknown receipts.** |
+| **RECEIPT-AI-02** | Supplier Learning | Learn vendor/category behavior from approvals (e.g. BİM → Grocery); store mappings + correction history. |
+| **RECEIPT-AI-03** | Vendor Auto Detection | Detect known retail vendors (BİM, Metro, Migros, Getir, Carrefour, …); suggest creating vendor if missing. **Vendor-neutral core** — detection adapters, not hard-coded vendor logic in posting ([VENDOR-NEUTRAL-01](#vendor-neutral-01--vendor-neutral-architecture-rule)). |
+| **RECEIPT-AI-04** | Item Extraction | Extract purchased line items; suggest inventory/item creation when missing; **item tracking optional/configurable**. |
+| **RECEIPT-AI-05** | Learning Engine | Track approval counts + correction history; vendor/category/item mapping tables; confidence from repeated approvals. |
+| **RECEIPT-AI-06** | Confidence Engine | **&lt;80%** → manual review · **80–95%** → prefill + confirm · **&gt;95% + 20 approvals** → eligible for auto-post · **&gt;99% + 100 approvals** → trusted vendor tier. |
+| **RECEIPT-AI-07** | Trusted Vendor Auto-Post | Owner-controlled rules; auto-post **only** for trusted vendors/categories. **Never** auto-post: payroll, taxes, bank transfers, large expenses, unknown vendors, multi-category uncertain receipts. Must remain auditable + voidable. |
+| **RECEIPT-AI-08** | Correction Feedback Loop | Persist AI suggestion vs user-approved values; feed corrections back into learning (RECEIPT-AI-05). |
+
+**Integration note:** Builds on [STAFF-CAPTURE-01](#staff-capture-01--expense-draft--approval-pipeline) draft/approval patterns where applicable; OCR/ML adapters live outside `services/posting.py`.
+
+---
+
+### BANKING-UX-05 — AI Statement Matching
+
+**Status:** 📋 Future — after RECEIPT-AI learning patterns mature; **user approval first**.
+
+**Scope:**
+
+- Import bank statement → AI-suggested matches to expenses/sales/transfers
+- Learn recurring vendor/payment mappings from approved matches
+- Future **trusted auto-match** rules (owner-enabled, auditable, reversible) — same confidence/approval gates as RECEIPT-AI
+
+**Constraints:** No change to GL posting rules without explicit match confirmation in v1; extends [BANKING-UX-03](./docs/BANKING_UX_03_ROADMAP.md) reconciliation cockpit — does not replace it.
+
+---
+
+### DASH-KPI — Dashboard KPI Extensions
+
+**Status:** 📋 Future — after DASH-CASH-01; read-only analytics over existing GL/txn data.
+
+| ID | Name | Summary |
+|----|------|---------|
+| **DASH-KPI-01** | Daily Cash Forecast | Expected cash position next 7 days (scheduled inflows/outflows heuristic). |
+| **DASH-KPI-02** | Cash Runway | Days of cash remaining from current liquidity ÷ average daily expenses. |
+| **DASH-KPI-03** | Sales by Payment Type | Dashboard KPI: Cash / Card / Credit sales (period-aware; company-scoped). |
+
+**Rules:** Service-layer compute DTOs; no new posting types; optional mobile chips mirroring DASH-CASH-01 pattern.
+
+---
+
+### AI-BOOKKEEPER-01 — Business Explanation AI
+
+**Status:** 📋 Future — read-only advisory layer.
+
+**Scope:**
+
+- Explain profit changes month-over-month
+- Explain expense/vendor trends
+- Natural-language Q&A (“Why is profit lower this month?”) over **computed report DTOs** — not raw JE mutation
+
+**Rules:** No autonomous posting; citations to P&L/BS/GL aggregates; FastAPI/React-ready explanation service; optional LLM adapter behind interface ([VENDOR-NEUTRAL-01](#vendor-neutral-01--vendor-neutral-architecture-rule)).
+
+---
+
 ## Future Architecture / Long-Term Roadmap
 
 Design direction and future-state targets only. **Does not change current development priorities.** Streamlit remains the primary application until migration readiness is achieved.
@@ -2629,6 +2764,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **ROADMAP-UPDATE-01** — Approved future work queue recorded (docs only): **DASH-CASH-01** (audited; S1 `compute_liquid_position` shipped; UI pending) · **AUTH-SESSION-02** (remember device + session hardening after AUTH-SESSION-01) · **RECEIPT-AI-01–08** (OCR → learning → confidence → owner-gated trusted auto-post last) · **BANKING-UX-05** (AI statement matching; approval-first) · **DASH-KPI-01–03** (forecast, runway, sales-by-payment-type) · **AI-BOOKKEEPER-01** (read-only business explanations). **Rules locked:** first AI release = assist/review; auto-post requires learning history + confidence + owner enablement + audit + void safety; service-first / FastAPI-ready / no Streamlit business logic. **Priority order:** DASH-CASH-01 → RECEIPT-AI audit → RECEIPT-AI 02/03/04 → 05/06/08 → 07 trusted auto-post → BANKING-UX-05 → AUTH-SESSION-02 → DASH-KPI → AI-BOOKKEEPER → FastAPI → React. No runtime code from this update. |
 | 2026-06-14 | **P2-HARDEN-01 recorded** — Company Stamp Audit: audit API `company_id` stamping across P2 write paths; Priority High, Risk Low, no intended behavior changes. Triggered by P2.9 `PartnerProfitAllocation` finding ([P2_AUDIT_01_LEDGER](./docs/P2_AUDIT_01_LEDGER.md)). Register: [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md). |
 | 2026-06-14 | **ROADMAP-PRINCIPLES-01** — **ERP Core Principles (Locked)** recorded: 10 architectural principles learned during Streamlit ERP development (business logic first · explicit `company_id` · void/reverse/audit · form state rules · RETENTION-01 · date ownership · desktop/mobile unity · configurable ERP · commit ownership · discovery before implementation). **BANKING-UX-04** Configurable Banking Workflow added (statement-first / hybrid / manual-first). **DATE CONTROL** future React UX spec locked (single field, focus-opens calendar). Docs only — no code. Cross-links: [ERP_DS_04](./docs/ERP_DS_04_MASTER_DESIGN_SYSTEM.md) · [ERP_DS_05](./docs/ERP_DS_05_REACT_ARCHITECTURE.md) · [FASTAPI_P0_5D](./docs/FASTAPI_P0_5D_COMMIT_OWNERSHIP_PLAN.md). |
 | 2026-06 | Shared DB + `company_id` isolation — do not redesign per-tenant DB yet |
