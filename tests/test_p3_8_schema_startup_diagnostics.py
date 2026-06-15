@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from db import Base
 from services.schema_startup import (
     get_schema_startup_diagnostic,
-    log_schema_startup_diagnostic,
+    log_schema_startup_decision_diagnostics,
     startup_message_for_status,
 )
 from services.schema_version import (
@@ -151,13 +151,13 @@ def test_ahead_of_code_diagnostic(memory_engine):
 def test_helper_does_not_mutate_db(memory_engine):
     exists_before = _table_exists(memory_engine)
     get_schema_startup_diagnostic(memory_engine)
-    log_schema_startup_diagnostic(memory_engine, logger=logging.getLogger("test"))
+    log_schema_startup_decision_diagnostics(memory_engine, logger=logging.getLogger("test"))
     assert _table_exists(memory_engine) == exists_before
 
 
 def test_log_schema_startup_diagnostic_emits_info(caplog, memory_engine):
     caplog.set_level(logging.INFO)
-    log_schema_startup_diagnostic(memory_engine, logger=logging.getLogger("test.schema"))
+    log_schema_startup_decision_diagnostics(memory_engine, logger=logging.getLogger("test.schema"))
     assert any("migrate_schema remains active" in r.message for r in caplog.records)
 
 
@@ -185,7 +185,7 @@ def test_startup_has_no_alembic_upgrade_or_stamp():
 
     runtime_src = (
         inspect.getsource(get_schema_startup_diagnostic)
-        + inspect.getsource(log_schema_startup_diagnostic)
+        + inspect.getsource(log_schema_startup_decision_diagnostics)
         + inspect.getsource(__import__("app", fromlist=["main"])._log_schema_startup_diagnostic)
     ).lower()
     assert "alembic upgrade" not in runtime_src
