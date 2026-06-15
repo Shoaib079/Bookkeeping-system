@@ -3242,6 +3242,11 @@ _LEGACY_RPT_EXEC_TO_BOOKS = {
     "trial_balance": NAV_TRIAL_BALANCE,
     "general_ledger": NAV_GENERAL_LEDGER,
 }
+# NAV-UX-02-S2 — legacy Today's Summary nav key → Reports exec picker.
+_LEGACY_NAV_TO_REPORTS_EXEC = {
+    NAV_TODAY_SUMMARY: "today_summary",
+    "📅 Today's Summary": "today_summary",
+}
 
 _NAV_GROUP_KEYS = {
     "transactions": "nav.group.transactions",
@@ -26432,9 +26437,14 @@ def main():
         _allowed -= _module_hidden_nav_pages(_nav_session)
 
     _raw_nav = st.session_state.get("nav_selection", NAV_HOME)
-    selection = normalize_nav_key(_raw_nav)
-    if selection != _raw_nav:
-        st.session_state["nav_selection"] = selection
+    if _raw_nav in _LEGACY_NAV_TO_REPORTS_EXEC:
+        st.session_state["nav_selection"] = NAV_REPORTS
+        st.session_state["rpt_exec_sel"] = _LEGACY_NAV_TO_REPORTS_EXEC[_raw_nav]
+        selection = NAV_REPORTS
+    else:
+        selection = normalize_nav_key(_raw_nav)
+        if selection != _raw_nav:
+            st.session_state["nav_selection"] = selection
     if selection not in _allowed:
         st.session_state["nav_selection"] = NAV_HOME
         selection = NAV_HOME
@@ -26519,7 +26529,6 @@ def main():
     # ── Page dispatch ─────────────────────────────────────────────────────────
     _PAGE_DISPATCH = {
         NAV_HOME:              render_dashboard,
-        NAV_TODAY_SUMMARY:     render_today_summary,
         NAV_NEW_TRANSACTION:   render_add_transaction,
         NAV_TXN_LEDGER:        render_transaction_ledger_page,
         NAV_SALES:             render_sales,

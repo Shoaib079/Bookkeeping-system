@@ -37,7 +37,6 @@ from registry.nav_keys import (
     NAV_REPORTS,
     NAV_RECON_HEALTH,
     NAV_SALES,
-    NAV_TODAY_SUMMARY,
     NAV_TRIAL_BALANCE,
     NAV_TXN_LEDGER,
     NAV_VENDORS,
@@ -181,7 +180,6 @@ MODULES: tuple[ModuleDef, ...] = (
 NAV_PAGES_IN_APP = frozenset(
     {
         NAV_HOME,
-        NAV_TODAY_SUMMARY,
         NAV_NEW_TRANSACTION,
         NAV_TXN_LEDGER,
         NAV_SALES,

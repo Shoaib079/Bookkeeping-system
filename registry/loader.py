@@ -121,7 +121,7 @@ def validate_registry() -> None:
                 raise ValueError(f"Bundle {mode} references unknown setting {policy_key}")
 
     nav_mapped = {m.nav_page for m in MODULES if m.nav_page and not m.planned}
-    unmapped_nav = NAV_PAGES_IN_APP - nav_mapped - {"Today's Summary"}
+    unmapped_nav = NAV_PAGES_IN_APP - nav_mapped
     if unmapped_nav:
         raise ValueError(f"Nav pages missing module registry entries: {sorted(unmapped_nav)}")
 

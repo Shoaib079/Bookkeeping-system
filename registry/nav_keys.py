@@ -50,7 +50,6 @@ NAV_MY_ACCOUNT = "My Account"
 ALL_NAV_PAGE_KEYS: frozenset[str] = frozenset(
     {
         NAV_HOME,
-        NAV_TODAY_SUMMARY,
         NAV_NEW_TRANSACTION,
         NAV_TXN_LEDGER,
         NAV_SALES,
@@ -98,7 +97,8 @@ ALL_NAV_PAGE_KEYS: frozenset[str] = frozenset(
 # Migrate persisted nav_selection / bookmarks from emoji-prefixed keys (LOGO-BUG / ICON-SWEEP).
 LEGACY_NAV_ALIASES: dict[str, str] = {
     "🏠 Home": NAV_HOME,
-    "📅 Today's Summary": NAV_TODAY_SUMMARY,
+    "📅 Today's Summary": NAV_REPORTS,
+    "Today's Summary": NAV_REPORTS,
     "➕ New Transaction": NAV_NEW_TRANSACTION,
     "📒 Transaction Ledger": NAV_TXN_LEDGER,
     "📒️ Transaction Ledger": NAV_TXN_LEDGER,
