@@ -405,6 +405,11 @@ from services import read_ar_ap as _read_ar_ap_svc
 from services import read_partner_statement as _read_pstmt_svc
 from services import audit as _audit_svc
 from services import permissions as _perms_svc
+from services.session_policy import (
+    MODE_BROWSER_SESSION,
+    build_session_policy,
+    compute_session_expiry,
+)
 
 # Initialize database
 Base.metadata.create_all(bind=engine)
@@ -2768,12 +2773,29 @@ def initialize_categories(session):
 # Authentication helpers (Step 1.5 + Block 4)
 # ─────────────────────────────────────────────────────────────────────────────
 
-_SESSION_TTL_HOURS = 8  # session expires after 8 hours of inactivity
+_SESSION_TTL_HOURS = 8  # backward-compat alias; sourced from browser_session policy
+_RESTORE_TOKEN_TTL_HOURS = 8  # backward-compat alias; sourced from browser_session policy
+
+
+def _active_session_policy():
+    """IMPL-2: browser_session only until remember-device UI (IMPL-2+)."""
+    return build_session_policy(MODE_BROWSER_SESSION)
+
+
+def _sync_session_ttl_aliases() -> None:
+    """Keep legacy hour constants aligned with the active policy."""
+    global _SESSION_TTL_HOURS, _RESTORE_TOKEN_TTL_HOURS
+    policy = _active_session_policy()
+    _SESSION_TTL_HOURS = policy.idle_ttl_seconds // 3600
+    _RESTORE_TOKEN_TTL_HOURS = policy.cookie_ttl_seconds // 3600
+
 
 # UX-01 — narrow session restore (user identity + active company only)
 _RESTORE_COOKIE = "erp_session_restore"
 _RESTORE_SECRET_ENV = "ERP_SESSION_RESTORE_SECRET"
-_RESTORE_TOKEN_TTL_HOURS = 8
+
+
+_sync_session_ttl_aliases()
 
 
 def _restore_secret_configured() -> bool:
@@ -2803,7 +2825,8 @@ def _mint_restore_token(
     if not secret:
         return None
     now = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
-    exp = now + _RESTORE_TOKEN_TTL_HOURS * 3600
+    policy = _active_session_policy()
+    exp = now + policy.cookie_ttl_seconds
     ph_frag = _password_hash_fragment(password_hash)
     if not ph_frag:
         return None
@@ -2850,7 +2873,7 @@ def _render_session_restore_cookie(*, token: str | None = None, clear: bool = Fa
     """JS-set restore cookie (not HttpOnly — see UX-01 docs). DEV_MODE skips entirely."""
     if DEV_MODE or not _restore_secret_configured():
         return
-    max_age = _RESTORE_TOKEN_TTL_HOURS * 3600
+    max_age = _active_session_policy().cookie_ttl_seconds
     if clear or not token:
         js = (
             "(function(){var d=window.parent.document||document;"
@@ -4807,7 +4830,12 @@ def _establish_auth_session(
         "last_login": getattr(user, "last_login", None),
         "created_at": user.created_at,
     }
-    st.session_state["auth_expires"] = datetime.datetime.now() + datetime.timedelta(hours=_SESSION_TTL_HOURS)
+    now = datetime.datetime.now()
+    policy = _active_session_policy()
+    st.session_state["session_started_at"] = now
+    st.session_state["auth_expires"] = compute_session_expiry(
+        now, policy, session_started_at=now
+    )
     st.session_state["active_company_membership_count"] = len(_memberships)
 
     if len(_memberships) == 0:
@@ -4872,7 +4900,7 @@ def _logout():
     st.session_state[_SESSION_LOGGED_OUT] = True
     _clear_permission_cache()
     for _k in (
-        "auth_user", "auth_expires",
+        "auth_user", "auth_expires", "session_started_at",
         "active_company_id", "active_company_role",
         "active_company_name", "active_company_membership_count",
         "_confirm_company_switch", "_switch_target_company_id",
@@ -4912,7 +4940,7 @@ def _go_to_company_picker() -> None:
     _preserve = {
         k: st.session_state[k]
         for k in (
-            "auth_user", "auth_expires",
+            "auth_user", "auth_expires", "session_started_at",
             "active_company_membership_count", "theme_mode", "dark_mode",
         )
         if k in st.session_state
@@ -26181,8 +26209,11 @@ def render_my_account(session):
             si1.metric(_t("myaccount.last_login"),
                        _last.strftime("%d %b %Y %H:%M") if _last else "—")
             _exp = st.session_state.get("auth_expires")
+            _started = st.session_state.get("session_started_at")
+            if _started is None and _exp:
+                _policy = _active_session_policy()
+                _started = _exp - datetime.timedelta(seconds=_policy.idle_ttl_seconds)
             if _exp:
-                _started = _exp - datetime.timedelta(hours=_SESSION_TTL_HOURS)
                 si2.metric(_t("myaccount.session_started"), _started.strftime("%H:%M"))
                 si3.metric(_t("myaccount.session_expires"), _exp.strftime("%H:%M"))
             else:

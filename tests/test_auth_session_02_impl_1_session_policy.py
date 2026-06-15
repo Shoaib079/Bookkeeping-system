@@ -116,8 +116,10 @@ class TestPurity:
                 roots.add(node.module.split(".")[0])
         assert "streamlit" not in roots
 
-    def test_app_does_not_import_session_policy_yet(self):
+    def test_app_imports_session_policy(self):
         app_src = Path(__file__).resolve().parents[1].joinpath("app.py").read_text(
             encoding="utf-8"
         )
-        assert "session_policy" not in app_src
+        assert "from services.session_policy import" in app_src
+        assert "build_session_policy" in app_src
+        assert "compute_session_expiry" in app_src

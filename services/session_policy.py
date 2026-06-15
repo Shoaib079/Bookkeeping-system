@@ -1,7 +1,7 @@
 """AUTH-SESSION-02-IMPL-1 — pure session policy (browser vs remember-device).
 
 Defines idle vs absolute TTLs for live session expiry and restore-cookie max-age.
-**Not wired** to ``app.py`` auth yet — policy-only seam for Streamlit + FastAPI.
+Wired in ``app.py`` via AUTH-SESSION-02-IMPL-2 (browser_session only).
 
 No Streamlit, no cookie/token format change, no schema change.
 """
