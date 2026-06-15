@@ -1252,3 +1252,34 @@ class ReceiptDraftSuggestion(Base):
     created_at = Column(DateTime, nullable=False)
 
     created_by = relationship("User", foreign_keys=[created_by_id])
+
+
+class ReceiptLearningMap(Base):
+    """Company-scoped learned receipt/POS mapping (approval-driven)."""
+    __tablename__ = "receipt_learning_map"
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id",
+            "signature_type",
+            "signature_key",
+            "target_kind",
+            "target_id",
+            "target_value",
+            name="uq_rcpt_learn_map_target",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, nullable=False, index=True)
+    signature_type = Column(String(30), nullable=False, index=True)
+    signature_key = Column(String(200), nullable=False, index=True)
+    target_kind = Column(String(30), nullable=False)
+    target_id = Column(Integer, nullable=True)
+    target_value = Column(String(200), nullable=True)
+    approval_count = Column(Integer, nullable=False, default=0)
+    correction_count = Column(Integer, nullable=False, default=0)
+    last_approved_at = Column(DateTime, nullable=True)
+    confidence_cached = Column(Float, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, nullable=False)
+    updated_at = Column(DateTime, nullable=False)

@@ -117,6 +117,8 @@ _SUPPLEMENTAL_INDEX_SQL: tuple[str, ...] = (
     'CREATE INDEX ix_rcptsugg_company_id ON receipt_draft_suggestions (company_id)',
     'CREATE INDEX ix_rcptsugg_draft_id ON receipt_draft_suggestions (draft_id)',
     'CREATE INDEX ix_rcptsugg_attachment_sha ON receipt_draft_suggestions (attachment_sha256)',
+    'CREATE INDEX ix_rcptlearn_company_id ON receipt_learning_map (company_id)',
+    'CREATE INDEX ix_rcptlearn_signature ON receipt_learning_map (company_id, signature_type, signature_key)',
     'CREATE INDEX ix_txcat_company_id ON transaction_categories (company_id)',
     'CREATE INDEX ix_txsub_company_id ON transaction_subcategories (company_id)',
     'CREATE INDEX ix_retmpl_company_id ON recurring_expense_templates (company_id)',

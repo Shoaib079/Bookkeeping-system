@@ -10,7 +10,7 @@
 
 ## No schema / no table
 
-This slice **does not** create `receipt_learning_map` or any migration. Persistent storage is **RECEIPT-AI-02-IMPL-3** (future).
+This slice **does not** create `receipt_learning_map` or any migration. Persistent storage is **RECEIPT-AI-02-IMPL-3** — see [RECEIPT_AI_02_IMPL_3.md](./RECEIPT_AI_02_IMPL_3.md).
 
 ## Learned mappings
 
