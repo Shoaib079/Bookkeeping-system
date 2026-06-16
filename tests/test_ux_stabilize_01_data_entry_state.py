@@ -151,17 +151,18 @@ def test_post_save_clears_category_keys_after_helper(monkeypatch):
 
 def test_render_add_transaction_worker_branch_clears_categories():
     src = inspect.getsource(erp.render_add_transaction)
-    worker_block = src.split('if expense_mode == "worker":', 1)[1].split("else:", 1)[0]
-    assert "_at_clear_category_session_state()" in worker_block
+    worker_block = src.split("if _at_is_worker_expense_entry():", 1)[1].split("else:", 1)[0]
+    assert "_at_render_worker_expense_panel(" in worker_block
+    assert "_inline_cat_row" not in worker_block
 
 
-def test_mobile_salary_branch_clears_categories():
+def test_mobile_salary_branch_uses_worker_panel():
     src = inspect.getsource(erp._render_add_transaction_mobile)
-    salary_block = src.split("if _mob_at_is_salary_mode():", 1)[1].split(
+    worker_block = src.split("if _at_is_worker_expense_entry():", 1)[1].split(
         "elif at_idx == 0:", 1
     )[0]
-    assert "_at_clear_category_session_state()" in salary_block
-    assert "_mob_at_render_quick_cat_chips" not in salary_block
+    assert "_at_render_worker_expense_panel(" in worker_block
+    assert "_mob_at_render_quick_cat_chips" not in worker_block
 
 
 def test_main_page_change_calls_scroll_helper():

@@ -5370,6 +5370,7 @@ _AT_POST_SAVE_CLEAR_KEYS = (
     "at_date_text_sync_from",
     "_mob_at_coerce_pm_type",
     "at_pending_attachment",
+    "_at_worker_expense_active",
 )
 
 
@@ -12716,6 +12717,146 @@ def _at_clear_worker_entry_session_state() -> None:
         st.session_state.pop(_k, None)
 
 
+def _at_presync_salary_expense_mode() -> None:
+    """Align session flags when mobile Salary type (or synced tabs) implies worker entry."""
+    if _mob_at_is_salary_mode():
+        st.session_state["at_expense_mode"] = "worker"
+        st.session_state.setdefault("at_worker_mv_type", "Salary")
+
+
+def _at_apply_worker_expense_mode_transitions() -> None:
+    """Edge-trigger category/worker clears when entering or leaving worker expense entry."""
+    _is_worker = _at_is_worker_expense_entry()
+    _was_worker = bool(st.session_state.get("_at_worker_expense_active", False))
+    if _is_worker and not _was_worker:
+        _at_clear_category_session_state()
+    elif _was_worker and not _is_worker:
+        _at_clear_worker_entry_session_state()
+    st.session_state["_at_worker_expense_active"] = _is_worker
+
+
+def _at_list_active_workers(session) -> list:
+    return (
+        cq(session, Worker)
+        .filter_by(is_active=True)
+        .order_by(Worker.name)
+        .all()
+    )
+
+
+def _at_render_worker_expense_no_workers(*, mobile: bool, key_prefix: str) -> None:
+    """Prompt to register workers when none are active."""
+    if mobile:
+        st.caption(_t("worker.no_workers"))
+        if st.button(
+            _t("worker.tab_workers"),
+            key=f"{key_prefix}_goto_workers",
+            use_container_width=True,
+            type="secondary",
+        ):
+            st.session_state["nav_selection"] = NAV_WORKERS
+            _mobile_close_app_surfaces()
+            st.rerun()
+    else:
+        st.info(_t("worker.add_workers_first"))
+
+
+def _at_render_worker_salary_amount_fields(*, mobile: bool) -> None:
+    """Gross / deductions / advance recovery (+ optional pay period on desktop)."""
+    gross_key = "mob_at_worker_gross" if mobile else "at_worker_gross"
+    ded_key = "mob_at_worker_ded" if mobile else "at_worker_ded"
+    adv_key = "mob_at_worker_adv_rec" if mobile else "at_worker_adv_rec"
+    if mobile:
+        st.caption(_tf("txn.mob.salary_net_hint", "Keypad amount = net pay (cash out)"))
+        amount_input(_t("worker.gross"), key=gross_key)
+        sc1, sc2 = st.columns(2, gap="small")
+        amount_input(
+            _t("worker.deductions"),
+            key=ded_key,
+            default=0.0,
+            container=sc1,
+        )
+        amount_input(
+            _t("worker.advance_recovery"),
+            key=adv_key,
+            default=0.0,
+            container=sc2,
+        )
+        st.text_input(
+            _t("worker.pay_period"),
+            key="mob_at_worker_period",
+            label_visibility="collapsed",
+            placeholder=_t("worker.pay_period"),
+        )
+    else:
+        st.text_input(_t("worker.pay_period"), key="at_worker_period")
+        sc1, sc2 = st.columns(2)
+        amount_input(_t("worker.gross"), key=gross_key, container=sc1)
+        amount_input(
+            _t("worker.deductions"),
+            key=ded_key,
+            default=0.0,
+            container=sc2,
+        )
+        amount_input(
+            _t("worker.advance_recovery"),
+            key=adv_key,
+            default=0.0,
+        )
+
+
+def _at_render_worker_expense_panel(
+    session,
+    currency_default: str,
+    *,
+    mobile: bool = False,
+) -> None:
+    """Worker picker + Salary/Advance fields — shared desktop/mobile worker expense entry."""
+    st.caption(_t("txn.expense_mode.worker_hint"))
+    worker_key = "mob_at_worker_id" if mobile else "at_worker_id"
+    workers = _at_list_active_workers(session)
+    if workers:
+        w_labels = {w.id: w.name for w in workers}
+        st.selectbox(
+            _t("worker.mv_worker_label"),
+            options=list(w_labels.keys()),
+            format_func=lambda i: w_labels[i],
+            key=worker_key,
+            label_visibility="collapsed" if mobile else "visible",
+        )
+    else:
+        _at_render_worker_expense_no_workers(
+            mobile=mobile,
+            key_prefix="mob_at" if mobile else "at",
+        )
+
+    st.selectbox(
+        _t("worker.mv_type_label"),
+        ["Salary", "Advance"],
+        format_func=lambda v: _i18n_db(_WORKER_MOVEMENT_TYPE_I18N, v),
+        key="at_worker_mv_type",
+        label_visibility="collapsed" if mobile else "visible",
+    )
+
+    if st.session_state.get("at_worker_mv_type") == "Salary":
+        _at_render_worker_salary_amount_fields(mobile=mobile)
+        st.caption(_t("txn.expense_worker_net_hint"))
+    else:
+        st.caption(_t("txn.expense_worker_advance_hint"))
+
+    _wid = st.session_state.get(worker_key)
+    if _wid:
+        _adv = get_worker_advance_balance(session, _wid)
+        if _adv > 0.01:
+            st.caption(
+                _t(
+                    "worker.advance_max_hint",
+                    currency=currency_default,
+                    amount=_adv,
+                )
+            )
+
+
 def _at_effective_txn_type(type_names: list[str]) -> str:
     """Map at_type_idx to a real posting type (Salary chip uses idx 6 → Expense)."""
     idx = st.session_state.get("at_type_idx", 0)
@@ -13118,27 +13259,8 @@ def _mob_at_render_fx_hook(currency_default: str) -> None:
 
 
 def _mob_at_render_salary_fields(session, currency_default: str) -> None:
-    st.caption(_tf("txn.mob.salary_net_hint", "Keypad amount = net pay (cash out)"))
-    amount_input(_t("worker.gross"), key="mob_at_worker_gross")
-    sc1, sc2 = st.columns(2, gap="small")
-    amount_input(
-        _t("worker.deductions"),
-        key="mob_at_worker_ded",
-        default=0.0,
-        container=sc1,
-    )
-    amount_input(
-        _t("worker.advance_recovery"),
-        key="mob_at_worker_adv_rec",
-        default=0.0,
-        container=sc2,
-    )
-    st.text_input(
-        _t("worker.pay_period"),
-        key="mob_at_worker_period",
-        label_visibility="collapsed",
-        placeholder=_t("worker.pay_period"),
-    )
+    """Mobile Salary type — delegate to shared worker salary amount row."""
+    _at_render_worker_salary_amount_fields(mobile=True)
     _wid = st.session_state.get("mob_at_worker_id")
     if _wid:
         _adv = get_worker_advance_balance(session, _wid)
@@ -13498,18 +13620,24 @@ def _at_process_submit(
                 )
                 return
 
-    if _mob_at_is_salary_mode():
+    if _at_is_worker_expense_entry():
         st.session_state["at_expense_mode"] = "worker"
-        st.session_state["at_worker_mv_type"] = "Salary"
         _mob_at_sync_select_widgets()
+        st.session_state.setdefault("at_worker_mv_type", "Salary")
         st.session_state["at_worker_gross"] = (
-            st.session_state.get("mob_at_worker_gross") or ""
+            st.session_state.get("mob_at_worker_gross")
+            or st.session_state.get("at_worker_gross")
+            or ""
         )
         st.session_state["at_worker_ded"] = str(
-            st.session_state.get("mob_at_worker_ded") or "0"
+            st.session_state.get("mob_at_worker_ded")
+            or st.session_state.get("at_worker_ded")
+            or "0"
         )
         st.session_state["at_worker_adv_rec"] = str(
-            st.session_state.get("mob_at_worker_adv_rec") or "0"
+            st.session_state.get("mob_at_worker_adv_rec")
+            or st.session_state.get("at_worker_adv_rec")
+            or "0"
         )
         txn_type = "Expense"
 
@@ -13528,10 +13656,15 @@ def _at_process_submit(
     ):
         st.error(_cr_cust_err)
         _at_set_flash("error", _cr_cust_err)
-    elif _mob_at_is_salary_mode() and not st.session_state.get("at_worker_id"):
+    elif _at_is_worker_expense_entry() and not st.session_state.get("at_worker_id"):
         st.error(_t("txn.expense_worker_required"))
-    elif _mob_at_is_salary_mode() and not _parse_amount_str(
-        st.session_state.get("mob_at_worker_gross", "")
+    elif (
+        _at_is_worker_expense_entry()
+        and st.session_state.get("at_worker_mv_type", "Salary") == "Salary"
+        and not _parse_amount_str(
+            st.session_state.get("at_worker_gross")
+            or st.session_state.get("mob_at_worker_gross", "")
+        )
     ):
         st.error(_t("txn.invalid_amount_zero"))
     elif txn_type == "Supplier Payment" and (
@@ -13773,29 +13906,18 @@ def _render_add_transaction_mobile(
             if _mob_at_render_pm_chip_row(session, txn_type):
                 st.rerun()
 
+            _at_presync_salary_expense_mode()
+            _at_apply_worker_expense_mode_transitions()
+
             # ── Context-specific fields ──
-            if _mob_at_is_salary_mode():
-                _at_clear_category_session_state()
-                workers = (
-                    cq(session, Worker)
-                    .filter_by(is_active=True)
-                    .order_by(Worker.name)
-                    .all()
+            if _at_is_worker_expense_entry():
+                _at_render_worker_expense_panel(
+                    session, currency_default, mobile=True
                 )
-                if workers:
-                    w_labels = {w.id: w.name for w in workers}
-                    st.selectbox(
-                        _t("worker.mv_worker_label"),
-                        options=list(w_labels.keys()),
-                        format_func=lambda i: w_labels[i],
-                        key="mob_at_worker_id",
-                        label_visibility="collapsed",
-                    )
-                else:
-                    st.caption(_t("worker.no_workers"))
-                if _mob_at_maybe_bank_pay_trigger(bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")):
+                if _mob_at_maybe_bank_pay_trigger(
+                    bank_accounts, payment_method=st.session_state.get("at_pm", "Cash")
+                ):
                     st.rerun()
-                _mob_at_render_salary_fields(session, currency_default)
                 _mob_at_render_fx_hook(currency_default)
 
             elif at_idx == 0:  # Sale
@@ -13967,13 +14089,17 @@ def render_add_transaction(session):
     _type_css             = _TYPE_CSS_CLASS.get(txn_type, "sale")
     _coerce_at_payment_method(session, txn_type)
     _mob_at_ensure_defaults(session, txn_type, currency_default, vendors)
+    if txn_type == "Expense":
+        _at_presync_salary_expense_mode()
 
     # ── Category / Subcategory lookup (must stay outside layout for live rerender)
     at_cat       = None
     at_cat_id    = None
     subcats_list = []
     cats         = []
-    if txn_type in ("Expense", "Purchase"):
+    if txn_type in ("Expense", "Purchase") and not (
+        txn_type == "Expense" and _at_is_worker_expense_entry()
+    ):
         cats = _at_filter_transaction_categories(
             cq(session, TransactionCategory)
             .filter_by(transaction_type=txn_type, is_active=True)
@@ -14166,6 +14292,7 @@ def render_add_transaction(session):
                                     )
 
                         elif txn_type == "Expense":
+                            _at_presync_salary_expense_mode()
                             fc1, fc2 = st.columns(2)
                             at_payment_method = fc1.selectbox(
                                 "💳 " + _t("form.payment_method"),
@@ -14177,72 +14304,19 @@ def render_add_transaction(session):
                                           index=CURRENCIES.index(currency_default) if currency_default in CURRENCIES else 0,
                                           key="at_currency")
 
-                            _exp_modes = ["general", "worker"]
-                            if not _has_active_workers(session):
-                                _exp_modes = ["general"]
                             expense_mode = st.radio(
                                 _t("txn.expense_mode_label"),
-                                _exp_modes,
+                                ["general", "worker"],
                                 format_func=lambda m: _t(f"txn.expense_mode.{m}"),
                                 horizontal=True,
                                 key="at_expense_mode",
                             )
+                            _at_apply_worker_expense_mode_transitions()
 
-                            if expense_mode == "worker":
-                                _at_clear_category_session_state()
-                                st.caption(_t("txn.expense_mode.worker_hint"))
-                                workers = (
-                                    cq(session, Worker)
-                                    .filter_by(is_active=True)
-                                    .order_by(Worker.name)
-                                    .all()
+                            if _at_is_worker_expense_entry():
+                                _at_render_worker_expense_panel(
+                                    session, currency_default, mobile=False
                                 )
-                                w_labels = {w.id: w.name for w in workers}
-                                st.selectbox(
-                                    _t("worker.mv_worker_label"),
-                                    options=list(w_labels.keys()),
-                                    format_func=lambda i: w_labels[i],
-                                    key="at_worker_id",
-                                )
-                                st.selectbox(
-                                    _t("worker.mv_type_label"),
-                                    ["Salary", "Advance"],
-                                    format_func=lambda v: _i18n_db(_WORKER_MOVEMENT_TYPE_I18N, v),
-                                    key="at_worker_mv_type",
-                                )
-                                if st.session_state.get("at_worker_mv_type") == "Salary":
-                                    st.text_input(_t("worker.pay_period"), key="at_worker_period")
-                                    sc1, sc2 = st.columns(2)
-                                    amount_input(
-                                        _t("worker.gross"),
-                                        key="at_worker_gross",
-                                        container=sc1,
-                                    )
-                                    amount_input(
-                                        _t("worker.deductions"),
-                                        key="at_worker_ded",
-                                        default=0.0,
-                                        container=sc2,
-                                    )
-                                    amount_input(
-                                        _t("worker.advance_recovery"),
-                                        key="at_worker_adv_rec",
-                                        default=0.0,
-                                    )
-                                    _wid = st.session_state.get("at_worker_id")
-                                    if _wid:
-                                        _adv = get_worker_advance_balance(session, _wid)
-                                        if _adv > 0.01:
-                                            st.caption(
-                                                _t(
-                                                    "worker.advance_max_hint",
-                                                    currency=currency_default,
-                                                    amount=_adv,
-                                                )
-                                            )
-                                    st.caption(_t("txn.expense_worker_net_hint"))
-                                else:
-                                    st.caption(_t("txn.expense_worker_advance_hint"))
                                 at_cat = at_cat_id = None
                                 at_subcat_name = None
                                 subcats_list = []

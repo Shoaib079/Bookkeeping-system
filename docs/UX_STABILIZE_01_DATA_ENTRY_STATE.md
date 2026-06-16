@@ -44,3 +44,11 @@ After save: **keep** transaction section (`at_type_idx` / mobile tab sync) + dat
 - Salary posting / `post_worker_movement` / GL logic
 - NAV_ARCH audit files (left untracked)
 - PostgreSQL runtime / migration
+
+## Regression fix (2026-06-05)
+
+**Symptom:** Worker Salary / Advance showed category/subcategory; worker picker missing.
+
+**Cause:** UI branched on `expense_mode == "worker"` (radio return value) while `_at_is_worker_expense_entry()` could be true via mobile Salary tab sync (`mob_at_tab` + `mob_at_more_idx`) before `at_expense_mode` was synced; empty-worker gating hid the worker radio entirely on desktop.
+
+**Fix:** `_at_presync_salary_expense_mode()`, `_at_apply_worker_expense_mode_transitions()`, shared `_at_render_worker_expense_panel()`; branch on `_at_is_worker_expense_entry()`; always offer worker/general radio; no-workers prompt restored.

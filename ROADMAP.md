@@ -2396,6 +2396,8 @@ Full audit + closure: [docs/AUDIT_HISTORY.md](./docs/AUDIT_HISTORY.md) §2026-06
 
 **Tests:** `tests/test_ux_stabilize_01_data_entry_state.py` + existing `test_ux04a_post_save_retention.py`, `test_add_txn_fix01.py`, `test_add_txn_fix01::test_worker_salary_cash_posting_succeeds`.
 
+**Regression fix (2026-06-05):** Desktop branch used `expense_mode == "worker"` while mobile Salary tab flags could set `_at_is_worker_expense_entry()` without syncing `at_expense_mode`; shared `_at_render_worker_expense_panel()` + presync/transition helpers. Tag: `ux-stabilize-01-worker-form-regression-fix`.
+
 **Out of scope:** posting/accounting logic, PostgreSQL migration, NAV_ARCH untracked files.
 
 ---
