@@ -89,7 +89,8 @@ class TestStatusAtAGlance:
         assert "PostgreSQL runtime" in glance
         assert "test-only" in glance
         assert "SQLite" in glance
-        assert "MONEY-DECIMAL-01" in glance
+        assert "MONEY-DECIMAL-03" in glance
+        assert "MONEY-DECIMAL-04" in glance
 
     def test_react_not_started(self, text: str):
         glance = _section_after("## Status at a glance", text, limit=12000)
@@ -109,7 +110,7 @@ class TestCurrentPriority:
         assert "BS-03" in block
         assert "AUTH-SESSION-02-IMPL-3" in block
         assert "P2-HARDEN-01" in block
-        assert "MONEY-DECIMAL-01" in block
+        assert "MONEY-DECIMAL-04" in block
         assert "React migration" in block
 
 

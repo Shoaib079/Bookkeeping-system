@@ -224,7 +224,7 @@ No implementation before roadmap approval.
 | **REPORTS-SERVICE-01** | 🟡 **Partial** — query/read layer in `services/read_*`; Streamlit presentation (`render_*`, trial balance loop) remains in `app.py` until React |
 | **BANKING-SERVICE-01** | 🟡 **Partial** — `write_banking` + `write_reconciliation` + `read_reconciliation` shipped; **BS-02 ✅** · **BS-04 ✅** · `match_post` / `company_card` `_app()` coupling remains · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) |
 | **FastAPI foundation** | 🟡 **Partial (strong)** — P0/P1/P2 routes + 38+ `test_fastapi_*` files; writes feature-flagged; Streamlit primary; **not production-complete** |
-| **PostgreSQL runtime** | 🟡 **Partial / test-only** — SQLite remains runtime; PG test-only; Alembic authority feature-flagged; **MONEY-DECIMAL-01 remains blocker** |
+| **PostgreSQL runtime** | 🟡 **Partial / test-only** — SQLite remains runtime; PG test-only; Alembic authority feature-flagged; **MONEY-DECIMAL-03** ✅ helpers · **MONEY-DECIMAL-04+** PG blocker |
 | **React migration** | ⬜ **Not started** — `ERP_DS_05` spec only; no SPA |
 | **FULL-SERVICE-READINESS-AUDIT** | ✅ **Recorded (2026-06-05)** — whole-repo service-extraction snapshot · [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) |
 | **DOCS-MIGRATION-CHECKPOINT-01** | ✅ **Recorded (2026-06)** — register drift fix after FASTAPI-READINESS-CHECKPOINT · [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) |
@@ -257,7 +257,7 @@ No implementation before roadmap approval.
 2. **BANKING-SERVICE-01-BS-03** — `company_card` CC bill payment JE explicit `company_id` (**BS-04 ✅** — [BS-04 note](./docs/BANKING_SERVICE_01_BS04.md)).
 3. **AUTH-SESSION-02-IMPL-3** — idle extension characterization + wiring (`should_extend_idle`).
 4. **P2-HARDEN-01** — `company_id` stamping audit across FastAPI `write_*` services.
-5. **MONEY-DECIMAL-01** — prepare for PostgreSQL runtime (`Float` → `Decimal`).
+5. **MONEY-DECIMAL-04+** — posting kernel Decimal math + Numeric migration (MD-01/02/03 ✅).
 6. **PostgreSQL runtime cutover** — after decimal + Alembic authority bake-in.
 7. **React migration** — Phase D after API/service hardening.
 
@@ -270,7 +270,7 @@ No implementation before roadmap approval.
 | **RECEIPT-AI-01** | ✅ Complete — service seam; no OCR provider |
 | **RECEIPT-AI-02** | ✅ IMPL-1–5 complete — prefill loop; approval/void hooks deferred |
 | **FastAPI foundation** | 🟡 Partial (strong) — P0–P2; writes flag-gated; not production-complete |
-| **PostgreSQL runtime** | 🟡 Partial / test-only — SQLite runtime; MONEY-DECIMAL-01 blocker |
+| **PostgreSQL runtime** | 🟡 Partial / test-only — SQLite runtime; MONEY-DECIMAL-04+ blocker |
 | **React migration** | ⬜ Not started — specs only |
 
 **🚧 BUILD GATE (active):** Do **not** build large new Streamlit UI surfaces before **banking service extraction** and **API hardening** land. Allowed: OBS-01 friction fixes, service-first screen-light phases (RC-P2B/P3 class), thin UI over existing services. Screens are the layer React replaces — invest in services, not chrome.
@@ -2809,7 +2809,9 @@ Does **not** authorize FastAPI/React implementation start. Baseline assessment o
 | ID | Scope | Status |
 |----|--------|--------|
 | [POSTING-SERVICE-01](#posting-service-01--keystone-migration-task) | GL posting engine | ✅ Complete |
-| [MONEY-DECIMAL-01](#money-decimal-01) | `Float` → `Decimal` | Open |
+| [MONEY-DECIMAL-01](#money-decimal-01) | `Float` → `Decimal` audit | ✅ Audit |
+| [MONEY-DECIMAL-02](#money-decimal-02) | Golden posting vectors (Float baseline) | ✅ Complete |
+| [MONEY-DECIMAL-03](#money-decimal-03) | `services/money.py` Decimal helpers | ✅ Complete |
 | [ALEMBIC-01](#alembic-01) | Alembic replaces `migrate_schema()` | Open |
 | [BANKING-SERVICE-01](#banking-service-01) | Banking subledger logic | 🟡 Partial |
 | [REPORTS-SERVICE-01](#reports-service-01) | Report query/aggregation | 🟡 Partial (query layer) |
@@ -2839,15 +2841,35 @@ Extract the accounting posting engine from `app.py` into a reusable service (`se
 #### MONEY-DECIMAL-01
 
 **Priority:** High (migration prep)  
-**Status:** 🟡 **Audit complete** (2026-06-16) — 99 Float columns inventoried; PG **production** blocked until Numeric migration characterized
+**Status:** ✅ **Audit complete** (2026-06-16) — 99 Float columns inventoried; PG **production** blocked until Numeric migration characterized
 
 Replace `Float` money columns and arithmetic with `Decimal`/`Numeric` across models and services before PostgreSQL **production** runtime cutover. SQLite remains runtime; PG is test-only. Float engine swap is safe ([P3.1](./docs/P3_1_POSTGRES_COMPATIBILITY_AUDIT.md)); **Numeric semantics change** is the blocker.
 
 **Audit:** [MONEY_DECIMAL_01_AUDIT.md](./docs/MONEY_DECIMAL_01_AUDIT.md) · contract: `tests/test_money_decimal_01_audit.py`
 
-**Next slices:** MD-02 golden posting vectors → MD-03 money helpers → MD-04 posting kernel → MD-05 Alembic Numeric (PG test)
+**Next slices:** ~~MD-02 golden vectors~~ ✅ · ~~MD-03 money helpers~~ ✅ → MD-04 posting kernel → MD-05 Alembic Numeric (PG test)
 
 Aligns with [TD-MIG-04](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#global-migration-td-mig).
+
+#### MONEY-DECIMAL-02
+
+**Priority:** High (migration prep)  
+**Status:** ✅ **Complete** (2026-06-16) — golden Float posting vectors pinned before Decimal conversion
+
+Tests-only slice: captures current JE balance guard, basic posting at **100.01**, profit-allocation penny absorption, multi-line accumulation, void/reversal symmetry, report/GL parity, and TRY/USD/EUR `amount_native` rounding.
+
+**Doc:** [MONEY_DECIMAL_02_GOLDEN_VECTORS.md](./docs/MONEY_DECIMAL_02_GOLDEN_VECTORS.md) · contract: `tests/test_money_decimal_02_golden_posting_vectors.py`
+
+**Rules honored:** no production code, schema, Alembic, or Decimal changes.
+
+#### MONEY-DECIMAL-03
+
+**Priority:** High (migration prep)  
+**Status:** ✅ **Complete** (2026-06-16) — pure `services/money.py` parse/quantize helpers; not wired into posting
+
+Centralizes `Decimal` boundary parsing and `ROUND_HALF_UP` quantization (2/4/8 dp) for future MD-04 posting-kernel migration. No schema, model, Alembic, or posting changes.
+
+**Doc:** [MONEY_DECIMAL_03_HELPERS.md](./docs/MONEY_DECIMAL_03_HELPERS.md) · contract: `tests/test_money_decimal_03_money_helpers.py`
 
 #### ALEMBIC-01
 
