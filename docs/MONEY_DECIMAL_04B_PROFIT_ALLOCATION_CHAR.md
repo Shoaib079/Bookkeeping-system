@@ -15,7 +15,7 @@
 |------|-----------------|
 | Share algorithm | `round(abs_income × pct / 100, 2)`; last partner `round(abs_income − running, 2)` |
 | Rounding mode | Python built-in `round` (banker's rounding on halves) |
-| Money helpers | **Not** used in `allocate_profit_to_partners` (MD-04a scope) |
+| Money helpers | `_allocation_share_float` → `money_to_float` (MD-04b); parity with vectors below |
 | Share validation | Active partners must sum to 100 ± 0.01% |
 | Profit JE | Dr Retained Earnings / Cr Partner Current |
 | Loss JE | Dr Partner Current / Cr Retained Earnings |
@@ -71,16 +71,21 @@ Loss lines stored as negative `PartnerProfitAllocationLine.amount`; JE uses posi
 
 ---
 
-## Source contract
+## Source contract (post MD-04b)
 
 `allocate_profit_to_partners` block in `services/posting.py` must contain:
 
-- `round(abs_income * p.profit_share_pct / 100.0, 2)`
-- `round(abs_income - running, 2)`
-- No `services.money` / `money_to_float` / `quantize_money`
+- `_allocation_share_float(abs_income * p.profit_share_pct / 100.0)`
+- `_allocation_share_float(abs_income - running)` on last partner
+- `_allocation_share_float` → `money_to_float`
+- No bare `round(..., 2)` in the allocation share loop
+
+Semantic parity with the pre-MD-04b `round` vectors in §1–2 is required (see MD-04b-CHAR tests).
 
 ---
 
-## Next slice
+## Status
 
-**MONEY-DECIMAL-04b** — wire Decimal math into allocation (update golden + char tests intentionally where semantics change).
+**MONEY-DECIMAL-04b ✅** — `money_to_float` wired; MD-04b-CHAR + MD-02 vectors green.
+
+**Next:** **MD-04c+** — posting-kernel Decimal math. Re-run `test_money_decimal_04b_char_profit_allocation_rounding.py` first; failures document semantic drift.
