@@ -7,7 +7,8 @@ revision ``0002_money_numeric`` and ORM column types.
 
 Tier rules (MD-05):
   - ``Numeric(19, 2)`` — currency amounts and balances
-  - ``Numeric(19, 4)`` — ``amount_native`` / ``native_amount`` FX reporting amounts
+  - ``Numeric(19, 4)`` — ``amount_native`` / ``native_amount`` FX reporting amounts;
+    ``ingredients.cost_per_base_unit`` (sub-cent recipe unit costs)
   - ``Numeric(19, 8)`` — ``fx_rate``
   - remain ``Float`` — quantities, percentages, ML confidence scores (not money)
 """
@@ -25,6 +26,7 @@ NUMERIC_19_4: frozenset[tuple[str, str]] = frozenset(
         ("sales", "native_amount"),
         ("expense_records", "native_amount"),
         ("purchases", "native_amount"),
+        ("ingredients", "cost_per_base_unit"),
     }
 )
 
@@ -107,7 +109,6 @@ NUMERIC_19_2: frozenset[tuple[str, str]] = frozenset(
         ("external_sales_verifications", "variance_card"),
         ("external_sales_verifications", "variance_online"),
         ("external_sales_verifications", "z_report_variance"),
-        ("ingredients", "cost_per_base_unit"),
         ("journal_entry_lines", "debit"),
         ("journal_entry_lines", "credit"),
         ("menu_price_history", "price_gross"),

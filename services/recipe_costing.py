@@ -20,7 +20,7 @@ from models import (
     Recipe,
     RecipeLine,
 )
-from services.money import fx_to_float, money_to_float, persist_fx, persist_money
+from services.money import fx_to_float, money_to_float, persist_fx, persist_money, rate_to_float
 from sqlalchemy.orm import Session
 
 MAX_RECURSION_DEPTH = 3
@@ -343,7 +343,7 @@ def to_base_units(quantity: float, unit: str) -> tuple[float, str]:
     if quantity < 0:
         raise ValueError("Quantity cannot be negative.")
     dimension, factor = _unit_dimension_and_factor(unit)
-    return round(quantity * factor, 8), dimension
+    return rate_to_float(quantity * factor), dimension
 
 
 def from_base_units(base_quantity: float, dimension: str, target_unit: str) -> float:
@@ -357,7 +357,7 @@ def from_base_units(base_quantity: float, dimension: str, target_unit: str) -> f
         )
     if factor == 0:
         raise ValueError("Invalid unit conversion factor.")
-    return round(base_quantity / factor, 8)
+    return rate_to_float(base_quantity / factor)
 
 
 # ── Pure validation ───────────────────────────────────────────────────────────
@@ -463,7 +463,7 @@ def _compute_recipe_cost_pure(
                     f"ingredient dimension '{ing.base_dimension}'."
                 )
             effective_qty = base_qty * (1.0 + line.waste_percent / 100.0)
-            line_cost = round(effective_qty * fx_to_float(ing.cost_per_base_unit), 4)
+            line_cost = fx_to_float(effective_qty * fx_to_float(ing.cost_per_base_unit))
             if not ing.is_active:
                 line_warnings.append(f"Ingredient '{ing.name}' is deactivated.")
             line_costs.append(
@@ -506,7 +506,7 @@ def _compute_recipe_cost_pure(
             if yield_base <= 0:
                 raise ValueError(f"Sub-recipe '{sub.name}' yield quantity must be positive.")
             scale = line_base / yield_base
-            line_cost = round(sub_breakdown.total_cost * scale, 4)
+            line_cost = fx_to_float(sub_breakdown.total_cost * scale)
             line_warnings.extend(sub_breakdown.warnings)
             line_costs.append(
                 RecipeLineCost(
@@ -524,9 +524,9 @@ def _compute_recipe_cost_pure(
             total += line_cost
             breakdown_warnings.extend(sub_breakdown.warnings)
 
-    total = round(total, 4)
+    total = fx_to_float(total)
     yield_base, _ = to_base_units(recipe.yield_quantity, recipe.yield_unit)
-    cost_per_yield = round(total / yield_base, 4) if yield_base > 0 else 0.0
+    cost_per_yield = fx_to_float(total / yield_base) if yield_base > 0 else 0.0
 
     return RecipeCostBreakdown(
         recipe_id=recipe.id,
@@ -1402,8 +1402,8 @@ def gross_to_net_price(gross: float, tax_rate_pct: float) -> float:
     if g < 0:
         raise ValueError("Gross price cannot be negative.")
     if tax_rate_pct <= 0:
-        return round(g, 4)
-    return round(g / (1.0 + tax_rate_pct / 100.0), 4)
+        return fx_to_float(g)
+    return fx_to_float(g / (1.0 + tax_rate_pct / 100.0))
 
 
 def net_to_gross_price(net: float, tax_rate_pct: float) -> float:
@@ -1412,20 +1412,20 @@ def net_to_gross_price(net: float, tax_rate_pct: float) -> float:
     if n < 0:
         raise ValueError("Net price cannot be negative.")
     if tax_rate_pct <= 0:
-        return round(n, 4)
-    return round(n * (1.0 + tax_rate_pct / 100.0), 4)
+        return fx_to_float(n)
+    return fx_to_float(n * (1.0 + tax_rate_pct / 100.0))
 
 
 def compute_food_cost_pct(recipe_cost: float, net_selling_price: float) -> float | None:
     if net_selling_price <= 0:
         return None
-    return round((recipe_cost / net_selling_price) * 100.0, 2)
+    return money_to_float((recipe_cost / net_selling_price) * 100.0)
 
 
 def compute_markup_pct(recipe_cost: float, net_selling_price: float) -> float | None:
     if recipe_cost <= 0:
         return None
-    return round(((net_selling_price - recipe_cost) / recipe_cost) * 100.0, 2)
+    return money_to_float(((net_selling_price - recipe_cost) / recipe_cost) * 100.0)
 
 
 def compute_suggested_gross_price(
@@ -1455,7 +1455,7 @@ def compute_menu_profitability_metrics(
         warnings.append("Recipe cost unavailable.")
         recipe_cost_val: float | None = None
     else:
-        recipe_cost_val = round(recipe_cost, 4)
+        recipe_cost_val = fx_to_float(recipe_cost)
 
     net: float | None = None
     gross_profit: float | None = None
@@ -1470,7 +1470,7 @@ def compute_menu_profitability_metrics(
     else:
         net = gross_to_net_price(selling_price_gross, tax_rate_pct)
         if recipe_cost_val is not None:
-            gross_profit = round(net - recipe_cost_val, 4)
+            gross_profit = fx_to_float(net - recipe_cost_val)
             food_pct = compute_food_cost_pct(recipe_cost_val, net)
             markup = compute_markup_pct(recipe_cost_val, net)
             suggested = compute_suggested_gross_price(
@@ -1491,7 +1491,7 @@ def compute_menu_profitability_metrics(
         recipe_cost=recipe_cost_val,
         selling_price_gross=selling_price_gross,
         selling_price_net=net,
-        tax_rate_pct=round(tax_rate_pct, 4),
+        tax_rate_pct=fx_to_float(tax_rate_pct),
         gross_profit=gross_profit,
         food_cost_pct=food_pct,
         markup_pct=markup,
@@ -1759,7 +1759,7 @@ def set_menu_price(
     price_row = MenuPriceHistory(
         company_id=company_id,
         menu_item_id=menu_item_id,
-        price_gross=round(price_gross, 4),
+        price_gross=fx_to_float(price_gross),
         effective_at=effective,
         created_by_id=user_id,
         created_at=now,

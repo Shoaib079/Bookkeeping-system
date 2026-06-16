@@ -23,12 +23,12 @@ def statement_row_signed_amount(row) -> float:
     if row.credit_amount:
         return money_to_float(row.credit_amount)
     if row.debit_amount:
-        return round(-money_to_float(row.debit_amount), 2)
+        return -money_to_float(row.debit_amount)
     return 0.0
 
 
 def statement_row_signed_total(rows) -> float:
-    return round(sum(statement_row_signed_amount(r) for r in rows), 2)
+    return money_to_float(sum(statement_row_signed_amount(r) for r in rows))
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,10 +147,10 @@ def compute_statement_readiness(
     declared_movement: float | None = None
     tie_out_delta: float | None = None
     if tie_out_available:
-        declared_movement = round(
-            float(imp.ending_balance) - float(imp.starting_balance), 2
+        declared_movement = money_to_float(
+            money_to_float(imp.ending_balance) - money_to_float(imp.starting_balance)
         )
-        tie_out_delta = round(declared_movement - row_signed_total, 2)
+        tie_out_delta = money_to_float(declared_movement - row_signed_total)
         tie_out_state: TieOutState = (
             "ok"
             if abs(tie_out_delta) < TIE_OUT_TOLERANCE

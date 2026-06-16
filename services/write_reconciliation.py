@@ -24,6 +24,7 @@ from reconciliation.match_post import (
 )
 from services import audit as audit_svc
 from services import commit_modes
+from services.money import money_to_float
 from services.commit_modes import RECONCILIATION_FAMILY, VOID_CASCADE_FAMILY
 from services.unit_of_work import boundary_commit_scope
 
@@ -77,7 +78,7 @@ def _row_amount_and_index(session: Session, row_id: int) -> tuple[float, int]:
     row = session.get(BankStatementRow, row_id)
     if row is None:
         raise MatchPostError("Statement row not found")
-    return round(float(row.amount), 2), row.import_row_index
+    return money_to_float(row.amount), row.import_row_index
 
 
 def _audit_description(match_type: str, *, amount: float, **ctx: Any) -> str:

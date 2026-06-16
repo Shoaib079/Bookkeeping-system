@@ -2039,7 +2039,7 @@ def _ensure_company_1_provisioned(session) -> None:
 def sync_account_balances(session):
     accounts = session.query(ChartOfAccounts).all()
     for account in accounts:
-        account.balance = calculate_account_balance(session, account)
+        account.balance = persist_money(calculate_account_balance(session, account))
     session.commit()
 
 
@@ -9864,7 +9864,7 @@ def render_equity_movements(session, *, embedded: bool = False):
                                     session.add(btxn)
                                     session.flush()
                                     btxn.description = f"Capital Contribution #{btxn.id}"
-                                    ba_obj.balance   = (ba_obj.balance or 0) + cc_amt
+                                    apply_account_balance_delta(ba_obj, "deposit", cc_amt)
                                     post_capital_contribution(
                                         session, btxn.id, cc_amt, cc_date,
                                         gl_name, currency=ba_obj.currency, notes=cc_notes.strip(),
@@ -9972,7 +9972,7 @@ def render_equity_movements(session, *, embedded: bool = False):
                                     session.add(btxn)
                                     session.flush()
                                     btxn.description = f"Owner Drawing #{btxn.id}"
-                                    ba_obj.balance   = (ba_obj.balance or 0) - od_amt
+                                    apply_account_balance_delta(ba_obj, "withdrawal", od_amt)
                                     post_owner_drawing(
                                         session, btxn.id, od_amt, od_date,
                                         gl_name, currency=ba_obj.currency, notes=od_notes.strip(),
@@ -10084,7 +10084,7 @@ def _post_opening_balance_bank_account(session, ba_obj, ob_date, ob_amt, obe_acc
         company_id=ba_obj.company_id,
     )
     session.add(btxn)
-    ba_obj.balance = ob_amt
+    apply_account_balance_delta(ba_obj, "deposit", ob_amt)
     session.add(ba_obj)
     session.flush()
     create_journal_entry(
@@ -19181,9 +19181,7 @@ def render_payables(session):
                         elif pay_amount > bal + 0.01:
                             st.error(_t("payable.err.exceeds_balance", currency=currency, balance=bal))
                         else:
-                            record.paid_amount = round((record.paid_amount or 0.0) + pay_amount, 2)
-                            record.balance = max(round(record.amount - record.paid_amount, 2), 0.0)
-                            record.paid = record.balance <= 0.005
+                            _apply_payable_payment_state(record, pay_amount)
                             record.payment_method = pay_method
                             if pay_method == _COMPANY_CC_METHOD:
                                 record.credit_card_account_id = pay_cc_card_id
@@ -26124,6 +26122,9 @@ def main():
         ensure_phase18_mvp5_accounts(_boot_session)  # Phase 18-MVP-5: 2110 CC Payable
         ensure_workers_accounts(_boot_session)  # Workers: 1250 Employee Advances
         sync_account_balances(_boot_session)  # keep balance cache in sync with journal lines
+        from services.banking_balance import sync_bank_account_balances
+
+        sync_bank_account_balances(_boot_session)
 
     # ── THEME-FLASH-01: restore auth before theme CSS so DB preference applies ─
     _session_restored = _early_restore_auth_session()

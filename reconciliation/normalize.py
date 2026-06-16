@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from services.money import money_to_float
+
 
 def normalize_description(text: str | None) -> str:
     """Lowercase, strip, collapse whitespace for duplicate comparison."""
@@ -22,7 +24,7 @@ def duplicate_row_key(
     balance_after: float | None,
 ) -> tuple:
     """Composite soft-dup key per ROADMAP guardrails."""
-    amt = round(float(amount or 0), 2)
+    amt = money_to_float(amount or 0)
     if balance_after is not None:
-        return (row_date, amt, normalized_description, round(float(balance_after), 2))
+        return (row_date, amt, normalized_description, money_to_float(balance_after))
     return (row_date, amt, normalized_description)

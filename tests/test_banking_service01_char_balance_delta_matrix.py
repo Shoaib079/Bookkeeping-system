@@ -125,13 +125,17 @@ class TestBS05CharContract:
     def test_helpers_defined_in_banking_balance_service(self):
         assert "def apply_account_balance_delta(" in BANKING_BALANCE_SRC
         assert "def reverse_account_balance_delta(" in BANKING_BALANCE_SRC
+        assert "def is_credit_card_account(" in BANKING_BALANCE_SRC
+        assert "def sync_bank_account_balances(" in BANKING_BALANCE_SRC
         assert (ROOT / "services" / "banking_balance.py").is_file()
 
     def test_company_card_reexports_banking_balance_helpers(self):
         assert "from services.banking_balance import" in COMPANY_CARD_SRC
         assert "apply_account_balance_delta" in COMPANY_CARD_SRC
         assert "reverse_account_balance_delta" in COMPANY_CARD_SRC
+        assert "is_credit_card_account" in COMPANY_CARD_SRC
         assert "def apply_account_balance_delta(" not in COMPANY_CARD_SRC
+        assert "def is_credit_card_account(" not in COMPANY_CARD_SRC
 
     def test_app_imports_apply_via_company_card_compat_path(self):
         assert "from reconciliation.company_card import" in APP_SRC

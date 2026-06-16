@@ -287,7 +287,7 @@ def compute_variance(
     failures: list[str] = []
 
     if external.external_total is not None:
-        variance_total = round(external.external_total - erp.total, 2)
+        variance_total = money_to_float(external.external_total - erp.total)
         if _exceeds_tolerance(variance_total, tolerance):
             failures.append("total")
 
@@ -295,11 +295,10 @@ def compute_variance(
             v is not None for v in (external.cash, external.card, external.online)
         )
         if has_breakdown:
-            breakdown_sum = round(
+            breakdown_sum = money_to_float(
                 (external.cash or 0.0)
                 + (external.card or 0.0)
                 + (external.online or 0.0),
-                2,
             )
             if _exceeds_tolerance(breakdown_sum - external.external_total, tolerance):
                 breakdown_warnings.append(
@@ -307,22 +306,22 @@ def compute_variance(
                 )
 
     if external.cash is not None:
-        variance_cash = round(external.cash - erp.cash, 2)
+        variance_cash = money_to_float(external.cash - erp.cash)
         if _exceeds_tolerance(variance_cash, tolerance):
             failures.append("cash")
 
     if external.card is not None:
-        variance_card = round(external.card - erp.card, 2)
+        variance_card = money_to_float(external.card - erp.card)
         if _exceeds_tolerance(variance_card, tolerance):
             failures.append("card")
 
     if external.online is not None:
-        variance_online = round(external.online - erp.credit, 2)
+        variance_online = money_to_float(external.online - erp.credit)
         if _exceeds_tolerance(variance_online, tolerance):
             failures.append("online")
 
     if external.z_report_total is not None:
-        z_report_variance = round(external.z_report_total - erp.total, 2)
+        z_report_variance = money_to_float(external.z_report_total - erp.total)
         if _exceeds_tolerance(z_report_variance, tolerance):
             failures.append("z")
 
@@ -487,7 +486,7 @@ def compute_erp_sales_totals(
     cash = _sale_sum("Cash")
     card = _sale_sum("Card")
     credit = _sale_sum("Credit")
-    total = round(cash + card + credit, 2)
+    total = money_to_float(cash + card + credit)
     sale_count = (
         session.query(func.count(Sale.id))
         .filter(

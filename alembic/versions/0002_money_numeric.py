@@ -2,7 +2,7 @@
 
 Schema-only revision: alters column types per ``alembic/money_numeric_columns.py``.
 Does **not** switch ``models.py`` (MD-05-IMPL-2). Quantization of existing values
-(ROUND_HALF_UP) is MD-05-IMPL-3.
+(ROUND_HALF_UP) is MD-05-IMPL-3 ✅ — PG USING ``ROUND(col::numeric, scale)``.
 
 **Not applied to production.** Apply only via flag-gated, backup-first cutover.
 Rollback: restore from backup — downgrade is lossy.
@@ -35,7 +35,7 @@ def _upgrade_postgresql() -> None:
             column,
             existing_type=sa.Float(),
             type_=_numeric_type(scale),
-            postgresql_using=f"{column}::numeric(19,{scale})",
+            postgresql_using=f"ROUND({column}::numeric, {scale})",
         )
 
 

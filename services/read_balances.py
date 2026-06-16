@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from models import ChartOfAccounts, JournalEntry, JournalEntryLine
-from services.money import line_money, net_balance_delta
+from services.money import line_money, money_to_float, net_balance_delta
 
 _ASSET_EXPENSE_TYPES = frozenset({"Asset", "Expense"})
 
@@ -114,7 +114,7 @@ def _accumulate_liquid_balances(
             continue
         if acct.account_code in _EXCLUDED_LIQUID_CODES:
             continue
-        bal = round(
+        bal = money_to_float(
             calculate_account_balance_for_period(
                 session,
                 acct,
@@ -122,10 +122,9 @@ def _accumulate_liquid_balances(
                 as_of,
                 company_id=company_id,
             ),
-            2,
         )
         bucket = _liquid_currency_bucket(acct)
-        totals[bucket] = round(totals.get(bucket, 0.0) + bal, 2)
+        totals[bucket] = money_to_float(totals.get(bucket, 0.0) + bal)
     return totals
 
 
@@ -165,9 +164,8 @@ def compute_liquid_position(
 
     total_by_currency: dict[str, float] = {}
     for ccy in sorted(set(cash_by_currency) | set(bank_by_currency)):
-        total_by_currency[ccy] = round(
+        total_by_currency[ccy] = money_to_float(
             cash_by_currency.get(ccy, 0.0) + bank_by_currency.get(ccy, 0.0),
-            2,
         )
 
     return LiquidPosition(

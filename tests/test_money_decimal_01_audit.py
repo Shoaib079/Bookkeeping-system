@@ -124,4 +124,4 @@ def test_posting_kernel_uses_cent_tolerance():
         Path(__file__).resolve().parents[1] / "services" / "posting.py"
     ).read_text(encoding="utf-8")
     assert "0.01" in posting_src
-    assert "round(" in posting_src
+    assert "money_to_float" in posting_src

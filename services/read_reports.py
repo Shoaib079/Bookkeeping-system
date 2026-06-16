@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from models import ChartOfAccounts, JournalEntry
-from services.money import line_money
+from services.money import line_money, money_to_float
 from services.read_balances import calculate_account_balance_for_period
 
 _BS_EPOCH = datetime.date(2000, 1, 1)
@@ -122,7 +122,7 @@ def compute_profit_loss(
         line = FinancialStatementLine(
             code=acct.account_code,
             account_name=acct.account_name,
-            amount=round(bal, 2),
+            amount=money_to_float(bal),
         )
         if acct.account_type == "Income":
             income_lines.append(line)
@@ -131,7 +131,7 @@ def compute_profit_loss(
             expense_lines.append(line)
             total_expenses += bal
 
-    net = round(total_income - total_expenses, 2)
+    net = money_to_float(total_income - total_expenses)
     margin_pct = (net / total_income * 100) if total_income else 0.0
     return ProfitLossStatement(
         start_date=start_date,
@@ -163,7 +163,7 @@ def compute_balance_sheet(
         FinancialStatementLine(
             code=a.account_code,
             account_name=a.account_name,
-            amount=round(period_bal(a), 2),
+            amount=money_to_float(period_bal(a)),
         )
         for a in accounts
         if a.account_type == "Asset"
@@ -172,7 +172,7 @@ def compute_balance_sheet(
         FinancialStatementLine(
             code=a.account_code,
             account_name=a.account_name,
-            amount=round(period_bal(a), 2),
+            amount=money_to_float(period_bal(a)),
         )
         for a in accounts
         if a.account_type == "Liability"
@@ -181,7 +181,7 @@ def compute_balance_sheet(
         FinancialStatementLine(
             code=a.account_code,
             account_name=a.account_name,
-            amount=round(period_bal(a), 2),
+            amount=money_to_float(period_bal(a)),
         )
         for a in accounts
         if a.account_type == "Equity"
@@ -211,10 +211,10 @@ def compute_balance_sheet(
     )
     raw_equity = sum(period_bal(a) for a in accounts if a.account_type == "Equity")
 
-    total_assets = round(raw_assets, 2)
-    total_liabilities = round(raw_liabilities, 2)
-    base_equity = round(raw_equity, 2)
-    total_equity = round(raw_equity + net_income, 2)
+    total_assets = money_to_float(raw_assets)
+    total_liabilities = money_to_float(raw_liabilities)
+    base_equity = money_to_float(raw_equity)
+    total_equity = money_to_float(raw_equity + net_income)
     raw_rhs = raw_liabilities + raw_equity + net_income
     imbalance = abs(raw_assets - raw_rhs)
 
@@ -277,7 +277,7 @@ def compute_cash_flow(
         for line in entry.lines:
             if line.account_id not in cash_ids:
                 continue
-            net = round(line_money(line.debit) - line_money(line.credit), 2)
+            net = money_to_float(line_money(line.debit) - line_money(line.credit))
             if net == 0:
                 continue
             row = CashFlowRow(
@@ -285,20 +285,20 @@ def compute_cash_flow(
                 description=entry.description,
                 type=entry.reference_type or "Manual",
                 inflow=net if net > 0 else 0.0,
-                outflow=round(-net, 2) if net < 0 else 0.0,
+                outflow=money_to_float(-net) if net < 0 else 0.0,
             )
             if (entry.reference_type or "") in _FINANCING_REFS:
                 financing_rows.append(row)
             else:
                 operating_rows.append(row)
 
-    op_in = round(sum(r.inflow for r in operating_rows), 2)
-    op_out = round(sum(r.outflow for r in operating_rows), 2)
-    fin_in = round(sum(r.inflow for r in financing_rows), 2)
-    fin_out = round(sum(r.outflow for r in financing_rows), 2)
-    net_op = round(op_in - op_out, 2)
-    net_fin = round(fin_in - fin_out, 2)
-    net_total = round(net_op + net_fin, 2)
+    op_in = money_to_float(sum(r.inflow for r in operating_rows))
+    op_out = money_to_float(sum(r.outflow for r in operating_rows))
+    fin_in = money_to_float(sum(r.inflow for r in financing_rows))
+    fin_out = money_to_float(sum(r.outflow for r in financing_rows))
+    net_op = money_to_float(op_in - op_out)
+    net_fin = money_to_float(fin_in - fin_out)
+    net_total = money_to_float(net_op + net_fin)
 
     return CashFlowStatement(
         start_date=start_date,

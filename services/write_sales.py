@@ -13,7 +13,7 @@ from services import audit as audit_svc
 from services import commit_modes
 from services import posting as posting_svc
 from services.commit_modes import POST_CASH_SALE_FAMILY
-from services.money import persist_money
+from services.money import money_to_float, persist_money
 from services.unit_of_work import boundary_commit_scope
 
 # Pinned EN transactional strings — must match registry/locales/transactional.py.
@@ -113,7 +113,7 @@ def create_and_post_sale(
         .first()
     )
 
-    native = round(amount * fx_rate, 2) if fx_rate and fx_rate != 1.0 else amount
+    native = money_to_float(amount * fx_rate) if fx_rate and fx_rate != 1.0 else amount
     record = Sale(
         date=entry_date,
         invoice_number=inv_num,

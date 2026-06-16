@@ -12,6 +12,7 @@ from reconciliation.company_card import apply_account_balance_delta
 from services import audit as audit_svc
 from services import commit_modes
 from services import posting as posting_svc
+from services.money import money_to_float
 from services.commit_modes import POST_EXPENSE_FAMILY
 from services.unit_of_work import boundary_commit_scope, boundary_depth
 
@@ -259,7 +260,7 @@ def create_and_post_expense(
             if has_bank:
                 raise ValueError(BANK_NOT_SELECTED_MSG)
 
-    native = round(amount * fx_rate, 2) if fx_rate and fx_rate != 1.0 else amount
+    native = money_to_float(amount * fx_rate) if fx_rate and fx_rate != 1.0 else amount
     record = ExpenseRecord(
         date=entry_date,
         expense_type=expense_type,

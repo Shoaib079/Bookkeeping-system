@@ -10,6 +10,7 @@ from registry.service import get_setting
 from services import audit as audit_svc
 from services.banking_balance import (
     apply_account_balance_delta,
+    is_credit_card_account,
     reverse_account_balance_delta,
 )
 from services.money import money_to_float
@@ -19,13 +20,6 @@ COMPANY_CC_PAYMENT_METHOD = "Credit Card"
 
 class CompanyCardError(Exception):
     """Raised when company-card posting cannot proceed."""
-
-
-def is_credit_card_account(ba: BankAccount | None) -> bool:
-    if not ba:
-        return False
-    return (getattr(ba, "kind", None) or "bank") == "credit_card"
-
 
 def company_card_enabled(session, company_id: int) -> bool:
     return bool(
@@ -90,7 +84,7 @@ def post_cc_subledger_charge(
     company_id: int | None = None,
 ) -> int:
     """Record CC charge on card sub-ledger only (withdrawal increases liability cache)."""
-    amt = round(float(amount), 2)
+    amt = money_to_float(amount)
     if amt <= 0:
         raise CompanyCardError("Charge amount must be positive.")
 
@@ -285,7 +279,7 @@ def post_credit_card_bill_payment(
     if not bank_ba or is_credit_card_account(bank_ba):
         raise MatchPostError("Statement import must be linked to a bank account")
 
-    amt = round(float(row.amount), 2)
+    amt = money_to_float(row.amount)
     if amt <= 0:
         raise MatchPostError("Payment amount must be positive")
 
@@ -388,7 +382,7 @@ def void_credit_card_bill_payment(
     from services.posting import _kernel_persist, reverse_journal_entries_for
 
     reason = (void_reason or "").strip() or "Unpost bill payment"
-    amt = round(float(row.amount), 2)
+    amt = money_to_float(row.amount)
 
     reverse_journal_entries_for(
         session,

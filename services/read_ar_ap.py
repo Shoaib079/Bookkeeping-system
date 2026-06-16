@@ -47,7 +47,7 @@ def get_aging_summary(records, amount_field: str, due_date_field: str) -> AgingB
 def payable_balance(record) -> float:
     """Outstanding balance on a payable (legacy _payable_balance)."""
     paid_amt = money_to_float(record.paid_amount)
-    return max(round(money_to_float(record.amount) - paid_amt, 2), 0.0)
+    return max(money_to_float(record.amount) - paid_amt, 0.0)
 
 
 def payable_status(record) -> str:

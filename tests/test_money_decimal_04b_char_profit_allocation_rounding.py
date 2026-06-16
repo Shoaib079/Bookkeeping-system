@@ -203,8 +203,7 @@ class TestAllocationSourceContract:
         start = posting_source.index("def allocate_profit_to_partners")
         end = posting_source.index("def void_profit_allocation", start)
         block = posting_source[start:end]
-        assert "_allocation_share_float" in block
-        assert "return money_to_float(value)" in posting_source
+        assert "money_to_float" in block
         assert "round(abs_income * p.profit_share_pct / 100.0, 2)" not in block
         assert "round(abs_income - running, 2)" not in block
         assert "quantize_money" not in block

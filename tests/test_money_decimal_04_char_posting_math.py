@@ -219,7 +219,8 @@ class TestPostingSourceMoneyContract:
         assert "persist_fx(net * fx_rate)" in posting_source
 
     def test_allocate_profit_uses_money_share_helper(self, posting_source: str):
-        assert "_allocation_share_float" in posting_source
+        assert "money_to_float" in posting_source
+        assert "_allocation_share_float" not in posting_source
         assert "money_to_float" in posting_source
         start = posting_source.index("def allocate_profit_to_partners")
         end = posting_source.index("def void_profit_allocation", start)
@@ -566,7 +567,8 @@ class TestMatchesMd02GoldenVectors:
 
     def test_services_money_wired_in_posting_module(self):
         posting_source = POSTING_PATH.read_text(encoding="utf-8")
-        assert "_normalize_money_amount" in posting_source
+        assert "money_to_float" in posting_source
+        assert "_normalize_money_amount" not in posting_source
         assert "_je_line_money" in posting_source
         assert "money_to_float" in posting_source
         assert "parse_money" in posting_source

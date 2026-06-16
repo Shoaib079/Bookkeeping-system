@@ -24,6 +24,7 @@ from models import (
     Vendor,
 )
 from services.commit_modes import RECONCILIATION_FAMILY
+from services.money import money_to_float, persist_money
 from services.posting import (
     _kernel_persist,
     create_journal_entry as _posting_create_journal_entry,
@@ -113,7 +114,7 @@ def _create_bank_txn(
     ba = session.get(BankAccount, bank_account_id)
     if not ba:
         raise MatchPostError("Bank account not found")
-    amt = round(float(row.amount), 2)
+    amt = money_to_float(row.amount)
     btxn = BankTransaction(
         account_id=bank_account_id,
         date=row.date,
@@ -195,9 +196,9 @@ def _resolve_settlement_fee(
             raise MatchPostError("Settlement batch belongs to another company")
         if not settlement_row.parsed_successfully:
             raise MatchPostError("Settlement batch did not parse successfully")
-        gross = round(float(settlement_row.gross_amount), 2)
-        net = round(float(settlement_row.net_amount), 2)
-        fee = round(float(settlement_row.fee_amount), 2)
+        gross = money_to_float(settlement_row.gross_amount)
+        net = money_to_float(settlement_row.net_amount)
+        fee = money_to_float(settlement_row.fee_amount)
         if abs(gross - clearing_total) > 0.01:
             raise MatchPostError(
                 f"Settlement gross ({gross:,.2f}) must equal clearing total ({clearing_total:,.2f})"
@@ -277,7 +278,7 @@ def post_deposit_clearing_match(
         selected.append(candidates[sid])
         clearing_total += candidates[sid]["amount"]
 
-    deposit_amt = round(float(row.amount), 2)
+    deposit_amt = money_to_float(row.amount)
     clearing_total = round(clearing_total, 2)
     fee_amt, fee_source, settlement_row = _resolve_settlement_fee(
         session,
@@ -368,7 +369,7 @@ def post_generic_deposit(
     if row.debit_amount and not row.credit_amount:
         raise MatchPostError("This row is a withdrawal, not a deposit")
 
-    amt = round(float(row.amount), 2)
+    amt = money_to_float(row.amount)
     bank_gl = _get_account_by_name(session, "Bank", currency=imp.currency, company_id=company_id)
     credit_gl = _get_account_by_name(
         session, credit_account_name, currency=imp.currency, company_id=company_id
@@ -448,7 +449,7 @@ def post_partner_statement_match(
         raise MatchPostError("Partner not found or inactive.")
 
     cap_acct, cur_acct, adv_acct = _partner_gl_accounts(session, partner)
-    amt = round(float(row.amount), 2)
+    amt = money_to_float(row.amount)
     if amt <= 0:
         raise MatchPostError("Amount must be positive.")
 
@@ -568,13 +569,13 @@ def post_worker_statement_match(
     if not adv_acct:
         raise MatchPostError("Employee Advances account missing")
 
-    bank_paid = round(float(row.amount), 2)
+    bank_paid = money_to_float(row.amount)
     if bank_paid <= 0:
         raise MatchPostError("Amount must be positive.")
 
-    deductions = round(float(deductions or 0.0), 2)
-    advance_recovery = round(float(advance_recovery or 0.0), 2)
-    gross_salary = round(float(gross_salary or bank_paid), 2)
+    deductions = money_to_float(deductions or 0.0)
+    advance_recovery = money_to_float(advance_recovery or 0.0)
+    gross_salary = money_to_float(gross_salary or bank_paid)
     net_salary = 0.0
     net_paid = 0.0
     mv_amount = 0.0
@@ -690,7 +691,7 @@ def post_equity_statement_match(
 ) -> dict[str, Any]:
     """Post owner drawing/capital or company loan payment/receipt from a statement line."""
     row, imp = _row_context(session, row_id, company_id)
-    amt = round(float(row.amount), 2)
+    amt = money_to_float(row.amount)
     if amt <= 0:
         raise MatchPostError("Amount must be positive")
 
@@ -807,7 +808,7 @@ def post_vendor_outflow(
     if not vendor or vendor.company_id != company_id:
         raise MatchPostError("Vendor not found")
 
-    amt = round(float(row.amount), 2)
+    amt = money_to_float(row.amount)
     bank_gl = _get_account_by_name(session, "Bank", currency=imp.currency, company_id=company_id)
     if not bank_gl:
         raise MatchPostError("Bank GL account not found")
@@ -824,7 +825,7 @@ def post_vendor_outflow(
         ap_gl = _get_account_by_name(session, "Accounts Payable", company_id=company_id)
         if not ap_gl:
             raise MatchPostError("Accounts Payable GL missing")
-        pay_amt = min(amt, round(float(payable.balance or payable.amount), 2))
+        pay_amt = min(amt, money_to_float(payable.balance or payable.amount))
         btxn = _create_bank_txn(
             session,
             bank_account_id=imp.bank_account_id,
@@ -842,11 +843,13 @@ def post_vendor_outflow(
             currency=imp.currency,
             company_id=company_id,
         )
-        payable.paid_amount = round((payable.paid_amount or 0) + pay_amt, 2)
-        payable.balance = round(float(payable.amount) - payable.paid_amount, 2)
-        if payable.balance <= 0.01:
+        payable.paid_amount = persist_money(money_to_float(payable.paid_amount or 0) + pay_amt)
+        payable.balance = persist_money(
+            max(money_to_float(payable.amount) - money_to_float(payable.paid_amount), 0.0)
+        )
+        if money_to_float(payable.balance) <= 0.01:
             payable.paid = True
-            payable.balance = 0.0
+            payable.balance = persist_money(0)
         session.add(payable)
         paid_payable_id = payable.id
         match_type = "vendor_payable"
@@ -1216,7 +1219,7 @@ def post_bank_charge_outflow(
             "Enable **Bank charges** in Company Setup to post bank fee lines."
         )
 
-    amt = round(float(row.amount), 2)
+    amt = money_to_float(row.amount)
     if amt <= 0:
         raise MatchPostError("Bank charge amount must be positive")
 

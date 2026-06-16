@@ -53,6 +53,10 @@ class TestQuantizeMoney:
         assert money.quantize_money("100.019") == Decimal("100.02")
         assert money.quantize_money("100.011") == Decimal("100.01")
 
+    def test_ugly_double_quantizes(self):
+        assert money.quantize_money(100.0100000001) == Decimal("100.01")
+        assert money.quantize_money(0.1 + 0.2) == Decimal("0.30")
+
     def test_round_half_up_positive(self):
         assert money.quantize_money("2.675") == Decimal("2.68")
         assert money.quantize_money("2.674") == Decimal("2.67")
@@ -69,6 +73,10 @@ class TestQuantizeFx:
     def test_four_decimal_places(self):
         assert money.quantize_fx("34.56789") == Decimal("34.5679")
         assert money.quantize_fx("34.56784") == Decimal("34.5678")
+
+    def test_ingredient_unit_cost_precision(self):
+        assert money.quantize_fx("0.01234") == Decimal("0.0123")
+        assert money.quantize_fx("0.01235") == Decimal("0.0124")
 
     def test_negative_fx_amount(self):
         assert money.quantize_fx("-0.00005") == Decimal("-0.0001")

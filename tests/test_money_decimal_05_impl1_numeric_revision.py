@@ -157,8 +157,8 @@ def test_no_overlap_between_tiers():
 
 
 def test_tier_counts():
-    assert len(NUMERIC_19_2) == 81
-    assert len(NUMERIC_19_4) == 4
+    assert len(NUMERIC_19_2) == 80
+    assert len(NUMERIC_19_4) == 5
     assert len(NUMERIC_19_8) == 3
     assert len(FLOAT_REMAIN) == 11
     assert len(list(iter_alter_targets())) == 88

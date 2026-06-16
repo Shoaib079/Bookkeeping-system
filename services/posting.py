@@ -504,7 +504,7 @@ def _get_worker_advance_balance(session, worker_id: int, *, company_id: int | No
             bal -= money_to_float(mv.amount)
         elif mv.movement_type == "Salary":
             bal -= money_to_float(mv.advance_recovery)
-    return round(bal, 2)
+    return money_to_float(bal)
 
 
 def entry_date_posting_blocked(
@@ -616,25 +616,17 @@ def _kernel_persist(session, *, commit_family: str | None) -> None:
         session.commit()
 
 
-def _normalize_money_amount(value) -> float:
-    """MD-04a: business posting amount → 2 dp ORM float via services.money."""
-    if value is None:
-        return 0.0
-    return money_to_float(value)
-
-
 def _je_line_money(value) -> float:
-    """MD-04a: JE debit/credit — Decimal str parse without 2 dp quantize."""
+    """MD-04a/IMPL-3: JE debit/credit float accumulator — parse without 2dp quantize.
+
+    Quantization happens at ``persist_money`` on ORM write. Float accumulation order
+    is characterization-locked for MD-02 golden vectors; do not replace with Decimal sum.
+    """
     if value is None:
         return 0.0
     if float(value) == 0.0:
         return 0.0
     return float(parse_money(value))
-
-
-def _allocation_share_float(value) -> float:
-    """MD-04b: partner allocation share → 2 dp ORM float via services.money."""
-    return money_to_float(value)
 
 
 def create_journal_entry(
@@ -768,7 +760,7 @@ def post_cash_sale(
     session, sale_id, amount, sale_date, currency=None, fx_rate=1.0, *, company_id: int | None = None
 ):
     """Post cash sale: Debit Cash[currency], Credit Sales Revenue"""
-    amount = _normalize_money_amount(amount)
+    amount = money_to_float(amount)
     cash_acct = get_account_by_name(session, "Cash", currency=currency, company_id=company_id)
     sales_acct = get_account_by_name(session, "Sales Revenue", company_id=company_id)
     if cash_acct and sales_acct:
@@ -791,7 +783,7 @@ def post_card_sale(
     Default (settlement OFF): Debit Bank, Credit Sales Revenue.
     Settlement ON: Debit Card Sales Clearing, Credit Sales Revenue.
     """
-    amount = _normalize_money_amount(amount)
+    amount = money_to_float(amount)
     if card_settlement_on(session, company_id):
         debit_acct = get_account_by_name(session, "Card Sales Clearing", company_id=company_id)
     else:
@@ -812,7 +804,7 @@ def post_credit_sale(
     session, sale_id, amount, sale_date, currency=None, fx_rate=1.0, *, company_id: int | None = None
 ):
     """Post credit sale: Debit Accounts Receivable, Credit Sales Revenue"""
-    amount = _normalize_money_amount(amount)
+    amount = money_to_float(amount)
     ar_acct = get_account_by_name(session, "Accounts Receivable", company_id=company_id)
     sales_acct = get_account_by_name(session, "Sales Revenue", company_id=company_id)
     if ar_acct and sales_acct:
@@ -831,7 +823,7 @@ def compute_sale_balance_status(amount, paid_amount, due_date):
 
     PS-P5-1: verbatim pure helper from app.py.
     """
-    balance = round(money_to_float(amount) - money_to_float(paid_amount), 2)
+    balance = money_to_float(amount) - money_to_float(paid_amount)
     today = datetime.date.today()
 
     if balance <= 0:
@@ -874,7 +866,7 @@ def post_receivable_payment(
         return "Payment amount exceeds the remaining balance."
 
     sale.paid_amount = persist_money(
-        money_to_float(sale.paid_amount) + _normalize_money_amount(payment_amount)
+        money_to_float(sale.paid_amount) + money_to_float(payment_amount)
     )
     sale.balance, sale.status = compute_sale_balance_status(
         sale.amount, sale.paid_amount, sale.due_date
@@ -888,9 +880,9 @@ def post_receivable_payment(
 
     if debit_acct and ar_acct:
         sale_fx = rate_to_float(sale.fx_rate or 1.0)
-        booked_ar = round(payment_amount * sale_fx, 2)
-        paid_in_reporting = round(payment_amount * rate_to_float(payment_fx_rate), 2)
-        fx_diff = round(paid_in_reporting - booked_ar, 2)
+        booked_ar = money_to_float(payment_amount * sale_fx)
+        paid_in_reporting = money_to_float(payment_amount * rate_to_float(payment_fx_rate))
+        fx_diff = money_to_float(paid_in_reporting - booked_ar)
 
         je_lines = [(debit_acct.id, paid_in_reporting, 0), (ar_acct.id, 0, booked_ar)]
 
@@ -1038,7 +1030,7 @@ def post_expense(
     commit_family: str | None = None,
 ):
     """Post expense: Debit Expense Account, Credit Cash/Bank/Credit Card Payable."""
-    amount = _normalize_money_amount(amount)
+    amount = money_to_float(amount)
     expense = session.get(ExpenseRecord, expense_id)
     credit_acct = resolve_payment_credit_account(
         session, payment_method, currency=currency, company_id=company_id
@@ -1180,7 +1172,7 @@ def post_purchase(
     company_id: int | None = None,
 ):
     """Post purchase journal entry."""
-    amount = _normalize_money_amount(amount)
+    amount = money_to_float(amount)
     debit_acct = resolve_purchase_debit_account(session, gl_debit, company_id=company_id)
     if not debit_acct:
         return
@@ -1232,7 +1224,7 @@ def post_bank_transaction(
 
     PS-P4-1: verbatim from app.py. No BankAccount.balance mutation.
     """
-    amount = _normalize_money_amount(amount)
+    amount = money_to_float(amount)
     cash_acct = get_account_by_name(session, "Cash", currency=currency, company_id=company_id)
     bank_acct = get_account_by_name(session, "Bank", currency=currency, company_id=company_id)
     if cash_acct and bank_acct:
@@ -2038,10 +2030,10 @@ def post_worker_movement(
             return None, "Gross salary must be greater than zero."
         if deductions < 0 or advance_recovery < 0:
             return None, "Deductions and advance recovery cannot be negative."
-        net_salary = round(gross_salary - deductions, 2)
+        net_salary = money_to_float(gross_salary - deductions)
         if net_salary <= 0:
             return None, "Net salary after deductions must be greater than zero."
-        net_paid = round(net_salary - advance_recovery, 2)
+        net_paid = money_to_float(net_salary - advance_recovery)
         if net_paid < -0.01:
             return None, "Advance recovery exceeds net salary."
         if advance_recovery > 0:
@@ -2289,9 +2281,9 @@ def allocate_profit_to_partners(
     shares, running = [], 0.0
     for i, p in enumerate(active_partners):
         if i == len(active_partners) - 1:
-            share = _allocation_share_float(abs_income - running)
+            share = money_to_float(abs_income - running)
         else:
-            share = _allocation_share_float(abs_income * p.profit_share_pct / 100.0)
+            share = money_to_float(abs_income * p.profit_share_pct / 100.0)
             running += share
         shares.append(share)
 
