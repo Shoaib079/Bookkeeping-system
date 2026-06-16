@@ -2839,9 +2839,15 @@ Extract the accounting posting engine from `app.py` into a reusable service (`se
 #### MONEY-DECIMAL-01
 
 **Priority:** High (migration prep)  
-**Status:** Open
+**Status:** 🟡 **Audit complete** (2026-06-16) — 99 Float columns inventoried; PG **production** blocked until Numeric migration characterized
 
-Replace `Float` money columns and arithmetic with `Decimal` across models and services before PostgreSQL cutover. Aligns with [TD-MIG-04](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#global-migration-td-mig).
+Replace `Float` money columns and arithmetic with `Decimal`/`Numeric` across models and services before PostgreSQL **production** runtime cutover. SQLite remains runtime; PG is test-only. Float engine swap is safe ([P3.1](./docs/P3_1_POSTGRES_COMPATIBILITY_AUDIT.md)); **Numeric semantics change** is the blocker.
+
+**Audit:** [MONEY_DECIMAL_01_AUDIT.md](./docs/MONEY_DECIMAL_01_AUDIT.md) · contract: `tests/test_money_decimal_01_audit.py`
+
+**Next slices:** MD-02 golden posting vectors → MD-03 money helpers → MD-04 posting kernel → MD-05 Alembic Numeric (PG test)
+
+Aligns with [TD-MIG-04](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#global-migration-td-mig).
 
 #### ALEMBIC-01
 

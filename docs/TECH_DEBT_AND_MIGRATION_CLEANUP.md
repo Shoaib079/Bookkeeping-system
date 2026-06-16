@@ -69,7 +69,7 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 | **TD-MIG-01** | Extract remaining `app.py` business logic into `services/` ([FUTURE-MIGRATION-01](../ROADMAP.md#future-architecture--long-term-roadmap) Phase A) | High | Open | Incremental per module |
 | **TD-MIG-02** | Replace Streamlit `cq()` / `_current_company_id()` with explicit `company_id` in all new services; migrate legacy callers incrementally | High | Open | Per new service module |
 | **TD-MIG-03** | SQLite → PostgreSQL: validate partial unique index `uq_esv_active` (`COALESCE(branch_location,'')`) and equivalent constraints on Postgres | Medium | Open | Pre-PostgreSQL cutover |
-| **TD-MIG-04** | Float → `Decimal` for money fields across models and services | Low | Open | Global migration prep |
+| **TD-MIG-04** | Float → `Decimal` for money fields across models and services | **High** | Open — [MONEY_DECIMAL_01_AUDIT.md](./MONEY_DECIMAL_01_AUDIT.md) (2026-06-16); blocker for PG **production** runtime |
 | **TD-MIG-05** | SQLAlchemy 1.x `session.query()` → 2.0 `select()` style | Low | Open | Global migration prep |
 
 ---
@@ -270,7 +270,7 @@ Independent architectural review (Claude) — baseline FastAPI/React readiness a
 | ID | Item | Priority | Status | When / trigger |
 |----|------|----------|--------|----------------|
 | **POSTING-SERVICE-01** | Extract GL posting engine from `app.py` (`create_journal_entry`, reversals, `post_*` wrappers) | **Critical** | **Complete** | PS-P0–P6-5 shipped; PS-P7 hardening deferred |
-| **MONEY-DECIMAL-01** | `Float` → `Decimal` for money fields across models and services | High | Open | Pre-PostgreSQL; aligns with TD-MIG-04 |
+| **MONEY-DECIMAL-01** | `Float` → `Decimal` for money fields across models and services | High | **Audit complete** (2026-06-16) | [MONEY_DECIMAL_01_AUDIT.md](./MONEY_DECIMAL_01_AUDIT.md); MD-02 golden vectors next; PG **production** blocked |
 | **ALEMBIC-01** | Alembic revision chain replaces incremental `migrate_schema()` | Medium | Open | Multi-env FastAPI deployment |
 | **BANKING-SERVICE-01** | Extract banking subledger business logic to `services/` | High | **Partial** | `services/write_banking.py` manual API writes shipped; recon/import/balance ownership (TD-PS-08) open |
 | **REPORTS-SERVICE-01** | Extract report queries/aggregations to read-only `services/` | Medium | **Partial** | Query layer in `services/read_*` (FASTAPI-P0); Streamlit presentation in `app.py` by design |
