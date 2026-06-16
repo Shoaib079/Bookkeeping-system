@@ -1897,6 +1897,25 @@ implementation — FUTURE-MIGRATION-01's decision gate still applies at that tim
 
 ---
 
+## 2026-06-16 — Security audit and critical fixes
+
+**Audit / task:** Full codebase security scan covering hardcoded secrets, SQL injection, XSS, CORS, auth, debug endpoints, dependency pinning, and input validation.
+
+**Findings:**
+1. **SQL injection defense** — `_column_exists`, `migrate_schema`, `_backfill_null_company_ids`, and `DROP INDEX` used f-string interpolation for table/index names without validation. Values were internal constants, but no guard prevented future misuse. Added `_safe_identifier()` validator.
+2. **VACUUM INTO path injection** — `_run_backup` interpolated the backup path directly into SQL via f-string. A crafted label could break out of the SQL literal. Fixed by using parameterized query (`:dest`) and sanitizing backup labels.
+3. **XSS in `render_kpi_grid`** — KPI label/value/sub were interpolated into HTML with `unsafe_allow_html=True` and no escaping. Added `html.escape()`.
+4. **Hardcoded default password** — `initialize_default_user()` used `admin123`. Replaced with `secrets.token_urlsafe(16)` logged to console on first startup.
+5. **No CORS middleware** — FastAPI app had no CORSMiddleware. Added restrictive CORS controlled by `ERP_CORS_ORIGINS` env var (defaults to no origins allowed).
+6. **Missing password length check on member creation** — Members UI allowed short passwords. Added 8-char minimum matching My Account page.
+7. **Unpinned dependencies** — `requirements.txt` used open `>=` ranges. Added upper bounds.
+
+**Actions taken:** All 7 findings fixed in `app.py`, `api/main.py`, `requirements.txt`.
+
+**Related tests:** All 4177 existing tests pass. One pre-existing failure in `test_alembic_config_import_smoke` (unrelated alembic import issue on main).
+
+---
+
 ## How to use this file
 
 1. Before a banking/CC task, read [BANKING_RECON_CC_STATUS.md](./BANKING_RECON_CC_STATUS.md) and the latest entry here.

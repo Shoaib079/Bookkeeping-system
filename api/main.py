@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.openapi_tags import OPENAPI_TAGS
@@ -36,6 +39,19 @@ def create_app() -> FastAPI:
         version="1.4.7",
         description=_API_DESCRIPTION,
         openapi_tags=OPENAPI_TAGS,
+    )
+
+    allowed_origins = [
+        o.strip()
+        for o in os.getenv("ERP_CORS_ORIGINS", "").split(",")
+        if o.strip()
+    ]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Authorization", "X-Company-Id"],
     )
 
     @app.get(
