@@ -2561,6 +2561,24 @@ def _render_session_restore_cookie(*, token: str | None = None, clear: bool = Fa
     components.html(f"<script>{js}</script>", height=0, width=0)
 
 
+def _scroll_main_to_top() -> None:
+    """Scroll Streamlit main view to top after sidebar / bottom-nav page change."""
+    js = (
+        "(function(){"
+        "var w=window.parent!==window?window.parent:window;"
+        "w.scrollTo(0,0);"
+        "var m=w.document.querySelector('section.main');"
+        "if(m)m.scrollTo(0,0);"
+        "var app=w.document.querySelector('[data-testid=\"stAppViewContainer\"]');"
+        "if(app)app.scrollTop=0;"
+        "})();"
+    )
+    import importlib
+
+    components = importlib.import_module("streamlit.components.v1")
+    components.html(f"<script>{js}</script>", height=0, width=0)
+
+
 def _mint_restore_token_for_user(session, user_id: int) -> str | None:
     user = session.get(User, user_id)
     if not user or not user.is_active:
@@ -5112,7 +5130,7 @@ def _at_txn_allows_company_cc(txn_type: str) -> bool:
     """Company Credit Card is for business outflows only — never Sale or Customer Payment."""
     if txn_type not in _AT_COMPANY_CC_TXN_TYPES:
         return False
-    if txn_type == "Expense" and _mob_at_is_salary_mode():
+    if txn_type == "Expense" and _at_is_worker_expense_entry():
         return False
     return True
 
@@ -5135,7 +5153,7 @@ def _at_allowed_pay_methods(session, txn_type: str) -> list[str]:
     if txn_type == "Sale":
         return _at_sale_pay_methods(session)
     if txn_type == "Expense":
-        if _mob_at_is_salary_mode():
+        if _at_is_worker_expense_entry():
             return ["Cash", "Bank"]
         return _at_expense_pay_methods(session)
     if txn_type == "Purchase":
@@ -5159,7 +5177,7 @@ def _mob_at_remember_last_pm(txn_type: str, pm: str | None) -> None:
 
 def _at_default_pay_method(session, txn_type: str) -> str:
     """Return the static default payment method for a transaction type."""
-    if txn_type == "Expense" and _mob_at_is_salary_mode():
+    if txn_type == "Expense" and _at_is_worker_expense_entry():
         return "Cash"
     allowed = _at_allowed_pay_methods(session, txn_type)
     if not allowed:
@@ -5368,6 +5386,7 @@ def _at_clear_post_save_transient_fields(
     """
     for _k in _AT_POST_SAVE_CLEAR_KEYS:
         st.session_state.pop(_k, None)
+    _at_clear_category_session_state()
     _at_sync_desktop_type_to_mobile_tabs()
 
 
@@ -12426,16 +12445,14 @@ def _mob_at_c_apply_type(idx: int) -> None:
     else:
         st.session_state["mob_at_tab"] = 3
         st.session_state["mob_at_more_idx"] = idx
-    # Clear category when type changes
-    for k in (
-        "mob_at_cat_id",
-        "mob_at_subcat_id",
-        "mob_at_cat_name",
-        "at_cat",
-        "at_subcat",
-        "at_last_cat_id",
-    ):
-        st.session_state.pop(k, None)
+    _at_clear_category_session_state()
+    if idx == _MOB_AT_SALARY_IDX:
+        st.session_state["at_expense_mode"] = "worker"
+        st.session_state["at_worker_mv_type"] = "Salary"
+    else:
+        _at_clear_worker_entry_session_state()
+        if idx == 1:
+            st.session_state["at_expense_mode"] = "general"
 
 
 def _mob_at_render_txn_type_picker_sheet() -> bool:
@@ -12671,6 +12688,32 @@ def _mob_at_is_salary_mode() -> bool:
         st.session_state.get("mob_at_tab") == 3
         and st.session_state.get("mob_at_more_idx") == _MOB_AT_SALARY_IDX
     )
+
+
+def _at_is_worker_expense_entry() -> bool:
+    """True when Add Transaction is in worker salary/advance mode (mobile Salary or desktop radio)."""
+    return bool(
+        _mob_at_is_salary_mode()
+        or st.session_state.get("at_expense_mode") == "worker"
+    )
+
+
+def _at_clear_worker_entry_session_state() -> None:
+    """Drop worker picker fields when leaving worker salary/advance entry (not posting)."""
+    for _k in (
+        "at_worker_id",
+        "mob_at_worker_id",
+        "at_worker_gross",
+        "mob_at_worker_gross",
+        "at_worker_ded",
+        "mob_at_worker_ded",
+        "at_worker_adv_rec",
+        "mob_at_worker_adv_rec",
+        "at_worker_period",
+        "mob_at_worker_period",
+        "at_worker_mv_type",
+    ):
+        st.session_state.pop(_k, None)
 
 
 def _at_effective_txn_type(type_names: list[str]) -> str:
@@ -13333,7 +13376,8 @@ def _at_gather_submit_fields(
     at_cat = at_cat_id = at_subcat_name = None
     subcats_list: list = []
     cats: list = []
-    if txn_type in ("Expense", "Purchase"):
+    _worker_expense = txn_type == "Expense" and _at_is_worker_expense_entry()
+    if txn_type in ("Expense", "Purchase") and not _worker_expense:
         cats = (
             cq(session, TransactionCategory)
             .filter_by(transaction_type=txn_type, is_active=True)
@@ -13341,7 +13385,7 @@ def _at_gather_submit_fields(
             .all()
         )
 
-    if txn_type in ("Expense", "Purchase"):
+    if txn_type in ("Expense", "Purchase") and not _worker_expense:
         cid = st.session_state.get("mob_at_cat_id")
         if cid:
             _lc = session.get(TransactionCategory, cid)
@@ -13427,9 +13471,7 @@ def _at_process_submit(
         _sub_obj = next((s for s in ctx["subcats_list"] if s.name == ctx["at_subcat_name"]), None)
         at_subcat_id = _sub_obj.id if _sub_obj else None
 
-    _skip_cat = txn_type == "Expense" and (
-        _mob_at_is_salary_mode() or st.session_state.get("at_expense_mode") == "worker"
-    )
+    _skip_cat = txn_type == "Expense" and _at_is_worker_expense_entry()
     if txn_type in ("Expense", "Purchase") and not _skip_cat:
         if not ctx["at_cat_id"] and not (
             txn_type == "Expense" and st.session_state.get("mob_at_cat_name")
@@ -13733,6 +13775,7 @@ def _render_add_transaction_mobile(
 
             # ── Context-specific fields ──
             if _mob_at_is_salary_mode():
+                _at_clear_category_session_state()
                 workers = (
                     cq(session, Worker)
                     .filter_by(is_active=True)
@@ -14146,6 +14189,7 @@ def render_add_transaction(session):
                             )
 
                             if expense_mode == "worker":
+                                _at_clear_category_session_state()
                                 st.caption(_t("txn.expense_mode.worker_hint"))
                                 workers = (
                                     cq(session, Worker)
@@ -14437,11 +14481,7 @@ def render_add_transaction(session):
     # ── SUBMISSION HANDLER (desktop + mobile) ─────────────────────────────────
     _mob_save_pending = _at_consume_mobile_save_pending() if _is_mobile_at else False
     if submitted or _mob_save_pending:
-        _submit_type = (
-            _at_effective_txn_type(_TYPE_NAMES)
-            if _mob_save_pending
-            else _TYPE_NAMES[st.session_state["at_type_idx"]]
-        )
+        _submit_type = _at_effective_txn_type(_TYPE_NAMES)
         _at_process_submit(
             session,
             currency_default=currency_default,
@@ -26409,6 +26449,7 @@ def main():
         st.session_state.pop("mob_co_switch_open", None)
         st.session_state.pop("mob_profile_open", None)
         _mobile_clear_company_switch_confirm()
+        _scroll_main_to_top()
         if selection != NAV_REPORTS:
             st.session_state.pop("mob_reports_tab", None)
         # Auto-open the group when navigating programmatically

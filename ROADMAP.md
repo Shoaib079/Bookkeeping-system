@@ -1,7 +1,7 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** 2026-06-05 (ROADMAP-SYNC-01 — service-extraction register + paused-work gates)  
+**Last updated:** 2026-06-05 (UX-STABILIZE-01 — data-entry state cleanup)  
 **Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
@@ -205,6 +205,7 @@ No implementation before roadmap approval.
 | **UX-04B** — Payment Method Chips (mobile) | ✅ **Closed** — inline PM chip row (2026-06-10) |
 | **UX-04C** — Safe Smart Defaults | ✅ **Closed** — PM memory + single-bank auto-pick (2026-06-10) |
 | **Repeat Last Transaction (v1)** | ✅ **Closed** — TXH row action, Expense/Purchase only (2026-06-10) |
+| **UX-STABILIZE-01** — Data-Entry State Cleanup | ✅ **Closed** — worker salary isolation, post-save category reset, nav scroll-to-top (2026-06-05) |
 | **UX-05** — Universal Outside-Tap Dismiss | 📋 Backlog — last; needs separate infrastructure audit + tests |
 | **CHART-01** — Chart Theme Consolidation | ⚠️ **Needs short verification pass** — `chart_theme_tokens()` exists in `ui/theme.py` but has 0 app.py call sites; 0 native `st.bar_chart`/`st.line_chart` remain (AUDIT-01 counted 6). Charts migrated or removed — verify before trusting status (reconciled 2026-06-10) |
 | **AUDIT-01** — ERP Ownership Audit | ✅ **Complete** — findings recorded; quick wins identified |
@@ -2376,6 +2377,26 @@ Full audit + closure: [docs/AUDIT_HISTORY.md](./docs/AUDIT_HISTORY.md) §2026-06
 - No inference for customer, vendor, worker, subcategory, amount, payable/invoice, or multi-bank/CC.
 
 **Tests:** `tests/test_ux04c_smart_defaults.py` (12 tests). Host `pytest tests/` — **852/852 passed**.
+
+---
+
+## UX-STABILIZE-01 — Data-Entry State Cleanup
+
+**Status:** ✅ **Closed** (2026-06-05). **Priority:** Medium (operational friction / OBS-01 follow-up).
+
+### Completed
+
+- **`_at_is_worker_expense_entry()`** — single gate for mobile Salary chip + desktop worker expense radio.
+- **Worker salary isolation** — clear category session keys when entering worker mode; `_mob_at_c_apply_type(Salary)` sets worker state; `_at_gather_submit_fields` skips category resolution in worker mode; desktop/mobile render branches call `_at_clear_category_session_state()`.
+- **Post-save category reset** — `_at_clear_post_save_transient_fields()` reuses `_at_clear_category_session_state()` (RETENTION-01: keep section + date only).
+- **Navigation scroll** — `_scroll_main_to_top()` on `_current_page` change (same zero-height `components.html` pattern as session-restore cookie).
+- **Submit type** — desktop/mobile submit uses `_at_effective_txn_type()` consistently (Salary idx 6 → Expense worker path).
+
+**Docs:** [docs/UX_STABILIZE_01_DATA_ENTRY_STATE.md](./docs/UX_STABILIZE_01_DATA_ENTRY_STATE.md)
+
+**Tests:** `tests/test_ux_stabilize_01_data_entry_state.py` + existing `test_ux04a_post_save_retention.py`, `test_add_txn_fix01.py`, `test_add_txn_fix01::test_worker_salary_cash_posting_succeeds`.
+
+**Out of scope:** posting/accounting logic, PostgreSQL migration, NAV_ARCH untracked files.
 
 ---
 
