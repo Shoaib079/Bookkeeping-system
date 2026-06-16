@@ -14,7 +14,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP.md"
 
-PYTEST_BASELINE = "4713 passed"
+PYTEST_BASELINE = "4718 passed"
 
 
 @pytest.fixture(scope="module")
@@ -103,10 +103,10 @@ class TestStatusAtAGlance:
         glance = _section_after("## Status at a glance", text, limit=16000)
         assert "MONEY-DECIMAL-04c" in glance or "MD-04c" in glance
 
-    def test_postgres_cutover_prep_closed(self, text: str):
+    def test_postgres_real_dry_run_recorded(self, text: str):
         glance = _section_after("## Status at a glance", text, limit=16000)
         assert "PostgreSQL runtime" in glance
-        assert "prep" in glance.lower() or "cutover prep" in glance.lower()
+        assert "dry run" in glance.lower() or "real SQLite" in glance
 
     def test_react_not_started(self, text: str):
         glance = _section_after("## Status at a glance", text, limit=16000)

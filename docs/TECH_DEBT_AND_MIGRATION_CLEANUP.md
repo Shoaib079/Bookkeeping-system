@@ -286,10 +286,11 @@ Independent architectural review (Claude) — baseline FastAPI/React readiness a
 6. **P3.9** — phased `migrate_schema()` retirement (**✅ complete** — P3.9-A/B-CHAR/B/C)
 7. ~~**PostgreSQL build + dual-run parity**~~ ✅ — Alembic PG test build + harness ([PG build doc](./POSTGRES_PG_BUILD_DUAL_RUN_PARITY.md))
 8. ~~**PostgreSQL runtime cutover prep**~~ ✅ — test-only SQLite→PG copy + gate parse-only ([prep doc](./POSTGRES_RUNTIME_CUTOVER_PREP.md))
-9. **PostgreSQL production runtime cutover** — full data migration + flag-gated switch (operator approval; still blocked)
-10. **React migration** — not started (`ERP_DS_05` spec only)
+9. ~~**Real SQLite→PG dry run**~~ ✅ — copy-only migration verified ([POSTGRES_REAL_DRY_RUN_20260616.md](./POSTGRES_REAL_DRY_RUN_20260616.md))
+10. **PostgreSQL production runtime cutover** — operator approval + runtime gate wiring (**blocked**; data parity met)
+11. **React migration** — not started (`ERP_DS_05` spec only)
 
-**FastAPI foundation:** partial — P0–P2 exist; write routes feature-flagged; **not complete**. **PostgreSQL runtime:** test-only validation; **not complete**.
+**FastAPI foundation:** partial — P0–P2 exist; write routes feature-flagged; **not complete**. **PostgreSQL runtime:** real copy-only dry run ✅ (2026-06-16); production switch **blocked**.
 
 **Related roadmap:** [ROADMAP.md § FUTURE-MIGRATION-AUDIT-01](../ROADMAP.md#future-migration-audit-01--fastapi-readiness-audit) · [DOCS_MIGRATION_CHECKPOINT_01.md](./DOCS_MIGRATION_CHECKPOINT_01.md)
 
