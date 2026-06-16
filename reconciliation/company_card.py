@@ -289,13 +289,13 @@ def post_credit_card_bill_payment(
     Sub-ledger: bank withdrawal + credit-card deposit (debt reduced).
     """
     from reconciliation.match_post import MatchPostError, _create_bank_txn, _finalize_row
+    from services import posting as posting_svc
 
     if not company_card_enabled(session, company_id):
         raise MatchPostError(
             "Enable **Company credit card** in Company Setup to post bill payments."
         )
 
-    app = _app()
     row, imp = _row_context(session, row_id, company_id)
     if row.credit_amount and not row.debit_amount:
         raise MatchPostError("This row is a deposit, not a card bill payment")
@@ -314,8 +314,12 @@ def post_credit_card_bill_payment(
     if amt <= 0:
         raise MatchPostError("Payment amount must be positive")
 
-    cc_payable = app.get_account_by_name(session, "Credit Card Payable")
-    bank_gl = app.get_account_by_name(session, "Bank", currency=imp.currency)
+    cc_payable = posting_svc.get_account_by_name(
+        session, "Credit Card Payable", company_id=company_id
+    )
+    bank_gl = posting_svc.get_account_by_name(
+        session, "Bank", currency=imp.currency, company_id=company_id
+    )
     if not cc_payable or not bank_gl:
         raise MatchPostError("Credit Card Payable or Bank GL account missing")
 
@@ -345,7 +349,7 @@ def post_credit_card_bill_payment(
     apply_account_balance_delta(cc_ba, "deposit", amt)
     session.add(cc_ba)
 
-    je = app.create_journal_entry(
+    je = posting_svc.create_journal_entry(
         session,
         row.date,
         (
@@ -356,6 +360,7 @@ def post_credit_card_bill_payment(
         row.id,
         [(cc_payable.id, amt, 0), (bank_gl.id, 0, amt)],
         currency=imp.currency,
+        company_id=company_id,
     )
 
     row.credit_card_account_id = credit_card_account_id
