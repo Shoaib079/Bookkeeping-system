@@ -116,11 +116,31 @@ def test_classification_module_exists():
     assert CLASSIFICATION_PATH.stat().st_size > 1000
 
 
-def test_classification_covers_all_model_float_columns():
-    model_cols = _model_float_columns()
-    classified = NUMERIC_19_2 | NUMERIC_19_4 | NUMERIC_19_8 | FLOAT_REMAIN
-    assert len(model_cols) == 99
+def _model_numeric_columns() -> set[tuple[str, str]]:
+    src = (ROOT / "models.py").read_text(encoding="utf-8")
+    table: str | None = None
+    cols: set[tuple[str, str]] = set()
+    for line in src.splitlines():
+        m_tab = re.search(r"""__tablename__\s*=\s*["'](\w+)["']""", line)
+        if m_tab:
+            table = m_tab.group(1)
+        m_col = re.search(r"(\w+)\s*=\s*Column\(NUMERIC_", line)
+        if m_col and table:
+            cols.add((table, m_col.group(1)))
+    return cols
+
+
+def test_classification_covers_all_model_numeric_columns():
+    model_cols = _model_numeric_columns()
+    classified = NUMERIC_19_2 | NUMERIC_19_4 | NUMERIC_19_8
+    assert len(model_cols) == 88
     assert classified == model_cols
+
+
+def test_model_float_columns_are_float_remain_only():
+    model_float = _model_float_columns()
+    assert len(model_float) == 11
+    assert model_float == FLOAT_REMAIN
 
 
 def test_no_overlap_between_tiers():
@@ -217,7 +237,10 @@ def test_production_db_not_used_by_harness():
     assert not str(PRODUCTION_DB).startswith("/tmp")
 
 
-def test_models_still_float_until_impl2():
+def test_models_use_numeric_for_money_columns():
     models_src = (ROOT / "models.py").read_text(encoding="utf-8")
-    assert "Column(Float" in models_src
-    assert "Numeric" not in models_src
+    assert "NUMERIC_MONEY = Numeric(19, 2, asdecimal=True)" in models_src
+    assert "NUMERIC_FX = Numeric(19, 4, asdecimal=True)" in models_src
+    assert "NUMERIC_RATE = Numeric(19, 8, asdecimal=True)" in models_src
+    assert models_src.count("Column(NUMERIC_MONEY") >= 80
+    assert models_src.count("Column(Float") == 11

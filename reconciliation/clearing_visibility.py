@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 from models import JournalEntry, JournalEntryLine, Sale
 from reconciliation.clearing import fetch_unsettled_card_sales_for_visibility
+from services.money import line_money, money_to_float
 
 _TOLERANCE = 0.01
 
@@ -43,7 +44,7 @@ def _sum_clearing_debits_card_sales(
         )
         .all()
     )
-    return round(sum((d or 0) for (d,) in rows), 2)
+    return round(sum(line_money(d) for (d,) in rows), 2)
 
 
 def _sum_clearing_settlement_credits(
@@ -62,7 +63,7 @@ def _sum_clearing_settlement_credits(
         )
         .all()
     )
-    return round(sum((c or 0) for (c,) in rows), 2)
+    return round(sum(line_money(c) for (c,) in rows), 2)
 
 
 def compute_clearing_visibility(
@@ -88,7 +89,7 @@ def compute_clearing_visibility(
     total_card_sales = _sum_clearing_debits_card_sales(
         session, company_id, clearing_account_id
     )
-    current = round(float(current_clearing_balance), 2)
+    current = round(money_to_float(current_clearing_balance), 2)
     remaining = round(total_card_sales - settlements_posted, 2)
     reconciliation_mismatch = abs(remaining - current) > _TOLERANCE
 

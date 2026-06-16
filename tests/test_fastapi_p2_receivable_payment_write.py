@@ -24,6 +24,7 @@ from services import audit as audit_svc
 from services import commit_modes, posting
 from services import tokens as token_service
 from services.commit_modes import CommitMode, POST_RECEIVABLE_PAYMENT_FAMILY
+from services.money import money_to_float
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 from tests.helpers.commit_parity import journal_line_tuples
 
@@ -324,7 +325,7 @@ class TestReceivablePaymentWriteValidation:
         assert resp.status_code == 400
         assert resp.json()["detail"] == OVERPAY_MSG
         db.refresh(credit_sale)
-        assert credit_sale.balance == SALE_AMOUNT
+        assert money_to_float(credit_sale.balance) == SALE_AMOUNT
 
     def test_invalid_payment_method_rejected(self, api_client, tenant, credit_sale):
         resp = _post_payment(
@@ -374,7 +375,7 @@ class TestReceivablePaymentWriteCash:
 
         db.refresh(credit_sale)
         assert credit_sale.paid_amount == PARTIAL
-        assert credit_sale.balance == SALE_AMOUNT - PARTIAL
+        assert money_to_float(credit_sale.balance) == SALE_AMOUNT - PARTIAL
         assert credit_sale.status == "Partial"
         assert _journal_balanced(db)
 
@@ -392,7 +393,7 @@ class TestReceivablePaymentWriteCash:
         )
         assert resp.status_code == 201
         db.refresh(credit_sale)
-        assert credit_sale.balance == 0.0
+        assert money_to_float(credit_sale.balance) == 0.0
         assert credit_sale.status == "Paid"
 
     def test_cash_payment_matches_streamlit_accounting(
@@ -460,7 +461,7 @@ class TestReceivablePaymentWriteBank:
         )
         assert resp.status_code == 201
         bank = db.get(models.BankAccount, tenant["bank_account_id"])
-        assert bank.balance == round(bank_before + PARTIAL, 2)
+        assert money_to_float(bank.balance) == round(money_to_float(bank_before) + PARTIAL, 2)
         bt = db.query(models.BankTransaction).one()
         assert bt.type == "deposit"
         assert INV_NUM in bt.description

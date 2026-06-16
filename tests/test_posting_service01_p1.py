@@ -26,6 +26,7 @@ from sqlalchemy.orm import sessionmaker
 import models
 from db import Base
 from services import posting
+from services.money import fx_to_float
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -149,8 +150,8 @@ def test_service_fx_amount_native_rounding(session):
     )
     lines = session.query(models.JournalEntryLine).filter_by(
         journal_entry_id=entry.id).order_by(models.JournalEntryLine.id).all()
-    assert lines[0].amount_native == round(33.33 * 1.23456, 4)
-    assert lines[1].amount_native == round(-33.33 * 1.23456, 4)
+    assert fx_to_float(lines[0].amount_native) == round(33.33 * 1.23456, 4)
+    assert fx_to_float(lines[1].amount_native) == round(-33.33 * 1.23456, 4)
 
 
 def test_service_no_currency_means_no_amount_native(session):

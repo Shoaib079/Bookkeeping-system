@@ -8,10 +8,12 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from models import BankAccount, BankTransaction, Customer, JournalEntry, Sale
+from reconciliation.company_card import apply_account_balance_delta
 from services import audit as audit_svc
 from services import commit_modes
 from services import posting as posting_svc
 from services.commit_modes import POST_CASH_SALE_FAMILY
+from services.money import persist_money
 from services.unit_of_work import boundary_commit_scope
 
 # Pinned EN transactional strings — must match registry/locales/transactional.py.
@@ -153,12 +155,12 @@ def create_and_post_sale(
                 .first()
             )
             if card_ba:
-                card_ba.balance = (card_ba.balance or 0) + amount
+                apply_account_balance_delta(card_ba, "deposit", amount)
                 session.add(
                     BankTransaction(
                         account_id=card_ba.id,
                         date=entry_date,
-                        amount=amount,
+                        amount=persist_money(amount),
                         type="deposit",
                         description=f"Card Sale {inv_num}",
                         company_id=company_id,

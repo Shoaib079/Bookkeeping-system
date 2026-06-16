@@ -22,6 +22,7 @@ from registry.coa_seed import seed_chart_of_accounts_for_company
 from services import audit as audit_svc
 from services import commit_modes, posting
 from services import tokens as token_service
+from services.money import money_to_float
 from services.commit_modes import (
     CommitMode,
     PERIOD_CLOSE_FAMILY,
@@ -402,8 +403,8 @@ class TestProfitAllocation:
             .all()
         )
         assert len(lines) == 2
-        assert round(sum(l.amount for l in lines), 2) == 400.0
-        assert all(round(l.amount, 2) == 200.0 for l in lines)  # 50/50
+        assert round(sum(money_to_float(l.amount) for l in lines), 2) == 400.0
+        assert all(money_to_float(l.amount) == 200.0 for l in lines)  # 50/50
 
     def test_loss_allocation_behavior(self, api_client, tenant, db):
         cid = tenant["company_id"]
@@ -426,7 +427,7 @@ class TestProfitAllocation:
             .filter_by(allocation_id=body["allocation_id"])
             .all()
         )
-        assert all(round(l.amount, 2) == -200.0 for l in lines)  # negative on loss
+        assert all(money_to_float(l.amount) == -200.0 for l in lines)  # negative on loss
         assert _je_balanced(db)
 
     def test_rounding_remainder_absorbed(self, api_client, tenant, db):
@@ -444,7 +445,7 @@ class TestProfitAllocation:
             .order_by(models.PartnerProfitAllocationLine.id)
             .all()
         )
-        amounts = sorted(round(l.amount, 2) for l in lines)
+        amounts = sorted(money_to_float(l.amount) for l in lines)
         assert round(sum(amounts), 2) == 100.01  # remainder absorbed exactly
         assert amounts == [50.0, 50.01]
         assert _je_balanced(db)

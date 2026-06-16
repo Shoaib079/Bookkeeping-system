@@ -12,6 +12,7 @@ from sqlalchemy.orm import sessionmaker
 
 import app
 import models
+from reconciliation.company_card import apply_account_balance_delta
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
 from services import commit_modes, posting
@@ -205,7 +206,7 @@ def _equity_contrib_internal(sess, cid):
     sess.add(btxn)
     sess.flush()
     btxn.description = f"Capital Contribution #{btxn.id}"
-    bank.balance = (bank.balance or 0) + AMOUNT
+    apply_account_balance_delta(bank, "deposit", AMOUNT)
     app.post_capital_contribution(
         sess, btxn.id, AMOUNT, POST_DATE, "Bank", currency=CURRENCY
     )
@@ -236,7 +237,7 @@ def _equity_contrib_boundary(sess, cid):
         sess.add(btxn)
         sess.flush()
         btxn.description = f"Capital Contribution #{btxn.id}"
-        bank.balance = (bank.balance or 0) + AMOUNT
+        apply_account_balance_delta(bank, "deposit", AMOUNT)
         app.post_capital_contribution(
             sess, btxn.id, AMOUNT, POST_DATE, "Bank", currency=CURRENCY
         )

@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from models import AuditLog, ExternalSalesVerification, Sale
+from services.money import money_to_float
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -400,11 +401,11 @@ def _to_record(row: ExternalSalesVerification) -> VerificationRecord:
 
 def _external_from_row(row: ExternalSalesVerification) -> ExternalSalesTotals:
     return ExternalSalesTotals(
-        external_total=row.external_total,
-        z_report_total=row.z_report_total,
-        cash=row.external_cash,
-        card=row.external_card,
-        online=row.external_online,
+        external_total=money_to_float(row.external_total) if row.external_total is not None else None,
+        z_report_total=money_to_float(row.z_report_total) if row.z_report_total is not None else None,
+        cash=money_to_float(row.external_cash) if row.external_cash is not None else None,
+        card=money_to_float(row.external_card) if row.external_card is not None else None,
+        online=money_to_float(row.external_online) if row.external_online is not None else None,
     )
 
 
@@ -481,7 +482,7 @@ def compute_erp_sales_totals(
         )
         if sale_type:
             q = q.filter(Sale.sale_type == sale_type)
-        return round(q.scalar() or 0.0, 2)
+        return money_to_float(q.scalar() or 0.0)
 
     cash = _sale_sum("Cash")
     card = _sale_sum("Card")

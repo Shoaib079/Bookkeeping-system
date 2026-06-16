@@ -8,6 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 import models
+from services.money import line_money, money_to_float
 
 # Tables commonly touched by posting flows (extend per family in later slices).
 DEFAULT_TABLES: tuple[type, ...] = (
@@ -122,7 +123,7 @@ def journal_line_tuples(session: Session) -> list[tuple[int | None, int, float, 
         )
         .all()
     )
-    return [(ln.journal_entry_id, ln.account_id, ln.debit or 0.0, ln.credit or 0.0) for ln in lines]
+    return [(ln.journal_entry_id, ln.account_id, line_money(ln.debit), line_money(ln.credit)) for ln in lines]
 
 
 def sale_row_tuples(session: Session) -> list[tuple]:
@@ -132,10 +133,10 @@ def sale_row_tuples(session: Session) -> list[tuple]:
             s.id,
             s.invoice_number,
             s.customer_name,
-            s.amount,
+            money_to_float(s.amount),
             s.sale_type,
-            s.paid_amount,
-            s.balance,
+            money_to_float(s.paid_amount),
+            money_to_float(s.balance),
             s.status,
             str(s.date),
             s.company_id,
@@ -166,7 +167,7 @@ def expense_row_tuples(session: Session) -> list[tuple]:
             r.id,
             r.expense_type,
             r.category,
-            r.amount,
+            money_to_float(r.amount),
             r.payment_method,
             r.description,
             str(r.date),
@@ -187,7 +188,7 @@ def bank_txn_row_tuples(session: Session) -> list[tuple]:
         (
             t.id,
             t.account_id,
-            t.amount,
+            money_to_float(t.amount),
             t.type,
             t.description,
             str(t.date),
@@ -205,7 +206,7 @@ def purchase_row_tuples(session: Session) -> list[tuple]:
         (
             r.id,
             r.vendor_id,
-            r.amount,
+            money_to_float(r.amount),
             r.purchase_type,
             r.gl_debit,
             r.description,
@@ -223,7 +224,7 @@ def payable_row_tuples(session: Session) -> list[tuple]:
         (
             r.id,
             r.vendor_id,
-            r.amount,
+            money_to_float(r.amount),
             r.paid_amount,
             r.balance,
             r.paid,
@@ -249,7 +250,7 @@ def partner_movement_row_tuples(session: Session) -> list[tuple]:
             r.id,
             r.partner_id,
             r.movement_type,
-            r.amount,
+            money_to_float(r.amount),
             r.bank_transaction_id,
             r.journal_entry_id,
             str(r.date),
@@ -271,7 +272,7 @@ def worker_movement_row_tuples(session: Session) -> list[tuple]:
             r.id,
             r.worker_id,
             r.movement_type,
-            r.amount,
+            money_to_float(r.amount),
             r.gross_salary,
             r.deductions,
             r.advance_recovery,
@@ -336,7 +337,7 @@ def profit_allocation_line_tuples(session: Session) -> list[tuple]:
             r.allocation_id,
             r.partner_id,
             r.share_pct,
-            r.amount,
+            money_to_float(r.amount),
             r.company_id,
         )
         for r in rows
@@ -377,7 +378,7 @@ def bank_statement_row_tuples(session: Session) -> list[tuple]:
             r.match_type,
             r.posted_journal_entry_id,
             r.bank_transaction_id,
-            r.amount,
+            money_to_float(r.amount),
             r.vendor_id,
             r.payable_id,
             r.expense_record_id,

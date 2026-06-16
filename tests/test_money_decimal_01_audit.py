@@ -111,12 +111,12 @@ def test_audit_doc_do_not_touch_list(doc_text: str):
         assert item in doc_text, f"missing do-not-touch item: {item}"
 
 
-def test_models_py_still_uses_float_columns():
+def test_models_py_uses_numeric_money_columns():
     models_src = (
         Path(__file__).resolve().parents[1] / "models.py"
     ).read_text(encoding="utf-8")
-    assert "Column(Float" in models_src
-    assert "Numeric" not in models_src
+    assert "NUMERIC_MONEY" in models_src
+    assert models_src.count("Column(Float") == 11
 
 
 def test_posting_kernel_uses_cent_tolerance():

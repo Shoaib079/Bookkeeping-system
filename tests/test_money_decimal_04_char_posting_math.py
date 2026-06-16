@@ -33,6 +33,7 @@ app.DEV_MODE = True
 
 from registry.coa_seed import seed_chart_of_accounts_for_company
 from services import posting
+from services.money import fx_to_float, line_money, money_to_float
 from services.read_balances import calculate_account_balance
 from services.read_ledger import compute_ledger_page
 from services.read_reports import compute_balance_sheet, compute_profit_loss
@@ -100,7 +101,7 @@ def _je_lines(session, journal_entry_id: int) -> list[tuple[int, float, float]]:
         .order_by(models.JournalEntryLine.id)
         .all()
     )
-    return [(ln.account_id, ln.debit or 0.0, ln.credit or 0.0) for ln in lines]
+    return [(ln.account_id, line_money(ln.debit), line_money(ln.credit)) for ln in lines]
 
 
 def _entries_for(session, ref_type: str, ref_id: int) -> list[models.JournalEntry]:
@@ -214,8 +215,8 @@ class TestPostingSourceMoneyContract:
     def test_create_journal_entry_balance_guard_is_float_gt_001(self, posting_source: str):
         assert "abs(total_debit - total_credit) > 0.01" in posting_source
 
-    def test_amount_native_uses_round_four_dp(self, posting_source: str):
-        assert "amount_native=round(net * fx_rate, 4)" in posting_source
+    def test_amount_native_uses_persist_fx(self, posting_source: str):
+        assert "persist_fx(net * fx_rate)" in posting_source
 
     def test_allocate_profit_uses_money_share_helper(self, posting_source: str):
         assert "_allocation_share_float" in posting_source
@@ -241,13 +242,13 @@ class TestCreateJournalEntryBalanceGuard:
             (cash_id, AMOUNT, 0.0), (inc_id, 0.0, AMOUNT),
         ]
 
-    def test_amounts_persisted_via_je_line_parse_without_two_dp_quantize(self, session):
-        """Kernel uses parse_money path — extra precision preserved (no money_to_float on lines)."""
+    def test_amounts_persisted_quantized_to_two_dp(self, session):
+        """MD-05-IMPL-2: JE lines persist via persist_money (2 dp)."""
         raw = 100.012345
         cash_id = _acct_id(session, "Cash")
         inc_id = _acct_id(session, "Sales Revenue")
         entry = posting.create_journal_entry(
-            session, POST_DATE, "no quantize", "Manual", None,
+            session, POST_DATE, "quantize", "Manual", None,
             [(cash_id, raw, 0.0), (inc_id, 0.0, raw)], company_id=COMPANY_ID,
         )
         lines = (
@@ -256,8 +257,8 @@ class TestCreateJournalEntryBalanceGuard:
             .order_by(models.JournalEntryLine.id)
             .all()
         )
-        assert lines[0].debit == raw
-        assert lines[1].credit == raw
+        assert line_money(lines[0].debit) == 100.01
+        assert line_money(lines[1].credit) == 100.01
 
     def test_float_tolerance_rejects_100_vs_99_99(self, session):
         cash_id = _acct_id(session, "Cash")
@@ -303,8 +304,8 @@ class TestPostFamilyAmountHandling:
         session.flush()
         posting.post_cash_sale(session, sale.id, AMOUNT, POST_DATE, company_id=COMPANY_ID)
         entry = _entries_for(session, "CashSale", sale.id)[0]
-        debits = [l.debit for l in entry.lines if l.debit]
-        credits = [l.credit for l in entry.lines if l.credit]
+        debits = [line_money(l.debit) for l in entry.lines if line_money(l.debit)]
+        credits = [line_money(l.credit) for l in entry.lines if line_money(l.credit)]
         assert debits == [AMOUNT]
         assert credits == [AMOUNT]
 
@@ -335,8 +336,8 @@ class TestPostFamilyAmountHandling:
             payment_method="Cash", company_id=COMPANY_ID,
         )
         entry = _entries_for(session, "Expense", expense.id)[0]
-        assert sum(l.debit or 0 for l in entry.lines) == AMOUNT
-        assert sum(l.credit or 0 for l in entry.lines) == AMOUNT
+        assert sum(line_money(l.debit) for l in entry.lines) == AMOUNT
+        assert sum(line_money(l.credit) for l in entry.lines) == AMOUNT
 
     def test_post_purchase_100_01(self, session):
         vendor = models.Vendor(name="V", is_active=True, company_id=COMPANY_ID)
@@ -354,7 +355,7 @@ class TestPostFamilyAmountHandling:
             purchase_type="Cash", company_id=COMPANY_ID,
         )
         entry = _entries_for(session, "CashPurchase", purchase.id)[0]
-        assert sum(l.debit or 0 for l in entry.lines) == AMOUNT
+        assert sum(line_money(l.debit) for l in entry.lines) == AMOUNT
 
     @pytest.mark.parametrize("txn_type", ["deposit", "withdrawal"])
     def test_post_bank_transaction_100_01(self, session, txn_type: str):
@@ -369,8 +370,8 @@ class TestPostFamilyAmountHandling:
         )
         ref = "BankDeposit" if txn_type == "deposit" else "BankWithdrawal"
         entry = _entries_for(session, ref, txn.id)[0]
-        assert sum(l.debit or 0 for l in entry.lines) == AMOUNT
-        assert sum(l.credit or 0 for l in entry.lines) == AMOUNT
+        assert sum(line_money(l.debit) for l in entry.lines) == AMOUNT
+        assert sum(line_money(l.credit) for l in entry.lines) == AMOUNT
 
 
 # ── Profit allocation rounding ────────────────────────────────────────────────
@@ -388,7 +389,7 @@ class TestProfitAllocationRounding:
             .filter_by(allocation_id=alloc_id)
             .all()
         )
-        amounts = sorted(round(l.amount, 2) for l in lines)
+        amounts = sorted(money_to_float(l.amount) for l in lines)
         assert amounts == MD02_GOLDEN_MANIFEST["profit_split_100_01"]
 
     def test_loss_100_01_penny_absorption(self, session):
@@ -402,7 +403,7 @@ class TestProfitAllocationRounding:
             .filter_by(allocation_id=alloc_id)
             .all()
         )
-        amounts = sorted(round(l.amount, 2) for l in lines)
+        amounts = sorted(money_to_float(l.amount) for l in lines)
         assert amounts == MD02_GOLDEN_MANIFEST["loss_split_100_01"]
 
     def test_allocation_je_partner_credits_sum_to_net_income(self, session):
@@ -414,7 +415,7 @@ class TestProfitAllocationRounding:
         je = session.get(models.JournalEntry, alloc.journal_entry_id)
         re_id = _acct_id(session, "Retained Earnings")
         partner_credit = sum(
-            l.credit or 0 for l in je.lines if l.account_id != re_id
+            line_money(l.credit) for l in je.lines if l.account_id != re_id
         )
         assert round(partner_credit, 2) == AMOUNT
 
@@ -508,9 +509,9 @@ class TestMultiLineJeAccumulation:
             session, POST_DATE, "char 100x0.01", "Manual", None,
             lines, company_id=COMPANY_ID,
         )
-        debits = sum(l.debit or 0 for l in entry.lines)
+        debits = sum(line_money(l.debit) for l in entry.lines)
         assert debits == MD02_GOLDEN_MANIFEST["multi_line_debit_sum"]
-        assert sum(l.credit or 0 for l in entry.lines) == MD02_GOLDEN_MANIFEST["multi_line_debit_sum"]
+        assert sum(line_money(l.credit) for l in entry.lines) == MD02_GOLDEN_MANIFEST["multi_line_debit_sum"]
 
 
 # ── Reports depending on posting outputs ────────────────────────────────────

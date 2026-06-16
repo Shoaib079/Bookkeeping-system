@@ -31,6 +31,7 @@ app.DEV_MODE = True
 
 from registry.coa_seed import seed_chart_of_accounts_for_company
 from services import posting
+from services.money import fx_to_float, line_money, money_to_float
 from services.read_balances import calculate_account_balance
 from services.read_ledger import compute_ledger_page
 from services.read_reports import compute_balance_sheet, compute_profit_loss
@@ -80,7 +81,7 @@ def _je_lines(session, journal_entry_id: int) -> list[tuple[int, float, float]]:
         .order_by(models.JournalEntryLine.id)
         .all()
     )
-    return [(ln.account_id, ln.debit or 0.0, ln.credit or 0.0) for ln in lines]
+    return [(ln.account_id, line_money(ln.debit), line_money(ln.credit)) for ln in lines]
 
 
 def _entries_for(session, ref_type: str, ref_id: int) -> list[models.JournalEntry]:
@@ -404,7 +405,7 @@ class TestGoldenProfitAllocationPennyAbsorption:
             .order_by(models.PartnerProfitAllocationLine.id)
             .all()
         )
-        amounts = sorted(round(l.amount, 2) for l in lines)
+        amounts = sorted(money_to_float(l.amount) for l in lines)
         assert amounts == [50.0, 50.01]
         assert round(sum(amounts), 2) == AMOUNT
 
@@ -421,7 +422,7 @@ class TestGoldenProfitAllocationPennyAbsorption:
             .filter_by(allocation_id=alloc_id)
             .all()
         )
-        amounts = sorted(round(l.amount, 2) for l in lines)
+        amounts = sorted(money_to_float(l.amount) for l in lines)
         assert amounts == [-50.01, -50.0]
         assert round(sum(amounts), 2) == -AMOUNT
 
@@ -443,8 +444,8 @@ class TestGoldenMultiLineJeAccumulation:
             lines,
             company_id=COMPANY_ID,
         )
-        debits = sum(l.debit or 0 for l in entry.lines)
-        credits = sum(l.credit or 0 for l in entry.lines)
+        debits = sum(line_money(l.debit) for l in entry.lines)
+        credits = sum(line_money(l.credit) for l in entry.lines)
         assert debits == 1.0
         assert credits == 1.0
         assert len(entry.lines) == 101
@@ -594,7 +595,7 @@ class TestGoldenMultiCurrencyRounding:
             company_id=COMPANY_ID,
         )
         entry = _entries_for(session, "CashSale", sale.id)[0]
-        natives = [ln.amount_native for ln in entry.lines if ln.amount_native is not None]
+        natives = [fx_to_float(ln.amount_native) for ln in entry.lines if ln.amount_native is not None]
         expected = round(AMOUNT * fx_rate, 4)
         assert len(natives) == 2
         assert natives[0] == expected

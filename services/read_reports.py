@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from models import ChartOfAccounts, JournalEntry
+from services.money import line_money
 from services.read_balances import calculate_account_balance_for_period
 
 _BS_EPOCH = datetime.date(2000, 1, 1)
@@ -276,7 +277,7 @@ def compute_cash_flow(
         for line in entry.lines:
             if line.account_id not in cash_ids:
                 continue
-            net = round((line.debit or 0) - (line.credit or 0), 2)
+            net = round(line_money(line.debit) - line_money(line.credit), 2)
             if net == 0:
                 continue
             row = CashFlowRow(

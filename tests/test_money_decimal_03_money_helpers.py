@@ -123,6 +123,9 @@ class TestPureModule:
         assert money.__doc__ is not None
         assert "MONEY-DECIMAL-03" in money.__doc__
 
+    def test_parse_money_none_returns_zero(self):
+        assert money.parse_money(None) == Decimal("0")
+
     def test_public_api_surface(self):
         names = {
             "parse_money",
@@ -130,6 +133,13 @@ class TestPureModule:
             "quantize_fx",
             "quantize_rate",
             "money_to_float",
+            "line_money",
+            "net_balance_delta",
+            "persist_money",
+            "persist_fx",
+            "persist_rate",
+            "fx_to_float",
+            "rate_to_float",
             "decimal_equal",
             "MONEY_PRECISION",
             "FX_PRECISION",

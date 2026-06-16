@@ -8,6 +8,7 @@ from typing import Any, Literal
 from sqlalchemy.orm import Session
 
 from models import BankStatementImport, BankStatementRow
+from services.money import money_to_float
 
 TIE_OUT_TOLERANCE = 0.01
 TERMINAL_ROW_STATUSES = frozenset({"posted", "skipped", "voided"})
@@ -20,9 +21,9 @@ TriState = Literal["ok", "attention", "unavailable"]
 def statement_row_signed_amount(row) -> float:
     """Credits increase balance; debits decrease (signed movement)."""
     if row.credit_amount:
-        return round(float(row.credit_amount), 2)
+        return money_to_float(row.credit_amount)
     if row.debit_amount:
-        return round(-float(row.debit_amount), 2)
+        return round(-money_to_float(row.debit_amount), 2)
     return 0.0
 
 

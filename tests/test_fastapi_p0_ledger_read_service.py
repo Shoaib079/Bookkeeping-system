@@ -14,6 +14,7 @@ import app as erp_app
 from db import Base
 import models
 from services import read_ledger as rl
+from services.money import line_money
 
 if "streamlit" not in sys.modules:
     _st_mock = MagicMock()
@@ -135,8 +136,8 @@ def _legacy_compute_ledger(
 
     def _delta(line):
         if account.account_type in ["Asset", "Expense"]:
-            return (line.debit or 0) - (line.credit or 0)
-        return (line.credit or 0) - (line.debit or 0)
+            return line_money(line.debit) - line_money(line.credit)
+        return line_money(line.credit) - line_money(line.debit)
 
     opening = 0.0
     if start_date is not None:
@@ -165,8 +166,8 @@ def _legacy_compute_ledger(
             "date": entry.entry_date,
             "reference": entry.reference_type,
             "description": entry.description,
-            "debit": line.debit or 0,
-            "credit": line.credit or 0,
+            "debit": line_money(line.debit),
+            "credit": line_money(line.credit),
             "running_balance": running,
             "journal_entry_id": entry.id,
             "journal_entry_line_id": line.id,

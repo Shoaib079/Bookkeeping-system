@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from models import ChartOfAccounts, JournalEntry, JournalEntryLine
+from services.money import line_money, money_to_float
 from services.read_balances import calculate_account_balance
 
 _ASSET_EXPENSE_TYPES = frozenset({"Asset", "Expense"})
@@ -129,7 +130,7 @@ def compute_ledger_page(
             if entry is None or entry.entry_date >= start_date:
                 continue
             opening_balance += _balance_delta(
-                account.account_type, line.debit or 0, line.credit or 0,
+                account.account_type, line_money(line.debit), line_money(line.credit),
             )
 
     rows: list[LedgerRow] = []
@@ -154,8 +155,8 @@ def compute_ledger_page(
         ):
             continue
 
-        debit = line.debit or 0
-        credit = line.credit or 0
+        debit = line_money(line.debit)
+        credit = line_money(line.credit)
         running_balance += _balance_delta(account.account_type, debit, credit)
         total_debit += debit
         total_credit += credit

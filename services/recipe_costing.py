@@ -20,6 +20,7 @@ from models import (
     Recipe,
     RecipeLine,
 )
+from services.money import fx_to_float, money_to_float, persist_fx, persist_money
 from sqlalchemy.orm import Session
 
 MAX_RECURSION_DEPTH = 3
@@ -462,7 +463,7 @@ def _compute_recipe_cost_pure(
                     f"ingredient dimension '{ing.base_dimension}'."
                 )
             effective_qty = base_qty * (1.0 + line.waste_percent / 100.0)
-            line_cost = round(effective_qty * ing.cost_per_base_unit, 4)
+            line_cost = round(effective_qty * fx_to_float(ing.cost_per_base_unit), 4)
             if not ing.is_active:
                 line_warnings.append(f"Ingredient '{ing.name}' is deactivated.")
             line_costs.append(
@@ -550,7 +551,7 @@ def _ingredient_view(row: Ingredient) -> IngredientView:
         name=row.name,
         base_dimension=row.base_dimension,
         base_unit=row.base_unit,
-        cost_per_base_unit=row.cost_per_base_unit,
+        cost_per_base_unit=fx_to_float(row.cost_per_base_unit),
         is_active=row.is_active,
         notes=row.notes,
         created_at=row.created_at,
@@ -704,7 +705,7 @@ def _build_cost_maps(
                 name=row.name,
                 base_dimension=row.base_dimension,
                 base_unit=row.base_unit,
-                cost_per_base_unit=row.cost_per_base_unit,
+                cost_per_base_unit=fx_to_float(row.cost_per_base_unit),
                 is_active=row.is_active,
             )
     return ingredients, sub_recipes
@@ -754,7 +755,7 @@ def create_ingredient(
         name=trimmed,
         base_dimension=base_dimension.strip().lower(),
         base_unit=_normalize_unit(base_unit),
-        cost_per_base_unit=round(cost_per_base_unit, 6),
+        cost_per_base_unit=persist_fx(cost_per_base_unit),
         is_active=True,
         notes=notes,
         created_by_id=user_id,
@@ -791,7 +792,7 @@ def update_ingredient_cost(
     if row is None:
         return MutationResult(record_id=None, error="Ingredient not found.")
 
-    row.cost_per_base_unit = round(cost_per_base_unit, 6)
+    row.cost_per_base_unit = persist_fx(cost_per_base_unit)
     row.updated_at = datetime.datetime.now()
     _write_audit(
         session,
@@ -799,7 +800,7 @@ def update_ingredient_cost(
         action="update_ingredient_cost",
         entity_type="Ingredient",
         entity_id=row.id,
-        description=json.dumps({"cost_per_base_unit": row.cost_per_base_unit}),
+        description=json.dumps({"cost_per_base_unit": fx_to_float(row.cost_per_base_unit)}),
         performed_by=performed_by,
     )
     session.commit()
@@ -826,7 +827,7 @@ def bulk_update_costs(
             row = _get_ingredient_row(session, company_id, ingredient_id)
             if row is None:
                 raise ValueError(f"Ingredient {ingredient_id} not found.")
-            row.cost_per_base_unit = round(cost, 6)
+            row.cost_per_base_unit = persist_fx(cost)
             row.updated_at = now
             touched.append(row.id)
 
@@ -1397,20 +1398,22 @@ class MenuProfitabilityView:
 
 def gross_to_net_price(gross: float, tax_rate_pct: float) -> float:
     """Convert tax-inclusive gross price to net revenue."""
-    if gross < 0:
+    g = money_to_float(gross)
+    if g < 0:
         raise ValueError("Gross price cannot be negative.")
     if tax_rate_pct <= 0:
-        return round(gross, 4)
-    return round(gross / (1.0 + tax_rate_pct / 100.0), 4)
+        return round(g, 4)
+    return round(g / (1.0 + tax_rate_pct / 100.0), 4)
 
 
 def net_to_gross_price(net: float, tax_rate_pct: float) -> float:
     """Convert net revenue to tax-inclusive gross list price."""
-    if net < 0:
+    n = money_to_float(net)
+    if n < 0:
         raise ValueError("Net price cannot be negative.")
     if tax_rate_pct <= 0:
-        return round(net, 4)
-    return round(net * (1.0 + tax_rate_pct / 100.0), 4)
+        return round(n, 4)
+    return round(n * (1.0 + tax_rate_pct / 100.0), 4)
 
 
 def compute_food_cost_pct(recipe_cost: float, net_selling_price: float) -> float | None:

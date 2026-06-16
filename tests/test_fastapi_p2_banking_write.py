@@ -24,6 +24,7 @@ from services import commit_modes
 from services.commit_modes import CommitMode, POST_BANK_TRANSACTION_FAMILY
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
+from services.money import money_to_float
 
 if "streamlit" not in sys.modules:
     _st_mock = MagicMock()
@@ -303,7 +304,7 @@ class TestBankingWriteValidation:
 class TestBankingWriteDeposit:
     def test_deposit_updates_balance_and_posts_je(self, api_client, tenant, db):
         bank = db.get(models.BankAccount, tenant["bank_account_id"])
-        start_bal = bank.balance
+        start_bal = money_to_float(bank.balance)
         payload = _bank_payload(
             bank_account_id=tenant["bank_account_id"],
             transaction_type="deposit",
@@ -318,11 +319,11 @@ class TestBankingWriteDeposit:
         assert f"{AMOUNT:,.2f}" in body["message"]
 
         db.refresh(bank)
-        assert bank.balance == pytest.approx(start_bal + AMOUNT)
+        assert money_to_float(bank.balance) == pytest.approx(start_bal + AMOUNT)
 
         txn = db.get(models.BankTransaction, body["bank_transaction_id"])
         assert txn.type == "deposit"
-        assert txn.amount == AMOUNT
+        assert money_to_float(txn.amount) == AMOUNT
         assert txn.company_id == tenant["company_id"]
 
         je = db.get(models.JournalEntry, body["journal_entry_id"])
@@ -346,7 +347,7 @@ class TestBankingWriteDeposit:
 class TestBankingWriteWithdrawal:
     def test_withdrawal_updates_balance_and_posts_je(self, api_client, tenant, db):
         bank = db.get(models.BankAccount, tenant["bank_account_id"])
-        start_bal = bank.balance
+        start_bal = money_to_float(bank.balance)
         payload = _bank_payload(
             bank_account_id=tenant["bank_account_id"],
             transaction_type="withdrawal",
@@ -357,7 +358,7 @@ class TestBankingWriteWithdrawal:
         assert body["journal_entry_id"] is not None
 
         db.refresh(bank)
-        assert bank.balance == pytest.approx(start_bal - AMOUNT)
+        assert money_to_float(bank.balance) == pytest.approx(start_bal - AMOUNT)
 
         je = db.get(models.JournalEntry, body["journal_entry_id"])
         assert je.reference_type == "BankWithdrawal"
@@ -368,8 +369,8 @@ class TestBankingWriteTransfer:
     def test_transfer_creates_paired_transactions(self, api_client, tenant, db):
         src = db.get(models.BankAccount, tenant["bank_account_id"])
         dest = db.get(models.BankAccount, tenant["cash_account_id"])
-        src_start = src.balance
-        dest_start = dest.balance
+        src_start = money_to_float(src.balance)
+        dest_start = money_to_float(dest.balance)
         payload = _bank_payload(
             bank_account_id=tenant["bank_account_id"],
             transaction_type="transfer",
@@ -383,8 +384,8 @@ class TestBankingWriteTransfer:
 
         db.refresh(src)
         db.refresh(dest)
-        assert src.balance == pytest.approx(src_start - AMOUNT)
-        assert dest.balance == pytest.approx(dest_start + AMOUNT)
+        assert money_to_float(src.balance) == pytest.approx(src_start - AMOUNT)
+        assert money_to_float(dest.balance) == pytest.approx(dest_start + AMOUNT)
 
         src_txn = db.get(models.BankTransaction, body["bank_transaction_id"])
         dest_txn = db.get(models.BankTransaction, body["paired_transaction_id"])
@@ -447,7 +448,7 @@ class TestBankingWriteRestrictions:
 
     def test_cc_withdrawal_subledger_only_no_je(self, api_client, tenant, db):
         cc = db.get(models.BankAccount, tenant["cc_account_id"])
-        start = cc.balance
+        start = money_to_float(cc.balance)
         payload = _bank_payload(
             bank_account_id=tenant["cc_account_id"],
             transaction_type="withdrawal",
@@ -457,7 +458,7 @@ class TestBankingWriteRestrictions:
         body = resp.json()
         assert body["journal_entry_id"] is None
         db.refresh(cc)
-        assert cc.balance == pytest.approx(start + AMOUNT)
+        assert money_to_float(cc.balance) == pytest.approx(start + AMOUNT)
 
     def test_statement_linked_void_guard_preserved(self, api_client, tenant, db):
         """Write API creates only; void kernel still blocks statement-linked rows."""

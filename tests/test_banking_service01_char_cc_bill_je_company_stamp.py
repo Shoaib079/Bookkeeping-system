@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import app as erp_app
 import models
+from services.money import money_to_float
 from db import Base
 from reconciliation.company_card import post_credit_card_bill_payment
 from reconciliation.match_post import MatchPostError
@@ -406,8 +407,8 @@ class TestCCBillPaymentSubledgerPairing:
 
 class TestCCBillPaymentBalanceDeltas:
     def test_bank_and_card_balances_after_post(self, db: Session, seeded: dict):
-        bank_before = seeded["bank"].balance
-        card_before = seeded["card"].balance
+        bank_before = money_to_float(seeded["bank"].balance)
+        card_before = money_to_float(seeded["card"].balance)
 
         _post_bill(
             db,
@@ -418,8 +419,8 @@ class TestCCBillPaymentBalanceDeltas:
 
         db.refresh(seeded["bank"])
         db.refresh(seeded["card"])
-        assert seeded["bank"].balance == pytest.approx(bank_before - AMOUNT)
-        assert seeded["card"].balance == pytest.approx(card_before - AMOUNT)
+        assert money_to_float(seeded["bank"].balance) == pytest.approx(bank_before - AMOUNT)
+        assert money_to_float(seeded["card"].balance) == pytest.approx(card_before - AMOUNT)
 
 
 class TestCCBillPaymentAuditBehavior:

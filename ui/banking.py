@@ -33,6 +33,7 @@ from registry.banking_config import (
 )
 from registry.nav_keys import NAV_BANKING
 from services import read_reconciliation as _read_recon_svc
+from services.money import money_to_float
 from ui.section import financial_section_header_html
 
 
@@ -521,7 +522,7 @@ def banking_recon_cockpit_summary(session, company_id: int) -> dict[str, Any]:
     for ba in bank_accounts:
         if erp.is_credit_card_account(ba):
             continue
-        stored = round(ba.balance or 0.0, 2)
+        stored = money_to_float(ba.balance)
         total_stored += stored
         bank_rows.append(
             {

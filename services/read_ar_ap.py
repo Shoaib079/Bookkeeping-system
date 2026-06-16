@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from models import Payable, Sale, Vendor
+from services.money import money_to_float
 
 AgingBuckets = dict[str, float]
 
@@ -25,7 +26,7 @@ def get_aging_summary(records, amount_field: str, due_date_field: str) -> AgingB
     }
     for record in records:
         due_date = getattr(record, due_date_field)
-        amount = float(getattr(record, amount_field) or 0)
+        amount = money_to_float(getattr(record, amount_field) or 0)
         if not due_date:
             buckets["Current"] += amount
             continue
@@ -45,8 +46,8 @@ def get_aging_summary(records, amount_field: str, due_date_field: str) -> AgingB
 
 def payable_balance(record) -> float:
     """Outstanding balance on a payable (legacy _payable_balance)."""
-    paid_amt = record.paid_amount or 0.0
-    return max(round(record.amount - paid_amt, 2), 0.0)
+    paid_amt = money_to_float(record.paid_amount)
+    return max(round(money_to_float(record.amount) - paid_amt, 2), 0.0)
 
 
 def payable_status(record) -> str:
@@ -54,7 +55,7 @@ def payable_status(record) -> str:
     bal = payable_balance(record)
     if record.paid or bal <= 0:
         return "Paid"
-    if (record.paid_amount or 0) > 0:
+    if money_to_float(record.paid_amount) > 0:
         return "Partial"
     return "Open"
 
@@ -143,9 +144,9 @@ def _sale_to_row(sale: Sale) -> ReceivableRow:
         customer_name=sale.customer_name,
         date=sale.date,
         due_date=sale.due_date,
-        amount=sale.amount,
-        paid_amount=sale.paid_amount or 0.0,
-        balance=sale.balance or 0.0,
+        amount=money_to_float(sale.amount),
+        paid_amount=money_to_float(sale.paid_amount),
+        balance=money_to_float(sale.balance),
         status=sale.status,
         description=sale.description or "",
         currency=sale.currency,
@@ -263,8 +264,8 @@ def compute_payables_page(
                 date=record.date,
                 vendor_id=record.vendor_id,
                 vendor_name=vname,
-                invoice_amount=record.amount,
-                paid_amount=record.paid_amount or 0.0,
+                invoice_amount=money_to_float(record.amount),
+                paid_amount=money_to_float(record.paid_amount),
                 balance=bal,
                 due_date=record.due_date,
                 status=display_status,

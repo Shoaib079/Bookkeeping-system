@@ -12,6 +12,8 @@ from sqlalchemy.orm import sessionmaker
 
 import app
 import models
+from reconciliation.company_card import apply_account_balance_delta
+from services.money import persist_money
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
 from services import commit_modes, posting
@@ -186,13 +188,13 @@ def _bank_deposit_posted(sess, cid):
     txn = models.BankTransaction(
         account_id=bank.id,
         date=POST_DATE,
-        amount=AMOUNT,
+        amount=persist_money(AMOUNT),
         type="deposit",
         description="Manual deposit",
         company_id=cid,
     )
     sess.add(txn)
-    bank.balance = bank.balance + AMOUNT
+    apply_account_balance_delta(bank, "deposit", AMOUNT)
     sess.commit()
     app.post_bank_transaction(sess, txn.id, AMOUNT, POST_DATE, "deposit")
     sess.commit()

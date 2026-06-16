@@ -1,8 +1,9 @@
 """MD-05 — authoritative money-column tier classification for Alembic 0002.
 
 Single source of truth for Float → Numeric migration targets per
-``docs/MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md``. Models remain Float until
-MD-05-IMPL-2; this module drives revision ``0002_money_numeric`` only.
+``docs/MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md``. ``models.py`` uses
+``Numeric(asdecimal=True)`` per tier since MD-05-IMPL-2; this module drives
+revision ``0002_money_numeric`` and ORM column types.
 
 Tier rules (MD-05):
   - ``Numeric(19, 2)`` — currency amounts and balances

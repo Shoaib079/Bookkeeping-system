@@ -18,6 +18,7 @@ from unittest.mock import MagicMock
 from sqlalchemy import create_engine, event, func
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from services.money import line_money
 
 import models
 from db import Base
@@ -222,8 +223,8 @@ def journal_metrics(session: Session) -> dict[str, Any]:
     for entry in entries:
         key = entry.reference_type or ""
         ref_counts[key] = ref_counts.get(key, 0) + 1
-    debit_total = round(sum(line.debit or 0.0 for line in lines), 2)
-    credit_total = round(sum(line.credit or 0.0 for line in lines), 2)
+    debit_total = round(sum(line_money(line.debit) for line in lines), 2)
+    credit_total = round(sum(line_money(line.credit) for line in lines), 2)
     return {
         "journal_entry_count": len(entries),
         "journal_line_count": len(lines),

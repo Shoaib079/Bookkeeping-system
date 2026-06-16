@@ -14,6 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from db import Base
 import models
 from services import recipe_costing as svc
+from services.money import money_to_float
 
 
 SERVICE_PATH = pathlib.Path(svc.__file__)
@@ -437,16 +438,16 @@ class TestServiceMutations:
         )
         assert not result.ok
         db.expire_all()
-        assert db.get(models.Ingredient, a).cost_per_base_unit == before_a
-        assert db.get(models.Ingredient, b).cost_per_base_unit == before_b
+        assert money_to_float(db.get(models.Ingredient, a).cost_per_base_unit) == money_to_float(before_a)
+        assert money_to_float(db.get(models.Ingredient, b).cost_per_base_unit) == money_to_float(before_b)
 
         ok = svc.bulk_update_costs(
             db, company_id, [(a, 0.05), (b, 0.06)], user_id
         )
         assert ok.ok
         db.expire_all()
-        assert db.get(models.Ingredient, a).cost_per_base_unit == 0.05
-        assert db.get(models.Ingredient, b).cost_per_base_unit == 0.06
+        assert money_to_float(db.get(models.Ingredient, a).cost_per_base_unit) == 0.05
+        assert money_to_float(db.get(models.Ingredient, b).cost_per_base_unit) == 0.06
 
     def test_deactivate_ingredient_still_costs_with_warning(self, session):
         db, company_id, _, user_id = session

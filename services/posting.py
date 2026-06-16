@@ -76,6 +76,7 @@ from models import (
 )
 from reconciliation.company_card import (
     CompanyCardError,
+    apply_account_balance_delta,
     company_card_enabled,
     post_cc_subledger_charge,
     resolve_company_credit_card_account_id,
@@ -98,7 +99,18 @@ from services.commit_modes import (
     YEAR_END_CLOSE_FAMILY,
     is_boundary_mode,
 )
-from services.money import money_to_float, parse_money
+from services.money import (
+    fx_to_float,
+    line_money,
+    money_to_float,
+    net_balance_delta,
+    parse_money,
+    persist_fx,
+    persist_money,
+    quantize_fx,
+    quantize_money,
+    rate_to_float,
+)
 
 # Pinned by PS-P2b-CHAR — must match registry/locales/transactional.py EN strings.
 _CC_DISABLED_MSG = (
@@ -313,10 +325,10 @@ def posting_result_from_entry(
     line_dtos = tuple(
         PostingLineResult(
             account_id=ln.account_id,
-            debit=ln.debit or 0.0,
-            credit=ln.credit or 0.0,
+            debit=line_money(ln.debit),
+            credit=line_money(ln.credit),
             currency=ln.currency,
-            amount_native=ln.amount_native,
+            amount_native=fx_to_float(ln.amount_native) if ln.amount_native is not None else None,
         )
         for ln in lines
     )
@@ -431,9 +443,9 @@ def payment_result_from_receivable_post(
         fx_loss = get_account_by_name(session, "FX Loss")
         for ln in _journal_lines_for_entry(session, je.id):
             if fx_gain and ln.account_id == fx_gain.id:
-                fx_gain_loss = round(ln.credit or 0.0, 2)
+                fx_gain_loss = line_money(ln.credit)
             elif fx_loss and ln.account_id == fx_loss.id:
-                fx_gain_loss = round(-(ln.debit or 0.0), 2)
+                fx_gain_loss = -line_money(ln.debit)
     return PaymentResult(
         je_id=je.id if je else None,
         applied_amount=applied_amount,
@@ -487,31 +499,12 @@ def _get_worker_advance_balance(session, worker_id: int, *, company_id: int | No
     bal = 0.0
     for mv in movements:
         if mv.movement_type == "Advance":
-            bal += float(mv.amount)
+            bal += money_to_float(mv.amount)
         elif mv.movement_type == "Repayment":
-            bal -= float(mv.amount)
+            bal -= money_to_float(mv.amount)
         elif mv.movement_type == "Salary":
-            bal -= float(mv.advance_recovery or 0.0)
+            bal -= money_to_float(mv.advance_recovery)
     return round(bal, 2)
-
-
-def _calculate_account_balance(session, account, *, company_id: int | None = None):
-    """Verbatim from app.py ``calculate_account_balance`` with explicit company_id."""
-    if company_id is not None:
-        q = (
-            session.query(JournalEntryLine)
-            .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
-            .filter(
-                JournalEntryLine.account_id == account.id,
-                JournalEntry.company_id == company_id,
-            )
-        )
-    else:
-        q = session.query(JournalEntryLine).filter_by(account_id=account.id)
-    lines = q.all()
-    if account.account_type in ["Asset", "Expense"]:
-        return sum((line.debit or 0) - (line.credit or 0) for line in lines)
-    return sum((line.credit or 0) - (line.debit or 0) for line in lines)
 
 
 def entry_date_posting_blocked(
@@ -698,10 +691,10 @@ def create_journal_entry(
         line = JournalEntryLine(
             journal_entry_id=entry.id,
             account_id=account_id,
-            debit=debit,
-            credit=credit,
+            debit=persist_money(debit),
+            credit=persist_money(credit),
             currency=currency,
-            amount_native=round(net * fx_rate, 4) if currency else None,
+            amount_native=persist_fx(net * fx_rate) if currency else None,
             company_id=_cje_cid,
         )
         session.add(line)
@@ -838,14 +831,14 @@ def compute_sale_balance_status(amount, paid_amount, due_date):
 
     PS-P5-1: verbatim pure helper from app.py.
     """
-    balance = round(amount - paid_amount, 2)
+    balance = round(money_to_float(amount) - money_to_float(paid_amount), 2)
     today = datetime.date.today()
 
     if balance <= 0:
         status = "Paid"
     elif due_date and due_date < today:
         status = "Overdue"
-    elif paid_amount > 0:
+    elif money_to_float(paid_amount) > 0:
         status = "Partial"
     else:
         status = "Open"
@@ -873,18 +866,20 @@ def post_receivable_payment(
         return "Sale not found or is not a credit sale."
     if sale.is_void:
         return "Cannot record payment on a voided sale."
-    if sale.balance <= 0:
+    if money_to_float(sale.balance) <= 0:
         return "This invoice is already fully paid."
     if payment_amount <= 0:
         return "Payment amount must be greater than zero."
-    if payment_amount > sale.balance:
+    if payment_amount > money_to_float(sale.balance):
         return "Payment amount exceeds the remaining balance."
 
-    sale.paid_amount = round(sale.paid_amount + payment_amount, 2)
+    sale.paid_amount = persist_money(
+        money_to_float(sale.paid_amount) + _normalize_money_amount(payment_amount)
+    )
     sale.balance, sale.status = compute_sale_balance_status(
         sale.amount, sale.paid_amount, sale.due_date
     )
-    sale.balance = max(sale.balance, 0.0)
+    sale.balance = persist_money(max(money_to_float(sale.balance), 0.0))
 
     bank_acct = get_account_by_name(session, "Bank", currency=currency, company_id=company_id)
     cash_acct = get_account_by_name(session, "Cash", currency=currency, company_id=company_id)
@@ -892,9 +887,9 @@ def post_receivable_payment(
     ar_acct = get_account_by_name(session, "Accounts Receivable", company_id=company_id)
 
     if debit_acct and ar_acct:
-        sale_fx = sale.fx_rate or 1.0
+        sale_fx = rate_to_float(sale.fx_rate or 1.0)
         booked_ar = round(payment_amount * sale_fx, 2)
-        paid_in_reporting = round(payment_amount * payment_fx_rate, 2)
+        paid_in_reporting = round(payment_amount * rate_to_float(payment_fx_rate), 2)
         fx_diff = round(paid_in_reporting - booked_ar, 2)
 
         je_lines = [(debit_acct.id, paid_in_reporting, 0), (ar_acct.id, 0, booked_ar)]
@@ -1368,7 +1363,7 @@ def create_reversing_journal_entry(
     ``create_journal_entry`` (legacy ambient GL scope).
     """
     reversed_lines = [
-        (line.account_id, line.credit or 0, line.debit or 0)
+        (line.account_id, line_money(line.credit), line_money(line.debit))
         for line in original_entry.lines
     ]
     if not reversed_lines:
@@ -1646,12 +1641,13 @@ def void_bank_transaction(
             reverse_account_balance_delta(acct, txn.type, txn.amount)
         elif txn.type == "transfer":
             if txn.description and txn.description.startswith("Transfer from"):
-                # This is the destination record: balance was increased, now reduce
-                acct.balance = (acct.balance or 0) - txn.amount
+                reverse_account_balance_delta(
+                    acct, "deposit", money_to_float(txn.amount)
+                )
             else:
-                # This is the source record: balance was reduced, now restore.
-                # Also void the paired destination record so its balance is reversed too.
-                acct.balance = (acct.balance or 0) + txn.amount
+                reverse_account_balance_delta(
+                    acct, "withdrawal", money_to_float(txn.amount)
+                )
                 paired_q = session.query(BankTransaction).filter(
                     BankTransaction.date == txn.date,
                     BankTransaction.amount == txn.amount,
@@ -1666,7 +1662,9 @@ def void_bank_transaction(
                 if paired:
                     dest_acct = session.get(BankAccount, paired.account_id)
                     if dest_acct:
-                        dest_acct.balance = (dest_acct.balance or 0) - paired.amount
+                        reverse_account_balance_delta(
+                            dest_acct, "deposit", money_to_float(paired.amount)
+                        )
                     paired.is_void = True
                     paired.voided_at = datetime.date.today()
                     paired.void_reason = f"Paired with voided transfer TXN#{txn_id}: {void_reason}"
@@ -1720,10 +1718,9 @@ def void_equity_movement(
     if btxn and not btxn.is_void:
         acct = session.get(BankAccount, btxn.account_id)
         if acct:
-            if btxn.type == "deposit":
-                acct.balance = (acct.balance or 0) - btxn.amount
-            elif btxn.type == "withdrawal":
-                acct.balance = (acct.balance or 0) + btxn.amount
+            reverse_account_balance_delta(
+                acct, btxn.type, money_to_float(btxn.amount)
+            )
         btxn.is_void = True
         btxn.voided_at = datetime.date.today()
         btxn.void_reason = void_reason
@@ -1886,21 +1883,19 @@ def post_partner_movement(
         btxn = BankTransaction(
             account_id=ba_obj.id,
             date=date,
-            amount=amount,
+            amount=persist_money(amount),
             type=txn_type,
             description=f"Partner {movement_type} #TBD",
         )
         session.add(btxn)
         session.flush()
         btxn.description = f"Partner {movement_type} #{btxn.id}"
-        ba_obj.balance = (ba_obj.balance or 0.0) + (
-            amount if txn_type == "deposit" else -amount
-        )
+        apply_account_balance_delta(ba_obj, txn_type, amount)
 
     movement = PartnerMovement(
         partner_id=partner_id,
         movement_type=movement_type,
-        amount=amount,
+        amount=persist_money(amount),
         date=date,
         bank_transaction_id=btxn.id if btxn else None,
         notes=notes.strip() if notes else None,
@@ -1980,8 +1975,8 @@ def void_partner_movement(
             btxn.voided_at = datetime.datetime.now()
             ba = session.get(BankAccount, btxn.account_id)
             if ba:
-                ba.balance = (ba.balance or 0.0) + (
-                    btxn.amount if btxn.type == "withdrawal" else -btxn.amount
+                reverse_account_balance_delta(
+                    ba, btxn.type, money_to_float(btxn.amount)
                 )
 
     movement.is_void = True
@@ -2031,9 +2026,9 @@ def post_worker_movement(
     if movement_type in ("Advance", "Repayment", "Salary") and not adv_acct:
         return None, "Employee Advances account missing — restart the app to apply migration."
 
-    gross_salary = round(float(gross_salary or 0.0), 2)
-    deductions = round(float(deductions or 0.0), 2)
-    advance_recovery = round(float(advance_recovery or 0.0), 2)
+    gross_salary = money_to_float(gross_salary or 0.0)
+    deductions = money_to_float(deductions or 0.0)
+    advance_recovery = money_to_float(advance_recovery or 0.0)
     net_salary = 0.0
     net_paid = 0.0
     mv_amount = 0.0
@@ -2059,7 +2054,7 @@ def post_worker_movement(
         mv_amount = net_salary
         txn_type = "withdrawal"
     else:
-        mv_amount = round(float(amount or 0.0), 2)
+        mv_amount = money_to_float(amount or 0.0)
         if mv_amount <= 0:
             return None, "Amount must be greater than zero."
         if movement_type == "Advance":
@@ -2103,16 +2098,14 @@ def post_worker_movement(
         btxn = BankTransaction(
             account_id=ba_obj.id,
             date=date,
-            amount=cash_out,
+            amount=persist_money(cash_out),
             type=txn_type,
             description=f"Worker {movement_type} #TBD",
         )
         session.add(btxn)
         session.flush()
         btxn.description = f"Worker {movement_type} #{btxn.id}"
-        ba_obj.balance = (ba_obj.balance or 0.0) + (
-            btxn.amount if txn_type == "deposit" else -btxn.amount
-        )
+        apply_account_balance_delta(ba_obj, txn_type, cash_out)
     elif movement_type == "Salary":
         pass
     else:
@@ -2121,13 +2114,13 @@ def post_worker_movement(
     movement = WorkerMovement(
         worker_id=worker_id,
         movement_type=movement_type,
-        amount=mv_amount,
+        amount=persist_money(mv_amount),
         date=date,
         pay_period=pay_period.strip() if pay_period else None,
-        gross_salary=gross_salary,
-        deductions=deductions,
-        advance_recovery=advance_recovery,
-        net_paid=net_paid,
+        gross_salary=persist_money(gross_salary),
+        deductions=persist_money(deductions),
+        advance_recovery=persist_money(advance_recovery),
+        net_paid=persist_money(net_paid),
         bank_transaction_id=btxn.id if btxn else None,
         notes=notes.strip() if notes else None,
         is_void=False,
@@ -2195,8 +2188,8 @@ def void_worker_movement(
             btxn.voided_at = datetime.datetime.now()
             ba = session.get(BankAccount, btxn.account_id)
             if ba:
-                ba.balance = (ba.balance or 0.0) + (
-                    btxn.amount if btxn.type == "withdrawal" else -btxn.amount
+                reverse_account_balance_delta(
+                    ba, btxn.type, money_to_float(btxn.amount)
                 )
 
     movement.is_void = True
@@ -2240,7 +2233,7 @@ def _get_period_net_income_from_je(session, period, *, company_id: int | None = 
         return 0.0
     for line in closing_je.lines:
         if line.account_id == re_acct.id:
-            return (line.credit or 0.0) - (line.debit or 0.0)
+            return line_money(line.credit) - line_money(line.debit)
     return 0.0
 
 
@@ -2315,7 +2308,7 @@ def allocate_profit_to_partners(
         fiscal_period_id=period_id,
         allocated_at=datetime.datetime.now(),
         allocated_by_id=allocated_by_id,
-        total_net_income=net_income,
+        total_net_income=persist_money(net_income),
         notes=notes.strip() if notes else None,
         is_void=False,
         created_at=datetime.datetime.now(),
@@ -2341,7 +2334,7 @@ def allocate_profit_to_partners(
                 allocation_id=allocation.id,
                 partner_id=p.id,
                 share_pct=p.profit_share_pct,
-                amount=s if net_income > 0 else -s,
+                amount=persist_money(s if net_income > 0 else -s),
             )
         )
     _kernel_persist(session, commit_family=PROFIT_ALLOCATION_FAMILY)
@@ -2430,43 +2423,24 @@ def _calculate_account_balance_for_period(
     *,
     company_id: int | None = None,
 ):
-    """Verbatim from app.py ``calculate_account_balance_for_period`` with explicit company_id."""
-    q = (
-        session.query(JournalEntryLine)
-        .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
-        .filter(
-            JournalEntryLine.account_id == account.id,
-            JournalEntry.entry_date >= start_date,
-            JournalEntry.entry_date <= end_date,
-        )
+    """Period balance from journal lines (delegates to read_balances)."""
+    from services.read_balances import calculate_account_balance_for_period
+
+    return calculate_account_balance_for_period(
+        session,
+        account,
+        start_date,
+        end_date,
+        exclude_refs,
+        company_id=company_id,
     )
-    if company_id is not None:
-        q = q.filter(JournalEntry.company_id == company_id)
-    if exclude_refs:
-        q = q.filter(~JournalEntry.reference_type.in_(exclude_refs))
-    lines = q.all()
-    if account.account_type in ["Asset", "Expense"]:
-        return sum((line.debit or 0) - (line.credit or 0) for line in lines)
-    return sum((line.credit or 0) - (line.debit or 0) for line in lines)
 
 
 def _calculate_account_balance(session, account, *, company_id: int | None = None):
-    """Verbatim from app.py ``calculate_account_balance`` with explicit company_id."""
-    if company_id is not None:
-        q = (
-            session.query(JournalEntryLine)
-            .join(JournalEntry, JournalEntry.id == JournalEntryLine.journal_entry_id)
-            .filter(
-                JournalEntryLine.account_id == account.id,
-                JournalEntry.company_id == company_id,
-            )
-        )
-    else:
-        q = session.query(JournalEntryLine).filter_by(account_id=account.id)
-    lines = q.all()
-    if account.account_type in ["Asset", "Expense"]:
-        return sum((line.debit or 0) - (line.credit or 0) for line in lines)
-    return sum((line.credit or 0) - (line.debit or 0) for line in lines)
+    """All-time balance from journal lines (delegates to read_balances)."""
+    from services.read_balances import calculate_account_balance
+
+    return calculate_account_balance(session, account, company_id=company_id)
 
 
 def _get_year_bounds(fiscal_year: str) -> tuple[datetime.date, datetime.date]:

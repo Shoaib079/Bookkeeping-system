@@ -16,6 +16,7 @@ from db import Base
 from utc_datetime import utc_now_naive
 import models
 import app as erp_app
+from services.money import money_to_float
 from reconciliation.company_card import (
     post_credit_card_bill_payment,
     void_credit_card_bill_payment,
@@ -161,8 +162,8 @@ class TestVoidCreditCardBillPayment:
         _post_bill(db, co, bank, card, row)
         db.refresh(bank)
         db.refresh(card)
-        assert bank.balance == bank_before_bal - 250.0
-        assert card.balance == card_before_bal - 250.0
+        assert money_to_float(bank.balance) == money_to_float(bank_before_bal) - 250.0
+        assert money_to_float(card.balance) == money_to_float(card_before_bal) - 250.0
 
         void_credit_card_bill_payment(db, row.id, co.id, "Correction")
         db.refresh(row)
@@ -170,8 +171,8 @@ class TestVoidCreditCardBillPayment:
         db.refresh(card)
 
         assert row.status == "voided"
-        assert bank.balance == bank_before_bal
-        assert card.balance == card_before_bal
+        assert money_to_float(bank.balance) == money_to_float(bank_before_bal)
+        assert money_to_float(card.balance) == money_to_float(card_before_bal)
         assert erp_app.calculate_account_balance(db, cc_gl) == cc_before
         assert erp_app.calculate_account_balance(db, bank_gl) == bank_before
 
@@ -252,15 +253,15 @@ class TestVoidCreditCardBillPayment:
         row = _stmt_row(db, co, bank, amount=200.0)
         _post_bill(db, co, bank, card=amex, row=row)
 
-        assert amex.balance == 200.0
-        assert visa.balance == 600.0
+        assert money_to_float(amex.balance) == 200.0
+        assert money_to_float(visa.balance) == 600.0
 
         void_credit_card_bill_payment(db, row.id, co.id, "Wrong card test")
 
         db.refresh(amex)
         db.refresh(visa)
-        assert amex.balance == 400.0
-        assert visa.balance == 600.0
+        assert money_to_float(amex.balance) == 400.0
+        assert money_to_float(visa.balance) == 600.0
 
     def test_partial_bill_payment_void(self, db):
         co = _company(db)
@@ -269,12 +270,12 @@ class TestVoidCreditCardBillPayment:
         row = _stmt_row(db, co, bank, amount=175.0)
         _post_bill(db, co, bank, card, row, amount=175.0)
 
-        assert bank.balance == 4825.0
-        assert card.balance == 825.0
+        assert money_to_float(bank.balance) == 4825.0
+        assert money_to_float(card.balance) == 825.0
 
         void_credit_card_bill_payment(db, row.id, co.id, "Partial undo")
 
         db.refresh(bank)
         db.refresh(card)
-        assert bank.balance == 5000.0
-        assert card.balance == 1000.0
+        assert money_to_float(bank.balance) == 5000.0
+        assert money_to_float(card.balance) == 1000.0

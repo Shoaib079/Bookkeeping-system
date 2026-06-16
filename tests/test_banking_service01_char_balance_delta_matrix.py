@@ -26,6 +26,7 @@ from services.banking_balance import (
     apply_account_balance_delta,
     reverse_account_balance_delta,
 )
+from services.money import money_to_float
 from registry.coa_seed import seed_chart_of_accounts_for_company
 from utc_datetime import utc_now_naive
 
@@ -74,14 +75,14 @@ def _acct(
 
 def _apply_then_balance(acct: models.BankAccount, txn_type: str, amount: float) -> float:
     apply_account_balance_delta(acct, txn_type, amount)
-    return round(acct.balance or 0.0, 2)
+    return money_to_float(acct.balance)
 
 
 def _round_trip(acct: models.BankAccount, txn_type: str, amount: float) -> float:
-    start = round(acct.balance or 0.0, 2)
+    start = money_to_float(acct.balance)
     apply_account_balance_delta(acct, txn_type, amount)
     reverse_account_balance_delta(acct, txn_type, amount)
-    return round(acct.balance or 0.0, 2)
+    return money_to_float(acct.balance)
 
 
 @pytest.fixture()
@@ -145,10 +146,10 @@ class TestBS05CharContract:
         acct = _acct(kind="bank", balance=START_BANK)
         apply_via_company_card(acct, "withdrawal", AMOUNT)
         expected = round(START_BANK - AMOUNT, 2)
-        assert round(acct.balance or 0.0, 2) == pytest.approx(expected)
+        assert money_to_float(acct.balance) == pytest.approx(expected)
         acct2 = _acct(kind="credit_card", balance=START_CC, name="Visa")
         reverse_via_company_card(acct2, "deposit", AMOUNT)
-        assert round(acct2.balance or 0.0, 2) == pytest.approx(START_CC + AMOUNT)
+        assert money_to_float(acct2.balance) == pytest.approx(START_CC + AMOUNT)
 
 
 class TestApplyAccountBalanceDeltaBank:
@@ -214,18 +215,18 @@ class TestReverseAccountBalanceDelta:
     def test_reverse_is_inverse_of_apply_on_bank(self):
         acct = _acct(kind="bank", balance=START_BANK)
         apply_account_balance_delta(acct, "withdrawal", AMOUNT)
-        mid = round(acct.balance or 0.0, 2)
+        mid = money_to_float(acct.balance)
         reverse_account_balance_delta(acct, "withdrawal", AMOUNT)
         assert mid == pytest.approx(START_BANK - AMOUNT)
-        assert round(acct.balance or 0.0, 2) == pytest.approx(START_BANK)
+        assert money_to_float(acct.balance) == pytest.approx(START_BANK)
 
     def test_reverse_is_inverse_of_apply_on_credit_card(self):
         acct = _acct(kind="credit_card", balance=START_CC, name="Visa")
         apply_account_balance_delta(acct, "deposit", AMOUNT)
-        mid = round(acct.balance or 0.0, 2)
+        mid = money_to_float(acct.balance)
         reverse_account_balance_delta(acct, "deposit", AMOUNT)
         assert mid == pytest.approx(START_CC - AMOUNT)
-        assert round(acct.balance or 0.0, 2) == pytest.approx(START_CC)
+        assert money_to_float(acct.balance) == pytest.approx(START_CC)
 
 
 class TestBalanceDeltaPairing:
@@ -371,10 +372,10 @@ class TestBalanceDeltaSafety:
     def test_amount_is_rounded_to_two_decimals(self):
         acct = _acct(kind="bank", balance=100.0)
         apply_account_balance_delta(acct, "deposit", 10.005)
-        assert acct.balance == pytest.approx(110.01)
+        assert money_to_float(acct.balance) == pytest.approx(110.01)
 
     def test_none_balance_treated_as_zero(self):
         acct = _acct(kind="bank", balance=0.0)
         acct.balance = None
         apply_account_balance_delta(acct, "deposit", 50.0)
-        assert acct.balance == pytest.approx(50.0)
+        assert money_to_float(acct.balance) == pytest.approx(50.0)

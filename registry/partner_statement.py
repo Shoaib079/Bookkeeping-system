@@ -16,6 +16,7 @@ from models import (
     PartnerProfitAllocation,
     PartnerProfitAllocationLine,
 )
+from services.money import money_to_float
 
 _PARTNER_STMT_EPOCH = datetime.date(1900, 1, 1)
 _POSITION_TOLERANCE = 0.01
@@ -290,7 +291,7 @@ def _collect_detail_events(
         .all()
     )
     for mv in movements:
-        net = movement_net_position_effect(mv.movement_type, mv.amount)
+        net = movement_net_position_effect(mv.movement_type, money_to_float(mv.amount))
         ref_parts = [f"PartnerMovement #{mv.id}"]
         if mv.journal_entry_id:
             ref_parts.append(f"JE #{mv.journal_entry_id}")
@@ -310,7 +311,7 @@ def _collect_detail_events(
     for line, alloc, fp in _allocation_lines_in_range(
         session, partner_id, from_date, to_date, company_id=company_id
     ):
-        amt = round(line.amount, 2)
+        amt = money_to_float(line.amount)
         if amt > 0:
             type_key = "ProfitAllocated"
             section_key = "money_in"
@@ -601,7 +602,7 @@ def _movement_totals(session, partner_id: int, from_date: datetime.date, to_date
     )
     for mv in movements:
         if mv.movement_type in totals:
-            totals[mv.movement_type] += mv.amount
+            totals[mv.movement_type] += money_to_float(mv.amount)
     return {k: round(v, 2) for k, v in totals.items()}
 
 
@@ -636,7 +637,7 @@ def _allocation_totals(
         )
     rows = q.all()
     for line, _fp in rows:
-        amt = round(line.amount, 2)
+        amt = money_to_float(line.amount)
         if amt > 0:
             profit += amt
         elif amt < 0:

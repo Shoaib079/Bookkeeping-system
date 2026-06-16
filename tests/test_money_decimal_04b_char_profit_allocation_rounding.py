@@ -27,6 +27,8 @@ if "streamlit" not in sys.modules:
 
 import app  # noqa: F401 — bootstrap import graph
 
+from services.money import line_money, money_to_float
+
 app.DEVELOPMENT_MODE = True
 app.DEV_MODE = True
 
@@ -170,8 +172,8 @@ def _allocation_lines(session, alloc_id: int) -> list[models.PartnerProfitAlloca
 
 def _je_balanced(session, je_id: int) -> bool:
     lines = session.query(models.JournalEntryLine).filter_by(journal_entry_id=je_id).all()
-    deb = sum(l.debit or 0 for l in lines)
-    cred = sum(l.credit or 0 for l in lines)
+    deb = sum(line_money(l.debit) for l in lines)
+    cred = sum(line_money(l.credit) for l in lines)
     return abs(deb - cred) <= 0.01
 
 
@@ -221,7 +223,7 @@ class TestProfitAllocationRounding:
             session, period.id, ALLOCATOR_ID, company_id=COMPANY_ID,
         )
         assert err == ""
-        amounts = [round(ln.amount, 2) for ln in _allocation_lines(session, alloc_id)]
+        amounts = [money_to_float(ln.amount) for ln in _allocation_lines(session, alloc_id)]
         assert sorted(amounts) == [50.0, 50.01]
         assert round(sum(amounts), 2) == 100.01
 
@@ -233,8 +235,8 @@ class TestProfitAllocationRounding:
         assert err == ""
         lines = _allocation_lines(session, alloc_id)
         expected = _expected_shares(100.0, (33.33, 66.67))
-        assert [round(ln.amount, 2) for ln in lines] == expected
-        assert round(sum(ln.amount for ln in lines), 2) == 100.0
+        assert [money_to_float(ln.amount) for ln in lines] == expected
+        assert round(sum(money_to_float(ln.amount) for ln in lines), 2) == 100.0
 
     def test_100_01_split_three_partners_last_absorbs(self, session):
         pcts = (33.33, 33.33, 33.34)
@@ -243,7 +245,7 @@ class TestProfitAllocationRounding:
             session, period.id, ALLOCATOR_ID, company_id=COMPANY_ID,
         )
         assert err == ""
-        amounts = [round(ln.amount, 2) for ln in _allocation_lines(session, alloc_id)]
+        amounts = [money_to_float(ln.amount) for ln in _allocation_lines(session, alloc_id)]
         assert amounts == _expected_shares(100.01, pcts)
         assert round(sum(amounts), 2) == 100.01
 
@@ -256,7 +258,7 @@ class TestProfitAllocationRounding:
         )
         assert err == ""
         by_partner = {
-            ln.partner_id: round(ln.amount, 2)
+            ln.partner_id: money_to_float(ln.amount)
             for ln in _allocation_lines(session, alloc_id)
         }
         partners = (
@@ -280,7 +282,7 @@ class TestLossAllocationRounding:
             session, period.id, ALLOCATOR_ID, company_id=COMPANY_ID,
         )
         assert err == ""
-        amounts = sorted(round(ln.amount, 2) for ln in _allocation_lines(session, alloc_id))
+        amounts = sorted(money_to_float(ln.amount) for ln in _allocation_lines(session, alloc_id))
         assert amounts == [-50.01, -50.0]
         assert round(sum(amounts), 2) == -100.01
 
@@ -292,8 +294,8 @@ class TestLossAllocationRounding:
         alloc = session.get(models.PartnerProfitAllocation, alloc_id)
         je = session.get(models.JournalEntry, alloc.journal_entry_id)
         re_id = _acct_id(session, "Retained Earnings")
-        re_credit = sum(l.credit or 0 for l in je.lines if l.account_id == re_id)
-        partner_debits = sum(l.debit or 0 for l in je.lines if l.account_id != re_id)
+        re_credit = sum(line_money(l.credit) for l in je.lines if l.account_id == re_id)
+        partner_debits = sum(line_money(l.debit) for l in je.lines if l.account_id != re_id)
         assert round(re_credit, 2) == 100.01
         assert round(partner_debits, 2) == 100.01
         assert _je_balanced(session, je.id)
@@ -314,10 +316,10 @@ class TestAllocationJournalEntryOrientation:
         re_lines = [l for l in je.lines if l.account_id == re_id]
         partner_lines = [l for l in je.lines if l.account_id != re_id]
         assert len(re_lines) == 1
-        assert round(re_lines[0].debit or 0, 2) == 100.01
-        assert round(re_lines[0].credit or 0, 2) == 0.0
-        assert all((l.credit or 0) > 0 and (l.debit or 0) == 0 for l in partner_lines)
-        assert round(sum(l.credit or 0 for l in partner_lines), 2) == 100.01
+        assert line_money(re_lines[0].debit) == 100.01
+        assert line_money(re_lines[0].credit) == 0.0
+        assert all(line_money(l.credit) > 0 and line_money(l.debit) == 0 for l in partner_lines)
+        assert round(sum(line_money(l.credit) for l in partner_lines), 2) == 100.01
         assert _je_balanced(session, je.id)
 
     def test_loss_dr_partner_current_cr_re(self, session):
@@ -330,8 +332,8 @@ class TestAllocationJournalEntryOrientation:
         re_id = _acct_id(session, "Retained Earnings")
         re_lines = [l for l in je.lines if l.account_id == re_id]
         partner_lines = [l for l in je.lines if l.account_id != re_id]
-        assert round(re_lines[0].credit or 0, 2) == 100.01
-        assert all((l.debit or 0) > 0 and (l.credit or 0) == 0 for l in partner_lines)
+        assert line_money(re_lines[0].credit) == 100.01
+        assert all(line_money(l.debit) > 0 and line_money(l.credit) == 0 for l in partner_lines)
         assert _je_balanced(session, je.id)
 
 
@@ -397,7 +399,7 @@ class TestAllocationEdgeCases:
             session, period.id, ALLOCATOR_ID, company_id=COMPANY_ID,
         )
         assert err == ""
-        amounts = [round(ln.amount, 2) for ln in _allocation_lines(session, alloc_id)]
+        amounts = [money_to_float(ln.amount) for ln in _allocation_lines(session, alloc_id)]
         assert amounts == _expected_shares(0.01, (50.0, 50.0))
         assert round(sum(amounts), 2) == 0.01
 
@@ -408,7 +410,7 @@ class TestAllocationEdgeCases:
             session, period.id, ALLOCATOR_ID, company_id=COMPANY_ID,
         )
         assert err == ""
-        amounts = [round(ln.amount, 2) for ln in _allocation_lines(session, alloc_id)]
+        amounts = [money_to_float(ln.amount) for ln in _allocation_lines(session, alloc_id)]
         assert amounts == _expected_shares(0.01, pcts)
         assert amounts[-1] == 0.01
         assert amounts[0] == 0.0

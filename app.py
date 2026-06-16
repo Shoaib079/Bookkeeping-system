@@ -1,5 +1,6 @@
 import calendar
 import datetime
+from decimal import Decimal
 import hashlib
 import hmac
 import html
@@ -248,6 +249,7 @@ from reconciliation.company_card import (
     compute_cc_payable_recon_health,
     post_cc_subledger_charge,
     resolve_company_credit_card_account_id,
+    reverse_account_balance_delta,
     reverse_cc_subledgers_for_gl_reference,
     void_credit_card_bill_payment,
 )
@@ -415,8 +417,16 @@ from services.session_policy import (
     compute_session_expiry,
     should_extend_idle,
 )
+from services.money import line_money, money_to_float, persist_money, rate_to_float
 
 _log = logging.getLogger(__name__)
+
+
+def _audit_json_ready(value):
+    """Coerce ORM Decimals for json.dumps in edit audit payloads."""
+    if isinstance(value, Decimal):
+        return money_to_float(value)
+    return value
 
 # Initialize database
 Base.metadata.create_all(bind=engine)
@@ -823,7 +833,7 @@ def reclassify_card_sales_to_clearing(session, company_id: int) -> dict:
         for e in entries:
             for ln in e.lines:
                 if ln.account_id == bank_acct.id:
-                    bank_debit += (ln.debit or 0)
+                    bank_debit += line_money(ln.debit)
         if bank_debit <= 0:
             # Already in clearing, voided, or no GL impact — nothing to move.
             continue
@@ -858,7 +868,7 @@ def reclassify_card_sales_to_clearing(session, company_id: int) -> dict:
             d.void_reason = "Reclassified to Card Sales Clearing (Phase 18-MVP-1)"
             ba = session.get(BankAccount, d.account_id)
             if ba:
-                ba.balance = (ba.balance or 0) - (d.amount or 0)
+                reverse_account_balance_delta(ba, "deposit", money_to_float(d.amount))
         session.commit()
         migrated += 1
 
@@ -6221,7 +6231,7 @@ def calculate_eod_snapshot(session, date: datetime.date) -> dict:
         )
         if sale_type:
             q = q.filter(Sale.sale_type == sale_type)
-        return round(q.scalar() or 0.0, 2)
+        return money_to_float(q.scalar() or 0.0)
 
     cash_sales   = _sale_sum("Cash")
     card_sales   = _sale_sum("Card")
@@ -6229,15 +6239,15 @@ def calculate_eod_snapshot(session, date: datetime.date) -> dict:
     total_sales  = round(cash_sales + card_sales + credit_sales, 2)
 
     # ── Expenses & Purchases ──────────────────────────────────────────────────
-    total_expenses = round(
+    total_expenses = money_to_float(
         cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(
             ExpenseRecord.date == date, ExpenseRecord.is_void == False
-        ).scalar() or 0.0, 2
+        ).scalar() or 0.0
     )
-    total_purchases = round(
+    total_purchases = money_to_float(
         cq(session, Purchase).with_entities(func.sum(Purchase.amount)).filter(
             Purchase.date == date, Purchase.is_void == False
-        ).scalar() or 0.0, 2
+        ).scalar() or 0.0
     )
 
     # ── Payments via Journal Entry reference types ────────────────────────────
@@ -9837,7 +9847,7 @@ def render_equity_movements(session, *, embedded: bool = False):
                                             session.add(btxn)
                                             session.flush()
                                             btxn.description = f"Capital Contribution #{btxn.id}"
-                                            ba_obj.balance = (ba_obj.balance or 0) + cc_amt
+                                            apply_account_balance_delta(ba_obj, "deposit", cc_amt)
                                             post_capital_contribution(
                                                 session, btxn.id, cc_amt, cc_date,
                                                 gl_name, currency=ba_obj.currency,
@@ -9944,7 +9954,7 @@ def render_equity_movements(session, *, embedded: bool = False):
                                             session.add(btxn)
                                             session.flush()
                                             btxn.description = f"Owner Drawing #{btxn.id}"
-                                            ba_obj.balance = (ba_obj.balance or 0) - od_amt
+                                            apply_account_balance_delta(ba_obj, "withdrawal", od_amt)
                                             post_owner_drawing(
                                                 session, btxn.id, od_amt, od_date,
                                                 gl_name, currency=ba_obj.currency,
@@ -14458,11 +14468,11 @@ def _at_save(
             if not _card_settlement_on(session) and card_bank_acct_val and bank_accounts:
                 _card_ba = next((a for a in bank_accounts if a.name == card_bank_acct_val), None)
                 if _card_ba:
-                    _card_ba.balance = (_card_ba.balance or 0) + amount
+                    apply_account_balance_delta(_card_ba, "deposit", amount)
                     session.add(BankTransaction(
                         account_id=_card_ba.id,
                         date=entry_date,
-                        amount=amount,
+                        amount=persist_money(amount),
                         type="deposit",
                         description=f"Card Sale {inv_num}",
                     ))
@@ -15013,14 +15023,14 @@ def _at_save(
             if not dest:
                 st.error(_t("txn.bank_not_found"))
                 return
-            acct.balance = (acct.balance or 0) - amount
-            dest.balance = (dest.balance or 0) + amount
+            apply_account_balance_delta(acct, "withdrawal", amount)
+            apply_account_balance_delta(dest, "deposit", amount)
             txn = BankTransaction(
-                account_id=acct.id, date=entry_date, amount=amount,
+                account_id=acct.id, date=entry_date, amount=persist_money(amount),
                 type="transfer", description=notes.strip(),
             )
             txn2 = BankTransaction(
-                account_id=dest.id, date=entry_date, amount=amount,
+                account_id=dest.id, date=entry_date, amount=persist_money(amount),
                 type="transfer",
                 description=f"Transfer from {acct.name}: {notes.strip()}",
             )
@@ -15032,12 +15042,9 @@ def _at_save(
             st.success(_t("txn.transfer_recorded", amount=amount, from_acct=acct.name, to_acct=dest.name))
             _mark_at_save_succeeded()
         else:
-            if ttype == "deposit":
-                acct.balance = (acct.balance or 0) + amount
-            else:
-                acct.balance = (acct.balance or 0) - amount
+            apply_account_balance_delta(acct, ttype, amount)
             txn = BankTransaction(
-                account_id=acct.id, date=entry_date, amount=amount,
+                account_id=acct.id, date=entry_date, amount=persist_money(amount),
                 type=ttype, description=notes.strip(),
             )
             session.add(txn)
@@ -15169,8 +15176,8 @@ def edit_sale(session, sale_id, fields: dict):
     after["date"] = str(after["date"])
     diff = {k for k in _keys if str(before[k]) != str(after[k])}
     log_audit(session, "Edit", "Sale", sale_id, json.dumps({
-        "before": {k: before[k] for k in diff},
-        "after": {k: after[k] for k in diff},
+        "before": {k: _audit_json_ready(before[k]) for k in diff},
+        "after": {k: _audit_json_ready(after[k]) for k in diff},
         "user": load_settings().get("company_name", ""),
         "edited_at": datetime.datetime.now().isoformat(),
     }))
@@ -15221,8 +15228,8 @@ def edit_expense(session, expense_id, fields: dict):
     after["date"] = str(after["date"])
     diff = {k for k in _keys if str(before[k]) != str(after[k])}
     log_audit(session, "Edit", "ExpenseRecord", expense_id, json.dumps({
-        "before": {k: before[k] for k in diff},
-        "after": {k: after[k] for k in diff},
+        "before": {k: _audit_json_ready(before[k]) for k in diff},
+        "after": {k: _audit_json_ready(after[k]) for k in diff},
         "user": load_settings().get("company_name", ""),
         "edited_at": datetime.datetime.now().isoformat(),
     }))
@@ -15280,8 +15287,8 @@ def edit_purchase(session, purchase_id, fields: dict):
     after["date"] = str(after["date"])
     diff = {k for k in _keys if str(before[k]) != str(after[k])}
     log_audit(session, "Edit", "Purchase", purchase_id, json.dumps({
-        "before": {k: before[k] for k in diff},
-        "after": {k: after[k] for k in diff},
+        "before": {k: _audit_json_ready(before[k]) for k in diff},
+        "after": {k: _audit_json_ready(after[k]) for k in diff},
         "user": load_settings().get("company_name", ""),
         "edited_at": datetime.datetime.now().isoformat(),
     }))
@@ -18964,9 +18971,13 @@ def _validate_payable_payment_amount(
 
 def _apply_payable_payment_state(payable, payment_amount: float) -> None:
     """Update payable paid_amount, balance, and paid flag after a payment (before GL post)."""
-    payable.paid_amount = round((payable.paid_amount or 0.0) + payment_amount, 2)
-    payable.balance = max(round(payable.amount - payable.paid_amount, 2), 0.0)
-    payable.paid = payable.balance <= 0.005
+    payable.paid_amount = persist_money(
+        money_to_float(payable.paid_amount) + payment_amount
+    )
+    payable.balance = persist_money(
+        max(money_to_float(payable.amount) - money_to_float(payable.paid_amount), 0.0)
+    )
+    payable.paid = money_to_float(payable.balance) <= 0.005
 
 
 def render_payables(session):
@@ -21110,11 +21121,11 @@ def _render_banking_statement_import(session):
                                 amt  = float(r["Amount"])
                                 ttype = "deposit" if amt >= 0 else "withdrawal"
                                 abs_amt = abs(amt)
-                                imp_acct.balance = (imp_acct.balance or 0) + amt
+                                apply_account_balance_delta(imp_acct, ttype, abs_amt)
                                 txn = BankTransaction(
                                     account_id=imp_acct.id,
                                     date=r["Date"],
-                                    amount=abs_amt,
+                                    amount=persist_money(abs_amt),
                                     type=ttype,
                                     description=r["Description"],
                                 )

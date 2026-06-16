@@ -15,6 +15,7 @@ from db import Base
 import models
 from services import read_balances as rb
 from services import read_reports as rr
+from services.money import line_money
 
 if "streamlit" not in sys.modules:
     _st_mock = MagicMock()
@@ -242,7 +243,7 @@ def _legacy_compute_cf(db, company_id, start_date, end_date):
         for line in entry.lines:
             if line.account_id not in cash_ids:
                 continue
-            net = round((line.debit or 0) - (line.credit or 0), 2)
+            net = round(line_money(line.debit) - line_money(line.credit), 2)
             if net == 0:
                 continue
             row = (

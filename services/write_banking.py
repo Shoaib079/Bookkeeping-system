@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from models import BankAccount, BankTransaction, JournalEntry
 from reconciliation.company_card import apply_account_balance_delta, is_credit_card_account
+from services.money import persist_money
 from services import audit as audit_svc
 from services import commit_modes
 from services import posting as posting_svc
@@ -200,7 +201,7 @@ def _create_deposit_or_withdrawal(
     txn = BankTransaction(
         account_id=source.id,
         date=entry_date,
-        amount=amount,
+        amount=persist_money(amount),
         type=txn_type,
         description=cleaned_notes,
         company_id=company_id,
@@ -290,7 +291,7 @@ def _create_transfer(
     src_txn = BankTransaction(
         account_id=source.id,
         date=entry_date,
-        amount=amount,
+        amount=persist_money(amount),
         type="transfer",
         description=cleaned_notes,
         company_id=company_id,
@@ -298,7 +299,7 @@ def _create_transfer(
     dest_txn = BankTransaction(
         account_id=dest.id,
         date=entry_date,
-        amount=amount,
+        amount=persist_money(amount),
         type="transfer",
         description=f"Transfer from {source.name}: {cleaned_notes}",
         company_id=company_id,
@@ -340,7 +341,7 @@ def _create_transfer(
         paired_transaction_id=dest_txn.id,
         journal_entry_id=journal_entry_id,
         message=TRANSFER_RECORDED_MSG.format(
-            amount=amount,
+            amount=persist_money(amount),
             from_acct=source.name,
             to_acct=dest.name,
         ),

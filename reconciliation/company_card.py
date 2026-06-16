@@ -12,6 +12,7 @@ from services.banking_balance import (
     apply_account_balance_delta,
     reverse_account_balance_delta,
 )
+from services.money import money_to_float
 
 COMPANY_CC_PAYMENT_METHOD = "Credit Card"
 
@@ -200,7 +201,7 @@ def compute_cc_payable_recon_health(
     )
 
     cards = get_company_credit_card_accounts(session, company_id)
-    subledger_total = round(sum(c.balance or 0.0 for c in cards), 2)
+    subledger_total = round(sum(money_to_float(c.balance) for c in cards), 2)
     difference = round(gl_balance - subledger_total, 2)
     status = "ok" if abs(difference) < tolerance else "warning"
 
@@ -219,7 +220,7 @@ def compute_cc_payable_recon_health(
             {
                 "id": card.id,
                 "name": card.name,
-                "balance": round(card.balance or 0.0, 2),
+                "balance": money_to_float(card.balance),
                 "last_activity_date": last_txn.date if last_txn else None,
                 "currency": card.currency,
             }

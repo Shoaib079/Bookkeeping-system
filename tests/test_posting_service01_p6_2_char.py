@@ -19,6 +19,7 @@ from sqlalchemy.orm import sessionmaker
 from db import Base
 import models
 import app
+from services.money import money_to_float
 
 if "streamlit" not in sys.modules:
     _st_mock = MagicMock()
@@ -214,7 +215,7 @@ class TestPostWorkerMovementSalary:
         assert mid is not None
         movement = db.get(models.WorkerMovement, mid)
         assert movement.movement_type == "Salary"
-        assert movement.amount == net_salary
+        assert money_to_float(movement.amount) == net_salary
         assert movement.gross_salary == gross
         assert movement.deductions == deductions
         assert movement.advance_recovery == recovery
@@ -223,9 +224,9 @@ class TestPostWorkerMovementSalary:
 
         btxn = db.get(models.BankTransaction, movement.bank_transaction_id)
         assert btxn.type == "withdrawal"
-        assert btxn.amount == net_paid
+        assert money_to_float(btxn.amount) == net_paid
         db.refresh(env["bank"])
-        assert env["bank"].balance == balance_before - net_paid
+        assert money_to_float(env["bank"].balance) == pytest.approx(money_to_float(balance_before) - net_paid)
 
         je = _movement_je(db, mid, REF_TYPES["Salary"])
         assert _line_tuples(db, je.id) == [
@@ -255,12 +256,12 @@ class TestPostWorkerMovementAdvance:
         assert err == ""
         assert mid is not None
         movement = db.get(models.WorkerMovement, mid)
-        assert movement.amount == amount
+        assert money_to_float(movement.amount) == amount
         btxn = db.get(models.BankTransaction, movement.bank_transaction_id)
         assert btxn.type == "withdrawal"
-        assert btxn.amount == amount
+        assert money_to_float(btxn.amount) == amount
         db.refresh(env["bank"])
-        assert env["bank"].balance == balance_before - amount
+        assert money_to_float(env["bank"].balance) == pytest.approx(money_to_float(balance_before) - amount)
 
         je = _movement_je(db, mid, REF_TYPES["Advance"])
         assert _line_tuples(db, je.id) == [
@@ -303,7 +304,7 @@ class TestPostWorkerMovementSalaryNoBankPath:
         assert movement.bank_transaction_id is None
         assert _count(db, models.BankTransaction) == n_btxn
         db.refresh(env["bank"])
-        assert env["bank"].balance == balance_before
+        assert money_to_float(env["bank"].balance) == pytest.approx(money_to_float(balance_before))
 
         je = _movement_je(db, mid, REF_TYPES["Salary"])
         assert _line_tuples(db, je.id) == [
@@ -340,9 +341,9 @@ class TestPostWorkerMovementRepayment:
         movement = db.get(models.WorkerMovement, mid)
         btxn = db.get(models.BankTransaction, movement.bank_transaction_id)
         assert btxn.type == "deposit"
-        assert btxn.amount == amount
+        assert money_to_float(btxn.amount) == amount
         db.refresh(env["bank"])
-        assert env["bank"].balance == balance_before + amount
+        assert money_to_float(env["bank"].balance) == pytest.approx(money_to_float(balance_before) + amount)
 
         je = _movement_je(db, mid, REF_TYPES["Repayment"])
         assert _line_tuples(db, je.id) == [
@@ -373,7 +374,7 @@ class TestPostWorkerMovementGuards:
         assert _count(db, models.WorkerMovement) == n_mv
         assert _count(db, models.JournalEntry) == n_je
         db.refresh(env["bank"])
-        assert env["bank"].balance == balance_before
+        assert money_to_float(env["bank"].balance) == pytest.approx(money_to_float(balance_before))
 
     def test_yec_guard_exact_message_no_side_effects(self, session, worker_env):
         db, cid = session
@@ -411,7 +412,7 @@ class TestVoidWorkerMovementSuccess:
         movement = db.get(models.WorkerMovement, mid)
         original_je_id = movement.journal_entry_id
         db.refresh(env["bank"])
-        assert env["bank"].balance == balance_before - 800.0
+        assert money_to_float(env["bank"].balance) == pytest.approx(money_to_float(balance_before) - 800.0)
         n_je = _count(db, models.JournalEntry)
 
         err = app.void_worker_movement(db, mid, VOIDER_ID, VOID_REASON)
@@ -427,7 +428,7 @@ class TestVoidWorkerMovementSuccess:
         assert btxn.is_void is True
         assert btxn.void_reason == VOID_REASON
         db.refresh(env["bank"])
-        assert env["bank"].balance == balance_before
+        assert money_to_float(env["bank"].balance) == pytest.approx(money_to_float(balance_before))
 
         assert _count(db, models.JournalEntry) == n_je + 1
         reversal = (
@@ -514,7 +515,7 @@ class TestVoidWorkerMovementYecGuard:
         btxn = db.get(models.BankTransaction, movement.bank_transaction_id)
         assert btxn.is_void is False
         db.refresh(env["bank"])
-        assert env["bank"].balance == balance_after_post
+        assert money_to_float(env["bank"].balance) == pytest.approx(money_to_float(balance_after_post))
 
 
 class TestWorkerMovementCommitAuditBoundary:

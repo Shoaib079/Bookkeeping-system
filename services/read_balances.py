@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
 from models import ChartOfAccounts, JournalEntry, JournalEntryLine
+from services.money import line_money, net_balance_delta
 
 _ASSET_EXPENSE_TYPES = frozenset({"Asset", "Expense"})
 
@@ -39,9 +40,11 @@ class LiquidPosition:
 
 
 def _net_balance_for_lines(account, lines) -> float:
-    if account.account_type in _ASSET_EXPENSE_TYPES:
-        return sum((line.debit or 0) - (line.credit or 0) for line in lines)
-    return sum((line.credit or 0) - (line.debit or 0) for line in lines)
+    normal_debit = account.account_type in _ASSET_EXPENSE_TYPES
+    return sum(
+        net_balance_delta(line.debit, line.credit, normal_debit=normal_debit)
+        for line in lines
+    )
 
 
 def calculate_account_balance_for_period(

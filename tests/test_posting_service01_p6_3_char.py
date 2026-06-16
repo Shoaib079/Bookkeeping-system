@@ -16,6 +16,7 @@ from sqlalchemy.orm import sessionmaker
 from db import Base
 import models
 import app
+from services.money import money_to_float
 
 if "streamlit" not in sys.modules:
     _st_mock = MagicMock()
@@ -224,9 +225,9 @@ class TestAllocateProfitSuccessProfit:
         )
         assert len(lines) == 2
         assert lines[0].share_pct == 50.0
-        assert lines[0].amount == 500.0
+        assert money_to_float(lines[0].amount) == 500.0
         assert lines[1].share_pct == 50.0
-        assert lines[1].amount == 500.0
+        assert money_to_float(lines[1].amount) == 500.0
 
         je = (
             db.query(models.JournalEntry)
@@ -265,8 +266,8 @@ class TestAllocateProfitSuccessLoss:
             .order_by(models.PartnerProfitAllocationLine.partner_id)
             .all()
         )
-        assert lines[0].amount == -400.0
-        assert lines[1].amount == -400.0
+        assert money_to_float(lines[0].amount) == -400.0
+        assert money_to_float(lines[1].amount) == -400.0
 
         je = db.get(models.JournalEntry, allocation.journal_entry_id)
         assert _line_tuples(db, je.id) == [
@@ -298,7 +299,7 @@ class TestAllocateProfitRoundingRemainder:
         assert err == ""
 
         line_map = {
-            ln.partner_id: ln.amount
+            ln.partner_id: money_to_float(ln.amount)
             for ln in db.query(models.PartnerProfitAllocationLine)
             .filter_by(allocation_id=alloc_id)
             .all()

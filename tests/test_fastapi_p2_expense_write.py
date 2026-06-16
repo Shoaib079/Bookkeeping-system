@@ -25,6 +25,7 @@ from services import audit as audit_svc
 from services import commit_modes
 from services import tokens as token_service
 from services.commit_modes import CommitMode, POST_EXPENSE_FAMILY
+from services.money import money_to_float
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 from tests.helpers.commit_parity import journal_line_tuples
 
@@ -429,7 +430,7 @@ class TestExpenseWriteBank:
         assert _journal_balanced(db)
 
         bank = db.get(models.BankAccount, tenant["bank_account_id"])
-        assert bank.balance == round(bank_before - AMOUNT, 2)
+        assert money_to_float(bank.balance) == round(money_to_float(bank_before) - AMOUNT, 2)
         bt = db.query(models.BankTransaction).one()
         assert bt.type == "withdrawal"
         assert bt.amount == AMOUNT
