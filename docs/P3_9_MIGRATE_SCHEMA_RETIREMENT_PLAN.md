@@ -1,15 +1,16 @@
 # P3.9 — migrate_schema() Retirement Plan
 
-**Mode:** Documentation + lightweight contract test only. **No runtime change in this slice.** `migrate_schema()` is **not removed, not deprecated, not disabled**; `app.py` is unchanged; the default flag behavior is unchanged (flag **off** by default → `migrate_schema()` authoritative); no `alembic upgrade`/`stamp`, no schema/model/accounting/API/UI change.
-**Status:** **No retirement performed.** This defines the **safe, phased retirement path** to be executed **later**, only after the P3.8-L bake-in gate passes.
-**Context:** P3.8-K2 wired the authoritative schema step behind `ERP_ALEMBIC_AUTHORITATIVE` (off by default); P3.8-L defined the bake-in/acceptance criteria. Retirement is the final step **after** that bake-in is complete and clean.
+**Mode:** Documentation + lightweight contract test. **Phase A complete (P3.8-N).** Phases B/C not started. `migrate_schema()` is **retained** for explicit `ERP_ALEMBIC_AUTHORITATIVE=0` rollback; not yet deprecated or removed.
+**Status:** **Phase A done.** Phase B (deprecation warnings) and Phase C (removal) remain future slices.
+**Context:** P3.8-K2 wired startup; P3.8-L bake-in complete; P3.8-N flipped default-on; P3.9-A audit recorded NOT READY to remove.
 
-## 1. Current state
+## 1. Current state (post P3.8-N / P3.9-A)
 
-- **`migrate_schema()` retained** — still the authoritative schema-evolution path and the rollback target; not removed or deprecated.
-- **Flag default off** — `ERP_ALEMBIC_AUTHORITATIVE` unset/`0` → startup uses `migrate_schema()` exactly as today.
-- **Flag-on path operational** — `=1` enables the P3.8-K2 Alembic path (`verify_only` at head, `alembic upgrade head` for a strict-new empty DB, block/fail-closed for unsafe states).
-- **Rollback available** — disabling the flag (`=0`/unset) reverts to the `migrate_schema()` path with no schema change.
+- **`migrate_schema()` retained** — legacy rollback path when `ERP_ALEMBIC_AUTHORITATIVE=0`/`false`/`off`; not removed or deprecated yet.
+- **Flag default on (Phase A complete)** — unset/empty → Alembic authoritative startup; stamped `at_head` DBs skip `migrate_schema()`.
+- **Explicit opt-out** — `=0`/`false`/`off` → startup runs `migrate_schema()` then diagnostics (legacy rollback).
+- **Flag-on path operational** — `=1`/default → P3.8-K2 Alembic path (`verify_only` at head, `alembic upgrade head` for strict-new empty DB, block/fail-closed for unsafe states).
+- **Rollback available** — set `ERP_ALEMBIC_AUTHORITATIVE=0` reverts to the `migrate_schema()` path with no schema change.
 
 ## 2. Retirement prerequisites
 

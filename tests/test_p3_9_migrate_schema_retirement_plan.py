@@ -51,12 +51,18 @@ def test_migrate_schema_retained_now(doc_text):
     assert "not removed" in lowered, "Plan must state migrate_schema is not removed"
 
 
-def test_flag_default_off(doc_text):
+def test_phase_a_default_on_via_p3_8_n(doc_text):
     lowered = doc_text.lower()
-    assert "flag default off" in lowered or "default off" in lowered, (
-        "Plan must state the flag defaults off"
+    assert "phase a" in lowered and ("complete" in lowered or "done" in lowered), (
+        "Plan must record Phase A complete via P3.8-N"
     )
     assert "erp_alembic_authoritative" in lowered, "Plan must name the flag"
+    assert "default on" in lowered or "default-on" in lowered or "unset" in lowered, (
+        "Plan must state default-on behavior"
+    )
+    assert "=0" in lowered or "explicit opt-out" in lowered, (
+        "Plan must document explicit opt-out to legacy migrate_schema path"
+    )
 
 
 def test_prerequisites_listed(doc_text):

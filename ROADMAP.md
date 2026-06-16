@@ -153,7 +153,7 @@ No implementation before roadmap approval.
 | Company creation (14D-D) | ✅ Complete |
 | Sidebar uses company role (nav fix) | ✅ Complete |
 | Simplified Company Setup UI | ✅ Complete (Expert policies stub) |
-| Automated tests | ✅ **4275 passing, 9 skipped, 2 xfailed** (run `pytest tests/` on host) |
+| Automated tests | ✅ **4293 passing, 9 skipped, 2 xfailed** (run `pytest tests/` on host) |
 | Member management (14D-E) | ✅ Complete |
 | Member roster polish (14D-F) | ✅ Complete |
 | Setup wizard v1 (14D-G) | ✅ Complete — **superseded by SETUP-01** |
@@ -247,7 +247,7 @@ No implementation before roadmap approval.
 
 **Use the system daily** — build only what causes friction during real bookkeeping.
 
-**Test baseline:** `pytest tests/` — **4275 passed**, 9 skipped, 2 xfailed.
+**Test baseline:** `pytest tests/` — **4293 passed**, 9 skipped, 2 xfailed.
 
 **Register sources:** [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) · [FASTAPI_READINESS_CHECKPOINT](./docs/FASTAPI_READINESS_CHECKPOINT.md) · [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md).
 
@@ -258,7 +258,7 @@ No implementation before roadmap approval.
 3. **AUTH-SESSION-02-IMPL-3** — idle extension characterization + wiring (`should_extend_idle`).
 4. **P2-HARDEN-01** — `company_id` stamping audit across FastAPI `write_*` services.
 5. **MONEY-DECIMAL-04c+** — JE balance guard / FX native Decimal math (MD-01…04b ✅).
-6. **P3.9** — retire `migrate_schema()` implementation (phased); **P3.8-N ✅** default flip complete.
+6. **P3.9** — retire `migrate_schema()` implementation (phased); **P3.9-A ✅** audit complete; next **P3.9-B-CHAR**.
 7. **PostgreSQL runtime cutover** — after decimal + Alembic authority (P3.9 → PG build).
 8. **React migration** — Phase D after API/service hardening.
 
@@ -332,6 +332,7 @@ The following are **documented on the roadmap only**. Do **not** implement until
 | **P3.8-L-EXEC** | ✅ Alembic authority bake-in execution record — [P3_8_L_BAKEIN_EXEC.md](./docs/P3_8_L_BAKEIN_EXEC.md) |
 | **P3.8-L-TESTS** | ✅ Alembic authority bake-in characterization gate — [P3_8_L_TESTS.md](./docs/P3_8_L_TESTS.md) |
 | **P3.8-N** | ✅ Alembic authority default flip — [P3_8_N_DEFAULT_FLIP.md](./docs/P3_8_N_DEFAULT_FLIP.md) |
+| **P3.9-A** | ✅ `migrate_schema()` retirement readiness audit — [P3_9_A_AUDIT.md](./docs/P3_9_A_AUDIT.md) |
 
 ---
 
@@ -2823,7 +2824,8 @@ Does **not** authorize FastAPI/React implementation start. Baseline assessment o
 | [P3.8-L-EXEC](#p38-l-exec) | Alembic authority bake-in execution | ✅ Complete |
 | [P3.8-L-TESTS](#p38-l-tests) | Alembic authority bake-in characterization gate | ✅ Complete |
 | [P3.8-N](#p38-n) | Alembic authority default flip | ✅ Complete |
-| [ALEMBIC-01](#alembic-01) | Alembic replaces `migrate_schema()` | 🟡 Partial — L-EXEC/L-TESTS/N ✅; P3.9 next |
+| [P3.9-A](#p39-a) | migrate_schema() retirement readiness audit | ✅ Complete |
+| [ALEMBIC-01](#alembic-01) | Alembic replaces `migrate_schema()` | 🟡 Partial — L-EXEC/L-TESTS/N ✅ · P3.9-A ✅; P3.9-B-CHAR next |
 | [BANKING-SERVICE-01](#banking-service-01) | Banking subledger logic | 🟡 Partial |
 | [REPORTS-SERVICE-01](#reports-service-01) | Report query/aggregation | 🟡 Partial (query layer) |
 | [CONTEXT-AUDIT-01](#context-audit-01) | Streamlit `_erp()` / session coupling | Open |
@@ -2925,15 +2927,15 @@ Replaces built-in `round(..., 2)` in `allocate_profit_to_partners` with `service
 #### ALEMBIC-01
 
 **Priority:** Medium (migration prep)  
-**Status:** 🟡 **Partial** — P3.8-K2 wired; **P3.8-L-EXEC ✅** · **P3.8-L-TESTS ✅** · **P3.8-N ✅** (2026-06-16); **`migrate_schema()` retained** — P3.9 retirement next
+**Status:** 🟡 **Partial** — P3.8-K2 wired; **P3.8-L-EXEC ✅** · **P3.8-L-TESTS ✅** · **P3.8-N ✅** (2026-06-16); **P3.9-A ✅**; **`migrate_schema()` retained** — P3.9-B-CHAR → P3.9-B → P3.9-C
 
 Introduce Alembic revision chain; retire silent `ALTER TABLE` / `CREATE INDEX IF NOT EXISTS` pattern in `migrate_schema()` for schema evolution audibility. Required before multi-environment FastAPI deployment and PostgreSQL production cutover (P4.2 blocker #1).
 
-**Completed slices:** P3.8-K2 startup wiring · P3.8-L bake-in review plan · P3.8-M local smoke · **P3.8-L-EXEC** · **P3.8-L-TESTS** · **P3.8-N** default flip.
+**Completed slices:** P3.8-K2 startup wiring · P3.8-L bake-in review plan · P3.8-M local smoke · **P3.8-L-EXEC** · **P3.8-L-TESTS** · **P3.8-N** default flip · **P3.9-A** retirement readiness audit.
 
-**Next slices:** **P3.9** (phased retire `migrate_schema()`).
+**Next slices:** **P3.9-B-CHAR** (caller inventory) → **P3.9-B** (deprecation warnings) → **P3.9-C** (removal).
 
-**Docs:** [P3_8_L_BAKEIN_AUDIT.md](./docs/P3_8_L_BAKEIN_AUDIT.md) · [P3_8_L_BAKEIN_EXEC.md](./docs/P3_8_L_BAKEIN_EXEC.md) · [P3_8_L_TESTS.md](./docs/P3_8_L_TESTS.md) · [P3_8_N_DEFAULT_FLIP.md](./docs/P3_8_N_DEFAULT_FLIP.md) · contracts: `test_p3_8_k2_startup_wiring.py` · `test_p3_8_l_exec_bakein_execution.py` · `test_p3_8_l_tests_bakein_characterization.py` · `test_p3_8_n_default_flip.py`
+**Docs:** [P3_8_L_BAKEIN_AUDIT.md](./docs/P3_8_L_BAKEIN_AUDIT.md) · [P3_8_L_BAKEIN_EXEC.md](./docs/P3_8_L_BAKEIN_EXEC.md) · [P3_8_L_TESTS.md](./docs/P3_8_L_TESTS.md) · [P3_8_N_DEFAULT_FLIP.md](./docs/P3_8_N_DEFAULT_FLIP.md) · [P3_9_A_AUDIT.md](./docs/P3_9_A_AUDIT.md) · contracts: `test_p3_8_k2_startup_wiring.py` · `test_p3_8_l_exec_bakein_execution.py` · `test_p3_8_l_tests_bakein_characterization.py` · `test_p3_8_n_default_flip.py` · `test_p3_9_a_audit.py`
 
 #### P3.8-L-EXEC
 
@@ -2961,6 +2963,15 @@ Tests-only slice: pins retirement-prep invariants from [P3_8_L_BAKEIN_AUDIT.md](
 Default flip slice: unset/empty env → Alembic authoritative startup; explicit opt-out restores `migrate_schema()` with no schema change. **`migrate_schema()` not removed** — P3.9 retirement remains separate.
 
 **Doc:** [P3_8_N_DEFAULT_FLIP.md](./docs/P3_8_N_DEFAULT_FLIP.md) · contract: `tests/test_p3_8_n_default_flip.py`
+
+#### P3.9-A
+
+**Priority:** Medium (migration prep)  
+**Status:** ✅ **Complete** (2026-06-05) — retirement readiness audit; Phase A done via P3.8-N; Phases B/C not started
+
+Audit-only slice: prerequisite checklist, caller inventory, gap analysis vs Phases B/C, PostgreSQL implications. Verdict: **NOT READY to remove `migrate_schema()`** — next **P3.9-B-CHAR** → P3.9-B → P3.9-C.
+
+**Doc:** [P3_9_A_AUDIT.md](./docs/P3_9_A_AUDIT.md) · contract: `tests/test_p3_9_a_audit.py`
 
 #### BANKING-SERVICE-01
 
@@ -3050,6 +3061,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **P3.9-A** — `migrate_schema()` retirement readiness audit: Phase A done via P3.8-N; Phases B/C not started; verdict NOT READY to remove (`docs/P3_9_A_AUDIT.md` + `test_p3_9_a_audit.py`). Next P3.9-B-CHAR. Test baseline: **4293 passed**. Audit/docs/tests only. |
 | 2026-06-16 | **P3.8-N** — Alembic authority default flip: unset/empty → flag-on; explicit `ERP_ALEMBIC_AUTHORITATIVE=0` → legacy `migrate_schema()` path (`parse_alembic_authoritative_flag` + `test_p3_8_n_default_flip.py`). **`migrate_schema()` retained.** Production requires stamped DB at head. Test baseline: **4275 passed**. |
 | 2026-06-16 | **P3.8-L-TESTS** — Alembic authority bake-in characterization gate: schema equivalence, single-caller guard, never-on-PG, lock-safety, flag-off parity (`test_p3_8_l_tests_bakein_characterization.py`) + [P3_8_L_TESTS.md](./docs/P3_8_L_TESTS.md). **Not ready to retire `migrate_schema()`** — P3.8-N next. Test baseline: **4250 passed**. Tests/docs only. |
 | 2026-06-16 | **P3.8-L-EXEC** — Alembic authority bake-in execution record: automated throwaway-DB scenario matrix (`test_p3_8_l_exec_bakein_execution.py`) + [P3_8_L_BAKEIN_EXEC.md](./docs/P3_8_L_BAKEIN_EXEC.md). Flag off/on/at_head/unstamped/ahead/strict-new/behind_head/rollback all **PASS**; references prior P3.8-M manual smoke. **Not ready to retire `migrate_schema()`** — P3.8-L-TESTS next. Test baseline: **4231 passed**. No flag default change, no production DB mutation. |
