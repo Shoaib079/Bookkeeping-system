@@ -38,7 +38,7 @@
 | `read_balances.py` | Balances, liquid position | app, dashboard | `test_fastapi_p0_balance_read_service`, `test_dash_cash_01_*` | Yes | `sync_account_balances`, trial balance loop |
 | `read_partner_statement.py` | Partner statements | app, `api/routes/partners` | `test_fastapi_p0_partner_statement_read_service` | Yes | Partner pages UI |
 | `read_reconciliation.py` | Statement readiness | `ui/banking`, `api/routes/banking` | `test_fastapi_p0_reconciliation_readiness_service` | Yes | None (reads) |
-| `write_banking.py` | Manual bank writes | `api/routes/bank_transactions` | `test_fastapi_p2_banking_write` | Yes | `render_banking` duplicate path |
+| `write_banking.py` | Manual bank writes | `api/routes/bank_transactions` | `test_fastapi_p2_banking_write` | Yes | `render_banking` delegates (**BS-04 ✅**) |
 | `write_reconciliation.py` | Match/unmatch API | `api/routes/reconciliation` | `test_fastapi_p2_reconciliation_write` | Yes (wrapper) | Kernels use `_app()` |
 | `write_sales.py` … `write_closing.py` | P2 write families | respective `api/routes/*` | `test_fastapi_p2_*` | Yes with flags | Streamlit AT/sales still in app |
 | `audit.py` | `record_audit` | `write_*`, some kernels | `test_fastapi_p0_audit_service` | Yes | `app.log_audit` ambient shim |
@@ -77,7 +77,7 @@ All `post_*` / `void_*` / `create_journal_entry` at ~1633–8264 delegate to `po
 | **Report presentation** | `render_profit_loss`, `render_reports`, `render_trial_balance` | Low (UI) |
 | **Report compute wrappers** | `compute_*_report` → already delegate to `read_*` | Low |
 | **Trial balance aggregation** | `render_trial_balance` loops `calculate_account_balance` | Med — extract to `read_balances` |
-| **Banking manual form** | `render_banking` ~21663–21698 duplicates `write_banking` | **High** (BS-AUDIT-01) |
+| **Banking manual form** | ~~`render_banking` duplicates `write_banking`~~ **BS-04 ✅** — delegates to `create_manual_bank_transaction` | Resolved |
 | **Statement import UI** | `render_bank_statement_import`, `_bsi_*` | **High** |
 | **Add Transaction** | `render_add_transaction` ~14093 | **High** — multi-post orchestration |
 | **Opening balances** | `render_opening_balances` | Med |
@@ -140,7 +140,7 @@ All `post_*` / `void_*` / `create_journal_entry` at ~1633–8264 delegate to `po
 ## 6. Recommended next 5 actions (safest order)
 
 1. **BS-02 char tests** — `match_post` account resolution via `posting.get_account_by_name` (no behavior change yet)
-2. **BS-04 char tests** — `render_banking` manual form vs `write_banking.create_manual_bank_transaction` parity
+2. ~~**BS-04 char tests**~~ **BS-04 ✅** — `render_banking` manual form → `write_banking.create_manual_bank_transaction`
 3. **AUTH-SESSION-02-IMPL-3 char** — idle extension contract before wiring `should_extend_idle`
 4. **P2-HARDEN-01 audit tests** — API-created ORM rows `company_id` matrix across `write_*` paths
 5. **Receipt learning wiring char** — define approval/void hook points in `staff_capture` / `void_expense` before calling `record_approval`

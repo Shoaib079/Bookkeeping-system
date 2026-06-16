@@ -222,7 +222,7 @@ No implementation before roadmap approval.
 | **STAFF-CAPTURE-01** | ✅ **SC-P1 complete** · ✅ **SC-P1b complete** · 📋 **SC-P2 pending** · 📋 **SC-P3 pending** — expense draft service + thin Streamlit UI (submit · receipts · inbox); see [docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-SC-*) |
 | **POSTING-SERVICE-01** | ✅ **Complete** — PS-P0–P6-5; `services/posting.py` + app shims; **PS-P7 hardening deferred, not a blocker** · [POSTING_SERVICE_01_STATUS](./docs/POSTING_SERVICE_01_STATUS.md) |
 | **REPORTS-SERVICE-01** | 🟡 **Partial** — query/read layer in `services/read_*`; Streamlit presentation (`render_*`, trial balance loop) remains in `app.py` until React |
-| **BANKING-SERVICE-01** | 🟡 **Partial** — `write_banking` + `write_reconciliation` + `read_reconciliation` shipped; `match_post` / `company_card` `_app()` coupling remains; **BS-02-CHAR ✅** · next: BS-02 extraction · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) |
+| **BANKING-SERVICE-01** | 🟡 **Partial** — `write_banking` + `write_reconciliation` + `read_reconciliation` shipped; **BS-02 ✅** · **BS-04 ✅** · `match_post` / `company_card` `_app()` coupling remains · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) |
 | **FastAPI foundation** | 🟡 **Partial (strong)** — P0/P1/P2 routes + 38+ `test_fastapi_*` files; writes feature-flagged; Streamlit primary; **not production-complete** |
 | **PostgreSQL runtime** | 🟡 **Partial / test-only** — SQLite remains runtime; PG test-only; Alembic authority feature-flagged; **MONEY-DECIMAL-01 remains blocker** |
 | **React migration** | ⬜ **Not started** — `ERP_DS_05` spec only; no SPA |
@@ -254,13 +254,12 @@ No implementation before roadmap approval.
 **Current priority (ordered):**
 
 1. **Keep `ROADMAP.md` accurate** after each audit/implementation checkpoint (ROADMAP-SYNC-01 hygiene rule).
-2. **BANKING-SERVICE-01-BS-02** — replace `match_post` `_app().get_account_by_name` with `services.posting.get_account_by_name` (**BS-02-CHAR ✅** — `test_banking_service01_char_match_post_account_resolution.py`).
-3. **BANKING-SERVICE-01-BS-04-CHAR** — Streamlit manual bank path vs `write_banking` parity characterization.
-4. **AUTH-SESSION-02-IMPL-3** — idle extension characterization + wiring (`should_extend_idle`).
-5. **P2-HARDEN-01** — `company_id` stamping audit across FastAPI `write_*` services.
-6. **MONEY-DECIMAL-01** — prepare for PostgreSQL runtime (`Float` → `Decimal`).
-7. **PostgreSQL runtime cutover** — after decimal + Alembic authority bake-in.
-8. **React migration** — Phase D after API/service hardening.
+2. **BANKING-SERVICE-01-BS-03** — `company_card` CC bill payment JE explicit `company_id` (**BS-04 ✅** — [BS-04 note](./docs/BANKING_SERVICE_01_BS04.md)).
+3. **AUTH-SESSION-02-IMPL-3** — idle extension characterization + wiring (`should_extend_idle`).
+4. **P2-HARDEN-01** — `company_id` stamping audit across FastAPI `write_*` services.
+5. **MONEY-DECIMAL-01** — prepare for PostgreSQL runtime (`Float` → `Decimal`).
+6. **PostgreSQL runtime cutover** — after decimal + Alembic authority bake-in.
+7. **React migration** — Phase D after API/service hardening.
 
 | Task | Status |
 |------|--------|
@@ -327,6 +326,7 @@ The following are **documented on the roadmap only**. Do **not** implement until
 | **FULL-SERVICE-READINESS-AUDIT** | ✅ Whole-repo extraction snapshot |
 | **BANKING-SERVICE-01** audit | ✅ Banking/reconciliation readiness map |
 | **BANKING-SERVICE-01-BS-02-CHAR** | ✅ `match_post` account-resolution characterization tests |
+| **BANKING-SERVICE-01-BS-04** | ✅ Streamlit manual bank → `write_banking` · [BS-04 note](./docs/BANKING_SERVICE_01_BS04.md) |
 | **POSTING-SERVICE-01** | ✅ PS-P0–P6-5 complete |
 
 ---
@@ -2928,6 +2928,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-16 | **BANKING-SERVICE-01-BS-04** — `render_banking` manual Add Transaction form delegates to `services.write_banking.create_manual_bank_transaction`; inline balance/post removed. **Improvement:** manual path now writes `AuditLog` (previously Streamlit-only gap). Guard: `test_banking_service01_char_manual_bank_parity.py`. Doc: [BANKING_SERVICE_01_BS04](./docs/BANKING_SERVICE_01_BS04.md). |
 | 2026-06-05 | **ROADMAP-SYNC-01** — Register sync from [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) + [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md): POSTING complete; REPORTS/BANKING/AUTH-SESSION/FastAPI/PG partial; RECEIPT-AI-01 + RECEIPT-AI-02 IMPL-1–5 complete; POS-AI/Z-report/cash-card automation **paused until user explicitly requests**; current priority reordered (BS-02 → BS-04 char → AUTH-SESSION-IMPL-3 → P2-HARDEN-01 → MONEY-DECIMAL-01 → PG → React); roadmap hygiene rule + `test_roadmap_sync_01.py`. Test baseline: **3883 passed**. Docs only. |
 | 2026-06-15 | **POS-CONFIG-01** — Sales Source & Reconciliation Settings spec approved (docs only): per-company `pos.*` configuration for sales source, verification source, card/cash verification modes, duplicate protection keys, auto-post policy, document classification, and workflow mode. **Rules:** no company-wide assumptions; settings determine AI behaviour; default suggest-only; complements `banking.*` + DSC. **Sequencing:** POS-CONFIG-01-IMPL-1 before POS-AI-01. Spec: [docs/POS_CONFIG_01_SPEC.md](./docs/POS_CONFIG_01_SPEC.md). No `app.py`/schema change. |
 | 2026-06-05 | **ROADMAP-UPDATE-01** — Approved future work queue recorded (docs only): **DASH-CASH-01** (audited; S1 `compute_liquid_position` shipped; UI pending) · **AUTH-SESSION-02** (remember device + session hardening after AUTH-SESSION-01) · **RECEIPT-AI-01–08** (OCR → learning → confidence → owner-gated trusted auto-post last) · **BANKING-UX-05** (AI statement matching; approval-first) · **DASH-KPI-01–03** (forecast, runway, sales-by-payment-type) · **AI-BOOKKEEPER-01** (read-only business explanations). **Rules locked:** first AI release = assist/review; auto-post requires learning history + confidence + owner enablement + audit + void safety; service-first / FastAPI-ready / no Streamlit business logic. **Priority order:** DASH-CASH-01 → RECEIPT-AI audit → RECEIPT-AI 02/03/04 → 05/06/08 → 07 trusted auto-post → BANKING-UX-05 → AUTH-SESSION-02 → DASH-KPI → AI-BOOKKEEPER → FastAPI → React. No runtime code from this update. |

@@ -101,13 +101,12 @@ class TestStatusAtAGlance:
 class TestCurrentPriority:
     def test_priority_contains_bs02_characterization(self, text: str):
         block = _section_after("## Current priority", text, limit=3500)
-        assert "BS-02" in block
-        assert "match_post" in block or "account resolution" in block.lower()
-        assert "BS-02-CHAR" in block or "characterization" in block.lower()
+        assert "BS-03" in block or "BS-04" in block
+        assert "BS-04" in block or "write_banking" in block
 
     def test_priority_ordered_migration_path(self, text: str):
         block = _section_after("## Current priority", text, limit=3500)
-        assert "BS-04" in block
+        assert "BS-03" in block
         assert "AUTH-SESSION-02-IMPL-3" in block
         assert "P2-HARDEN-01" in block
         assert "MONEY-DECIMAL-01" in block
@@ -141,6 +140,7 @@ class TestCompletedMilestones:
             "FULL-SERVICE-READINESS-AUDIT",
             "BANKING-SERVICE-01",
             "BS-02-CHAR",
+            "BS-04",
         ):
             assert item in block, f"missing milestone: {item}"
 

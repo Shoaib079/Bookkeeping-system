@@ -44,7 +44,7 @@
 
 | Function / area | Responsibility |
 |-----------------|----------------|
-| `render_banking` (~21454) | Section router; **inline manual bank form** duplicates `write_banking` logic (`apply_account_balance_delta` + `post_bank_transaction`/`post_bank_transfer`) |
+| `render_banking` (~21454) | Section router; **manual bank form** calls `write_banking.create_manual_bank_transaction` (**BS-04 ✅**) |
 | `_render_banking_statement_import` (~21359) | Legacy CSV quick-import + dispatches to `render_bank_statement_import` |
 | `_record_named_bank_movement` (~5944) | Add Transaction bank lines — balance delta + txn row (not always GL) |
 | `post_bank_transaction` / `post_bank_transfer` shims | Delegate to `services.posting` |
@@ -90,7 +90,7 @@
 ### Missing dedicated tests
 
 - No `tests/test_banking_service01_*` characterization program
-- No Streamlit `render_banking` manual form ↔ `write_banking` parity test
+- No Streamlit `render_banking` manual form ↔ `write_banking` parity test — **added BS-04-CHAR + BS-04 guard** (`test_banking_service01_char_manual_bank_parity.py`)
 - No matrix test for **balance owner** (forward post: caller vs `void_bank_transaction`: service)
 - No explicit test that `company_card.post_credit_card_bill_payment` JE uses explicit vs ambient `company_id`
 - No audit contract for `_app()` removal readiness (until this doc + `test_banking_service_01_audit.py`)
@@ -101,7 +101,7 @@
 
 | ID | Risk | Severity | Evidence |
 |----|------|----------|----------|
-| **BS-AUDIT-01** | **Dual manual-bank implementations** — `render_banking` inline form vs `write_banking` can drift | High | `app.py` ~21663–21698 vs `services/write_banking.py` |
+| **BS-AUDIT-01** | ~~**Dual manual-bank implementations**~~ — **BS-04 ✅** Streamlit manual form now calls `write_banking`; monitor parity tests | Resolved (2026-06-16) | BS-04 + `test_banking_service01_char_manual_bank_parity.py` |
 | **BS-AUDIT-02** | **Balance ownership split (TD-PS-08)** — forward posts: callers mutate balance; GL kernel does not; void: service reverses | High | `posting.py` PS-P4-1 comment; `void_bank_transaction` uses `reverse_account_balance_delta` |
 | **BS-AUDIT-03** | **`_app()` lazy imports** — `match_post` (8), `company_card` (3), `ui/banking` (15+) | High | Circular dependency + ambient `get_account_by_name` / `create_journal_entry` |
 | **BS-AUDIT-04** | **CC bill payment JE via `app.create_journal_entry`** — ambient company stamp | Medium | `company_card.py` ~348 |
@@ -131,11 +131,12 @@
 **Pre-test:** Extend `test_fastapi_p0_reconciliation_company_stamp.py` for CC bill path.  
 **Do not move:** balance delta formulas in `apply_account_balance_delta`.
 
-### Slice BS-04 — Streamlit manual bank → `write_banking` (MED)
+### Slice BS-04 — Streamlit manual bank → `write_banking` (MED) ✅ **Complete 2026-06-16**
 
-**Move:** `render_banking` manual form calls `create_manual_bank_transaction` instead of inline balance+post.  
-**Pre-test:** Streamlit-vs-service parity characterization (amounts, paired transfer, CC guards, audit).  
-**Do not move:** void UX, statement import, match queue.
+**Moved:** `render_banking` manual form calls `create_manual_bank_transaction`.  
+**Tests:** `test_banking_service01_char_manual_bank_parity.py` (CHAR + regression).  
+**Note:** Streamlit manual path now writes `AuditLog` (documented improvement).  
+**Doc:** [BANKING_SERVICE_01_BS04.md](./BANKING_SERVICE_01_BS04.md)
 
 ### Slice BS-05 — Balance helper module (MED)
 

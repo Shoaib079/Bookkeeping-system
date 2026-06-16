@@ -404,6 +404,7 @@ from services import read_ledger as _read_ledger_svc
 from services import read_ar_ap as _read_ar_ap_svc
 from services import read_partner_statement as _read_pstmt_svc
 from services import audit as _audit_svc
+from services import write_banking as _write_banking_svc
 from services import permissions as _perms_svc
 from services.session_policy import (
     MODE_BROWSER_SESSION,
@@ -21452,8 +21453,6 @@ def _render_banking_statement_import(session):
 
 
 def render_banking(session):
-    from reconciliation.company_card import apply_account_balance_delta
-
     _st_page_title(NAV_BANKING)
 
     cid = current_company_required()
@@ -21656,47 +21655,35 @@ def render_banking(session):
             else:
                 idx = choices.index(acct_choice)
                 acct = active_accounts[idx]
-                if ttype == "deposit":
-                    if is_credit_card_account(acct):
-                        st.error(_t("bank.err.cc_manual_deposit"))
-                    else:
-                        apply_account_balance_delta(acct, ttype, amount)
-                        txn = BankTransaction(account_id=acct.id, date=date, amount=amount, type=ttype, description=desc.strip())
-                        session.add(txn)
-                        session.commit()
-                        post_bank_transaction(session, txn.id, amount, date, ttype)
-                        st.success(_t("bank.txn_added"))
-                elif ttype == "withdrawal":
-                    if is_credit_card_account(acct):
-                        apply_account_balance_delta(acct, ttype, amount)
-                        txn = BankTransaction(account_id=acct.id, date=date, amount=amount, type=ttype, description=desc.strip())
-                        session.add(txn)
-                        session.commit()
-                        st.info(_t("bank.cc_manual_gl_hint"))
-                        st.success(_t("bank.txn_added"))
-                    else:
-                        apply_account_balance_delta(acct, ttype, amount)
-                        txn = BankTransaction(account_id=acct.id, date=date, amount=amount, type=ttype, description=desc.strip())
-                        session.add(txn)
-                        session.commit()
-                        post_bank_transaction(session, txn.id, amount, date, ttype)
-                        st.success(_t("bank.txn_added"))
-                else:
+                dest_id = None
+                transfer_invalid = False
+                if ttype == "transfer":
                     if not dest_account or dest_account == acct_choice:
                         st.error(_t("bank.err.dest_account"))
-                    elif is_credit_card_account(acct):
-                        st.error(_t("bank.err.cc_transfer"))
+                        transfer_invalid = True
                     else:
                         didx = bank_choices.index(dest_account)
-                        dest = bank_only_accounts[didx]
-                        apply_account_balance_delta(acct, "withdrawal", amount)
-                        apply_account_balance_delta(dest, "deposit", amount)
-                        txn = BankTransaction(account_id=acct.id, date=date, amount=amount, type=ttype, description=desc.strip())
-                        txn2 = BankTransaction(account_id=dest.id, date=date, amount=amount, type="transfer", description=f"Transfer from {acct.name}: {desc.strip()}")
-                        session.add_all([txn, txn2])
-                        session.commit()
-                        post_bank_transfer(session, txn.id, amount, date, acct.name, dest.name)
+                        dest_id = bank_only_accounts[didx].id
+                if not transfer_invalid:
+                    try:
+                        _u = _current_user()
+                        _write_banking_svc.create_manual_bank_transaction(
+                            session,
+                            company_id=cid,
+                            performed_by=_u["username"] if _u else None,
+                            entry_date=date,
+                            amount=amount,
+                            transaction_type=ttype,
+                            bank_account_id=acct.id,
+                            destination_bank_account_id=dest_id,
+                            currency=acct.currency,
+                            notes=desc,
+                        )
+                        if ttype == "withdrawal" and is_credit_card_account(acct):
+                            st.info(_t("bank.cc_manual_gl_hint"))
                         st.success(_t("bank.txn_added"))
+                    except ValueError as exc:
+                        st.error(str(exc))
 
     st.markdown("---")
     st.subheader(_t("bank.txn_history"))
