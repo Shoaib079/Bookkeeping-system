@@ -132,17 +132,17 @@ def test_unstamped_diagnostic(memory_engine):
 
 def test_at_head_diagnostic(memory_engine):
     _create_alembic_version_table(memory_engine)
-    _stamp(memory_engine, "0001")
+    _stamp(memory_engine, "0002")
     diag = get_schema_startup_diagnostic(memory_engine)
     assert diag["status"] == STATUS_AT_HEAD
-    assert diag["db_revision"] == "0001"
-    assert diag["head_revision"] == "0001"
-    assert "stamped at Alembic head 0001" in diag["message"]
+    assert diag["db_revision"] == "0002"
+    assert diag["head_revision"] == "0002"
+    assert "stamped at Alembic head 0002" in diag["message"]
 
 
 def test_ahead_of_code_diagnostic(memory_engine):
     _create_alembic_version_table(memory_engine)
-    _stamp(memory_engine, "0002")
+    _stamp(memory_engine, "0003")
     diag = get_schema_startup_diagnostic(memory_engine)
     assert diag["status"] == STATUS_AHEAD_OF_CODE
     assert "newer than this code" in diag["message"]
@@ -198,7 +198,7 @@ def test_startup_has_no_alembic_upgrade_or_stamp():
 
 def test_detect_from_session_wrapper(memory_engine):
     _create_alembic_version_table(memory_engine)
-    _stamp(memory_engine, "0001")
+    _stamp(memory_engine, "0002")
     Session = sessionmaker(bind=memory_engine)
     with Session() as session:
         diag = get_schema_startup_diagnostic(session)

@@ -46,14 +46,14 @@ def test_doc_exists():
 
 
 def test_baseline_revision_file_authored():
-    """P3.4-D: only the baseline revision ``0001`` may exist."""
+    """P3.4-D baseline ``0001`` plus MD-05 ``0002_money_numeric`` may exist."""
     version_files: list[Path] = []
     for versions_dir in ROOT.glob("**/versions"):
         if versions_dir.is_dir():
             version_files.extend(p for p in versions_dir.glob("*.py") if p.name != "__init__.py")
     names = sorted({p.name for p in version_files})
-    assert names == ["0001_baseline.py"], (
-        f"Expected only 0001_baseline.py revision, found: {names}"
+    assert names == ["0001_baseline.py", "0002_money_numeric.py"], (
+        f"Expected 0001 + 0002 revisions, found: {names}"
     )
 
 

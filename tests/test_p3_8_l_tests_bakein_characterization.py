@@ -211,7 +211,7 @@ class TestPostgreSQLNeverMigrateSchemaWhenFlagOn:
         )
         Base.metadata.create_all(engine)
         _create_alembic_version_table(engine)
-        _stamp(engine, "0001")
+        _stamp(engine, "0002")
 
         migrate_calls: list[str] = []
         prepare_schema_startup_authoritative(

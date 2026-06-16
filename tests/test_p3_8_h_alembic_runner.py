@@ -21,7 +21,7 @@ from services.alembic_runner import (
     run_stamp,
     run_upgrade_head,
 )
-from services.schema_version import ALEMBIC_VERSION_TABLE
+from services.schema_version import ALEMBIC_VERSION_TABLE, discover_local_revisions
 
 ROOT = Path(__file__).resolve().parents[1]
 DOC_PATH = ROOT / "docs" / "P3_8_H_SAFE_ALEMBIC_RUNNER.md"
@@ -50,9 +50,10 @@ def test_doc_covers_required_topics():
         assert topic in text_doc, f"Doc missing topic: {topic!r}"
 
 
-def test_get_alembic_heads_returns_0001():
+def test_get_alembic_heads_returns_0002():
     heads = get_alembic_heads()
-    assert "0001" in heads
+    assert heads == ("0002",)
+    assert "0001" in discover_local_revisions()
 
 
 def test_build_upgrade_head_command_shape():

@@ -108,10 +108,12 @@ def test_doc_covers_required_topics():
         assert topic in text_doc, f"Doc missing topic: {topic!r}"
 
 
-def test_local_head_detection_returns_0001():
+def test_local_head_detection_returns_0002():
     revisions = discover_local_revisions(DEFAULT_VERSIONS_DIR)
     assert "0001" in revisions
-    assert resolve_head_revision(revisions) == "0001"
+    assert "0002" in revisions
+    assert revisions["0002"] == "0001"
+    assert resolve_head_revision(revisions) == "0002"
 
 
 def test_missing_alembic_version_table_is_unstamped(memory_engine):
@@ -119,7 +121,7 @@ def test_missing_alembic_version_table_is_unstamped(memory_engine):
     assert info.status == STATUS_UNSTAMPED
     assert info.alembic_version_table_exists is False
     assert info.db_revision is None
-    assert info.head_revision == "0001"
+    assert info.head_revision == "0002"
     assert info.row_count == 0
     assert "unstamped" in info.message.lower() or "no alembic_version" in info.message.lower()
 
@@ -132,13 +134,23 @@ def test_empty_alembic_version_table_is_unstamped(memory_engine):
     assert info.row_count == 0
 
 
-def test_alembic_version_0001_is_at_head(memory_engine):
+def test_alembic_version_0001_is_behind_head(memory_engine):
     _create_alembic_version_table(memory_engine)
     _stamp(memory_engine, "0001")
     info = detect_schema_version(memory_engine)
-    assert info.status == STATUS_AT_HEAD
+    assert info.status == STATUS_BEHIND_HEAD
     assert info.db_revision == "0001"
-    assert info.head_revision == "0001"
+    assert info.head_revision == "0002"
+    assert not info.is_at_head()
+
+
+def test_alembic_version_0002_is_at_head(memory_engine):
+    _create_alembic_version_table(memory_engine)
+    _stamp(memory_engine, "0002")
+    info = detect_schema_version(memory_engine)
+    assert info.status == STATUS_AT_HEAD
+    assert info.db_revision == "0002"
+    assert info.head_revision == "0002"
     assert info.is_at_head()
 
 
@@ -152,10 +164,10 @@ def test_fake_older_revision_is_unknown(memory_engine):
 
 def test_fake_future_revision_is_ahead_of_code(memory_engine):
     _create_alembic_version_table(memory_engine)
-    _stamp(memory_engine, "0002")
+    _stamp(memory_engine, "0003")
     info = detect_schema_version(memory_engine)
     assert info.status == STATUS_AHEAD_OF_CODE
-    assert info.db_revision == "0002"
+    assert info.db_revision == "0003"
 
 
 def test_behind_head_when_local_chain_has_later_revision(memory_engine, tmp_path):
@@ -205,7 +217,7 @@ def test_helper_does_not_mutate_db(memory_engine):
 
 def test_detect_from_session_wrapper(memory_engine):
     _create_alembic_version_table(memory_engine)
-    _stamp(memory_engine, "0001")
+    _stamp(memory_engine, "0002")
     Session = sessionmaker(bind=memory_engine)
     with Session() as session:
         info = detect_schema_version_from_session(session)

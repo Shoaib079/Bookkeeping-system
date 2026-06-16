@@ -167,7 +167,7 @@ class TestBakeInExecutionScenarios:
     def test_scenario_flag_on_at_head_verify_only_skips_migrate(self, populated_db):
         database_url, engine = populated_db
         _create_alembic_version_table(engine)
-        _stamp(engine, "0001")
+        _stamp(engine, "0002")
         migrate_calls: list[str] = []
 
         prepare_schema_startup_authoritative(
@@ -198,7 +198,7 @@ class TestBakeInExecutionScenarios:
     def test_scenario_flag_on_ahead_fail_closed(self, populated_db):
         database_url, engine = populated_db
         _create_alembic_version_table(engine)
-        _stamp(engine, "0002")
+        _stamp(engine, "0003")
         with pytest.raises(SchemaStartupError) as exc:
             prepare_schema_startup_authoritative(
                 database_url=database_url,

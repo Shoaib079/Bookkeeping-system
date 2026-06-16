@@ -84,12 +84,16 @@ def test_env_py_wires_base_metadata():
 
 def test_baseline_revision_exists_with_expected_metadata():
     py_files = sorted(ALEMBIC_VERSIONS.glob("*.py"))
-    assert [p.name for p in py_files] == ["0001_baseline.py"], (
-        f"Expected only 0001_baseline.py, found: {[p.name for p in py_files]}"
-    )
-    source = py_files[0].read_text(encoding="utf-8")
-    assert 'revision = "0001"' in source
-    assert "down_revision = None" in source
+    assert [p.name for p in py_files] == [
+        "0001_baseline.py",
+        "0002_money_numeric.py",
+    ], f"Unexpected revision files: {[p.name for p in py_files]}"
+    baseline = (ALEMBIC_VERSIONS / "0001_baseline.py").read_text(encoding="utf-8")
+    assert 'revision = "0001"' in baseline
+    assert "down_revision = None" in baseline
+    money_numeric = (ALEMBIC_VERSIONS / "0002_money_numeric.py").read_text(encoding="utf-8")
+    assert 'revision = "0002"' in money_numeric
+    assert 'down_revision = "0001"' in money_numeric
 
 
 def test_alembic_ini_points_at_script_location():
@@ -162,9 +166,10 @@ def _upgrade_body_is_noop(source: str) -> bool:
 
 
 def test_any_placeholder_revision_is_documented_noop():
-    """P3.2-A placeholder revisions must be pass-only; 0001 is a real baseline (P3.4-D)."""
+    """P3.2-A placeholder revisions must be pass-only; 0001/0002 are real revisions."""
+    real_revisions = {"0001_baseline.py", "0002_money_numeric.py"}
     for path in ALEMBIC_VERSIONS.glob("*.py"):
-        if path.name == "0001_baseline.py":
+        if path.name in real_revisions:
             continue
         source = path.read_text(encoding="utf-8")
         for pattern in DDL_OPERATION_PATTERNS:

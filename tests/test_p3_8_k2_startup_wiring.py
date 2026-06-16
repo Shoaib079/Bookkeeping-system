@@ -161,7 +161,7 @@ def test_flag_off_does_not_call_alembic_runner():
 def test_flag_on_at_head_skips_migrate_schema(populated_db):
     database_url, engine = populated_db
     _create_alembic_version_table(engine)
-    _stamp(engine, "0001")
+    _stamp(engine, "0002")
 
     migrate_called = False
 
@@ -189,7 +189,7 @@ def test_flag_on_at_head_skips_migrate_schema(populated_db):
 def test_flag_on_at_head_continues_startup(populated_db):
     database_url, _engine = populated_db
     _create_alembic_version_table(_engine)
-    _stamp(_engine, "0001")
+    _stamp(_engine, "0002")
 
     plan = prepare_schema_startup_authoritative(
         database_url=database_url,
@@ -272,7 +272,7 @@ def test_unstamped_legacy_blocks_and_does_not_call_migrate_schema(populated_db):
 def test_ahead_blocks_and_does_not_call_migrate_schema(populated_db):
     database_url, engine = populated_db
     _create_alembic_version_table(engine)
-    _stamp(engine, "0002")
+    _stamp(engine, "0003")
     migrate_called = False
 
     def migrate_schema(session) -> None:
@@ -313,7 +313,7 @@ def test_seeds_only_after_successful_schema_step(tmp_path):
     )
     Base.metadata.create_all(ok_engine)
     _create_alembic_version_table(ok_engine)
-    _stamp(ok_engine, "0001")
+    _stamp(ok_engine, "0002")
     ok_engine.dispose()
 
     plan = prepare_schema_startup_authoritative(

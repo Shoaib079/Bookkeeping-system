@@ -153,7 +153,7 @@ No implementation before roadmap approval.
 | Company creation (14D-D) | ✅ Complete |
 | Sidebar uses company role (nav fix) | ✅ Complete |
 | Simplified Company Setup UI | ✅ Complete (Expert policies stub) |
-| Automated tests | ✅ **4578 passing, 9 skipped, 2 xfailed** (run `pytest tests/` on host) |
+| Automated tests | ✅ **4609 passing, 9 skipped, 2 xfailed** (run `pytest tests/` on host) |
 | Member management (14D-E) | ✅ Complete |
 | Member roster polish (14D-F) | ✅ Complete |
 | Setup wizard v1 (14D-G) | ✅ Complete — **superseded by SETUP-01** |
@@ -247,7 +247,9 @@ No implementation before roadmap approval.
 
 **Use the system daily** — build only what causes friction during real bookkeeping.
 
-**Test baseline:** `pytest tests/` — **4578 passed**, 9 skipped, 2 xfailed.
+**Test baseline:** `pytest tests/` — **4609 passed**, 9 skipped, 2 xfailed.
+
+**MD-05-IMPL-1 (2026-06-05):** Alembic revision **`0002_money_numeric`** authored (`money_numeric_columns.py` classification + PG direct-alter / SQLite batch-rebuild); **`0001_baseline` untouched**; models still Float; +31 contract/smoke tests. Next: **MD-05-IMPL-2** model Numeric switch.
 
 **External merges (2026-06-16):** **PR #2** — error-handling audit (logging + narrowed exceptions in `services/auth.py`, `services/posting.py`, `reconciliation/statement_parse.py`, `app.py`, `ui/theme.py`; `TD-ERR-01`/`TD-ERR-02` in TECH_DEBT). **PR #3** — +226 coverage tests (`test_*_coverage.py` for exports, statement/settlement parse, banking_config, categories_seed, amounts). *(Pre-sync baseline: **4572 passed**; +6 Sync-02 contract tests → **4578 passed**.)*
 
@@ -262,7 +264,7 @@ No implementation before roadmap approval.
 3. **AUTH-SESSION-02-IMPL-3** — idle extension characterization + wiring (`should_extend_idle`).
 4. **P2-HARDEN-01** — `company_id` stamping audit across FastAPI `write_*` services.
 5. **MONEY-DECIMAL-04c+** — JE balance guard / FX native Decimal math (MD-01…04b ✅).
-6. **MONEY-DECIMAL-05 (MD-05)** — Alembic Numeric migration implementation (**audit/plan ✅** — [MONEY_DECIMAL_05_NUMERIC_PLAN.md](./docs/MONEY_DECIMAL_05_NUMERIC_PLAN.md)) **before** PostgreSQL runtime cutover.
+6. **MONEY-DECIMAL-05 (MD-05)** — Alembic Numeric migration (**IMPL-1 ✅** — `0002_money_numeric`; **IMPL-2..5** pending) — [MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md](./docs/MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md) **before** PostgreSQL runtime cutover.
 7. **PostgreSQL runtime cutover** — after MD-04c+ + **MD-05 Numeric** + Alembic authority (**P3.9 ✅** · **ALEMBIC-01 ✅**).
 8. **React migration** — Phase D after API/service hardening.
 
@@ -2839,6 +2841,7 @@ Does **not** authorize FastAPI/React implementation start. Baseline assessment o
 | [MONEY-DECIMAL-04a](#money-decimal-04a) | Wire `services.money` at posting boundaries | ✅ Complete |
 | [MONEY-DECIMAL-04b-CHAR](#money-decimal-04b-char) | Profit allocation rounding characterization | ✅ Complete |
 | [MONEY-DECIMAL-04b](#money-decimal-04b) | Allocation `money_to_float` wiring | ✅ Complete |
+| [MONEY-DECIMAL-05-IMPL-1](#money-decimal-05-impl-1) | Alembic `0002_money_numeric` revision | ✅ Complete |
 | [P3.8-L-EXEC](#p38-l-exec) | Alembic authority bake-in execution | ✅ Complete |
 | [P3.8-L-TESTS](#p38-l-tests) | Alembic authority bake-in characterization gate | ✅ Complete |
 | [P3.8-N](#p38-n) | Alembic authority default flip | ✅ Complete |
@@ -2881,7 +2884,7 @@ Replace `Float` money columns and arithmetic with `Decimal`/`Numeric` across mod
 
 **Audit:** [MONEY_DECIMAL_01_AUDIT.md](./docs/MONEY_DECIMAL_01_AUDIT.md) · contract: `tests/test_money_decimal_01_audit.py`
 
-**Next slices:** ~~MD-02~~ ✅ · ~~MD-03~~ ✅ · ~~MD-04-CHAR~~ ✅ · ~~MD-04a~~ ✅ · ~~MD-04b~~ ✅ → **MD-04c+** kernel Decimal math → MD-05 Alembic Numeric (PG test)
+**Next slices:** ~~MD-02~~ ✅ · ~~MD-03~~ ✅ · ~~MD-04-CHAR~~ ✅ · ~~MD-04a~~ ✅ · ~~MD-04b~~ ✅ · ~~MD-05-IMPL-1~~ ✅ → **MD-05-IMPL-2** model Numeric + service routing → MD-05-IMPL-3..5 → PG build
 
 Aligns with [TD-MIG-04](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#global-migration-td-mig).
 
@@ -2944,6 +2947,15 @@ Tests-only slice: pins Python `round` share loop, last-partner remainder absorpt
 Replaces built-in `round(..., 2)` in `allocate_profit_to_partners` with `services.money` while preserving MD-04b-CHAR + MD-02 golden vectors (last-partner absorption, penny splits, JE orientation, void symmetry).
 
 **Doc:** [MONEY_DECIMAL_04B_PROFIT_ALLOCATION_HELPERS.md](./docs/MONEY_DECIMAL_04B_PROFIT_ALLOCATION_HELPERS.md) · contracts: `test_money_decimal_04b_char_profit_allocation_rounding.py` + MD-02 allocation vectors
+
+#### MONEY-DECIMAL-05-IMPL-1
+
+**Priority:** High (migration prep)  
+**Status:** ✅ **Complete** (2026-06-05) — Alembic revision **`0002_money_numeric`** authored; **`money_numeric_columns.py`** pins 2/4/8-dp tiers (88 columns upgraded; 11 quantity/percentage/confidence stay Float); ephemeral SQLite `0001→0002` smoke; **`0001_baseline` untouched**; **`models.py` still Float**
+
+Schema-only slice per [MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md](./docs/MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md). PG `ALTER … TYPE NUMERIC USING`; SQLite `batch_alter_table`. Quantization (ROUND_HALF_UP) deferred to **MD-05-IMPL-3**. Model `Numeric(asdecimal=True)` deferred to **MD-05-IMPL-2**. Not applied to production DB.
+
+**Contract:** `tests/test_money_decimal_05_impl1_numeric_revision.py` · Alembic head now **`0002`**
 
 #### ALEMBIC-01
 
@@ -3107,6 +3119,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **MONEY-DECIMAL-05-IMPL-1** — Author Alembic `0002_money_numeric` + `money_numeric_columns.py` (2/4/8-dp classification); ephemeral SQLite upgrade smoke; Alembic head **0002**; `0001_baseline` untouched; models still Float. Baseline **4609 passed** (+31). Tag: `money-decimal-05-impl1-numeric-revision`. |
 | 2026-06-16 | **ROADMAP-SYNC-02** — Register sync after P3.9-C + external PR #2 (error-handling) + PR #3 (+226 coverage tests): baseline **4578 passed** (4572 post-PR#3 + 6 Sync-02 contract tests); P3.9 + ALEMBIC-01 complete; next critical path **MD-05 Numeric** before PostgreSQL runtime cutover. Docs/tests only. |
 | 2026-06-05 | **P3.9-C** — `migrate_schema()` implementation removed: production no-op stub + `tests/legacy_migrate_schema.py` archive; Alembic-only evolution; flag-off no longer applies DDL. **ALEMBIC-01 ✅** Test baseline: **4346 passed**. |
 | 2026-06-05 | **P3.9-B** — `migrate_schema()` DeprecationWarning on every call (`MIGRATE_SCHEMA_DEPRECATION_MESSAGE` + `test_p3_9_b_deprecation.py`); harness callers updated; body retained. Next P3.9-C. Test baseline: **4331 passed**. |

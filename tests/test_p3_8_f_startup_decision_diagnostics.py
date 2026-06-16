@@ -125,7 +125,7 @@ def test_flag_off_logs_run_migrate_schema_decision(memory_engine, caplog):
 
 def test_flag_on_at_head_logs_verify_only(memory_engine, caplog):
     _create_alembic_version_table(memory_engine)
-    _stamp(memory_engine, "0001")
+    _stamp(memory_engine, "0002")
     caplog.set_level(logging.INFO)
     log_schema_startup_decision_diagnostics(
         memory_engine,
@@ -153,7 +153,7 @@ def test_flag_on_unstamped_logs_require_stamp_startup_still_allowed(memory_engin
 
 def test_flag_on_ahead_of_code_logs_fail_closed_startup_still_allowed(memory_engine, caplog):
     _create_alembic_version_table(memory_engine)
-    _stamp(memory_engine, "0002")
+    _stamp(memory_engine, "0003")
     caplog.set_level(logging.INFO)
     bundle = log_schema_startup_decision_diagnostics(
         memory_engine,

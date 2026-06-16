@@ -57,8 +57,8 @@ def test_only_baseline_revision_exists():
                 p for p in versions_dir.glob("*.py") if p.name != "__init__.py"
             )
     names = sorted(p.name for p in version_files)
-    assert names == ["0001_baseline.py"], (
-        f"Expected only 0001_baseline.py revision, found: {names}"
+    assert names == ["0001_baseline.py", "0002_money_numeric.py"], (
+        f"Expected 0001 + 0002 revisions, found: {names}"
     )
 
 
