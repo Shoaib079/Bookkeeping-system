@@ -10738,6 +10738,10 @@ def render_dashboard(session):
     # Step 8.1 — All data queries grouped at the top
     # ══════════════════════════════════════════════════════════════════════════
 
+    def _dash_money(raw) -> float:
+        """UI/read float seam for PG Numeric aggregates (MD-05 display only)."""
+        return money_to_float(raw or 0)
+
     # Alerts
     overdue_count    = cq(session, Sale).with_entities(func.count(Sale.id)).filter(Sale.status == "Overdue", Sale.is_void == False).scalar() or 0
     payables_due_soon = cq(session, Payable).with_entities(func.count(Payable.id)).filter(Payable.paid == False, Payable.is_void == False, Payable.due_date <= week_end).scalar() or 0
@@ -10763,40 +10767,86 @@ def render_dashboard(session):
     _trend_sales = {}
     _trend_exp   = {}
     for _d in _trend_days:
-        _trend_sales[_d] = cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(
-            Sale.date == _d, Sale.is_void == False).scalar() or 0.0
-        _trend_exp[_d] = cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(
-            ExpenseRecord.date == _d, ExpenseRecord.is_void == False).scalar() or 0.0
+        _trend_sales[_d] = _dash_money(
+            cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(
+                Sale.date == _d, Sale.is_void == False
+            ).scalar()
+        )
+        _trend_exp[_d] = _dash_money(
+            cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(
+                ExpenseRecord.date == _d, ExpenseRecord.is_void == False
+            ).scalar()
+        )
 
     # Today / Yesterday — broken down by sale type
     def _sale_sum(date_filter, type_filter=None):
         q = cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(date_filter, Sale.is_void == False)
         if type_filter:
             q = q.filter(Sale.sale_type == type_filter)
-        return q.scalar() or 0.0
+        return _dash_money(q.scalar())
 
     today_cash_sales   = _sale_sum(Sale.date == today,     "Cash")
     today_card_sales   = _sale_sum(Sale.date == today,     "Card")
     today_credit_sales = _sale_sum(Sale.date == today,     "Credit")
     today_sales        = today_cash_sales + today_card_sales + today_credit_sales
-    today_expenses     = cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(ExpenseRecord.date == today,     ExpenseRecord.is_void == False).scalar() or 0.0
-    yest_sales         = cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(Sale.date == yesterday, Sale.is_void == False).scalar() or 0.0
-    yest_expenses      = cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(ExpenseRecord.date == yesterday, ExpenseRecord.is_void == False).scalar() or 0.0
+    today_expenses     = _dash_money(
+        cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(
+            ExpenseRecord.date == today, ExpenseRecord.is_void == False
+        ).scalar()
+    )
+    yest_sales         = _dash_money(
+        cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(
+            Sale.date == yesterday, Sale.is_void == False
+        ).scalar()
+    )
+    yest_expenses      = _dash_money(
+        cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(
+            ExpenseRecord.date == yesterday, ExpenseRecord.is_void == False
+        ).scalar()
+    )
     today_net          = today_sales - today_expenses
     yest_net           = yest_sales  - yest_expenses
 
     # This Month / Last Month
-    month_sales      = cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(Sale.date.between(month_start, today), Sale.is_void == False).scalar() or 0.0
-    month_expenses   = cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(ExpenseRecord.date.between(month_start, today), ExpenseRecord.is_void == False).scalar() or 0.0
-    month_purchases  = cq(session, Purchase).with_entities(func.sum(Purchase.amount)).filter(Purchase.date.between(month_start, today), Purchase.is_void == False).scalar() or 0.0
-    last_month_sales = cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(Sale.date.between(last_month_start, last_month_end), Sale.is_void == False).scalar() or 0.0
-    last_month_exp   = cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(ExpenseRecord.date.between(last_month_start, last_month_end), ExpenseRecord.is_void == False).scalar() or 0.0
+    month_sales      = _dash_money(
+        cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(
+            Sale.date.between(month_start, today), Sale.is_void == False
+        ).scalar()
+    )
+    month_expenses   = _dash_money(
+        cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(
+            ExpenseRecord.date.between(month_start, today), ExpenseRecord.is_void == False
+        ).scalar()
+    )
+    month_purchases  = _dash_money(
+        cq(session, Purchase).with_entities(func.sum(Purchase.amount)).filter(
+            Purchase.date.between(month_start, today), Purchase.is_void == False
+        ).scalar()
+    )
+    last_month_sales = _dash_money(
+        cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(
+            Sale.date.between(last_month_start, last_month_end), Sale.is_void == False
+        ).scalar()
+    )
+    last_month_exp   = _dash_money(
+        cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(
+            ExpenseRecord.date.between(last_month_start, last_month_end), ExpenseRecord.is_void == False
+        ).scalar()
+    )
     month_net        = month_sales - month_expenses
     margin_pct       = (month_net / month_sales * 100) if month_sales else 0.0
 
     # AR / AP totals
-    outstanding_rec  = cq(session, Sale).with_entities(func.sum(Sale.balance)).filter(Sale.sale_type == "Credit", Sale.is_void == False, Sale.status != "Paid").scalar() or 0.0
-    outstanding_pay  = cq(session, Payable).with_entities(func.sum(Payable.amount - func.coalesce(Payable.paid_amount, 0.0))).filter(Payable.paid == False, Payable.is_void == False).scalar() or 0.0
+    outstanding_rec  = _dash_money(
+        cq(session, Sale).with_entities(func.sum(Sale.balance)).filter(
+            Sale.sale_type == "Credit", Sale.is_void == False, Sale.status != "Paid"
+        ).scalar()
+    )
+    outstanding_pay  = _dash_money(
+        cq(session, Payable).with_entities(
+            func.sum(Payable.amount - func.coalesce(Payable.paid_amount, 0.0))
+        ).filter(Payable.paid == False, Payable.is_void == False).scalar()
+    )
     open_payables_count = cq(session, Payable).with_entities(func.count(Payable.id)).filter(Payable.paid == False, Payable.is_void == False).scalar() or 0
 
     # DASH-CASH-01 — GL liquid position (1000–1003 cash · 1010–1013 bank; as-of today)
@@ -10834,21 +10884,29 @@ def render_dashboard(session):
         .first()
     )
     # Days Sales Outstanding
-    _total_credit_sales_month = cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(
-        Sale.sale_type == "Credit", Sale.date.between(month_start, today), Sale.is_void == False
-    ).scalar() or 0.0
+    _total_credit_sales_month = _dash_money(
+        cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(
+            Sale.sale_type == "Credit", Sale.date.between(month_start, today), Sale.is_void == False
+        ).scalar()
+    )
     _dso = round((outstanding_rec / _total_credit_sales_month * 30), 1) if _total_credit_sales_month else 0.0
 
     # Overdue amounts for AR / AP position cards
-    overdue_rec_amount = cq(session, Sale).with_entities(func.sum(Sale.balance)).filter(
-        Sale.status == "Overdue", Sale.is_void == False
-    ).scalar() or 0.0
+    overdue_rec_amount = _dash_money(
+        cq(session, Sale).with_entities(func.sum(Sale.balance)).filter(
+            Sale.status == "Overdue", Sale.is_void == False
+        ).scalar()
+    )
     overdue_pay_count  = cq(session, Payable).with_entities(func.count(Payable.id)).filter(
         Payable.paid == False, Payable.is_void == False, Payable.due_date < today,
     ).scalar() or 0
-    overdue_pay_amount = cq(session, Payable).with_entities(func.sum(Payable.amount - func.coalesce(Payable.paid_amount, 0.0))).filter(
-        Payable.paid == False, Payable.is_void == False, Payable.due_date < today,
-    ).scalar() or 0.0
+    overdue_pay_amount = _dash_money(
+        cq(session, Payable).with_entities(
+            func.sum(Payable.amount - func.coalesce(Payable.paid_amount, 0.0))
+        ).filter(
+            Payable.paid == False, Payable.is_void == False, Payable.due_date < today,
+        ).scalar()
+    )
 
     # Recent transactions — pools across 4 sources, sorted → capped at 15
     _recent_sales = cq(session, Sale).filter_by(is_void=False).order_by(Sale.date.desc()).limit(7).all()
@@ -10871,6 +10929,7 @@ def render_dashboard(session):
         .order_by(func.sum(ExpenseRecord.amount).desc())
         .limit(6).all()
     )
+    cat_rows = [(cat, _dash_money(val)) for cat, val in cat_rows]
 
     # ══════════════════════════════════════════════════════════════════════════
     # RENDER
@@ -11290,13 +11349,13 @@ def render_dashboard(session):
 
             _irow("🏆", "Top Customer (MTD)",
                   _top_customer[0] if _top_customer else "—",
-                  _fmt(_top_customer[1], currency) if _top_customer else "")
+                  _fmt(_dash_money(_top_customer[1]), currency) if _top_customer else "")
             _irow("💸", "Top Expense Category",
                   _top_expense_cat[0] if _top_expense_cat else "—",
-                  _fmt(_top_expense_cat[1], currency) if _top_expense_cat else "")
+                  _fmt(_dash_money(_top_expense_cat[1]), currency) if _top_expense_cat else "")
             _irow("🏢", "Top Vendor (MTD)",
                   _top_vendor[0] if _top_vendor else "—",
-                  _fmt(_top_vendor[1], currency) if _top_vendor else "")
+                  _fmt(_dash_money(_top_vendor[1]), currency) if _top_vendor else "")
             _irow("📅", "Days Sales Outstanding",
                   f"{_dso:.0f} days" if _dso else "—",
                   "avg collection on credit sales")
