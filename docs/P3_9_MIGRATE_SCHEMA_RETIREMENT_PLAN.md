@@ -1,12 +1,12 @@
 # P3.9 — migrate_schema() Retirement Plan
 
-**Mode:** Phase B complete (P3.9-B). Phase C not started. `migrate_schema()` **deprecated with warning**; body retained for `ERP_ALEMBIC_AUTHORITATIVE=0` rollback.
-**Status:** **Phase A ✅ (P3.8-N). Phase B ✅ (P3.9-B).** Phase C (removal) remains a future slice.
+**Mode:** Phase C complete (P3.9-C). All phases done. Production `migrate_schema()` is a **no-op stub**; archived body in `tests/legacy_migrate_schema.py`.
+**Status:** **Phase A ✅ · Phase B ✅ · Phase C ✅.** Alembic-only schema evolution in production.
 **Context:** P3.8-K2 wired startup; P3.8-L bake-in complete; P3.8-N flipped default-on; P3.9-A audit recorded NOT READY to remove.
 
 ## 1. Current state (post P3.8-N / P3.9-A)
 
-- **`migrate_schema()` retained** — legacy rollback path when `ERP_ALEMBIC_AUTHORITATIVE=0`/`false`/`off`; **deprecated** (P3.9-B emits `DeprecationWarning` on every call); not removed yet.
+- **`migrate_schema()` no-op stub** — legacy wiring retained; **no DDL** (P3.9-C). `DeprecationWarning` on call. Explicit `=0` does **not** evolve schema.
 - **Flag default on (Phase A complete)** — unset/empty → Alembic authoritative startup; stamped `at_head` DBs skip `migrate_schema()`.
 - **Explicit opt-out** — `=0`/`false`/`off` → startup runs `migrate_schema()` then diagnostics (legacy rollback).
 - **Flag-on path operational** — `=1`/default → P3.8-K2 Alembic path (`verify_only` at head, `alembic upgrade head` for strict-new empty DB, block/fail-closed for unsafe states).

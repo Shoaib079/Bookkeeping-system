@@ -23,10 +23,8 @@ APP_PATH = ROOT / "app.py"
 WIRING_PATH = ROOT / "services" / "schema_startup_wiring.py"
 
 # Pinned direct app.migrate_schema call sites (production + test harness).
-DIRECT_APP_MIGRATE_SCHEMA_CALLS: dict[str, int] = {
-    "tests/p3_schema_equivalence_utils.py": 1,
-    "tests/test_phase14da_model.py": 3,
-}
+# Post-P3.9-C: production uses no-op stub; equivalence harness uses legacy_migrate_schema.
+DIRECT_APP_MIGRATE_SCHEMA_CALLS: dict[str, int] = {}
 
 MOCK_INJECTION_MODULES = (
     "tests/test_p3_8_k2_startup_wiring.py",
@@ -88,6 +86,7 @@ def _scan_direct_app_migrate_schema_calls() -> dict[str, int]:
     skip_prefixes = (
         "tests/test_p3_9_b_char_migrate_schema_callers.py",
         "tests/test_p3_9_b_deprecation.py",
+        "tests/test_p3_9_c_removal.py",
     )
     found: dict[str, int] = {}
     for path in _repo_py_files():
@@ -166,10 +165,10 @@ class TestDirectCallerInventory:
             f"{found!r}"
         )
 
-    def test_equivalence_harness_calls_migrate_schema(self):
+    def test_equivalence_harness_uses_legacy_migrate_schema(self):
         text = (ROOT / "tests/p3_schema_equivalence_utils.py").read_text(encoding="utf-8")
         assert "build_migrate_evolved_schema_summary" in text
-        assert "app.migrate_schema(session)" in text
+        assert "legacy_migrate_schema" in text
 
 
 # ── Runtime wiring guards (extends P3.8-L-TESTS) ─────────────────────────────
