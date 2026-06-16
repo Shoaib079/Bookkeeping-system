@@ -7,6 +7,7 @@ import json
 import logging
 import math
 import os
+import re
 import secrets
 import uuid
 import zipfile
@@ -1490,6 +1491,9 @@ def render_kpi_grid(items):
         variant = it.get("variant") or "text"
         if variant not in _KPI_VARIANTS:
             variant = "text"
+        label = html.escape(str(label))
+        value = html.escape(str(value))
+        sub = html.escape(str(sub))
         if variant == "text":
             value_html = f'<div class="kpi-value">{value}</div>'
         else:
@@ -1651,8 +1655,16 @@ def create_journal_entry(session, entry_date, description, reference_type, refer
     )
 
 
+def _safe_identifier(name: str) -> str:
+    """Validate that *name* is a safe SQL identifier (letters, digits, underscores)."""
+    if not name or not all(c.isalnum() or c == "_" for c in name):
+        raise ValueError(f"Unsafe SQL identifier: {name!r}")
+    return name
+
+
 def _column_exists(session, table_name: str, column_name: str) -> bool:
     """Return True if column_name exists in table_name (SQLite PRAGMA)."""
+    _safe_identifier(table_name)
     rows = session.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
     return any(row[1] == column_name for row in rows)
 
@@ -1953,6 +1965,7 @@ def migrate_schema(session):
     _applied = 0
     _skipped = 0
     for table, col_def in migrations:
+        _safe_identifier(table)
         try:
             session.execute(text(f"ALTER TABLE {table} ADD COLUMN {col_def}"))
             session.commit()
@@ -2122,6 +2135,7 @@ def migrate_schema(session):
         ]
         _all_ok = True
         for _idx_name, _create_sql in _idx_updates:
+            _safe_identifier(_idx_name)
             try:
                 session.execute(text(f"DROP INDEX IF EXISTS {_idx_name}"))
                 session.execute(text(_create_sql))
@@ -2222,6 +2236,7 @@ def _default_company_id(session) -> int | None:
 def _backfill_null_company_ids(session, company_id: int, tables: tuple[str, ...]) -> None:
     """Set company_id on rows where it is still NULL (idempotent)."""
     for tbl in tables:
+        _safe_identifier(tbl)
         if _column_exists(session, tbl, "company_id"):
             try:
                 session.execute(
@@ -2955,7 +2970,7 @@ def _verify_password(password: str, stored_hash: str) -> bool:
 
 def initialize_default_user(session):
     """Create the default owner account on first startup.
-    Credentials: admin / admin123  — change immediately after first login.
+    A random password is generated and printed to the console.
     Guarded by MigrationFlag so it only runs once.
     """
     flag_name = "initialize_default_user_v1"
@@ -2963,14 +2978,19 @@ def initialize_default_user(session):
         return
     try:
         if not session.query(User).first():
+            generated_pw = secrets.token_urlsafe(16)
             session.add(User(
                 username="admin",
                 display_name="Administrator",
-                password_hash=_hash_password("admin123"),
+                password_hash=_hash_password(generated_pw),
                 role="owner",
                 is_active=True,
                 created_at=datetime.datetime.now(),
             ))
+            logging.warning(
+                "Default admin user created. Password: %s  — change immediately after first login.",
+                generated_pw,
+            )
         session.add(MigrationFlag(name=flag_name, applied_at=datetime.date.today()))
         session.commit()
     except Exception:
@@ -24591,6 +24611,8 @@ def render_user_management(session, *, embedded: bool = False):
                     uname = new_username.strip()
                     if not uname or not new_password:
                         st.error(_t("members.username_password_required"))
+                    elif len(new_password) < 8:
+                        st.error(_t("myaccount.password_too_short"))
                     else:
                         try:
                             user_row, _membership = create_user_for_company(
@@ -24743,6 +24765,9 @@ def render_user_management(session, *, embedded: bool = False):
                                         is_active=new_active,
                                     )
                                 if new_pw:
+                                    if len(new_pw) < 8:
+                                        st.error(_t("myaccount.password_too_short"))
+                                        st.stop()
                                     u.password_hash = _hash_password(new_pw)
                                 session.commit()
                                 if not _is_self:
@@ -25342,8 +25367,13 @@ def _ensure_backup_dir() -> str:
     return _BACKUP_DIR
 
 
+_SAFE_LABEL_RE = re.compile(r'^[A-Za-z0-9_\-]*$')
+
+
 def _backup_path(label: str = "") -> str:
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    if label and not _SAFE_LABEL_RE.match(label):
+        label = re.sub(r'[^A-Za-z0-9_\-]', '_', label)
     name = f"erp_{ts}{('_' + label) if label else ''}.db"
     return os.path.join(_BACKUP_DIR, name)
 
@@ -25373,7 +25403,7 @@ def _run_backup(label: str = "") -> str:
     dest = _backup_path(label)
     # VACUUM INTO copies the live database atomically — safe while the app runs.
     with engine.connect() as conn:
-        conn.execute(text(f"VACUUM INTO '{dest}'"))
+        conn.execute(text("VACUUM INTO :dest"), {"dest": dest})
     # Phase 11 — zip the uploads/ folder alongside the DB backup
     if os.path.isdir(_UPLOAD_ROOT):
         zip_dest = _uploads_zip_path(dest)
