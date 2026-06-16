@@ -34,6 +34,7 @@ from sqlalchemy.orm import sessionmaker
 from paths import DB_PATH, get_database_url
 from postgres_utils import bootstrap_postgres_via_alembic, postgres_alembic_head_revision
 from services.pg_sqlite_data_migration import copy_sqlite_rows_to_postgres, sqlite_url_for_path
+from services.postgres_cutover_schema import ensure_pg_stamped_at_head, inspect_pg_alembic_state
 from services.postgres_cutover_verify import (
     compare_sqlite_postgres_parity,
     company_isolation_check,
@@ -132,7 +133,10 @@ def main() -> int:
     assert postgres_alembic_head_revision(pg_engine) == "0002"
 
     try:
+        alembic_before = inspect_pg_alembic_state(pg_engine)
         copy_counts = copy_sqlite_rows_to_postgres(sqlite_url=sqlite_url, pg_url=pg_url)
+        stamp_result = ensure_pg_stamped_at_head(pg_url, allow_execute=True)
+        alembic_after = inspect_pg_alembic_state(pg_engine)
         with SqliteSession() as sqlite_session, sessionmaker(bind=pg_engine)() as pg_session:
             parity = compare_sqlite_postgres_parity(
                 sqlite_session=sqlite_session,
@@ -161,6 +165,19 @@ def main() -> int:
         "company_isolation": isolation,
         "companies": parity["companies"],
         "parity_ok": parity["parity_ok"] and isolation["company_isolation_ok"],
+        "alembic_before": {
+            "has_table": alembic_before.has_alembic_version_table,
+            "revision": alembic_before.current_revision,
+        },
+        "alembic_after": {
+            "has_table": alembic_after.has_alembic_version_table,
+            "revision": alembic_after.current_revision,
+        },
+        "alembic_stamp": {
+            "success": stamp_result.success,
+            "message": stamp_result.message,
+            "executed": stamp_result.executed,
+        },
         "runtime_database_url_after_gate": get_database_url(),
     }
     print(json.dumps(out, indent=2, default=str))

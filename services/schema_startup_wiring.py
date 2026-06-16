@@ -18,6 +18,11 @@ from sqlalchemy.pool import StaticPool
 
 from paths import get_database_url
 from services.alembic_runner import AlembicCommandResult, run_upgrade_head
+from services.postgres_cutover_schema import ensure_pg_stamped_at_head
+from services.postgres_runtime_cutover import (
+    evaluate_runtime_cutover,
+    is_postgresql_database_url,
+)
 from services.schema_migration_gate import (
     ACTION_UPGRADE_HEAD,
     evaluate_migration_gate,
@@ -106,6 +111,8 @@ def _engine_for_startup_read(database_url: str):
 
 def _operator_gate_inputs(
     environ: Mapping[str, str] | None,
+    *,
+    database_url: str | None = None,
 ) -> tuple[bool, bool, str | None, str | None]:
     source = os.environ if environ is None else environ
     backup_path = source.get(BACKUP_PATH_ENV_VAR)
@@ -114,6 +121,19 @@ def _operator_gate_inputs(
         validate_backup_path(backup_path).valid if backup_path else False
     )
     confirmation_given = validate_confirmation_phrase(confirmation).valid
+
+    url = database_url or get_database_url()
+    pg_eval = evaluate_runtime_cutover(environ=source)
+    if (
+        is_postgresql_database_url(url)
+        and pg_eval.enabled
+        and pg_eval.approval_given
+        and pg_eval.backup_valid
+    ):
+        backup_path = pg_eval.backup_path
+        backup_available = True
+        confirmation_given = True
+
     return backup_available, confirmation_given, backup_path, confirmation
 
 
@@ -192,8 +212,10 @@ def prepare_schema_startup_authoritative(
         return _session_plan
 
     url = database_url or get_database_url()
+    source = os.environ if environ is None else environ
+    pg_eval = evaluate_runtime_cutover(environ=source)
     backup_available, confirmation_given, backup_path, confirmation = (
-        _operator_gate_inputs(environ)
+        _operator_gate_inputs(environ, database_url=url)
     )
     engine = _engine_for_startup_read(url)
     try:
@@ -219,6 +241,24 @@ def prepare_schema_startup_authoritative(
             return _session_plan
 
         if decision.action == ACTION_REQUIRE_STAMP:
+            if (
+                is_postgresql_database_url(url)
+                and pg_eval.enabled
+                and pg_eval.approval_given
+                and pg_eval.backup_valid
+            ):
+                stamp_result = ensure_pg_stamped_at_head(url, allow_execute=True)
+                if not stamp_result.success:
+                    detail = stamp_result.message
+                    if stamp_result.stderr:
+                        detail = f"{detail} stderr={stamp_result.stderr.strip()}"
+                    _raise_runner_failed(decision, runner_message=detail)
+                _session_plan = SchemaStartupSessionPlan(
+                    flag_authoritative=True,
+                    skip_migrate_schema=True,
+                    schema_step_succeeded=True,
+                )
+                return _session_plan
             _raise_blocked(decision)
 
         if decision.action == ACTION_ALEMBIC_UPGRADE_HEAD:

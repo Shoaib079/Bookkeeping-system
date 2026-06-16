@@ -88,3 +88,16 @@ def test_blocked_without_backup(monkeypatch):
     evaluation = gate.evaluate_runtime_cutover()
     assert evaluation.blocked_reason is not None
     assert get_database_url() == SQLITE_DATABASE_URL
+
+
+def test_cutover_script_stamps_alembic_after_copy():
+    src = SCRIPT.read_text(encoding="utf-8")
+    assert "ensure_pg_stamped_at_head" in src
+    assert "alembic_after" in src
+
+
+def test_schema_startup_wires_pg_cutover_stamp():
+    wiring = (ROOT / "services" / "schema_startup_wiring.py").read_text(encoding="utf-8")
+    assert "ensure_pg_stamped_at_head" in wiring
+    assert "ACTION_REQUIRE_STAMP" in wiring
+    assert "evaluate_runtime_cutover" in wiring

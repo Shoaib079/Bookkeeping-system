@@ -29,6 +29,8 @@ Approved operator cutover migrated current SQLite data into PostgreSQL, verified
 | `DATABASE_URL` | Set to same PostgreSQL URL (or rely on gate resolution) |
 | `ERP_ALEMBIC_AUTHORITATIVE=1` | Required — PG cannot use `migrate_schema()` |
 
+On first PG startup after cutover, the app **auto-stamps** `alembic_version` at head (`0002`) when cutover gates pass and schema already matches — no data reload. The cutover script also stamps after row copy.
+
 ## Verification summary
 
 | Check | Result |
