@@ -225,7 +225,7 @@ No implementation before roadmap approval.
 | **REPORTS-SERVICE-01** | 🟡 **Partial** — query/read layer in `services/read_*`; Streamlit presentation (`render_*`, trial balance loop) remains in `app.py` until React |
 | **BANKING-SERVICE-01** | 🟡 **Partial** — `write_banking` + `write_reconciliation` + `read_reconciliation` shipped; **BS-02 ✅** · **BS-04 ✅** · `match_post` / `company_card` `_app()` coupling remains · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) |
 | **FastAPI foundation** | 🟡 **Partial (strong)** — P0/P1/P2 routes + 38+ `test_fastapi_*` files; writes feature-flagged; Streamlit primary; **not production-complete** |
-| **PostgreSQL runtime** | 🟡 **Partial / test-only** — SQLite remains runtime; PG test-only; **MONEY-DECIMAL-04b** ✅ allocation helpers · **MD-04c+** PG blocker |
+| **PostgreSQL runtime** | 🟡 **Partial / test-only** — SQLite remains runtime; PG test-only; **MONEY-DECIMAL-04c+** ✅ JE/FX boundary verified · **MD-05** ✅ |
 | **React migration** | ⬜ **Not started** — `ERP_DS_05` spec only; no SPA; preceded by [NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
 | **FULL-SERVICE-READINESS-AUDIT** | ✅ **Recorded (2026-06-05)** — whole-repo service-extraction snapshot · [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) |
 | **DOCS-MIGRATION-CHECKPOINT-01** | ✅ **Recorded (2026-06)** — register drift fix after FASTAPI-READINESS-CHECKPOINT · [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) |
@@ -248,13 +248,15 @@ No implementation before roadmap approval.
 
 **Use the system daily** — build only what causes friction during real bookkeeping.
 
-**Test baseline:** `pytest tests/` — **4678 passed**, 11 skipped, 2 xfailed.
+**Test baseline:** `pytest tests/` — **4694 passed**, 11 skipped, 2 xfailed.
 
 **MD-05-IMPL-5 (2026-06-16):** Flag-gated `0001→0002` cutover via `ERP_MONEY_NUMERIC_CUTOVER=1` + P3.8 backup/confirmation; post-cutover cache re-sync; production `erp_data.db` blocked. Tag: `money-decimal-05-impl5-cutover-gate`. Doc: [MONEY_DECIMAL_05_IMPL_5.md](./docs/MONEY_DECIMAL_05_IMPL_5.md).
 
 **AUTH-SESSION-02-IMPL-3 (verified 2026-06-16):** Idle session extension — `should_extend_idle` + `_maybe_extend_idle_session()` in `main()`; implementation `ee57dc1`. Tag: `auth-session-02-impl3-idle-extension`. Doc: [AUTH_SESSION_02_IMPL_3.md](./docs/AUTH_SESSION_02_IMPL_3.md).
 
 **P2-HARDEN-01 (verified 2026-06-16):** Company stamp audit closed — H-01/H-02 complete; H-03 auto-stamp deferred/rejected. Tag: `p2-harden-01-company-stamp-audit`. Doc: [P2_HARDEN_01_AUDIT_CLOSURE.md](./docs/P2_HARDEN_01_AUDIT_CLOSURE.md).
+
+**MONEY-DECIMAL-04c+ (verified 2026-06-16):** JE guard / FX native Decimal boundary verified — no runtime changes; float guard preserved (MD-02 locked). Tag: `money-decimal-04c-je-fx-decimal-guard`. Doc: [MONEY_DECIMAL_04C_JE_FX_DECIMAL.md](./docs/MONEY_DECIMAL_04C_JE_FX_DECIMAL.md).
 
 **BANKING-SERVICE-01-BS-03 (verified 2026-06-16):**** CC bill payment JE uses `services.posting.create_journal_entry(..., company_id=...)`; implementation `713ac3c`. Tag: `banking-service-01-bs03-company-card-company-scope`. Doc: [BANKING_SERVICE_01_BS03.md](./docs/BANKING_SERVICE_01_BS03.md).
 
@@ -272,9 +274,9 @@ No implementation before roadmap approval.
 2. ~~**BANKING-SERVICE-01-BS-03**~~ ✅ — `company_card` CC bill payment JE explicit `company_id` ([BS-03 doc](./docs/BANKING_SERVICE_01_BS03.md); commit `713ac3c`).
 3. ~~**AUTH-SESSION-02-IMPL-3**~~ ✅ — idle extension (`should_extend_idle` wired; [IMPL-3 doc](./docs/AUTH_SESSION_02_IMPL_3.md)).
 4. ~~**P2-HARDEN-01**~~ ✅ — `company_id` stamping audit closed ([closure doc](./docs/P2_HARDEN_01_AUDIT_CLOSURE.md)).
-5. **MONEY-DECIMAL-04c+** — JE balance guard / FX native Decimal math (MD-01…04b ✅).
+5. ~~**MONEY-DECIMAL-04c+**~~ ✅ — JE guard / FX native Decimal boundary verified ([MD-04c doc](./docs/MONEY_DECIMAL_04C_JE_FX_DECIMAL.md)).
 6. **MONEY-DECIMAL-05 (MD-05)** — Alembic Numeric migration (**IMPL-1 ✅** · **IMPL-2 ✅** · **IMPL-3 ✅** · **IMPL-4 ✅** · **IMPL-5 ✅** — flag-gated cutover) — [MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md](./docs/MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md) **before** PostgreSQL runtime cutover.
-7. **PostgreSQL runtime cutover** — after MD-04c+ + **MD-05 Numeric** + Alembic authority (**P3.9 ✅** · **ALEMBIC-01 ✅**).
+7. **PostgreSQL runtime cutover** — after ~~MD-04c+~~ ✅ + **MD-05 Numeric** + Alembic authority (**P3.9 ✅** · **ALEMBIC-01 ✅**).
 8. **React migration** — Phase D after API/service hardening.
 
 | Task | Status |
@@ -286,7 +288,7 @@ No implementation before roadmap approval.
 | **RECEIPT-AI-01** | ✅ Complete — service seam; no OCR provider |
 | **RECEIPT-AI-02** | ✅ IMPL-1–5 complete — prefill loop; approval/void hooks deferred |
 | **FastAPI foundation** | 🟡 Partial (strong) — P0–P2; writes flag-gated; not production-complete |
-| **PostgreSQL runtime** | 🟡 Partial / test-only — SQLite runtime; **MD-05 Numeric** + MD-04c+ before PG production |
+| **PostgreSQL runtime** | 🟡 Partial / test-only — SQLite runtime; **MD-05 Numeric** ✅ · **MD-04c+** ✅ verified |
 | **React migration** | ⬜ Not started — specs only |
 
 **🚧 BUILD GATE (active):** Do **not** build large new Streamlit UI surfaces before **banking service extraction** and **API hardening** land. Allowed: OBS-01 friction fixes, service-first screen-light phases (RC-P2B/P3 class), thin UI over existing services. Screens are the layer React replaces — invest in services, not chrome.
@@ -2906,6 +2908,7 @@ Does **not** authorize FastAPI/React implementation start. Baseline assessment o
 | [MONEY-DECIMAL-04a](#money-decimal-04a) | Wire `services.money` at posting boundaries | ✅ Complete |
 | [MONEY-DECIMAL-04b-CHAR](#money-decimal-04b-char) | Profit allocation rounding characterization | ✅ Complete |
 | [MONEY-DECIMAL-04b](#money-decimal-04b) | Allocation `money_to_float` wiring | ✅ Complete |
+| [MONEY-DECIMAL-04c+](#money-decimal-04c) | JE guard & FX native Decimal boundary verification | ✅ Complete |
 | [MONEY-DECIMAL-05-IMPL-1](#money-decimal-05-impl-1) | Alembic `0002_money_numeric` revision | ✅ Complete |
 | [P3.8-L-EXEC](#p38-l-exec) | Alembic authority bake-in execution | ✅ Complete |
 | [P3.8-L-TESTS](#p38-l-tests) | Alembic authority bake-in characterization gate | ✅ Complete |
@@ -2949,7 +2952,7 @@ Replace `Float` money columns and arithmetic with `Decimal`/`Numeric` across mod
 
 **Audit:** [MONEY_DECIMAL_01_AUDIT.md](./docs/MONEY_DECIMAL_01_AUDIT.md) · contract: `tests/test_money_decimal_01_audit.py`
 
-**Next slices:** ~~MD-02~~ ✅ · ~~MD-03~~ ✅ · ~~MD-04-CHAR~~ ✅ · ~~MD-04a~~ ✅ · ~~MD-04b~~ ✅ · ~~MD-05-IMPL-1~~ ✅ · ~~MD-05-IMPL-2~~ ✅ · ~~MD-05-IMPL-3~~ ✅ · ~~MD-05-IMPL-4~~ ✅ · ~~MD-05-IMPL-5~~ ✅ → PG build + dual-run parity
+**Next slices:** ~~MD-02~~ ✅ · ~~MD-03~~ ✅ · ~~MD-04-CHAR~~ ✅ · ~~MD-04a~~ ✅ · ~~MD-04b~~ ✅ · ~~MD-04c+~~ ✅ · ~~MD-05-IMPL-1~~ ✅ · ~~MD-05-IMPL-2~~ ✅ · ~~MD-05-IMPL-3~~ ✅ · ~~MD-05-IMPL-4~~ ✅ · ~~MD-05-IMPL-5~~ ✅ → PG build + dual-run parity
 
 Aligns with [TD-MIG-04](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#global-migration-td-mig).
 
@@ -3012,6 +3015,17 @@ Tests-only slice: pins Python `round` share loop, last-partner remainder absorpt
 Replaces built-in `round(..., 2)` in `allocate_profit_to_partners` with `services.money` while preserving MD-04b-CHAR + MD-02 golden vectors (last-partner absorption, penny splits, JE orientation, void symmetry).
 
 **Doc:** [MONEY_DECIMAL_04B_PROFIT_ALLOCATION_HELPERS.md](./docs/MONEY_DECIMAL_04B_PROFIT_ALLOCATION_HELPERS.md) · contracts: `test_money_decimal_04b_char_profit_allocation_rounding.py` + MD-02 allocation vectors
+
+#### MONEY-DECIMAL-04c+
+
+**Priority:** High (migration prep)  
+**Risk:** Low  
+**Behavior changes:** None  
+**Status:** ✅ **Closed by verification** (2026-06-16) — JE guard float tolerance preserved (MD-02 locked); FX native via `persist_fx`; all posting money through `services/money.py`
+
+Audit confirms MD-04a/04b/05-IMPL-3 already wired safe boundaries. Decimal JE balance guard **deferred** — would alter MD-02 accept/reject semantics.
+
+**Doc:** [MONEY_DECIMAL_04C_JE_FX_DECIMAL.md](./docs/MONEY_DECIMAL_04C_JE_FX_DECIMAL.md) · contract: `tests/test_money_decimal_04c_je_fx_decimal.py` · tag: `money-decimal-04c-je-fx-decimal-guard`
 
 #### MONEY-DECIMAL-05-IMPL-1
 
@@ -3201,6 +3215,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-16 | **MONEY-DECIMAL-04c+ (closure)** — JE guard / FX native Decimal boundary verified; float guard preserved (MD-02 locked); `persist_fx` + `services/money.py` boundaries confirmed; no runtime changes. Doc: [MONEY_DECIMAL_04C_JE_FX_DECIMAL.md](./docs/MONEY_DECIMAL_04C_JE_FX_DECIMAL.md). Tag: `money-decimal-04c-je-fx-decimal-guard`. Next: **PostgreSQL build + dual-run parity**. |
 | 2026-06-16 | **P2-HARDEN-01 (closure)** — Company stamp audit closed: H-01/H-02 verified green; H-03 silent auto-stamp deferred/rejected; explicit service-layer stamping remains standard. Doc: [P2_HARDEN_01_AUDIT_CLOSURE.md](./docs/P2_HARDEN_01_AUDIT_CLOSURE.md). Tag: `p2-harden-01-company-stamp-audit`. Next: **MONEY-DECIMAL-04c+**. |
 | 2026-06-16 | **NAV-ARCH** — Record planned navigation single-source-of-truth epic (S0–S4): derive dispatch/accordion/role/mobile from `registry/navigation.py` after PG parity, before React; not a PG blocker. Docs only. |
 | 2026-06-16 | **BANKING-SERVICE-01-BS-03 (closure)** — Verified CC bill payment JE already uses explicit `company_id` via `services.posting` (`713ac3c`); doc [BANKING_SERVICE_01_BS03.md](./docs/BANKING_SERVICE_01_BS03.md). Tag: `banking-service-01-bs03-company-card-company-scope`. Next: **P2-HARDEN-01**. |
