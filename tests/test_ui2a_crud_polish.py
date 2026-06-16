@@ -25,16 +25,35 @@ def test_ui2a_section_headers_and_bordered_forms():
         assert "st.container(border=True)" in block
 
 
+def _read_crud_helpers() -> str:
+    return (ROOT / "ui" / "crud_helpers.py").read_text(encoding="utf-8")
+
+
 def test_ui2a_void_danger_keys():
+    """Verify void key prefixes route through void_confirmation_widget.
+
+    After the shared-utility refactor, inline ``key=f"erp_void_..."``
+    patterns moved into ``ui.crud_helpers.void_confirmation_widget``.
+    The contract checks that (a) each render function delegates to the
+    widget with the correct prefix, and (b) the widget itself generates
+    the expected ``erp_void_`` / ``erp_danger_confirm_void_`` keys.
+    """
     sales = _fn_block("render_sales")
     expenses = _fn_block("render_expenses")
     purchases = _fn_block("render_purchases")
-    assert 'key=f"erp_void_sale_' in sales
-    assert 'key=f"erp_danger_confirm_void_sale_' in sales
-    assert 'key=f"erp_void_expense_' in expenses
-    assert 'key=f"erp_danger_confirm_void_exp_' in expenses
-    assert 'key=f"erp_void_purchase_' in purchases
-    assert 'key=f"erp_danger_confirm_void_pur_' in purchases
+
+    # Each page delegates to the shared widget with the correct prefix
+    assert 'void_confirmation_widget(' in sales
+    assert 'prefix="sale"' in sales
+    assert 'void_confirmation_widget(' in expenses
+    assert 'prefix="expense"' in expenses
+    assert 'void_confirmation_widget(' in purchases
+    assert 'prefix="purchase"' in purchases
+
+    # The shared widget generates the canonical key patterns
+    helper_src = _read_crud_helpers()
+    assert 'f"erp_void_{prefix}_{record_id}"' in helper_src
+    assert 'f"erp_danger_confirm_void_{prefix}_{record_id}"' in helper_src
 
 
 def test_ui2a_currency_not_dollar_literal_in_void_rows():

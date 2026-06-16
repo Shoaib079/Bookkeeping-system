@@ -536,6 +536,29 @@ Discovered during P2.9 closing write API — logged in [P2_AUDIT_01_LEDGER.md](.
 | **TD-POSTING-05** | **Year-end guard location** — YEC lock centralized in `_entry_date_posting_blocked` for JE posting but duplicated inline in `post_partner_movement`, `post_worker_movement`, and related void guards; consolidate in posting service before PS-P6 extraction | Medium | Open | PS-P6 planning / pre-extraction |
 | **TD-POSTING-06** | **Reconciliation `_app` imports** — `reconciliation/company_card.py` and `reconciliation/match_post.py` lazy-import `app` for `create_journal_entry`; replace with `services/posting.py` import to break circular dependency | High | Open | PS-P1 / BANKING-SERVICE-01 |
 
+### DRY UI Refactor — Shared Utilities (2026-06-16)
+
+#### 1. Code to keep during FastAPI/React migration
+- `ui/crud_helpers.py` — `void_confirmation_widget`, `attachment_section_selector`
+- `ui/report_helpers.py` — `growth_comparison_kpi`
+- These are **Streamlit-only** UI helpers and would be replaced by React components during migration, but serve as documentation of the interaction patterns needed.
+
+#### 2. Code likely to replace during FastAPI/React migration
+- `void_confirmation_widget` → React confirmation dialog + API endpoint
+- `growth_comparison_kpi` → React dashboard card + API data endpoint
+- `attachment_section_selector` → React file-upload component + API
+
+#### 3. Dead code found
+- None (all 10 refactored call sites now delegate to shared utilities)
+
+#### 4. Temporary Streamlit-only code
+- `ui/crud_helpers.py` and `ui/report_helpers.py` — Streamlit widget helpers; will be replaced by React equivalents during migration but pattern/API is transferable.
+
+#### 5. Future cleanup items
+- Additional void patterns in payables-payment panel could benefit from further extraction (lower priority — has extra pay-key conditional).
+
+---
+
 ### PS-P0 Migration Cleanup (2026-06-05)
 
 #### 1. Code to keep during FastAPI/React migration

@@ -261,6 +261,8 @@ from reconciliation.match_post import (
     suggest_withdrawal_match_kind,
 )
 from ui.avatar import render_user_avatar, user_initials
+from ui.crud_helpers import attachment_section_selector, void_confirmation_widget
+from ui.report_helpers import growth_comparison_kpi
 from ui.banking import (
     apply_banking_pos_settlement_route as _apply_banking_pos_settlement_route,
     banking_apply_default_import_tab as _banking_apply_default_import_tab,
@@ -19238,40 +19240,37 @@ def render_purchases(session):
             cols[2].write(f"{currency} {r.amount:,.2f}")
             cols[3].write(r.purchase_type or "Credit")
             cols[4].write(f"PUR#{r.id}")
-            confirm_key = f"confirm_void_purchase_{r.id}"
-            if cols[5].button(_t("purchase.void_btn"), key=f"erp_void_purchase_{r.id}", disabled=not _can("void_transaction")):
-                st.session_state[confirm_key] = True
-            if st.session_state.get(confirm_key, False):
-                void_reason = st.text_input(_t("purchase.void_reason"), key=f"void_reason_pur_{r.id}")
-                c1, c2 = st.columns(2)
-                if c1.button(_t("purchase.confirm_void"), key=f"erp_danger_confirm_void_pur_{r.id}", disabled=not _can("void_transaction")):
-                    if not void_reason.strip():
-                        st.error(_t("purchase.void_reason_required"))
-                    else:
-                        void_purchase(session, r.id, void_reason.strip())
-                        del st.session_state[confirm_key]
-                        st.success(_t("purchase.voided_success"))
-                        st.rerun()
-                if c2.button(_t("form.cancel"), key=f"cancel_void_pur_{r.id}"):
-                    del st.session_state[confirm_key]
-                    st.rerun()
+            void_confirmation_widget(
+                record_id=r.id,
+                prefix="purchase",
+                void_fn=lambda reason, _s=session, _rid=r.id: void_purchase(_s, _rid, reason),
+                reason_label=_t("purchase.void_reason"),
+                confirm_label=_t("purchase.confirm_void"),
+                cancel_label=_t("form.cancel"),
+                error_empty_label=_t("purchase.void_reason_required"),
+                success_label=_t("purchase.voided_success"),
+                void_btn_label=_t("purchase.void_btn"),
+                permission_check=_can("void_transaction"),
+                btn_container=cols[5],
+            )
 
     # Phase 11: Purchase Attachments
     if records:
         active_pur = [r for r in records if not r.is_void]
-        if active_pur:
-            st.markdown("---")
-            st.markdown(section_header_html(_t("purchase.attachments")), unsafe_allow_html=True)
-            def _pur_label(r):
-                v = session.get(Vendor, r.vendor_id)
-                vname = v.name if v else _t("form.unknown")
-                return f"#{r.id} · {r.date} · {vname} · {r.amount:,.2f}"
-            options = {_pur_label(r): r.id for r in active_pur}
-            sel_label = st.selectbox(
-                _t("purchase.select_record"), list(options.keys()), key="att_pur_selector"
-            )
-            sel_id = options[sel_label]
-            render_attachment_section(session, "Purchase", sel_id, f"pur{sel_id}")
+        attachment_section_selector(
+            session=session,
+            records=active_pur,
+            entity_type="Purchase",
+            header_label=_t("purchase.attachments"),
+            select_label=_t("purchase.select_record"),
+            label_fn=lambda r: (
+                f"#{r.id} · {r.date} · "
+                f"{(session.get(Vendor, r.vendor_id).name if session.get(Vendor, r.vendor_id) else _t('form.unknown'))} · "
+                f"{r.amount:,.2f}"
+            ),
+            key_prefix="pur",
+            render_attachment_fn=render_attachment_section,
+        )
     else:
         st.info(_t("purchase.none_yet"))
 
@@ -19543,22 +19542,18 @@ def render_payables(session):
 
                 # ── Void panel ────────────────────────────────────────────────
                 if not st.session_state.get(pay_key):
-                    if st.button(_t("purchase.void_btn"), key=f"void_payable_{record.id}", disabled=not _can("void_transaction")):
-                        st.session_state[void_key] = True
-                    if st.session_state.get(void_key):
-                        void_reason = st.text_input(_t("purchase.void_reason"), key=f"void_reason_pay_{record.id}")
-                        cv1, cv2 = st.columns(2)
-                        if cv1.button(_t("purchase.confirm_void"), key=f"confirm_void_btn_pay_{record.id}", disabled=not _can("void_transaction")):
-                            if not void_reason.strip():
-                                st.error(_t("purchase.void_reason_required"))
-                            else:
-                                void_payable(session, record.id, void_reason.strip())
-                                st.session_state.pop(void_key, None)
-                                st.success(_t("payable.voided_success"))
-                                st.rerun()
-                        if cv2.button(_t("form.cancel"), key=f"cancel_void_pay_{record.id}"):
-                            st.session_state.pop(void_key, None)
-                            st.rerun()
+                    void_confirmation_widget(
+                        record_id=record.id,
+                        prefix="payable",
+                        void_fn=lambda reason, _s=session, _rid=record.id: void_payable(_s, _rid, reason),
+                        reason_label=_t("purchase.void_reason"),
+                        confirm_label=_t("purchase.confirm_void"),
+                        cancel_label=_t("form.cancel"),
+                        error_empty_label=_t("purchase.void_reason_required"),
+                        success_label=_t("payable.voided_success"),
+                        void_btn_label=_t("purchase.void_btn"),
+                        permission_check=_can("void_transaction"),
+                    )
 
 
 # render_salaries removed — salary is recorded as an Expense type
@@ -19732,38 +19727,32 @@ def render_expenses(session):
             cols[2].write(f"{currency} {record.amount:,.2f}")
             cols[3].write(_i18n_db(PAYMENT_METHOD_I18N, record.payment_method) if record.payment_method else "")
             cols[4].write(record.employee_name or "")
-            confirm_key = f"confirm_void_expense_{record.id}"
-            if cols[5].button(_t("inv.void_btn"), key=f"erp_void_expense_{record.id}", disabled=not _can("void_transaction")):
-                st.session_state[confirm_key] = True
-            if st.session_state.get(confirm_key, False):
-                void_reason = st.text_input(_t("form.reason_required"), key=f"void_reason_exp_{record.id}")
-                c1, c2 = st.columns(2)
-                if c1.button(_t("inv.confirm_void"), key=f"erp_danger_confirm_void_exp_{record.id}", disabled=not _can("void_transaction")):
-                    if not void_reason.strip():
-                        st.error(_t("form.void_reason_required"))
-                    else:
-                        void_expense(session, record.id, void_reason.strip())
-                        st.session_state[confirm_key] = False
-                        st.success(_t("expense.voided"))
-                        st.rerun()
-                if c2.button(_t("form.cancel"), key=f"cancel_void_exp_{record.id}"):
-                    st.session_state[confirm_key] = False
-                    st.rerun()
+            void_confirmation_widget(
+                record_id=record.id,
+                prefix="expense",
+                void_fn=lambda reason, _s=session, _rid=record.id: void_expense(_s, _rid, reason),
+                reason_label=_t("form.reason_required"),
+                confirm_label=_t("inv.confirm_void"),
+                cancel_label=_t("form.cancel"),
+                error_empty_label=_t("form.void_reason_required"),
+                success_label=_t("expense.voided"),
+                void_btn_label=_t("inv.void_btn"),
+                permission_check=_can("void_transaction"),
+                btn_container=cols[5],
+            )
 
     # Phase 11: Expense Attachments
     active_exp = [r for r in filtered if not r.is_void]
-    if active_exp:
-        st.markdown("---")
-        st.markdown(section_header_html(_t("expense.attachments_header")), unsafe_allow_html=True)
-        options = {
-            f"#{r.id} · {r.date} · {r.expense_type} · {r.amount:,.2f}": r.id
-            for r in active_exp
-        }
-        sel_label = st.selectbox(
-            _t("expense.select_record"), list(options.keys()), key="att_exp_selector"
-        )
-        sel_id = options[sel_label]
-        render_attachment_section(session, "ExpenseRecord", sel_id, f"exp{sel_id}")
+    attachment_section_selector(
+        session=session,
+        records=active_exp,
+        entity_type="ExpenseRecord",
+        header_label=_t("expense.attachments_header"),
+        select_label=_t("expense.select_record"),
+        label_fn=lambda r: f"#{r.id} · {r.date} · {r.expense_type} · {r.amount:,.2f}",
+        key_prefix="exp",
+        render_attachment_fn=render_attachment_section,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -21363,23 +21352,19 @@ def render_inventory(session):
             cols[1].write(prod_obj.name if prod_obj else "Unknown")
             cols[2].write(f"{t.change:+.2f}")
             cols[3].write(t.notes or "")
-            confirm_key = f"confirm_void_invt_{t.id}"
-            if cols[4].button(_t("inv.void_btn"), key=f"void_invt_{t.id}", disabled=not _can("manage_inventory")):
-                st.session_state[confirm_key] = True
-            if st.session_state.get(confirm_key, False):
-                void_reason = st.text_input(_t("inv.void_reason_label"), key=f"void_reason_invt_{t.id}")
-                c1, c2 = st.columns(2)
-                if c1.button(_t("inv.confirm_void"), key=f"confirm_void_btn_invt_{t.id}", disabled=not _can("manage_inventory")):
-                    if not void_reason.strip():
-                        st.error(_t("form.void_reason_required"))
-                    else:
-                        void_inventory_transaction(session, t.id, void_reason.strip())
-                        del st.session_state[confirm_key]
-                        st.success(_t("inv.movement_voided"))
-                        st.rerun()
-                if c2.button(_t("form.cancel"), key=f"cancel_void_invt_{t.id}"):
-                    del st.session_state[confirm_key]
-                    st.rerun()
+            void_confirmation_widget(
+                record_id=t.id,
+                prefix="invt",
+                void_fn=lambda reason, _s=session, _tid=t.id: void_inventory_transaction(_s, _tid, reason),
+                reason_label=_t("inv.void_reason_label"),
+                confirm_label=_t("inv.confirm_void"),
+                cancel_label=_t("form.cancel"),
+                error_empty_label=_t("form.void_reason_required"),
+                success_label=_t("inv.movement_voided"),
+                void_btn_label=_t("inv.void_btn"),
+                permission_check=_can("manage_inventory"),
+                btn_container=cols[4],
+            )
     else:
         st.info(_t("inv.no_movements"))
 
@@ -21799,33 +21784,30 @@ def render_banking(session):
             cols[2].write(_i18n_db(BANK_TXN_TYPE_I18N, t.type))
             cols[3].write(f"${t.amount:,.2f}")
             cols[4].write(t.description)
-            confirm_key = f"confirm_void_btxn_{t.id}"
-            if cols[5].button(_t("purchase.void_btn"), key=f"void_btxn_{t.id}", disabled=not _can("manage_banking")):
-                st.session_state[confirm_key] = True
-            if st.session_state.get(confirm_key, False):
-                void_reason = st.text_input(_t("bank.void_reason_short"), key=f"void_reason_btxn_{t.id}")
-                c1, c2 = st.columns(2)
-                if c1.button(_t("purchase.confirm_void"), key=f"confirm_void_btn_btxn_{t.id}", disabled=not _can("manage_banking")):
-                    if not void_reason.strip():
-                        st.error(_t("purchase.void_reason_required"))
-                    elif (t.description or "").startswith("Card Sale "):
-                        st.error(_t("bank.err.card_sale_void"))
-                        st.session_state[confirm_key] = False
-                    elif (t.description or "").startswith("Capital Contribution #") or \
-                         (t.description or "").startswith("Owner Drawing #"):
-                        st.error(_t("bank.err.equity_void"))
-                        st.session_state[confirm_key] = False
-                    elif (t.statement_ref or "").startswith("bsr:"):
-                        st.error(_t("bank.err.stmt_linked_void"))
-                        st.session_state[confirm_key] = False
-                    else:
-                        void_bank_transaction(session, t.id, void_reason.strip())
-                        st.session_state[confirm_key] = False
-                        st.success(_t("bank.voided_success"))
-                        st.rerun()
-                if c2.button(_t("form.cancel"), key=f"cancel_void_btxn_{t.id}"):
-                    st.session_state[confirm_key] = False
-                    st.rerun()
+            def _btxn_pre_void_checks(_reason, _txn=t):
+                if (_txn.description or "").startswith("Card Sale "):
+                    return _t("bank.err.card_sale_void")
+                if (_txn.description or "").startswith("Capital Contribution #") or \
+                   (_txn.description or "").startswith("Owner Drawing #"):
+                    return _t("bank.err.equity_void")
+                if (_txn.statement_ref or "").startswith("bsr:"):
+                    return _t("bank.err.stmt_linked_void")
+                return None
+
+            void_confirmation_widget(
+                record_id=t.id,
+                prefix="btxn",
+                void_fn=lambda reason, _s=session, _tid=t.id: void_bank_transaction(_s, _tid, reason),
+                reason_label=_t("bank.void_reason_short"),
+                confirm_label=_t("purchase.confirm_void"),
+                cancel_label=_t("form.cancel"),
+                error_empty_label=_t("purchase.void_reason_required"),
+                success_label=_t("bank.voided_success"),
+                void_btn_label=_t("purchase.void_btn"),
+                permission_check=_can("manage_banking"),
+                btn_container=cols[5],
+                pre_void_checks=_btxn_pre_void_checks,
+            )
     else:
         st.info(_t("bank.no_txns"))
 
@@ -22259,23 +22241,19 @@ def render_sales(session):
         cols[2].write(f"{currency} {record.amount:,.2f}")
         cols[3].write(_i18n_db(SALE_TYPE_I18N, record.sale_type))
         cols[4].write(_i18n_db(SALE_STATUS_I18N, record.status))
-        confirm_key = f"confirm_void_sale_{record.id}"
-        if cols[5].button(_t("inv.void_btn"), key=f"erp_void_sale_{record.id}", disabled=not _can("void_transaction")):
-            st.session_state[confirm_key] = True
-        if st.session_state.get(confirm_key, False):
-            void_reason = st.text_input(_t("form.reason_required"), key=f"void_reason_sale_{record.id}")
-            c1, c2 = st.columns(2)
-            if c1.button(_t("inv.confirm_void"), key=f"erp_danger_confirm_void_sale_{record.id}", disabled=not _can("void_transaction")):
-                if not void_reason.strip():
-                    st.error(_t("form.void_reason_required"))
-                else:
-                    void_sale(session, record.id, void_reason.strip())
-                    st.session_state[confirm_key] = False
-                    st.success(_t("sales.voided", invoice=record.invoice_number))
-                    st.rerun()
-            if c2.button(_t("form.cancel"), key=f"cancel_void_sale_{record.id}"):
-                st.session_state[confirm_key] = False
-                st.rerun()
+        void_confirmation_widget(
+            record_id=record.id,
+            prefix="sale",
+            void_fn=lambda reason, _s=session, _rid=record.id: void_sale(_s, _rid, reason),
+            reason_label=_t("form.reason_required"),
+            confirm_label=_t("inv.confirm_void"),
+            cancel_label=_t("form.cancel"),
+            error_empty_label=_t("form.void_reason_required"),
+            success_label=_t("sales.voided", invoice=record.invoice_number),
+            void_btn_label=_t("inv.void_btn"),
+            permission_check=_can("void_transaction"),
+            btn_container=cols[5],
+        )
 
 
 def render_receivables(session):
@@ -22967,27 +22945,22 @@ def render_reports(session):
                         st.info(_t("reports.no_sales_range"))
             
                 elif sel == "sales_growth":
-                    st.caption(_t("rpt.kpi.growth_caption"))
-                    period_days = max((d_to - d_from).days, 1)
-                    prior_to    = d_from - datetime.timedelta(days=1)
-                    prior_from  = prior_to - datetime.timedelta(days=period_days - 1)
-                    cur_total  = cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(Sale.date.between(d_from, d_to), Sale.is_void == False).scalar() or 0.0
-                    prior_total = cq(session, Sale).with_entities(func.sum(Sale.amount)).filter(Sale.date.between(prior_from, prior_to), Sale.is_void == False).scalar() or 0.0
-                    change      = cur_total - prior_total
-                    pct         = (change / prior_total * 100) if prior_total else 0.0
-                    render_kpi_grid([
-                        {"label": _t("rpt.kpi.current_period", frm=d_from, to=d_to),    "value": f"{currency} {cur_total:,.2f}",  "variant": "success"},
-                        {"label": _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), "value": f"{currency} {prior_total:,.2f}", "variant": "muted"},
-                        {"label": _t("rpt.kpi.change"),  "value": f"{currency} {change:+,.2f}", "variant": "success" if change >= 0 else "danger"},
-                        {"label": _t("rpt.kpi.growth_pct"), "value": f"{pct:+.1f}%",              "variant": "success" if pct >= 0 else "danger"},
-                    ])
-                    df = pd.DataFrame([
-                        {_t("col.period"): _t("rpt.kpi.current_period", frm=d_from, to=d_to), _t("col.total"): round(cur_total, 2)},
-                        {_t("col.period"): _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), _t("col.total"): round(prior_total, 2)},
-                        {_t("col.period"): _t("rpt.kpi.change"),    _t("col.total"): round(change, 2)},
-                        {_t("col.period"): _t("rpt.kpi.growth_pct"), _t("col.total"): round(pct, 2)},
-                    ])
-                    render_export_buttons(df, "Sales_Growth", pdf=False)
+                    growth_comparison_kpi(
+                        session=session,
+                        model=Sale,
+                        amount_col=Sale.amount,
+                        date_col=Sale.date,
+                        is_void_col=Sale.is_void,
+                        d_from=d_from,
+                        d_to=d_to,
+                        currency=currency,
+                        export_prefix="Sales_Growth",
+                        render_kpi_grid_fn=render_kpi_grid,
+                        render_export_buttons_fn=render_export_buttons,
+                        t_fn=_t,
+                        cq_fn=cq,
+                        positive_is_good=True,
+                    )
             
     # ─────────────────────────────────────────────────────────────────────────
     # EXPENSES TAB
@@ -23076,27 +23049,22 @@ def render_reports(session):
                         st.info(_t("reports.no_expenses_range"))
             
                 elif sel == "expense_growth":
-                    st.caption(_t("rpt.kpi.growth_caption"))
-                    period_days = max((d_to - d_from).days, 1)
-                    prior_to    = d_from - datetime.timedelta(days=1)
-                    prior_from  = prior_to - datetime.timedelta(days=period_days - 1)
-                    cur_total   = cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(ExpenseRecord.date.between(d_from, d_to), ExpenseRecord.is_void == False).scalar() or 0.0
-                    prior_total = cq(session, ExpenseRecord).with_entities(func.sum(ExpenseRecord.amount)).filter(ExpenseRecord.date.between(prior_from, prior_to), ExpenseRecord.is_void == False).scalar() or 0.0
-                    change      = cur_total - prior_total
-                    pct         = (change / prior_total * 100) if prior_total else 0.0
-                    render_kpi_grid([
-                        {"label": _t("rpt.kpi.current_period", frm=d_from, to=d_to),       "value": f"{currency} {cur_total:,.2f}",   "variant": "danger"},
-                        {"label": _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), "value": f"{currency} {prior_total:,.2f}", "variant": "muted"},
-                        {"label": _t("rpt.kpi.change"),    "value": f"{currency} {change:+,.2f}", "variant": "danger" if change > 0 else "success"},
-                        {"label": _t("rpt.kpi.growth_pct"),  "value": f"{pct:+.1f}%",               "variant": "danger" if pct > 0 else "success"},
-                    ])
-                    df = pd.DataFrame([
-                        {_t("col.period"): _t("rpt.kpi.current_period", frm=d_from, to=d_to), _t("col.total"): round(cur_total, 2)},
-                        {_t("col.period"): _t("rpt.kpi.prior_period", frm=prior_from, to=prior_to), _t("col.total"): round(prior_total, 2)},
-                        {_t("col.period"): _t("rpt.kpi.change"),    _t("col.total"): round(change, 2)},
-                        {_t("col.period"): _t("rpt.kpi.growth_pct"), _t("col.total"): round(pct, 2)},
-                    ])
-                    render_export_buttons(df, "Expense_Growth", pdf=False)
+                    growth_comparison_kpi(
+                        session=session,
+                        model=ExpenseRecord,
+                        amount_col=ExpenseRecord.amount,
+                        date_col=ExpenseRecord.date,
+                        is_void_col=ExpenseRecord.is_void,
+                        d_from=d_from,
+                        d_to=d_to,
+                        currency=currency,
+                        export_prefix="Expense_Growth",
+                        render_kpi_grid_fn=render_kpi_grid,
+                        render_export_buttons_fn=render_export_buttons,
+                        t_fn=_t,
+                        cq_fn=cq,
+                        positive_is_good=False,
+                    )
             
                 elif sel == "vendor_category_spend":
                     pur_rows = (

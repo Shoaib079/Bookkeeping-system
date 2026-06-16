@@ -8,6 +8,23 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-16 — DRY refactor: shared UI utilities for void, growth, attachments
+
+**Audit / task:** Extract duplicated Streamlit UI patterns into shared utilities under `ui/`.
+**Findings:** Three major duplication patterns identified across `app.py`:
+1. **Void confirmation widget** — 6 near-identical blocks (purchases, expenses, inventory, bank txns, sales, payables) each implementing button → reason input → confirm/cancel → void call → rerun.
+2. **Growth comparison KPI** — 2 identical blocks (sales_growth, expense_growth) computing prior-period totals and rendering KPI cards.
+3. **Attachment section selector** — 2 identical blocks (purchases, expenses) rendering a record picker + attachment panel.
+**Actions taken:**
+- Created `ui/crud_helpers.py` with `void_confirmation_widget()` and `attachment_section_selector()`.
+- Created `ui/report_helpers.py` with `growth_comparison_kpi()`.
+- Refactored all 10 call sites in `app.py` to use the shared utilities.
+- Updated `ui/__init__.py` exports.
+- Updated `tests/test_ui2a_crud_polish.py` structural contract test to match the new architecture (still verifies the same key-pattern contract).
+**Related tests:** `tests/test_ui2a_crud_polish.py` updated; full suite passes (3977 passed, 8 skipped, 2 xfailed, 1 preexisting alembic failure).
+
+---
+
 ## 2026-06-13 — POSTING-SERVICE-01 PS-P5: self-contained equity/receivables/inventory/close voids complete
 
 **Preconditions verified:** clean tree; PS-P4 complete; PS-P5-CHAR committed (`f82c5fb`); final extraction `e2293e3` (`void_reconciliation`, `void_eod_close`, `void_year_end_close`).

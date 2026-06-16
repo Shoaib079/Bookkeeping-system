@@ -1,5 +1,12 @@
 """UI layer — theme and shared presentation helpers (Phase 16)."""
 
+from ui.crud_helpers import (
+    attachment_section_selector,
+    void_confirmation_widget,
+)
+from ui.report_helpers import (
+    growth_comparison_kpi,
+)
 from ui.section import (
     aging_buckets_html,
     financial_section_header_html,
@@ -30,6 +37,9 @@ from ui.theme import (
 )
 
 __all__ = [
+    "attachment_section_selector",
+    "void_confirmation_widget",
+    "growth_comparison_kpi",
     "aging_buckets_html",
     "apply_altair_theme",
     "bootstrap_theme",

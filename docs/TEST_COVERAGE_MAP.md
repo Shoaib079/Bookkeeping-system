@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-13 (STAFF-CAPTURE-01 SC-P1b)  
-**Full suite:** run `pytest tests/` — **1551 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
+**Last updated:** 2026-06-16 (DRY UI refactor — shared utilities)  
+**Full suite:** run `pytest tests/` — **3977 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
