@@ -14,7 +14,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP.md"
 
-PYTEST_BASELINE = "4293 passed"
+PYTEST_BASELINE = "4318 passed"
 
 
 @pytest.fixture(scope="module")
