@@ -8,6 +8,28 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 
 ---
 
+## 2026-06-16 — Error handling audit: silent-swallow and propagation improvements
+
+**Audit / task:** Codebase-wide review of error handling patterns — identify and fix locations where exceptions are silently swallowed (`except Exception: pass`) or caught too broadly without logging.
+
+**Findings:**
+- 80+ `except Exception:` blocks across `app.py`, `services/`, `reconciliation/`, `ui/`
+- ~25 blocks with `pass` or silent `return <default>` — no logging, no context for debugging
+- Security-sensitive code (`services/auth.py`) used bare `Exception` instead of specific types
+- Backup, chart render, settings, and feature-flag helpers all swallowed errors silently
+- Intentionally idempotent migration blocks (ALTER TABLE) left as-is — correct by design
+
+**Actions taken:**
+- `services/auth.py`: narrowed `except Exception` → `(ValueError, AttributeError, TypeError)`; added `_log.debug` for malformed hash inputs
+- `services/posting.py`: added `_log.warning` to `card_settlement_on` setting read failure
+- `reconciliation/statement_parse.py`: added logging to parse failures; narrowed date-parsing exceptions to `(ValueError, TypeError, OverflowError)`
+- `app.py`: added module-level `_log = logging.getLogger(__name__)`; added `_log.warning` to settings load/save, backup, company creation, feature-flag, and login paths; added `_log.debug` to chart render, cookie/session, and invoice PDF paths; narrowed mobile-detection and audit-log JSON parsing to specific exception types
+- `ui/theme.py`: added logging; narrowed cookie/header reads to `(AttributeError, TypeError)`; added `_log.debug` to `bootstrap_theme` fallback
+
+**Related tests:** All 4156 existing tests pass (1 pre-existing `test_alembic_config_import_smoke` failure unrelated).
+
+---
+
 ## 2026-06-16 — DRY refactor: shared UI utilities for void, growth, attachments
 
 **Audit / task:** Extract duplicated Streamlit UI patterns into shared utilities under `ui/`.
@@ -24,7 +46,6 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 **Related tests:** `tests/test_ui2a_crud_polish.py` updated; full suite passes (3977 passed, 8 skipped, 2 xfailed, 1 preexisting alembic failure).
 
 ---
-
 ## 2026-06-13 — POSTING-SERVICE-01 PS-P5: self-contained equity/receivables/inventory/close voids complete
 
 **Preconditions verified:** clean tree; PS-P4 complete; PS-P5-CHAR committed (`f82c5fb`); final extraction `e2293e3` (`void_reconciliation`, `void_eod_close`, `void_year_end_close`).

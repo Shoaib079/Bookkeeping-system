@@ -586,6 +586,15 @@ Discovered during P2.9 closing write API — logged in [P2_AUDIT_01_LEDGER.md](.
 
 ---
 
+## Error Handling (TD-ERR)
+
+| ID | Item | Priority | Status | Notes |
+|----|------|----------|--------|-------|
+| **TD-ERR-01** | ~55 remaining `except Exception:` blocks in `app.py` still use broad catches (idempotent migrations, UI rendering, and startup code) — narrow to specific types where feasible | Low | **Open** | Most are in migration ALTER TABLE blocks (intentionally idempotent) or deeply nested UI rendering; 25+ highest-impact blocks addressed 2026-06-16 |
+| **TD-ERR-02** | Centralize structured logging config (level, format, handlers) so `_log.warning`/`_log.debug` calls added in error-handling audit are visible in production | Medium | **Open** | Currently relies on Python root logger defaults |
+
+---
+
 ## Reference implementation
 
 **DSC-P1** (`services/daily_sales_close.py`) is the first module built under:

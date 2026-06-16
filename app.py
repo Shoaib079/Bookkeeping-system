@@ -416,6 +416,8 @@ from services.session_policy import (
     should_extend_idle,
 )
 
+_log = logging.getLogger(__name__)
+
 # Initialize database
 Base.metadata.create_all(bind=engine)
 
@@ -511,6 +513,7 @@ def _load_company_settings(company_id: int, _session=None) -> dict:
             if _own_session:
                 session.close()
     except Exception:
+        _log.warning("_load_company_settings_for_company: failed for company %s", company_id, exc_info=True)
         return dict(_SETTINGS_DEFAULTS)
 
 
@@ -542,6 +545,7 @@ def _load_global_settings() -> dict:
                         pass
                     return _coerce_settings({**_SETTINGS_DEFAULTS, **json_settings})
                 except Exception:
+                    _log.warning("_load_global_settings: JSON migration failed", exc_info=True)
                     session.rollback()
 
             # Brand-new install — seed defaults
@@ -551,12 +555,13 @@ def _load_global_settings() -> dict:
         finally:
             session.close()
     except Exception:
+        _log.warning("_load_global_settings: DB read failed, trying JSON fallback", exc_info=True)
         if os.path.exists(SETTINGS_FILE):
             try:
                 with open(SETTINGS_FILE, "r") as fh:
                     return _coerce_settings({**_SETTINGS_DEFAULTS, **json.load(fh)})
             except Exception:
-                pass
+                _log.warning("_load_global_settings: JSON fallback also failed", exc_info=True)
         return dict(_SETTINGS_DEFAULTS)
 
 
@@ -602,7 +607,7 @@ def _save_company_settings(company_id: int, settings: dict, _session=None) -> No
             if _own_session:
                 session.close()
     except Exception:
-        pass  # silent — save failures are non-fatal
+        _log.warning("_save_company_settings: failed for company %s", company_id, exc_info=True)
 
 
 def _save_global_settings(settings: dict, _session=None) -> None:
@@ -621,12 +626,13 @@ def _save_global_settings(settings: dict, _session=None) -> None:
             if _own_session:
                 session.close()
     except Exception:
+        _log.warning("_save_global_settings: DB write failed", exc_info=True)
         if _own_session:
             try:
                 with open(SETTINGS_FILE, "w") as fh:
                     json.dump(settings, fh, indent=4)
             except Exception:
-                pass
+                _log.warning("_save_global_settings: JSON file fallback also failed", exc_info=True)
 
 
 def load_settings() -> dict:
@@ -832,7 +838,7 @@ def reclassify_card_sales_to_clearing(session, company_id: int) -> dict:
                 [(clearing_acct.id, bank_debit, 0), (bank_acct.id, 0, bank_debit)],
             )
         except Exception:
-            # Closed period or other guard — leave this sale untouched.
+            _log.debug("Card sale reclassify skipped for sale %s (closed period or guard)", sale.id, exc_info=True)
             skipped += 1
             continue
 
@@ -2882,6 +2888,7 @@ def _verify_restore_token(token: str) -> dict | None:
             "company_id": company_id,
         }
     except Exception:
+        _log.debug("_verify_restore_token: invalid token")
         return None
 
 
@@ -2950,6 +2957,7 @@ def _try_restore_session_from_cookie(session) -> bool:
         )
         return True
     except Exception:
+        _log.debug("_try_cookie_restore: restore failed", exc_info=True)
         return False
 
 
@@ -3198,6 +3206,7 @@ def _get_user_pref(user_id: int, key: str, default: str = "") -> str:
         finally:
             sess.close()
     except Exception:
+        _log.debug("_get_user_pref: failed for user %s key %s", user_id, key, exc_info=True)
         return default
 
 
@@ -4771,6 +4780,7 @@ def _activate_company_in_session(
     try:
         session.commit()
     except Exception:
+        _log.warning("_switch_active_company: commit failed for company %s", company_id, exc_info=True)
         session.rollback()
         return False
     return True
@@ -4786,6 +4796,7 @@ def _document_locale(session) -> str:
             get_setting(session, "company.document_language", company_id=cid)
         )
     except Exception:
+        _log.debug("_document_locale: failed for company %s", cid, exc_info=True)
         return _ui_locale()
 
 
@@ -4850,6 +4861,7 @@ def _notif_counts(user_id: int) -> dict:
         finally:
             sess.close()
     except Exception:
+        _log.debug("_notif_counts: failed for user %s", user_id, exc_info=True)
         return {"overdue_ar": 0, "overdue_ap": 0, "low_stock": 0, "backup": 0, "total": 0}
 
 
@@ -4941,6 +4953,7 @@ def _login(session, username: str, password: str) -> str | None:
         user.last_login = datetime.datetime.now()
         session.commit()
     except Exception:
+        _log.warning("_login: failed to update last_login for user %s", username, exc_info=True)
         session.rollback()
     _establish_auth_session(session, user)
     return None
@@ -5048,6 +5061,7 @@ def _submit_setup01_create_company(session, user_id: int) -> tuple[bool, str | N
         try:
             apply_setup01_wizard_settings(session, created.id, answers)
         except Exception:
+            _log.warning("_submit_setup01_create_company: settings failed for new company", exc_info=True)
             session.rollback()
             st.session_state.pop(SETUP01_SESSION_CREATING, None)
             return False, "setup01.settings_failed"
@@ -5077,6 +5091,7 @@ def _submit_setup01_create_company(session, user_id: int) -> tuple[bool, str | N
         st.session_state.pop(SETUP01_SESSION_CREATING, None)
         return False, _map_setup01_create_error(exc)
     except Exception:
+        _log.warning("_submit_setup01_create_company: unexpected error", exc_info=True)
         st.session_state.pop(SETUP01_SESSION_CREATING, None)
         return False, "picker.create_failed"
 
@@ -5337,6 +5352,7 @@ def _banking_reconciliation_on(session) -> bool:
     try:
         return bool(get_setting(session, "banking.reconciliation_enabled", company_id=cid))
     except Exception:
+        _log.warning("_banking_reconciliation_on: failed for company %s", cid, exc_info=True)
         return False
 
 
@@ -5348,6 +5364,7 @@ def _bank_charges_on(session) -> bool:
     try:
         return bool(get_setting(session, "banking.bank_charges_enabled", company_id=cid))
     except Exception:
+        _log.warning("_bank_charges_on: failed for company %s", cid, exc_info=True)
         return False
 
 
@@ -5359,6 +5376,7 @@ def _company_card_on(session) -> bool:
     try:
         return company_card_enabled(session, cid)
     except Exception:
+        _log.warning("_company_card_on: failed for company %s", cid, exc_info=True)
         return False
 
 
@@ -11431,6 +11449,7 @@ def render_dashboard(session):
         try:
             render_themed_grouped_bar(_df_trend, "Date", [NAV_SALES, "Expenses"])
         except Exception:
+            _log.debug("Dashboard trend chart render failed", exc_info=True)
             _render_readable_df(_df_trend.set_index("Date"))
 
     # ── This Month ────────────────────────────────────────────────────────────
@@ -13255,7 +13274,7 @@ def _user_agent_looks_mobile() -> bool:
     """First-request fallback before viewport JS sets erp_mobile_ui cookie."""
     try:
         ua = (st.context.headers.get("User-Agent") or "").lower()
-    except Exception:
+    except (AttributeError, TypeError):
         return False
     return any(
         tok in ua
@@ -13274,7 +13293,7 @@ def _sync_mobile_ui_flag_from_cookie() -> bool:
             flag = False
         else:
             flag = _user_agent_looks_mobile()
-    except Exception:
+    except (AttributeError, TypeError):
         flag = _user_agent_looks_mobile()
     st.session_state["_erp_mobile_ui"] = flag
     return flag
@@ -16201,7 +16220,7 @@ def _txh_render_view_edit_history_block(edit_logs: list) -> None:
             _usr = _d.get("user", "—")
             _bef = _d.get("before", {})
             _aft = _d.get("after", {})
-        except Exception:
+        except (ValueError, KeyError, TypeError):
             _usr, _bef, _aft = "—", {}, {}
         _head = html.escape(f"{_ts} — {_usr}")
         st.markdown(f'<div class="erp-txh-edit-head">{_head}</div>', unsafe_allow_html=True)
@@ -16275,7 +16294,7 @@ def _txh_render_row_panels(
                             key=f"dl_inv_{eobj.id}",
                         )
                     except Exception:
-                        pass
+                        _log.debug("Invoice PDF generation failed for sale %s", eobj.id, exc_info=True)
                 _ref_types = ["CashSale", "CardSale", "CreditSale", "ReceivablePayment"]
             elif etype == "ExpenseRecord":
                 _f1.write(f"**{_t('field.date')}:** {eobj.date}")
@@ -20622,7 +20641,7 @@ def render_cash_reconciliation(session):
                     use_container_width=True,
                 )
             except Exception:
-                pass
+                _log.debug("Reconciliation cumulative trend chart failed", exc_info=True)
             
             st.divider()
             
@@ -20670,7 +20689,7 @@ def render_cash_reconciliation(session):
 
                     st.altair_chart(apply_altair_theme(hist_chart), use_container_width=True)
                 except Exception:
-                    pass
+                    _log.debug("Reconciliation variance histogram failed", exc_info=True)
 
 
 def render_end_of_day_close(session):
@@ -22878,7 +22897,7 @@ def render_reports(session):
                         try:
                             render_themed_bar(df, "Month", "Total")
                         except Exception:
-                            pass
+                            _log.debug("Monthly sales chart render failed", exc_info=True)
                         render_export_buttons(df, "Monthly_Sales", pdf=False)
                     else:
                         st.info(_t("reports.no_sales_range"))
@@ -23035,7 +23054,7 @@ def render_reports(session):
                         try:
                             render_themed_bar(df, "Month", "Total")
                         except Exception:
-                            pass
+                            _log.debug("Monthly expense chart render failed", exc_info=True)
                         _render_readable_df(df)
                         render_export_buttons(df, "Monthly_Expense_Trend", pdf=False)
                     else:
@@ -23454,7 +23473,7 @@ def render_reports(session):
                             _df_chart = df.sort_values("Date")
                             render_themed_bar(_df_chart, "Date", "Variance", x_type="T")
                         except Exception:
-                            pass
+                            _log.debug("Cash recon trend chart render failed", exc_info=True)
                         _render_readable_df(df)
                         render_export_buttons(df, "Cash_Recon_Trend", pdf=False)
                     else:
@@ -23688,7 +23707,7 @@ def render_reports(session):
                                 _df_chart, "Date", [NAV_SALES, NAV_EXPENSES, "Net Cash"]
                             )
                         except Exception:
-                            pass
+                            _log.debug("Daily performance chart render failed", exc_info=True)
                         _render_readable_df(df)
                         render_export_buttons(df, "Daily_Performance_Trend", pdf=False)
                     else:
@@ -25365,7 +25384,7 @@ def _run_backup(label: str = "") -> str:
                         arc  = os.path.relpath(full, start=".")
                         zf.write(full, arc)
         except Exception:
-            pass  # Never let zip failure break the DB backup
+            _log.warning("_run_backup: uploads zip failed for %s", label, exc_info=True)
     else:
         zip_dest = None
     # Copy to cloud folder if configured
@@ -25376,7 +25395,7 @@ def _run_backup(label: str = "") -> str:
             if zip_dest and os.path.exists(zip_dest):
                 shutil.copy2(zip_dest, os.path.join(cloud, os.path.basename(zip_dest)))
         except Exception:
-            pass  # Never let cloud copy failure break the local backup
+            _log.warning("_run_backup: cloud copy failed for %s", label, exc_info=True)
     return dest
 
 
@@ -25455,7 +25474,7 @@ def auto_backup_if_needed(hours: int = 24) -> None:
             _run_backup("auto")
             _prune_backups()
     except Exception:
-        pass
+        _log.warning("auto_backup_if_needed: backup failed", exc_info=True)
 
 
 def render_backup_restore():

@@ -6,9 +6,12 @@ import csv
 import datetime
 import io
 import json
+import logging
 import unicodedata
 from html.parser import HTMLParser
 from typing import Any
+
+_log = logging.getLogger(__name__)
 
 import pandas as pd
 
@@ -305,6 +308,7 @@ def _read_html_tables_raw(file_bytes: bytes) -> list[pd.DataFrame]:
     except ImportError:
         tables = []
     except Exception:
+        _log.debug("read_html failed, falling back to stdlib parser", exc_info=True)
         tables = []
     tables = [t for t in tables if len(t) > 0 and len(t.columns) > 0]
     if tables:
@@ -409,6 +413,7 @@ def _scan_rows_for_header(
                     if scanned:
                         break
                 except Exception:
+                    _log.debug("excel_unrecognized reader %s failed", reader.__name__, exc_info=True)
                     continue
         else:
             text = _decode_text(file_bytes)
@@ -418,6 +423,7 @@ def _scan_rows_for_header(
                     break
                 scanned.append(row)
     except Exception:
+        _log.warning("read_tabular_preview failed for %s", filename, exc_info=True)
         return []
     return scanned
 
@@ -588,12 +594,12 @@ def _parse_date(raw: Any) -> datetime.date | None:
             ts = pd.to_datetime(float(raw), unit="D", origin="1899-12-30", errors="coerce")
             if not pd.isna(ts):
                 return ts.date()
-        except Exception:
+        except (ValueError, TypeError, OverflowError):
             pass
     if hasattr(raw, "to_pydatetime"):
         try:
             return raw.to_pydatetime().date()
-        except Exception:
+        except (ValueError, TypeError, AttributeError):
             pass
     s = str(raw).strip()
     if not s:
@@ -608,7 +614,7 @@ def _parse_date(raw: Any) -> datetime.date | None:
         if pd.isna(parsed):
             return None
         return parsed.date()
-    except Exception:
+    except (ValueError, TypeError):
         return None
 
 
