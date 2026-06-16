@@ -230,7 +230,7 @@ No implementation before roadmap approval.
 | **FULL-SERVICE-READINESS-AUDIT** | ✅ **Recorded (2026-06-05)** — whole-repo service-extraction snapshot · [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) |
 | **DOCS-MIGRATION-CHECKPOINT-01** | ✅ **Recorded (2026-06)** — register drift fix after FASTAPI-READINESS-CHECKPOINT · [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) |
 | **FUTURE-MIGRATION-AUDIT-01** | 📊 **Recorded (2026-06-13 baseline)** — score **62/100**; historical snapshot — blocker list superseded by [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
-| **P2-HARDEN-01** — Company Stamp Audit | 🟡 **In progress** — audit + **H-01/H-02 complete** (matrix + P2 fixture fidelity); H-03 recon asserts next · see [§ P2-HARDEN-01](#p2-harden-01--company-stamp-audit) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) · [P2_AUDIT_01_LEDGER](./docs/P2_AUDIT_01_LEDGER.md) · [P2_HARDEN_01_AUDIT](./docs/P2_HARDEN_01_COMPANY_STAMP_AUDIT.md) |
+| **P2-HARDEN-01** — Company Stamp Audit | ✅ **Closed (2026-06-16)** — H-01 matrix ✅ · H-02 fixture fidelity ✅ · H-03 auto-stamp **deferred/rejected** · [closure doc](./docs/P2_HARDEN_01_AUDIT_CLOSURE.md) |
 | **DASH-CASH-01** — Split Liquid Funds | ✅ **S1/S2 complete** — `compute_liquid_position` + dashboard UI shipped |
 | **AUTH-SESSION-02** — Session hardening | 🟡 **Partial** — audit ✅ · IMPL-1 session policy ✅ · IMPL-2 browser-session policy wiring ✅ · **IMPL-3 idle extension ✅** · remember-device / revocation **open** · [AUTH_SESSION_02_AUDIT](./docs/AUTH_SESSION_02_AUDIT.md) · [IMPL-3](./docs/AUTH_SESSION_02_IMPL_3.md) |
 | **RECEIPT-AI-01** | ✅ **Complete** — service seam + adapter + fake extractor (IMPL-1/2/3a/3b/3c) · no real OCR provider |
@@ -248,13 +248,15 @@ No implementation before roadmap approval.
 
 **Use the system daily** — build only what causes friction during real bookkeeping.
 
-**Test baseline:** `pytest tests/` — **4654 passed**, 11 skipped, 2 xfailed.
+**Test baseline:** `pytest tests/` — **4678 passed**, 11 skipped, 2 xfailed.
 
 **MD-05-IMPL-5 (2026-06-16):** Flag-gated `0001→0002` cutover via `ERP_MONEY_NUMERIC_CUTOVER=1` + P3.8 backup/confirmation; post-cutover cache re-sync; production `erp_data.db` blocked. Tag: `money-decimal-05-impl5-cutover-gate`. Doc: [MONEY_DECIMAL_05_IMPL_5.md](./docs/MONEY_DECIMAL_05_IMPL_5.md).
 
 **AUTH-SESSION-02-IMPL-3 (verified 2026-06-16):** Idle session extension — `should_extend_idle` + `_maybe_extend_idle_session()` in `main()`; implementation `ee57dc1`. Tag: `auth-session-02-impl3-idle-extension`. Doc: [AUTH_SESSION_02_IMPL_3.md](./docs/AUTH_SESSION_02_IMPL_3.md).
 
-**BANKING-SERVICE-01-BS-03 (verified 2026-06-16):** CC bill payment JE uses `services.posting.create_journal_entry(..., company_id=...)`; implementation `713ac3c`. Tag: `banking-service-01-bs03-company-card-company-scope`. Doc: [BANKING_SERVICE_01_BS03.md](./docs/BANKING_SERVICE_01_BS03.md).
+**P2-HARDEN-01 (verified 2026-06-16):** Company stamp audit closed — H-01/H-02 complete; H-03 auto-stamp deferred/rejected. Tag: `p2-harden-01-company-stamp-audit`. Doc: [P2_HARDEN_01_AUDIT_CLOSURE.md](./docs/P2_HARDEN_01_AUDIT_CLOSURE.md).
+
+**BANKING-SERVICE-01-BS-03 (verified 2026-06-16):**** CC bill payment JE uses `services.posting.create_journal_entry(..., company_id=...)`; implementation `713ac3c`. Tag: `banking-service-01-bs03-company-card-company-scope`. Doc: [BANKING_SERVICE_01_BS03.md](./docs/BANKING_SERVICE_01_BS03.md).
 
 **MD-05 track:** IMPL-1 ✅ · IMPL-2 ✅ · IMPL-3 ✅ · IMPL-4 ✅ · **IMPL-5 ✅** — see [MONEY_DECIMAL track](#money-decimal-01--float--decimal-migration) below.
 
@@ -269,7 +271,7 @@ No implementation before roadmap approval.
 1. **Keep `ROADMAP.md` accurate** after each audit/implementation checkpoint (ROADMAP-SYNC-01/02 hygiene rule).
 2. ~~**BANKING-SERVICE-01-BS-03**~~ ✅ — `company_card` CC bill payment JE explicit `company_id` ([BS-03 doc](./docs/BANKING_SERVICE_01_BS03.md); commit `713ac3c`).
 3. ~~**AUTH-SESSION-02-IMPL-3**~~ ✅ — idle extension (`should_extend_idle` wired; [IMPL-3 doc](./docs/AUTH_SESSION_02_IMPL_3.md)).
-4. **P2-HARDEN-01** — `company_id` stamping audit across FastAPI `write_*` services.
+4. ~~**P2-HARDEN-01**~~ ✅ — `company_id` stamping audit closed ([closure doc](./docs/P2_HARDEN_01_AUDIT_CLOSURE.md)).
 5. **MONEY-DECIMAL-04c+** — JE balance guard / FX native Decimal math (MD-01…04b ✅).
 6. **MONEY-DECIMAL-05 (MD-05)** — Alembic Numeric migration (**IMPL-1 ✅** · **IMPL-2 ✅** · **IMPL-3 ✅** · **IMPL-4 ✅** · **IMPL-5 ✅** — flag-gated cutover) — [MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md](./docs/MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md) **before** PostgreSQL runtime cutover.
 7. **PostgreSQL runtime cutover** — after MD-04c+ + **MD-05 Numeric** + Alembic authority (**P3.9 ✅** · **ALEMBIC-01 ✅**).
@@ -3143,31 +3145,20 @@ Inventory and reduce Streamlit-only context coupling — `_erp()` lazy `import a
 
 **Priority:** High  
 **Risk:** Low  
-**Behavior changes:** None intended  
-**Status:** 🟡 In progress — audit complete; **H-01 + H-02 complete** (2026-06-16); H-03 next
+**Behavior changes:** None  
+**Status:** ✅ **Closed (2026-06-16)** — audit + H-01/H-02 complete; H-03 auto-stamp **deferred/rejected**
 
-Streamlit `SessionLocal` installs a `before_flush` hook (`app._stamp_company_id_on_new_objects`) that stamps `company_id` on new ORM rows at flush time. FastAPI `get_db` sessions do not. P2.9 fixed `PartnerProfitAllocation` wrapper-side; P2-HARDEN-01a fixed partner/worker movement stamps. **H-01** added parametrized write-family matrix (no fixture hook). **H-02** removed misleading `before_flush` from P2 banking/partner-worker/reconciliation test fixtures.
+**Completed:**
 
-**Completed slices:**
+- **H-01** — `tests/test_p2_harden_01_company_stamp_matrix.py` (parametrized write-family matrix; no fixture hook)
+- **H-02** — P2 fixture fidelity; removed misleading `before_flush` from `test_fastapi_p2_*` db fixtures
+- **H-03** — Systemic hook audit: **DEFER**; silent auto-stamp **rejected** — [P2_HARDEN_01_H03_AUDIT.md](./docs/P2_HARDEN_01_H03_AUDIT.md)
 
-- **H-01** — `tests/test_p2_harden_01_company_stamp_matrix.py` (15 tests)
-- **H-02** — P2 fixture fidelity; ORM seed for partner/worker tests
+**Closure:** [P2_HARDEN_01_AUDIT_CLOSURE.md](./docs/P2_HARDEN_01_AUDIT_CLOSURE.md) · tag `p2-harden-01-company-stamp-audit`
 
-**Remaining:**
+**Standing rule:** explicit service-layer `company_id` stamping; no API `before_flush` auto-stamp.
 
-- **H-03** — Reconciliation match `BankTransaction` / JE stamp assertions
-- **H-04** (optional) — API session `before_flush` from request context
-
-**Scope (original):**
-
-- Inventory all P2 write API paths (`services/write_*.py`) and posting/match kernels they call
-- For each ORM row created on the API path, verify explicit `company_id` assignment (or a shared API-session stamp equivalent)
-- Document gaps; fix with wrapper-side stamps or a centralized API `before_flush` hook — parity with Streamlit, no GL or posting rule changes
-- Add contract tests where guards depend on stamped `company_id`
-
-**Trigger:** After P2.9 ship; before broadening the write API surface.
-
-**Origin:** [P2_AUDIT_01_LEDGER.md § 2026-06-14](./docs/P2_AUDIT_01_LEDGER.md) (P2.9 duplicate-allocation guard miss).
+**Optional follow-ups (non-blocking):** reconciliation match stamp asserts; fail-loud NULL guard at FastAPI runtime cutover only.
 
 Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#p2-harden-01-2026-06-14).
 
@@ -3210,6 +3201,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-16 | **P2-HARDEN-01 (closure)** — Company stamp audit closed: H-01/H-02 verified green; H-03 silent auto-stamp deferred/rejected; explicit service-layer stamping remains standard. Doc: [P2_HARDEN_01_AUDIT_CLOSURE.md](./docs/P2_HARDEN_01_AUDIT_CLOSURE.md). Tag: `p2-harden-01-company-stamp-audit`. Next: **MONEY-DECIMAL-04c+**. |
 | 2026-06-16 | **NAV-ARCH** — Record planned navigation single-source-of-truth epic (S0–S4): derive dispatch/accordion/role/mobile from `registry/navigation.py` after PG parity, before React; not a PG blocker. Docs only. |
 | 2026-06-16 | **BANKING-SERVICE-01-BS-03 (closure)** — Verified CC bill payment JE already uses explicit `company_id` via `services.posting` (`713ac3c`); doc [BANKING_SERVICE_01_BS03.md](./docs/BANKING_SERVICE_01_BS03.md). Tag: `banking-service-01-bs03-company-card-company-scope`. Next: **P2-HARDEN-01**. |
 | 2026-06-16 | **AUTH-SESSION-02-IMPL-3 (closure)** — Verified idle extension already shipped (`ee57dc1`); ROADMAP/TECH_DEBT sync; doc [AUTH_SESSION_02_IMPL_3.md](./docs/AUTH_SESSION_02_IMPL_3.md). Tag: `auth-session-02-impl3-idle-extension`. Next: **BANKING-SERVICE-01-BS-03**. |

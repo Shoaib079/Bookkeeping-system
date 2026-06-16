@@ -14,7 +14,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP.md"
 
-PYTEST_BASELINE = "4654 passed"
+PYTEST_BASELINE = "4678 passed"
 
 
 @pytest.fixture(scope="module")
@@ -41,21 +41,21 @@ class TestRoadmapSync01Header:
 
 class TestStatusAtAGlance:
     def test_posting_service_complete_not_blocker(self, text: str):
-        glance = _section_after("## Status at a glance", text, limit=12000)
+        glance = _section_after("## Status at a glance", text, limit=16000)
         assert "POSTING-SERVICE-01" in glance
         assert "Complete" in glance
         assert "PS-P7" in glance
         assert "not a blocker" in glance
 
     def test_reports_service_partial(self, text: str):
-        glance = _section_after("## Status at a glance", text, limit=12000)
+        glance = _section_after("## Status at a glance", text, limit=16000)
         assert "REPORTS-SERVICE-01" in glance
         assert "Partial" in glance
         assert "services/read_" in glance
         assert "app.py" in glance
 
     def test_banking_service_partial(self, text: str):
-        glance = _section_after("## Status at a glance", text, limit=12000)
+        glance = _section_after("## Status at a glance", text, limit=16000)
         assert "BANKING-SERVICE-01" in glance
         assert "Partial" in glance
         assert "write_banking" in glance
@@ -63,14 +63,14 @@ class TestStatusAtAGlance:
         assert "match_post" in glance
 
     def test_auth_session_partial_impl_1_2(self, text: str):
-        glance = _section_after("## Status at a glance", text, limit=12000)
+        glance = _section_after("## Status at a glance", text, limit=16000)
         assert "AUTH-SESSION-02" in glance
         assert "Partial" in glance
         assert "IMPL-1" in glance
         assert "IMPL-2" in glance
 
     def test_receipt_ai_01_complete(self, text: str):
-        glance = _section_after("## Status at a glance", text, limit=12000)
+        glance = _section_after("## Status at a glance", text, limit=16000)
         assert "RECEIPT-AI-01" in glance
         assert "Complete" in glance
 
@@ -82,21 +82,26 @@ class TestStatusAtAGlance:
         assert "IMPL-5" in line or "IMPL-1–5" in line or "IMPL-1/2/3/4/5" in line
 
     def test_fastapi_partial_strong(self, text: str):
-        glance = _section_after("## Status at a glance", text, limit=12000)
+        glance = _section_after("## Status at a glance", text, limit=16000)
         assert "FastAPI foundation" in glance
         assert "Partial" in glance
         assert "not production-complete" in glance
 
     def test_postgresql_test_only(self, text: str):
-        glance = _section_after("## Status at a glance", text, limit=12000)
+        glance = _section_after("## Status at a glance", text, limit=16000)
         assert "PostgreSQL runtime" in glance
         assert "test-only" in glance
         assert "SQLite" in glance
         assert "MONEY-DECIMAL-04b" in glance
         assert "MD-04c" in glance
 
+    def test_p2_harden_01_closed(self, text: str):
+        glance = _section_after("## Status at a glance", text, limit=16000)
+        assert "P2-HARDEN-01" in glance
+        assert "Closed" in glance
+
     def test_react_not_started(self, text: str):
-        glance = _section_after("## Status at a glance", text, limit=12000)
+        glance = _section_after("## Status at a glance", text, limit=16000)
         assert "React migration" in glance
         assert "Not started" in glance
         assert "ERP_DS_05" in glance
@@ -104,7 +109,7 @@ class TestStatusAtAGlance:
 
 class TestCurrentPriority:
     def test_priority_contains_bs02_characterization(self, text: str):
-        block = _section_after("## Current priority", text, limit=3500)
+        block = _section_after("## Current priority", text, limit=5000)
         assert "BS-03" in block or "BS-04" in block
         assert "BS-04" in block or "write_banking" in block
 

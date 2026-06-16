@@ -280,7 +280,7 @@ Independent architectural review (Claude) — baseline FastAPI/React readiness a
 
 1. ~~**AUTH-SESSION-02-IMPL-3**~~ ✅ — idle extension ([IMPL-3 doc](./AUTH_SESSION_02_IMPL_3.md); commit `ee57dc1`)
 2. **BANKING-SERVICE-01** — extraction audit; balance ownership; `_app()` removal
-3. **P2-HARDEN-01** — API `company_id` stamp audit
+3. ~~**P2-HARDEN-01**~~ ✅ — API `company_id` stamp audit closed ([closure doc](./P2_HARDEN_01_AUDIT_CLOSURE.md))
 4. ~~**MONEY-DECIMAL-05-IMPL-5**~~ ✅ — flag-gated cutover (**IMPL-1 ✅** · **IMPL-2 ✅** · **IMPL-3 ✅** · **IMPL-4 ✅** · **IMPL-5 ✅**)
 5. **P3.9** — phased `migrate_schema()` retirement (**✅ complete** — P3.9-A/B-CHAR/B/C)
 6. **PostgreSQL build + dual-run parity** — Alembic head incl. `0002` on PG test DB; production cutover still blocked
@@ -296,9 +296,11 @@ Independent architectural review (Claude) — baseline FastAPI/React readiness a
 
 Discovered during P2.9 closing write API — logged in [P2_AUDIT_01_LEDGER.md](./P2_AUDIT_01_LEDGER.md).
 
+**Closed 2026-06-16:** H-01 matrix and H-02 fixture fidelity verified; H-03 silent auto-stamp **deferred/rejected**. No runtime changes. See [P2_HARDEN_01_AUDIT_CLOSURE.md](./P2_HARDEN_01_AUDIT_CLOSURE.md).
+
 | ID | Item | Priority | Status | When / trigger |
 |----|------|----------|--------|----------------|
-| **P2-HARDEN-01** | **API `company_id` stamping audit** — Streamlit `SessionLocal` installs `before_flush` (`_stamp_company_id_on_new_objects`); FastAPI `get_db` does not. P2.9 fixed `PartnerProfitAllocation` wrapper-side only. Audit all P2 write paths (and kernels they call) so API-created ORM rows get explicit `company_id` or a shared API-session stamp hook; do not rely on Streamlit-only hooks for guards, uniqueness, or tenancy filters | High | Open | After P2.9 ship; before broadening write API surface |
+| **P2-HARDEN-01** | **API `company_id` stamping audit** — explicit service-layer stamping verified for all P2 write paths; H-01 matrix + H-02 fixture fidelity green; H-03 silent auto-stamp **deferred/rejected** | High | **✅ Closed (2026-06-16)** | [P2_HARDEN_01_AUDIT_CLOSURE.md](./P2_HARDEN_01_AUDIT_CLOSURE.md) · tag `p2-harden-01-company-stamp-audit` |
 
 **Related roadmap:** [ROADMAP.md § P2-HARDEN-01](../ROADMAP.md#p2-harden-01--company-stamp-audit)
 
