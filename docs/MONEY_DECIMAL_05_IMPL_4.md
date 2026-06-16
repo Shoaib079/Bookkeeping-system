@@ -34,6 +34,6 @@ SQLite `batch_alter_table` rebuilds drop 0001 supplemental partial indexes (e.g.
 | `tests/md05_migration_smoke_utils.py` | Alembic runner, seed, snapshots |
 | `tests/test_money_decimal_05_impl4_migration_smoke.py` | SQLite + optional PG smoke |
 
-## Next slice
+## Next
 
-**MD-05-IMPL-5** — flag-gated cutover (P3.8 backup-first machinery).
+PostgreSQL build via Alembic (incl. `0002`) + dual-run parity on production-shaped data; PG production cutover remains gated on explicit `APPROVE PRODUCTION POSTGRES CUTOVER`.

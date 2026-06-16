@@ -59,7 +59,7 @@ def test_get_alembic_heads_returns_0002():
 def test_build_upgrade_head_command_shape():
     argv = build_upgrade_head_command(database_url=TEST_DB_URL)
     assert argv[-2:] == ("upgrade", "head")
-    assert "alembic" in argv
+    assert any("alembic" in str(part) for part in argv)
     assert f"sqlalchemy.url={TEST_DB_URL}" in argv
     assert "shell" not in argv
 

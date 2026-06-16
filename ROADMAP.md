@@ -153,7 +153,7 @@ No implementation before roadmap approval.
 | Company creation (14D-D) | ✅ Complete |
 | Sidebar uses company role (nav fix) | ✅ Complete |
 | Simplified Company Setup UI | ✅ Complete (Expert policies stub) |
-| Automated tests | ✅ **4633 passing, 11 skipped, 2 xfailed** (run `pytest tests/` on host) |
+| Automated tests | ✅ **4651 passing, 11 skipped, 2 xfailed** (run `pytest tests/` on host) |
 | Member management (14D-E) | ✅ Complete |
 | Member roster polish (14D-F) | ✅ Complete |
 | Setup wizard v1 (14D-G) | ✅ Complete — **superseded by SETUP-01** |
@@ -247,17 +247,13 @@ No implementation before roadmap approval.
 
 **Use the system daily** — build only what causes friction during real bookkeeping.
 
-**Test baseline:** `pytest tests/` — **4633 passed**, 11 skipped, 2 xfailed.
+**Test baseline:** `pytest tests/` — **4651 passed**, 11 skipped, 2 xfailed.
 
-**MD-05-IMPL-4 (2026-06-16):** Populated SQLite `0001→0002` smoke (integrity + money snapshot parity + post-migration posting); optional PG NUMERIC column/exactness tests; `0002` SQLite supplemental index re-apply fix. Tag: `money-decimal-05-impl4-migration-smoke`. Doc: [MONEY_DECIMAL_05_IMPL_4.md](./docs/MONEY_DECIMAL_05_IMPL_4.md).
+**MD-05-IMPL-5 (2026-06-16):** Flag-gated `0001→0002` cutover via `ERP_MONEY_NUMERIC_CUTOVER=1` + P3.8 backup/confirmation; post-cutover cache re-sync; production `erp_data.db` blocked. Tag: `money-decimal-05-impl5-cutover-gate`. Doc: [MONEY_DECIMAL_05_IMPL_5.md](./docs/MONEY_DECIMAL_05_IMPL_5.md).
 
-**MD-05-IMPL-3 (2026-06-16):** ROUND_HALF_UP consolidation via `services/money.py`; stale bank/payable cache paths fixed; `sync_account_balances` + `sync_bank_account_balances`; Alembic `0002` PG `ROUND(...)` USING; `ingredients.cost_per_base_unit` → NUMERIC(19,4). Tag: `money-decimal-05-impl3-quantization-cache`. Doc: [MONEY_DECIMAL_05_IMPL_3.md](./docs/MONEY_DECIMAL_05_IMPL_3.md).
+**MD-05 track:** IMPL-1 ✅ · IMPL-2 ✅ · IMPL-3 ✅ · IMPL-4 ✅ · **IMPL-5 ✅** — see [MONEY_DECIMAL track](#money-decimal-01--float--decimal-migration) below.
 
-**MD-05-IMPL-2 (2026-06-16):** `models.py` money columns → `Numeric(asdecimal=True)` (2/4/8 dp); services route through `services/money.py`; MD-02 golden vectors preserved; no PG production cutover. Tag: `money-decimal-05-impl2-model-numeric`.
-
-**MD-05-IMPL-1 (2026-06-05):** Alembic revision **`0002_money_numeric`** authored (`money_numeric_columns.py` classification + PG direct-alter / SQLite batch-rebuild); **`0001_baseline` untouched**; +31 contract/smoke tests. Tag: `money-decimal-05-impl1-numeric-revision`. Next: **MD-05-IMPL-2** (complete).
-
-**External merges (2026-06-16):** **PR #2** — error-handling audit (logging + narrowed exceptions in `services/auth.py`, `services/posting.py`, `reconciliation/statement_parse.py`, `app.py`, `ui/theme.py`; `TD-ERR-01`/`TD-ERR-02` in TECH_DEBT). **PR #3** — +226 coverage tests (`test_*_coverage.py` for exports, statement/settlement parse, banking_config, categories_seed, amounts). *(Pre-sync baseline: **4572 passed**; +6 Sync-02 contract tests → **4578 passed**.)*
+**External merges (2026-06-16):** **PR #2** — error-handling audit · **PR #3** — +226 coverage tests. *(Pre-sync baseline: **4572 passed**; +6 Sync-02 → **4578 passed**.)*
 
 **Migration gates closed:** **P3.9** series ✅ (A → B-CHAR → B → C) · **ALEMBIC-01** ✅ (Alembic-only schema evolution; `migrate_schema()` no-op stub).
 
@@ -270,7 +266,7 @@ No implementation before roadmap approval.
 3. **AUTH-SESSION-02-IMPL-3** — idle extension characterization + wiring (`should_extend_idle`).
 4. **P2-HARDEN-01** — `company_id` stamping audit across FastAPI `write_*` services.
 5. **MONEY-DECIMAL-04c+** — JE balance guard / FX native Decimal math (MD-01…04b ✅).
-6. **MONEY-DECIMAL-05 (MD-05)** — Alembic Numeric migration (**IMPL-1 ✅** · **IMPL-2 ✅** · **IMPL-3 ✅** · **IMPL-4 ✅** — migration smoke; **IMPL-5** pending) — [MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md](./docs/MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md) **before** PostgreSQL runtime cutover.
+6. **MONEY-DECIMAL-05 (MD-05)** — Alembic Numeric migration (**IMPL-1 ✅** · **IMPL-2 ✅** · **IMPL-3 ✅** · **IMPL-4 ✅** · **IMPL-5 ✅** — flag-gated cutover) — [MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md](./docs/MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md) **before** PostgreSQL runtime cutover.
 7. **PostgreSQL runtime cutover** — after MD-04c+ + **MD-05 Numeric** + Alembic authority (**P3.9 ✅** · **ALEMBIC-01 ✅**).
 8. **React migration** — Phase D after API/service hardening.
 
@@ -2890,7 +2886,7 @@ Replace `Float` money columns and arithmetic with `Decimal`/`Numeric` across mod
 
 **Audit:** [MONEY_DECIMAL_01_AUDIT.md](./docs/MONEY_DECIMAL_01_AUDIT.md) · contract: `tests/test_money_decimal_01_audit.py`
 
-**Next slices:** ~~MD-02~~ ✅ · ~~MD-03~~ ✅ · ~~MD-04-CHAR~~ ✅ · ~~MD-04a~~ ✅ · ~~MD-04b~~ ✅ · ~~MD-05-IMPL-1~~ ✅ · ~~MD-05-IMPL-2~~ ✅ · ~~MD-05-IMPL-3~~ ✅ · ~~MD-05-IMPL-4~~ ✅ → **MD-05-IMPL-5** flag-gated cutover → PG build
+**Next slices:** ~~MD-02~~ ✅ · ~~MD-03~~ ✅ · ~~MD-04-CHAR~~ ✅ · ~~MD-04a~~ ✅ · ~~MD-04b~~ ✅ · ~~MD-05-IMPL-1~~ ✅ · ~~MD-05-IMPL-2~~ ✅ · ~~MD-05-IMPL-3~~ ✅ · ~~MD-05-IMPL-4~~ ✅ · ~~MD-05-IMPL-5~~ ✅ → PG build + dual-run parity
 
 Aligns with [TD-MIG-04](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#global-migration-td-mig).
 
@@ -2983,6 +2979,13 @@ Schema-only slice per [MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md](./docs/MONEY_
 **Status:** ✅ **Complete** (2026-06-16) — Populated SQLite `0001→0002` smoke (index/FK/table integrity, money snapshot parity, post-migration posting); optional PG `@pytest.mark.optional_postgres` NUMERIC scale + `0.1+0.2=0.30` exactness; **`0002` SQLite supplemental index re-apply** after batch rebuild; **`0002` not applied to production DB**
 
 **Contract:** `test_money_decimal_05_impl4_*` · `md05_migration_smoke_utils.py` · baseline **4633 passed** (+8 vs IMPL-3). Tag: `money-decimal-05-impl4-migration-smoke`. Doc: [MONEY_DECIMAL_05_IMPL_4.md](./docs/MONEY_DECIMAL_05_IMPL_4.md)
+
+#### MONEY-DECIMAL-05-IMPL-5
+
+**Priority:** High (migration prep)  
+**Status:** ✅ **Complete** (2026-06-16) — `ERP_MONEY_NUMERIC_CUTOVER=1` + P3.8 backup/confirmation arms populated `0001→0002` startup upgrade; post-cutover GL + bank cache re-sync; `alembic_runner` passes `DATABASE_URL` + prefers `alembic` on PATH; **production `erp_data.db` still blocked**
+
+**Contract:** `test_money_decimal_05_impl5_cutover_gate.py` · baseline **4651 passed** (+18 vs IMPL-4). Tag: `money-decimal-05-impl5-cutover-gate`. Doc: [MONEY_DECIMAL_05_IMPL_5.md](./docs/MONEY_DECIMAL_05_IMPL_5.md)
 
 #### ALEMBIC-01
 
@@ -3146,6 +3149,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-16 | **MONEY-DECIMAL-05-IMPL-5** — Flag-gated `0001→0002` cutover wiring (`ERP_MONEY_NUMERIC_CUTOVER` + P3.8 gate); post-cutover cache re-sync; Alembic runner `DATABASE_URL` + PATH fix. Baseline **4651 passed** (+18). Tag: `money-decimal-05-impl5-cutover-gate`. Next: PG build + dual-run parity. |
 | 2026-06-16 | **MONEY-DECIMAL-05-IMPL-4** — Populated SQLite `0001→0002` migration smoke + optional PG NUMERIC tests; fix `0002` SQLite supplemental index re-apply after batch rebuild. Baseline **4633 passed** (+8). Tag: `money-decimal-05-impl4-migration-smoke`. Next: **MD-05-IMPL-5**. |
 | 2026-06-16 | **MONEY-DECIMAL-05-IMPL-3** — ROUND_HALF_UP via `services/money.py`; fix stale bank/payable cache paths; GL + bank cache re-sync; Alembic `0002` explicit PG ROUND USING; `ingredients.cost_per_base_unit` → NUMERIC(19,4). Baseline **4625 passed** (+14). Tag: `money-decimal-05-impl3-quantization-cache`. Next: **MD-05-IMPL-4**. |
 | 2026-06-16 | **MONEY-DECIMAL-05-IMPL-2** — Switch `models.py` to `Numeric(asdecimal=True)`; route posting/read/write/`app.py` through `services/money.py`; preserve MD-02 golden vectors; no PG production cutover. Baseline **4611 passed** (+2). Tag: `money-decimal-05-impl2-model-numeric`. Next: **MD-05-IMPL-3**. |

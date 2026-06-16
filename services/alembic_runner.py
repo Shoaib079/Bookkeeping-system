@@ -7,6 +7,8 @@ Never shells out with ``shell=True``; never exposes downgrade or arbitrary comma
 from __future__ import annotations
 
 import logging
+import os
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -125,6 +127,14 @@ def get_current_revision(
         engine.dispose()
 
 
+def _alembic_argv_prefix() -> list[str]:
+    """Prefer ``alembic`` on PATH; fall back to ``python -m alembic``."""
+    alembic_bin = shutil.which("alembic")
+    if alembic_bin:
+        return [alembic_bin]
+    return [sys.executable, "-m", "alembic"]
+
+
 def _base_argv(
     *,
     database_url: str,
@@ -132,9 +142,7 @@ def _base_argv(
 ) -> list[str]:
     ini = alembic_ini or DEFAULT_ALEMBIC_INI
     return [
-        sys.executable,
-        "-m",
-        "alembic",
+        *_alembic_argv_prefix(),
         "-c",
         str(ini),
         "-x",
@@ -200,8 +208,12 @@ def _execute_argv(
     command: str,
     target: str,
     argv: tuple[str, ...],
+    database_url: str | None = None,
 ) -> AlembicCommandResult:
     _reject_blocked_subcommand(argv)
+    env = os.environ.copy()
+    if database_url:
+        env["DATABASE_URL"] = database_url
     completed = subprocess.run(
         list(argv),
         cwd=str(PROJECT_ROOT),
@@ -209,6 +221,7 @@ def _execute_argv(
         text=True,
         shell=False,
         check=False,
+        env=env,
     )
     success = completed.returncode == 0
     message = (
@@ -248,7 +261,12 @@ def run_upgrade_head(
     )
     if not allow_execute:
         return _dry_run_result(command="upgrade", target="head", argv=argv)
-    return _execute_argv(command="upgrade", target="head", argv=argv)
+    return _execute_argv(
+        command="upgrade",
+        target="head",
+        argv=argv,
+        database_url=database_url,
+    )
 
 
 def run_stamp(
@@ -269,4 +287,9 @@ def run_stamp(
     target = revision.strip()
     if not allow_execute:
         return _dry_run_result(command="stamp", target=target, argv=argv)
-    return _execute_argv(command="stamp", target=target, argv=argv)
+    return _execute_argv(
+        command="stamp",
+        target=target,
+        argv=argv,
+        database_url=database_url,
+    )

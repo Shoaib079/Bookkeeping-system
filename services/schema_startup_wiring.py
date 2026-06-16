@@ -24,6 +24,14 @@ from services.schema_migration_gate import (
     validate_backup_path,
     validate_confirmation_phrase,
 )
+from services.money_numeric_cutover import (
+    evaluate_money_numeric_cutover_gate,
+    is_money_numeric_cutover_authorized,
+    is_money_numeric_cutover_eligible,
+    is_money_numeric_cutover_enabled,
+    resolve_money_numeric_allow_production,
+    run_money_numeric_post_cutover,
+)
 from services.schema_startup import (
     ACTION_ALEMBIC_UPGRADE_HEAD,
     ACTION_FAIL_CLOSED,
@@ -52,6 +60,7 @@ class SchemaStartupSessionPlan:
     flag_authoritative: bool
     skip_migrate_schema: bool
     schema_step_succeeded: bool
+    money_numeric_cutover_executed: bool = False
 
 
 class SchemaStartupError(RuntimeError):
@@ -232,7 +241,10 @@ def prepare_schema_startup_authoritative(
                     allow_production=allow_production,
                 )
                 if not result.success:
-                    _raise_runner_failed(decision, runner_message=result.message)
+                    detail = result.message
+                    if result.stderr:
+                        detail = f"{detail} stderr={result.stderr.strip()}"
+                    _raise_runner_failed(decision, runner_message=detail)
 
                 _session_plan = SchemaStartupSessionPlan(
                     flag_authoritative=True,
@@ -241,7 +253,7 @@ def prepare_schema_startup_authoritative(
                 )
                 return _session_plan
 
-            # Populated behind_head: gate must pass, but never auto-upgrade in K2.
+            # Populated behind_head: K2 blocks unless MD-05 money cutover is armed.
             gate = evaluate_migration_gate(
                 db_path_or_url=url,
                 action=ACTION_UPGRADE_HEAD,
@@ -253,6 +265,57 @@ def prepare_schema_startup_authoritative(
             )
             if not gate.allowed:
                 _raise_gate_blocked(decision, gate_message=gate.message)
+
+            cutover_enabled = is_money_numeric_cutover_enabled(environ)
+            cutover_eligible = is_money_numeric_cutover_eligible(
+                schema_status=decision.schema_status,
+                db_revision=decision.db_revision,
+                head_revision=decision.head_revision,
+            )
+            if cutover_enabled and cutover_eligible:
+                money_gate = evaluate_money_numeric_cutover_gate(
+                    db_path_or_url=url,
+                    backup_path=backup_path,
+                    confirmation_value=confirmation,
+                )
+                allow_production = resolve_money_numeric_allow_production(
+                    url,
+                    environ=environ,
+                )
+                if is_money_numeric_cutover_authorized(
+                    cutover_enabled=True,
+                    eligible=True,
+                    gate_decision=money_gate,
+                    allow_production=allow_production,
+                    database_url=url,
+                ):
+                    result = run_upgrade_head_fn(
+                        database_url=url,
+                        allow_execute=True,
+                        allow_production=allow_production,
+                    )
+                    if not result.success:
+                        detail = result.message
+                        if result.stderr:
+                            detail = f"{detail} stderr={result.stderr.strip()}"
+                        _raise_runner_failed(decision, runner_message=detail)
+
+                    _LOG.info(
+                        "[schema] MD-05 money NUMERIC cutover executed "
+                        "(%s → %s).",
+                        "0001",
+                        "0002",
+                    )
+                    _session_plan = SchemaStartupSessionPlan(
+                        flag_authoritative=True,
+                        skip_migrate_schema=True,
+                        schema_step_succeeded=True,
+                        money_numeric_cutover_executed=True,
+                    )
+                    return _session_plan
+
+                if not money_gate.allowed:
+                    _raise_gate_blocked(decision, gate_message=money_gate.message)
 
             _raise_blocked(decision)
 
@@ -287,3 +350,6 @@ def run_schema_startup_in_session(
     if not plan.skip_migrate_schema:
         migrate_schema_fn(session)
     log_fn(session)
+
+    if plan.money_numeric_cutover_executed:
+        run_money_numeric_post_cutover(session)

@@ -270,7 +270,7 @@ Independent architectural review (Claude) — baseline FastAPI/React readiness a
 | ID | Item | Priority | Status | When / trigger |
 |----|------|----------|--------|----------------|
 | **POSTING-SERVICE-01** | Extract GL posting engine from `app.py` (`create_journal_entry`, reversals, `post_*` wrappers) | **Critical** | **Complete** | PS-P0–P6-5 shipped; PS-P7 hardening deferred |
-| **MONEY-DECIMAL-01** | `Float` → `Decimal` for money fields across models and services | High | **MD-05-IMPL-1 ✅** · **IMPL-2 ✅** · **IMPL-3 ✅** · **IMPL-4 ✅** — migration smoke; IMPL-5 cutover pending | [MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md](./MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md); PG **production** blocked |
+| **MONEY-DECIMAL-01** | `Float` → `Decimal` for money fields across models and services | High | **MD-05-IMPL-1 ✅** · **IMPL-2 ✅** · **IMPL-3 ✅** · **IMPL-4 ✅** · **IMPL-5 ✅** — flag-gated cutover wired; PG **production** blocked | [MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md](./MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md); [MONEY_DECIMAL_05_IMPL_5.md](./MONEY_DECIMAL_05_IMPL_5.md) |
 | **ALEMBIC-01** | Alembic revision chain replaces incremental `migrate_schema()` | Medium | **Complete** — P3.9-C no-op stub; Alembic-only | [P3_9_C_REMOVAL.md](./P3_9_C_REMOVAL.md) |
 | **BANKING-SERVICE-01** | Extract banking subledger business logic to `services/` | High | **Partial** | `services/write_banking.py` manual API writes shipped; recon/import/balance ownership (TD-PS-08) open |
 | **REPORTS-SERVICE-01** | Extract report queries/aggregations to read-only `services/` | Medium | **Partial** | Query layer in `services/read_*` (FASTAPI-P0); Streamlit presentation in `app.py` by design |
@@ -281,9 +281,9 @@ Independent architectural review (Claude) — baseline FastAPI/React readiness a
 1. **AUTH-SESSION-02-IMPL-3** — idle extension of `auth_expires`
 2. **BANKING-SERVICE-01** — extraction audit; balance ownership; `_app()` removal
 3. **P2-HARDEN-01** — API `company_id` stamp audit
-4. **MONEY-DECIMAL-05-IMPL-5** — flag-gated cutover readiness (**IMPL-1 ✅** · **IMPL-2 ✅** · **IMPL-3 ✅** · **IMPL-4 ✅** migration smoke)
+4. ~~**MONEY-DECIMAL-05-IMPL-5**~~ ✅ — flag-gated cutover (**IMPL-1 ✅** · **IMPL-2 ✅** · **IMPL-3 ✅** · **IMPL-4 ✅** · **IMPL-5 ✅**)
 5. **P3.9** — phased `migrate_schema()` retirement (**✅ complete** — P3.9-A/B-CHAR/B/C)
-6. **PostgreSQL runtime cutover** — after decimal + Alembic authority (P3.9 → PG build); SQLite remains production today
+6. **PostgreSQL build + dual-run parity** — Alembic head incl. `0002` on PG test DB; production cutover still blocked
 7. **React migration** — not started (`ERP_DS_05` spec only)
 
 **FastAPI foundation:** partial — P0–P2 exist; write routes feature-flagged; **not complete**. **PostgreSQL runtime:** test-only validation; **not complete**.
