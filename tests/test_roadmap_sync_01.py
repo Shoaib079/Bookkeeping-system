@@ -1,8 +1,8 @@
-"""ROADMAP-SYNC-01 — contract test for ROADMAP.md register accuracy.
+"""ROADMAP-SYNC-01/02 — contract test for ROADMAP.md register accuracy.
 
 Doc-only guard: verifies status at a glance, current priority, paused-work
 gates, completed milestones, and roadmap hygiene rule after service-extraction
-audits. Pure stdlib; no app imports.
+audits and post-P3.9-C / external PR register sync. Pure stdlib; no app imports.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP.md"
 
-PYTEST_BASELINE = "4346 passed"
+PYTEST_BASELINE = "4578 passed"
 
 
 @pytest.fixture(scope="module")
@@ -31,6 +31,9 @@ def _section_after(heading: str, doc: str, *, limit: int = 4000) -> str:
 class TestRoadmapSync01Header:
     def test_roadmap_sync_01_recorded(self, text: str):
         assert "ROADMAP-SYNC-01" in text
+
+    def test_roadmap_sync_02_recorded(self, text: str):
+        assert "ROADMAP-SYNC-02" in text
 
     def test_pytest_baseline_documented(self, text: str):
         assert PYTEST_BASELINE in text
@@ -106,12 +109,43 @@ class TestCurrentPriority:
         assert "BS-04" in block or "write_banking" in block
 
     def test_priority_ordered_migration_path(self, text: str):
-        block = _section_after("## Current priority", text, limit=3500)
+        block = _section_after("## Current priority", text, limit=4000)
         assert "BS-03" in block
         assert "AUTH-SESSION-02-IMPL-3" in block
         assert "P2-HARDEN-01" in block
         assert "MONEY-DECIMAL-04c" in block or "MD-04c" in block
+        assert "MONEY-DECIMAL-05" in block or "MD-05" in block
+        assert "PostgreSQL runtime cutover" in block
         assert "React migration" in block
+
+
+class TestRoadmapSync02Register:
+    def test_external_pr2_error_handling_noted(self, text: str):
+        block = _section_after("## Current priority", text, limit=4000)
+        assert "PR #2" in block
+        assert "error-handling" in block.lower() or "error handling" in block.lower()
+
+    def test_external_pr3_coverage_tests_noted(self, text: str):
+        block = _section_after("## Current priority", text, limit=4000)
+        assert "PR #3" in block
+        assert "226" in block
+
+    def test_p3_9_and_alembic_complete_noted(self, text: str):
+        block = _section_after("## Current priority", text, limit=4000)
+        assert "P3.9" in block
+        assert "ALEMBIC-01" in block
+        assert "complete" in block.lower()
+
+    def test_md05_before_pg_cutover(self, text: str):
+        block = _section_after("## Current priority", text, limit=4000)
+        md05 = block.lower().index("md-05")
+        pg = block.lower().index("postgresql runtime cutover")
+        assert md05 < pg, "MD-05 must appear before PostgreSQL cutover in priority list"
+
+    def test_completed_milestones_include_alembic_and_p3_9c(self, text: str):
+        block = _section_after("## Completed recent milestones", text)
+        assert "P3.9-C" in block
+        assert "ALEMBIC-01" in block
 
 
 class TestPausedWorkGate:
@@ -154,3 +188,4 @@ class TestRoadmapHygieneRule:
         assert "commit" in block.lower()
         assert "stale blockers" in block.lower()
         assert "test_roadmap_sync_01.py" in block
+        assert "ROADMAP-SYNC-02" in text

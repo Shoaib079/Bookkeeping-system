@@ -153,7 +153,7 @@ No implementation before roadmap approval.
 | Company creation (14D-D) | ✅ Complete |
 | Sidebar uses company role (nav fix) | ✅ Complete |
 | Simplified Company Setup UI | ✅ Complete (Expert policies stub) |
-| Automated tests | ✅ **4346 passing, 9 skipped, 2 xfailed** (run `pytest tests/` on host) |
+| Automated tests | ✅ **4578 passing, 9 skipped, 2 xfailed** (run `pytest tests/` on host) |
 | Member management (14D-E) | ✅ Complete |
 | Member roster polish (14D-F) | ✅ Complete |
 | Setup wizard v1 (14D-G) | ✅ Complete — **superseded by SETUP-01** |
@@ -247,19 +247,23 @@ No implementation before roadmap approval.
 
 **Use the system daily** — build only what causes friction during real bookkeeping.
 
-**Test baseline:** `pytest tests/` — **4346 passed**, 9 skipped, 2 xfailed.
+**Test baseline:** `pytest tests/` — **4578 passed**, 9 skipped, 2 xfailed.
+
+**External merges (2026-06-16):** **PR #2** — error-handling audit (logging + narrowed exceptions in `services/auth.py`, `services/posting.py`, `reconciliation/statement_parse.py`, `app.py`, `ui/theme.py`; `TD-ERR-01`/`TD-ERR-02` in TECH_DEBT). **PR #3** — +226 coverage tests (`test_*_coverage.py` for exports, statement/settlement parse, banking_config, categories_seed, amounts). *(Pre-sync baseline: **4572 passed**; +6 Sync-02 contract tests → **4578 passed**.)*
+
+**Migration gates closed:** **P3.9** series ✅ (A → B-CHAR → B → C) · **ALEMBIC-01** ✅ (Alembic-only schema evolution; `migrate_schema()` no-op stub).
 
 **Register sources:** [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) · [FASTAPI_READINESS_CHECKPOINT](./docs/FASTAPI_READINESS_CHECKPOINT.md) · [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md).
 
 **Current priority (ordered):**
 
-1. **Keep `ROADMAP.md` accurate** after each audit/implementation checkpoint (ROADMAP-SYNC-01 hygiene rule).
+1. **Keep `ROADMAP.md` accurate** after each audit/implementation checkpoint (ROADMAP-SYNC-01/02 hygiene rule).
 2. **BANKING-SERVICE-01-BS-03** — `company_card` CC bill payment JE explicit `company_id` (**BS-04 ✅** — [BS-04 note](./docs/BANKING_SERVICE_01_BS04.md)).
 3. **AUTH-SESSION-02-IMPL-3** — idle extension characterization + wiring (`should_extend_idle`).
 4. **P2-HARDEN-01** — `company_id` stamping audit across FastAPI `write_*` services.
 5. **MONEY-DECIMAL-04c+** — JE balance guard / FX native Decimal math (MD-01…04b ✅).
-6. **P3.9** — ✅ **complete** (`migrate_schema()` no-op stub; Alembic-only schema evolution).
-7. **PostgreSQL runtime cutover** — after decimal + Alembic authority (P3.9 → PG build).
+6. **MONEY-DECIMAL-05 (MD-05)** — Alembic Numeric migration implementation (**audit/plan ✅** — [MONEY_DECIMAL_05_NUMERIC_PLAN.md](./docs/MONEY_DECIMAL_05_NUMERIC_PLAN.md)) **before** PostgreSQL runtime cutover.
+7. **PostgreSQL runtime cutover** — after MD-04c+ + **MD-05 Numeric** + Alembic authority (**P3.9 ✅** · **ALEMBIC-01 ✅**).
 8. **React migration** — Phase D after API/service hardening.
 
 | Task | Status |
@@ -271,7 +275,7 @@ No implementation before roadmap approval.
 | **RECEIPT-AI-01** | ✅ Complete — service seam; no OCR provider |
 | **RECEIPT-AI-02** | ✅ IMPL-1–5 complete — prefill loop; approval/void hooks deferred |
 | **FastAPI foundation** | 🟡 Partial (strong) — P0–P2; writes flag-gated; not production-complete |
-| **PostgreSQL runtime** | 🟡 Partial / test-only — SQLite runtime; MD-04c+ blocker |
+| **PostgreSQL runtime** | 🟡 Partial / test-only — SQLite runtime; **MD-05 Numeric** + MD-04c+ before PG production |
 | **React migration** | ⬜ Not started — specs only |
 
 **🚧 BUILD GATE (active):** Do **not** build large new Streamlit UI surfaces before **banking service extraction** and **API hardening** land. Allowed: OBS-01 friction fixes, service-first screen-light phases (RC-P2B/P3 class), thin UI over existing services. Screens are the layer React replaces — invest in services, not chrome.
@@ -336,12 +340,23 @@ The following are **documented on the roadmap only**. Do **not** implement until
 | **P3.9-B-CHAR** | ✅ Caller inventory + deprecation contract — [P3_9_B_CHAR_MIGRATE_SCHEMA_CALLERS.md](./docs/P3_9_B_CHAR_MIGRATE_SCHEMA_CALLERS.md) |
 | **P3.9-B** | ✅ `migrate_schema()` DeprecationWarning — [P3_9_B_DEPRECATION.md](./docs/P3_9_B_DEPRECATION.md) |
 | **P3.9-C** | ✅ `migrate_schema()` implementation removal (no-op stub) — [P3_9_C_REMOVAL.md](./docs/P3_9_C_REMOVAL.md) |
+| **ALEMBIC-01** | ✅ Alembic replaces `migrate_schema()` — P3.9-C no-op stub |
+| **External PR #2** | ✅ Error-handling improvements (auth/posting/statement_parse/app/theme) |
+| **External PR #3** | ✅ +226 coverage tests (6 under-tested modules) |
+
+---
+
+## ROADMAP-SYNC-02 — post P3.9-C + external PR register sync
+
+**Status:** ✅ **Complete** (2026-06-16) — baseline **4578 passed** (4572 post-PR#3 + 6 Sync-02 contract tests); records PR #2/#3 merges; confirms P3.9 + ALEMBIC-01 complete; next critical path **MD-05 Numeric** before PG cutover.
+
+**Contract:** `tests/test_roadmap_sync_01.py` (extended Sync-02 guards)
 
 ---
 
 ## Roadmap hygiene rule
 
-**Status:** Active (ROADMAP-SYNC-01)
+**Status:** Active (ROADMAP-SYNC-01 · ROADMAP-SYNC-02)
 
 After **every** audit or implementation checkpoint:
 
@@ -3092,6 +3107,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-16 | **ROADMAP-SYNC-02** — Register sync after P3.9-C + external PR #2 (error-handling) + PR #3 (+226 coverage tests): baseline **4578 passed** (4572 post-PR#3 + 6 Sync-02 contract tests); P3.9 + ALEMBIC-01 complete; next critical path **MD-05 Numeric** before PostgreSQL runtime cutover. Docs/tests only. |
 | 2026-06-05 | **P3.9-C** — `migrate_schema()` implementation removed: production no-op stub + `tests/legacy_migrate_schema.py` archive; Alembic-only evolution; flag-off no longer applies DDL. **ALEMBIC-01 ✅** Test baseline: **4346 passed**. |
 | 2026-06-05 | **P3.9-B** — `migrate_schema()` DeprecationWarning on every call (`MIGRATE_SCHEMA_DEPRECATION_MESSAGE` + `test_p3_9_b_deprecation.py`); harness callers updated; body retained. Next P3.9-C. Test baseline: **4331 passed**. |
 | 2026-06-05 | **P3.9-B-CHAR** — `migrate_schema()` caller inventory + P3.9-B deprecation contract pinned (`docs/P3_9_B_CHAR_MIGRATE_SCHEMA_CALLERS.md` + `test_p3_9_b_char_migrate_schema_callers.py`). Pre-B: zero DeprecationWarning. Next P3.9-B. Test baseline: **4318 passed**. Tests/docs only. |
