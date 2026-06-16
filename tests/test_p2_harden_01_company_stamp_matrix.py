@@ -12,6 +12,7 @@ from __future__ import annotations
 import datetime
 import sys
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -710,3 +711,21 @@ class TestCrossCompanyIsolation:
             )
         for model in STAMP_MODELS:
             assert _delta_rows(db, before, model) == []
+
+
+class TestP2FixtureFidelity:
+    """P2-HARDEN-01-H02 — P2 FastAPI db fixtures must not register Streamlit stamp hooks."""
+
+    def test_p2_db_fixtures_have_no_before_flush_hook(self):
+        tests_dir = Path(__file__).resolve().parent
+        offenders: list[str] = []
+        for path in sorted(tests_dir.glob("test_fastapi_p2_*.py")):
+            text = path.read_text(encoding="utf-8")
+            if "listens_for" in text and "before_flush" in text:
+                offenders.append(path.name)
+            elif "_stamp_company_id_on_new_objects" in text:
+                offenders.append(path.name)
+        assert offenders == [], (
+            "P2 fixtures must not register Streamlit company stamp hooks: "
+            + ", ".join(offenders)
+        )

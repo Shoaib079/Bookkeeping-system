@@ -8,11 +8,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event as sa_event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import app as erp_app
 import models
 from api.bearer_auth import BEARER_INVALID_DETAIL, BEARER_MISSING_DETAIL
 from api.dependencies import DEV_HEADERS_ENV, get_db
@@ -73,11 +72,6 @@ def db():
     )
     Base.metadata.create_all(bind=engine)
     Session = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-
-    @sa_event.listens_for(Session, "before_flush")
-    def _stamp(sess, ctx, instances):
-        erp_app._stamp_company_id_on_new_objects(sess, ctx, instances)
-
     with Session() as s:
         yield s
 
@@ -178,24 +172,58 @@ def tenant(db):
     }
 
 
-def _set_company(company_id: int) -> None:
-    sys.modules["streamlit"].session_state.clear()
-    sys.modules["streamlit"].session_state["auth_user"] = dict(erp_app._DEV_USER)
-    sys.modules["streamlit"].session_state["active_company_id"] = company_id
+def _seed_partner(db, company_id: int, *, name: str = "Alice") -> int:
+    cap = models.ChartOfAccounts(
+        account_code=f"35{company_id}1",
+        account_name=f"{name} Capital",
+        account_type="Equity",
+        balance=0.0,
+        is_active=True,
+        company_id=company_id,
+    )
+    cur = models.ChartOfAccounts(
+        account_code=f"36{company_id}1",
+        account_name=f"{name} Current",
+        account_type="Equity",
+        balance=0.0,
+        is_active=True,
+        company_id=company_id,
+    )
+    adv = models.ChartOfAccounts(
+        account_code=f"15{company_id}1",
+        account_name=f"{name} Advances",
+        account_type="Asset",
+        balance=0.0,
+        is_active=True,
+        company_id=company_id,
+    )
+    db.add_all([cap, cur, adv])
+    db.flush()
+    partner = models.Partner(
+        name=name,
+        profit_share_pct=100.0,
+        capital_account_id=cap.id,
+        current_account_id=cur.id,
+        advance_account_id=adv.id,
+        is_active=True,
+        company_id=company_id,
+        created_at=datetime.datetime.now(),
+    )
+    db.add(partner)
+    db.commit()
+    return partner.id
 
 
-def _seed_partner(db, company_id: int) -> int:
-    _set_company(company_id)
-    pid, err = erp_app.create_partner(db, "Alice", 100.0)
-    assert err == ""
-    return pid
-
-
-def _seed_worker(db, company_id: int) -> int:
-    _set_company(company_id)
-    wid, err = erp_app.create_worker(db, "Bob", role="Sales")
-    assert err == ""
-    return wid
+def _seed_worker(db, company_id: int, *, name: str = "Bob") -> int:
+    worker = models.Worker(
+        name=name,
+        is_active=True,
+        company_id=company_id,
+        created_at=datetime.datetime.now(),
+    )
+    db.add(worker)
+    db.commit()
+    return worker.id
 
 
 def _partner_payload(partner_id: int, **overrides) -> dict:
@@ -566,22 +594,12 @@ class TestPartnerWorkerWriteBoundaryCommit:
 
 
 class TestPartnerWorkerWriteCompanyStamp:
-    """P2-HARDEN-01a — kernel-created PartnerMovement and partner/worker movement
-    BankTransaction rows must carry company_id even when the Streamlit before_flush
-    stamp hook is inactive (no ambient active_company_id), as on the real API path.
-    Clearing the ambient company reproduces that condition so the wrapper stamp is
-    the only thing that can populate company_id.
-    """
-
-    @staticmethod
-    def _clear_ambient_company():
-        sys.modules["streamlit"].session_state.pop("active_company_id", None)
+    """P2-HARDEN-01a/H02 — movement + bank txn company_id without Streamlit before_flush."""
 
     def test_partner_movement_and_bank_txn_company_id_stamped(
         self, api_client, tenant, db
     ):
         pid = _seed_partner(db, tenant["company_id"])
-        self._clear_ambient_company()
         payload = _partner_payload(
             pid,
             movement_type="CapitalContribution",
@@ -599,7 +617,6 @@ class TestPartnerWorkerWriteCompanyStamp:
         self, api_client, tenant, db
     ):
         wid = _seed_worker(db, tenant["company_id"])
-        self._clear_ambient_company()
         payload = _worker_payload(wid, bank_account_id=tenant["bank_account_id"])
         resp = _post_worker(api_client, tenant["owner"], tenant["company_id"], payload)
         assert resp.status_code == 201
@@ -609,9 +626,8 @@ class TestPartnerWorkerWriteCompanyStamp:
         btxn = db.get(models.BankTransaction, movement.bank_transaction_id)
         assert btxn.company_id == tenant["company_id"]
 
-    def test_isolation_holds_with_ambient_cleared(self, api_client, tenant, db):
-        other_pid = _seed_partner(db, tenant["other_company_id"])
-        self._clear_ambient_company()
+    def test_isolation_holds_without_streamlit_stamp_hook(self, api_client, tenant, db):
+        other_pid = _seed_partner(db, tenant["other_company_id"], name="Other")
         payload = _partner_payload(
             other_pid, bank_account_id=tenant["bank_account_id"]
         )
@@ -624,7 +640,6 @@ class TestPartnerWorkerWriteCompanyStamp:
             POST_PARTNER_MOVEMENT_FAMILY, CommitMode.BOUNDARY
         )
         pid = _seed_partner(db, tenant["company_id"])
-        self._clear_ambient_company()
         payload = _partner_payload(pid, bank_account_id=tenant["bank_account_id"])
         with patch.object(db, "commit", wraps=db.commit) as mock_commit:
             resp = _post_partner(

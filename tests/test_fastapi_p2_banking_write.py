@@ -8,11 +8,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event as sa_event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import app as erp_app
 import models
 from api.bearer_auth import BEARER_INVALID_DETAIL, BEARER_MISSING_DETAIL
 from api.dependencies import DEV_HEADERS_ENV, get_db
@@ -80,11 +79,6 @@ def db():
     )
     Base.metadata.create_all(bind=engine)
     Session = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-
-    @sa_event.listens_for(Session, "before_flush")
-    def _stamp(sess, ctx, instances):
-        erp_app._stamp_company_id_on_new_objects(sess, ctx, instances)
-
     with Session() as s:
         yield s
 

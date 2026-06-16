@@ -1,10 +1,10 @@
 # P2-HARDEN-01 — Company Stamp Audit
 
-**Mode:** Audit only (2026-06-16 refresh). No implementation. No accounting, schema, feature-flag, or runtime activation changes.
+**Mode:** Audit + test hardening (2026-06-16 refresh; H-01/H-02 complete 2026-06-16). No accounting, schema, feature-flag, or runtime activation changes.
 
 **Goal:** Verify every API-created ORM row receives explicit `company_id` (or an API-session stamp equivalent) before broadening FastAPI write runtime use.
 
-**Baseline:** `pytest tests/test_fastapi_p2_*` + full suite — **4015 passed** (post BS-03/04/05).
+**Baseline:** `pytest tests/test_p2_harden_01_company_stamp_matrix.py` + `pytest tests/test_fastapi_p2_*` + full suite — **4045 passed** (post H-01/H-02).
 
 ---
 
@@ -17,7 +17,7 @@
 | **Primary entity creation (sales/expense/purchase/banking/receivable)** | ✅ Service sets `company_id` on ORM constructors |
 | **Kernel-delegated paths (recon/closing/partner-worker)** | 🟡 Mostly explicit; **2 wrapper-side post-stamps** compensate for kernel gaps |
 | **API session `before_flush` hook** | ❌ **Absent** — `get_db()` yields bare `SessionLocal`; hook only active when Streamlit registers it on startup |
-| **Overall readiness to enable write flags broadly** | 🟡 **Partial** — known gaps patched at wrapper layer; systemic hook + test matrix still recommended |
+| **Overall readiness to enable write flags broadly** | 🟡 **Improved** — H-01 matrix + H-02 fixture fidelity green; optional H-03 recon asserts + H-04 systemic hook remain |
 
 ---
 
@@ -98,7 +98,7 @@ All write routes are **POST**, feature-flagged (404 when off), and call a `servi
 |----|------|----------|--------|
 | **PH-01** | API sessions lack Streamlit `before_flush` — NULL `company_id` on unstamped rows | High | Open (systemic) |
 | **PH-02** | Posting kernels create movement/allocation rows without `company_id` | Medium | **Mitigated** by wrapper stamps (01a, P2.9) — fragile if new callers skip wrapper |
-| **PH-03** | P2 tests register `before_flush` in some fixtures — hides NULL regressions | Medium | Open |
+| **PH-03** | P2 tests register `before_flush` in some fixtures — hides NULL regressions | Medium | **Resolved (H-02)** — hooks removed from banking/partner-worker/reconciliation P2 fixtures |
 | **PH-04** | No parametrized cross-family `company_id` contract test | Medium | Open |
 | **PH-05** | Reconciliation API tests lack explicit `BankTransaction.company_id` / JE assertions after match | Low–Med | Open |
 | **PH-06** | Void API tests assert isolation but not stamped entity `company_id` on side effects | Low | Open |
@@ -121,28 +121,29 @@ All write routes are **POST**, feature-flagged (404 when off), and call a `servi
 | `test_fastapi_p2_purchase_write.py` | `Purchase` / `Payable.company_id` |
 | `test_fastapi_p2_receivable_payment_write.py` | JE `company_id` |
 | `test_fastapi_p2_banking_write.py` | `BankTransaction.company_id`; cross-company bank account |
-| `test_fastapi_p2_partner_worker_write.py` | **P2-HARDEN-01a** — movement + bank txn with ambient cleared; boundary mode |
+| `test_fastapi_p2_partner_worker_write.py` | **P2-HARDEN-01a/H-02** — movement + bank txn `company_id`; ORM seed (no fixture hook) |
 | `test_fastapi_p2_closing_write.py` | `PartnerProfitAllocation.company_id` after allocate; cross-company period/allocation |
 | `test_fastapi_p2_void_write.py` | Cross-company void rejection (entity `company_id` match) |
 | `test_fastapi_p2_reconciliation_write.py` | Cross-company row/import rejection; body `company_id` rejected |
 | `test_fastapi_p0_reconciliation_company_stamp.py` | Recon JE uses explicit `company_id` not ambient (generic deposit, bank charge) |
 | `test_banking_service01_char_cc_bill_je_company_stamp.py` | CC bill JE explicit `company_id` (BS-03) |
 | `test_fastapi_p2_write_api_inventory.py` | Doc contract — invariants include `X-Company-Id`, never body `company_id` |
+| `test_p2_harden_01_company_stamp_matrix.py` | **H-01** parametrized write-family stamp matrix (no fixture hook); **H-02** P2 fixture fidelity contract |
 
-**Fixture note:** Banking, partner/worker, and reconciliation P2 tests register Streamlit-style `before_flush` in DB fixtures. Partner/worker additionally **clear ambient** in stamp tests — best current pattern.
+**Fixture note (post H-02):** All `test_fastapi_p2_*` db fixtures use bare `sessionmaker` — **no** Streamlit `before_flush`. Partner/worker seeds use explicit ORM `company_id`. Streamlit parity helpers (`_streamlit_cash_sale`, etc.) still set `active_company_id` intentionally for Streamlit-path comparison only.
 
 ---
 
 ## 5. Missing tests (recommended before flag broadening)
 
-| Priority | Test | Rationale |
-|----------|------|-----------|
-| **P0** | `test_p2_harden_01_company_stamp_matrix.py` — parametrized guard: each write family creates rows with `company_id == header company`, **no `before_flush` in fixture** | Systemic regression net |
-| **P1** | Reconciliation match: assert `BankTransaction.company_id` + `JournalEntry.company_id` after each match type (ambient cleared) | Kernel-delegated path |
-| **P1** | Banking write: drop `before_flush` from fixture; rely on service explicit stamp only | Validates true API path |
-| **P2** | Void write: assert voided entity retains correct `company_id`; reversal JE scoped | Side-effect stamp |
-| **P2** | Closing close_period: assert `YearEndClose` / period snapshot rows if any lack explicit stamp | Low-volume path |
-| **P3** | Contract test referencing this audit doc sections | Doc drift guard (ROADMAP hygiene) |
+| Priority | Test | Rationale | Status |
+|----------|------|-----------|--------|
+| **P0** | `test_p2_harden_01_company_stamp_matrix.py` — parametrized guard across write families, **no `before_flush` in fixture** | Systemic regression net | ✅ H-01 |
+| **P1** | Reconciliation match: assert `BankTransaction.company_id` + `JournalEntry.company_id` after each match type | Kernel-delegated path | Open (H-03) |
+| **P1** | Banking write: drop `before_flush` from fixture; rely on service explicit stamp only | Validates true API path | ✅ H-02 |
+| **P2** | Void write: assert voided entity retains correct `company_id`; reversal JE scoped | Side-effect stamp | Open |
+| **P2** | Closing close_period: assert `YearEndClose` / period snapshot rows if any lack explicit stamp | Low-volume path | Open |
+| **P3** | Contract test referencing this audit doc sections | Doc drift guard (ROADMAP hygiene) | Open |
 
 ---
 
@@ -150,9 +151,9 @@ All write routes are **POST**, feature-flagged (404 when off), and call a `servi
 
 | Slice | Scope | Risk | Notes |
 |-------|-------|------|-------|
-| **H-01** | Add `test_p2_harden_01_company_stamp_matrix.py` (tests only) | Low | No production change |
-| **H-02** | Remove `before_flush` from P2 fixtures where service already stamps explicitly; add assertions | Low | Test-only fidelity |
-| **H-03** | Reconciliation match stamp assertions (tests only) | Low | |
+| **H-01** | Add `test_p2_harden_01_company_stamp_matrix.py` (tests only) | Low | ✅ Complete |
+| **H-02** | Remove `before_flush` from P2 fixtures where service already stamps explicitly; add assertions | Low | ✅ Complete — banking, partner/worker, reconciliation |
+| **H-03** | Reconciliation match stamp assertions (tests only) | Low | Open |
 | **H-04** | **Systemic:** API session `before_flush` from `RequestContext.company_id` contextvar in `get_db` | Med | Defense-in-depth; mirrors Streamlit |
 | **H-05** | Optional: posting kernel explicit `company_id` on movement rows (discouraged per posting rules — prefer H-04 or keep wrappers) | Med–High | Only if wrappers removed |
 
@@ -175,9 +176,10 @@ All write routes are **POST**, feature-flagged (404 when off), and call a `servi
 
 **Keep all write flags OFF** (`ERP_API_WRITE_*` unset) for production until:
 
-1. H-01 matrix test exists and passes **without** fixture `before_flush`
-2. Partner/worker + closing wrapper stamps remain covered (01a / P2.9)
-3. Reconciliation stamp assertions added (H-03) or systemic hook shipped (H-04)
+1. H-01 matrix test passes **without** fixture `before_flush` ✅
+2. H-02 P2 fixture fidelity green ✅
+3. Partner/worker + closing wrapper stamps remain covered (01a / P2.9) ✅
+4. Reconciliation stamp assertions added (H-03) or systemic hook shipped (H-04)
 
 | Flag | Safe to enable in dev/staging today? | Blocker |
 |------|--------------------------------------|---------|
@@ -185,10 +187,10 @@ All write routes are **POST**, feature-flagged (404 when off), and call a `servi
 | `ERP_API_WRITE_EXPENSES` | 🟡 Caution | Same |
 | `ERP_API_WRITE_PURCHASES` | 🟡 Caution | Same |
 | `ERP_API_WRITE_RECEIVABLE_PAYMENTS` | 🟡 Caution | Same |
-| `ERP_API_WRITE_BANKING` | 🟡 Caution | Fixture registers hook; service explicit OK |
+| `ERP_API_WRITE_BANKING` | 🟢 Better | H-02 fixture hook removed; service explicit OK |
 | `ERP_API_WRITE_VOIDS` | 🟡 Caution | Validates entity match; no create stamp issue |
-| `ERP_API_WRITE_PARTNER_WORKER` | 🟢 Better | 01a stamp + dedicated tests |
-| `ERP_API_WRITE_RECONCILIATION` | 🟡 Caution | Kernels explicit post-BS-03; missing btxn/JE asserts |
+| `ERP_API_WRITE_PARTNER_WORKER` | 🟢 Better | 01a stamp + H-02 fixture fidelity |
+| `ERP_API_WRITE_RECONCILIATION` | 🟡 Caution | H-02 hook removed; H-03 btxn/JE asserts pending |
 | `ERP_API_WRITE_CLOSING` | 🟢 Better | P2.9 stamp + allocation assert |
 
 ---
@@ -197,9 +199,9 @@ All write routes are **POST**, feature-flagged (404 when off), and call a `servi
 
 Update `ROADMAP.md` § P2-HARDEN-01:
 
-- **Status:** Audit complete (2026-06-16) — route + service inventory done; wrapper patches (P2.9, 01a, BS-03) documented
-- **Next:** H-01 test matrix (characterization) → H-02 fixture fidelity → optional H-04 systemic hook
-- **Do not** mark P2-HARDEN-01 complete until matrix test passes without fixture hook
+- **Status:** Audit complete (2026-06-16); **H-01 + H-02 complete** — matrix + fixture fidelity
+- **Next:** H-03 reconciliation match stamp asserts → optional H-04 systemic hook
+- **Do not** mark P2-HARDEN-01 fully complete until H-03 green or H-04 shipped
 - Add decision-log entry: `P2-HARDEN-01 audit refresh` pointing to this doc
 - Keep priority **#4** in current priority list (after AUTH-SESSION-02-IMPL-3 per latest ROADMAP)
 
@@ -211,9 +213,9 @@ Update `ROADMAP.md` § P2-HARDEN-01:
 2. **Which service functions stamp `company_id` themselves?** — `write_sales`, `write_expenses`, `write_purchases`, `write_banking`, `write_receivable_payments` on constructors; `write_partner_worker` + `write_closing.allocate` post-stamp; `write_reconciliation` delegates to kernels that pass explicit `company_id`.
 3. **Which objects may still rely on Streamlit `before_flush`?** — Kernel-created `PartnerMovement`, partner/worker movement `BankTransaction`, `PartnerProfitAllocation` **if wrapper stamp skipped**; any future ORM row created without explicit `company_id` in a code path that only worked on Streamlit.
 4. **Which paths are safe?** — Primary-entity write families (sales/expense/purchase/banking/receivable); partner/worker/closing with wrapper stamps; recon kernels post-BS-03.
-5. **Which paths need hardening tests?** — Reconciliation match outcomes; banking fixture without hook; parametrized matrix across all families (§5).
+5. **Which paths need hardening tests?** — Reconciliation match outcomes (H-03); void side-effect stamps (optional).
 6. **Which feature flags should remain off until fixed?** — All write flags for production; dev enablement OK for partner/worker and closing first (§8).
 
 ---
 
-*Audit only. No code changed. Doc: `docs/P2_HARDEN_01_COMPANY_STAMP_AUDIT.md`.*
+*Audit + H-01/H-02 test hardening. Doc: `docs/P2_HARDEN_01_COMPANY_STAMP_AUDIT.md`.*

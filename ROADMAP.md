@@ -229,7 +229,7 @@ No implementation before roadmap approval.
 | **FULL-SERVICE-READINESS-AUDIT** | ✅ **Recorded (2026-06-05)** — whole-repo service-extraction snapshot · [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) |
 | **DOCS-MIGRATION-CHECKPOINT-01** | ✅ **Recorded (2026-06)** — register drift fix after FASTAPI-READINESS-CHECKPOINT · [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) |
 | **FUTURE-MIGRATION-AUDIT-01** | 📊 **Recorded (2026-06-13 baseline)** — score **62/100**; historical snapshot — blocker list superseded by [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
-| **P2-HARDEN-01** — Company Stamp Audit | 📋 **High** · Low risk — audit API `company_id` stamping on P2 write paths; no intended behavior change · see [§ P2-HARDEN-01](#p2-harden-01--company-stamp-audit) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) · [P2_AUDIT_01_LEDGER](./docs/P2_AUDIT_01_LEDGER.md) |
+| **P2-HARDEN-01** — Company Stamp Audit | 🟡 **In progress** — audit + **H-01/H-02 complete** (matrix + P2 fixture fidelity); H-03 recon asserts next · see [§ P2-HARDEN-01](#p2-harden-01--company-stamp-audit) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) · [P2_AUDIT_01_LEDGER](./docs/P2_AUDIT_01_LEDGER.md) · [P2_HARDEN_01_AUDIT](./docs/P2_HARDEN_01_COMPANY_STAMP_AUDIT.md) |
 | **DASH-CASH-01** — Split Liquid Funds | ✅ **S1/S2 complete** — `compute_liquid_position` + dashboard UI shipped |
 | **AUTH-SESSION-02** — Session hardening | 🟡 **Partial** — audit ✅ · IMPL-1 session policy ✅ · IMPL-2 browser-session policy wiring ✅ · idle extension / remember-device / revocation **not started** · [AUTH_SESSION_02_AUDIT](./docs/AUTH_SESSION_02_AUDIT.md) |
 | **RECEIPT-AI-01** | ✅ **Complete** — service seam + adapter + fake extractor (IMPL-1/2/3a/3b/3c) · no real OCR provider |
@@ -2872,11 +2872,21 @@ Inventory and reduce Streamlit-only context coupling — `_erp()` lazy `import a
 **Priority:** High  
 **Risk:** Low  
 **Behavior changes:** None intended  
-**Status:** Open (discovered P2.9 — 2026-06-14)
+**Status:** 🟡 In progress — audit complete; **H-01 + H-02 complete** (2026-06-16); H-03 next
 
-Streamlit `SessionLocal` installs a `before_flush` hook (`app._stamp_company_id_on_new_objects`) that stamps `company_id` on new ORM rows at flush time. FastAPI `get_db` sessions do not. P2.9 fixed `PartnerProfitAllocation` wrapper-side only; other API write paths may still rely on the hook implicitly for guards, uniqueness checks, or tenancy filters.
+Streamlit `SessionLocal` installs a `before_flush` hook (`app._stamp_company_id_on_new_objects`) that stamps `company_id` on new ORM rows at flush time. FastAPI `get_db` sessions do not. P2.9 fixed `PartnerProfitAllocation` wrapper-side; P2-HARDEN-01a fixed partner/worker movement stamps. **H-01** added parametrized write-family matrix (no fixture hook). **H-02** removed misleading `before_flush` from P2 banking/partner-worker/reconciliation test fixtures.
 
-**Scope:**
+**Completed slices:**
+
+- **H-01** — `tests/test_p2_harden_01_company_stamp_matrix.py` (15 tests)
+- **H-02** — P2 fixture fidelity; ORM seed for partner/worker tests
+
+**Remaining:**
+
+- **H-03** — Reconciliation match `BankTransaction` / JE stamp assertions
+- **H-04** (optional) — API session `before_flush` from request context
+
+**Scope (original):**
 
 - Inventory all P2 write API paths (`services/write_*.py`) and posting/match kernels they call
 - For each ORM row created on the API path, verify explicit `company_id` assignment (or a shared API-session stamp equivalent)
