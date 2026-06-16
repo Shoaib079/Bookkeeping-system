@@ -39,12 +39,16 @@ _FALSE_FLAG_VALUES = frozenset({"0", "false", "no", "off"})
 
 
 def parse_alembic_authoritative_flag(value: str | None) -> bool:
-    """Parse ``ERP_ALEMBIC_AUTHORITATIVE``; fail-safe ``False`` when unset or invalid."""
+    """Parse ``ERP_ALEMBIC_AUTHORITATIVE`` (P3.8-N default-on).
+
+    Unset/empty → ``True`` (Alembic authoritative). Explicit ``0``/``false``/``off``
+    → ``False`` (legacy schema path). Invalid values fail-safe to ``False``.
+    """
     if value is None:
-        return False
+        return True
     normalized = value.strip().lower()
     if not normalized:
-        return False
+        return True
     if normalized in _TRUE_FLAG_VALUES:
         return True
     if normalized in _FALSE_FLAG_VALUES:

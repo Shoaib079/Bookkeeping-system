@@ -31,6 +31,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DOC_PATH = ROOT / "docs" / "P3_8_K2_STARTUP_WIRING.md"
 APP_PATH = ROOT / "app.py"
 
+FLAG_OFF = {ALEMBIC_AUTHORITATIVE_ENV_VAR: "0"}
+
 
 def _make_memory_engine() -> Engine:
     engine = create_engine(
@@ -125,14 +127,14 @@ def test_flag_off_calls_migrate_schema_then_diagnostic_same_order():
     try:
         prepare_schema_startup_authoritative(
             database_url=str(engine.url),
-            environ={},
+            environ=FLAG_OFF,
         )
         with SessionLocal() as session:
             run_schema_startup_in_session(
                 session,
                 migrate_schema_fn=migrate_schema,
                 log_diagnostics_fn=log_diag,
-                environ={},
+                environ=FLAG_OFF,
             )
     finally:
         engine.dispose()
@@ -148,7 +150,7 @@ def test_flag_off_does_not_call_alembic_runner():
     try:
         prepare_schema_startup_authoritative(
             database_url=str(engine.url),
-            environ={},
+            environ=FLAG_OFF,
             run_upgrade_head_fn=runner,
         )
     finally:

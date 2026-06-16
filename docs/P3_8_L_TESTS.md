@@ -35,15 +35,14 @@ Contract runner: `tests/test_p3_8_l_tests_bakein_characterization.py`
 
 - **Flag-off on PostgreSQL** still resolves to `run_migrate_schema` in the pure decision function — PG production requires flag-on + Alembic-only schema (P4.0/P4.2).
 - Schema equivalence uses ephemeral in-memory SQLite only; never touches `erp_data.db`.
-- `migrate_schema()` remains authoritative when `ERP_ALEMBIC_AUTHORITATIVE` is off.
+- Legacy `migrate_schema()` path requires **explicit** `ERP_ALEMBIC_AUTHORITATIVE=0` after **P3.8-N ✅** (unset no longer opts out).
 
 ---
 
 ## Next slices
 
-1. **P3.8-N** — default flip to flag-on (after bake-in window + all target DBs stamped).
-2. **P3.9** — retire `migrate_schema()` implementation.
-3. **MD-05** — Numeric migration (parallel critical path).
+1. **P3.9** — phased `migrate_schema()` retirement.
+2. **MD-05** — Numeric migration (parallel critical path).
 
 ---
 

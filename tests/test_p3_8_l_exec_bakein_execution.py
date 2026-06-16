@@ -39,6 +39,7 @@ EXEC_DOC = ROOT / "docs" / "P3_8_L_BAKEIN_EXEC.md"
 REVIEW_PLAN = ROOT / "docs" / "P3_8_L_BAKE_IN_REVIEW_PLAN.md"
 SMOKE_DOC = ROOT / "docs" / "P3_8_M_LOCAL_SMOKE_TEST.md"
 FLAG_ON = {ALEMBIC_AUTHORITATIVE_ENV_VAR: "1"}
+FLAG_OFF = {ALEMBIC_AUTHORITATIVE_ENV_VAR: "0"}
 
 
 def _make_memory_engine() -> Engine:
@@ -150,14 +151,14 @@ class TestBakeInExecutionScenarios:
         try:
             prepare_schema_startup_authoritative(
                 database_url=str(engine.url),
-                environ={},
+                environ=FLAG_OFF,
             )
             with SessionLocal() as session:
                 run_schema_startup_in_session(
                     session,
                     migrate_schema_fn=lambda _s: migrate_calls.append("migrate"),
                     log_diagnostics_fn=lambda _s: None,
-                    environ={},
+                    environ=FLAG_OFF,
                 )
         finally:
             engine.dispose()
@@ -283,13 +284,13 @@ class TestBakeInExecutionScenarios:
         SessionLocal = sessionmaker(bind=engine)
         prepare_schema_startup_authoritative(
             database_url=database_url,
-            environ={},
+            environ=FLAG_OFF,
         )
         with SessionLocal() as session:
             run_schema_startup_in_session(
                 session,
                 migrate_schema_fn=lambda _s: migrate_calls.append("migrate"),
                 log_diagnostics_fn=lambda _s: None,
-                environ={},
+                environ=FLAG_OFF,
             )
         assert migrate_calls == ["migrate"]

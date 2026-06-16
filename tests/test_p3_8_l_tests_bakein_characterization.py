@@ -33,6 +33,8 @@ from services.schema_startup_wiring import (
     reset_schema_startup_plan,
     run_schema_startup_in_session,
 )
+
+FLAG_OFF = {ALEMBIC_AUTHORITATIVE_ENV_VAR: "0"}
 from services.schema_version import (
     ALEMBIC_VERSION_TABLE,
     STATUS_AHEAD_OF_CODE,
@@ -263,14 +265,14 @@ class TestFlagOffParity:
         try:
             prepare_schema_startup_authoritative(
                 database_url=str(engine.url),
-                environ={},
+                environ=FLAG_OFF,
             )
             with SessionLocal() as session:
                 run_schema_startup_in_session(
                     session,
                     migrate_schema_fn=lambda _s: migrate_calls.append("migrate"),
                     log_diagnostics_fn=lambda _s: diag_calls.append("diag"),
-                    environ={},
+                    environ=FLAG_OFF,
                 )
         finally:
             engine.dispose()

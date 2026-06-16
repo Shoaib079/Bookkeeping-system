@@ -21,10 +21,15 @@ MODULE_PATH = ROOT / "services" / "schema_startup.py"
 
 @pytest.mark.parametrize(
     "value",
-    [None, "", "   ", "invalid", "2", "maybe", "TRUE-ish"],
+    ["bogus", "2", "maybe", "TRUE-ish"],
 )
-def test_unset_empty_and_invalid_are_false(value):
+def test_invalid_values_are_false(value):
     assert parse_alembic_authoritative_flag(value) is False
+
+
+@pytest.mark.parametrize("value", [None, "", "   "])
+def test_unset_and_empty_default_true_after_p3_8_n(value):
+    assert parse_alembic_authoritative_flag(value) is True
 
 
 @pytest.mark.parametrize("value", ["0", "false", "no", "off", " FALSE ", " No "])
@@ -37,8 +42,8 @@ def test_explicit_true_values(value):
     assert parse_alembic_authoritative_flag(value) is True
 
 
-def test_is_alembic_authoritative_enabled_defaults_false():
-    assert is_alembic_authoritative_enabled({}) is False
+def test_is_alembic_authoritative_enabled_defaults_true_after_p3_8_n():
+    assert is_alembic_authoritative_enabled({}) is True
 
 
 def test_is_alembic_authoritative_enabled_reads_env_mapping():
@@ -57,11 +62,8 @@ def test_doc_covers_required_topics():
     for topic in (
         "parser only",
         "not wired",
-        "default false",
-        "fail-safe",
-        "migrate_schema",
-        "authoritative",
         "p3.8-d",
+        "p3.8-n",
         "erp_alembic_authoritative",
     ):
         assert topic in text, f"Doc missing topic: {topic!r}"

@@ -41,9 +41,13 @@ Environment variable name: **`ERP_ALEMBIC_AUTHORITATIVE`**
 
 ---
 
-## Parsing rules (fail-safe → `False`)
+## Parsing rules
 
-| Input | Result |
+**Updated by [P3.8-N](./P3_8_N_DEFAULT_FLIP.md):** default-on when unset/empty; explicit `0`/`false`/`off` opts out to legacy `migrate_schema()`.
+
+Historical P3.8-C table (pre-N):
+
+| Input | Result (pre-P3.8-N) |
 |-------|--------|
 | unset / `None` | `False` |
 | `""` or whitespace only | `False` |

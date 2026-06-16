@@ -153,7 +153,7 @@ No implementation before roadmap approval.
 | Company creation (14D-D) | ✅ Complete |
 | Sidebar uses company role (nav fix) | ✅ Complete |
 | Simplified Company Setup UI | ✅ Complete (Expert policies stub) |
-| Automated tests | ✅ **4250 passing, 9 skipped, 2 xfailed** (run `pytest tests/` on host) |
+| Automated tests | ✅ **4275 passing, 9 skipped, 2 xfailed** (run `pytest tests/` on host) |
 | Member management (14D-E) | ✅ Complete |
 | Member roster polish (14D-F) | ✅ Complete |
 | Setup wizard v1 (14D-G) | ✅ Complete — **superseded by SETUP-01** |
@@ -247,7 +247,7 @@ No implementation before roadmap approval.
 
 **Use the system daily** — build only what causes friction during real bookkeeping.
 
-**Test baseline:** `pytest tests/` — **4250 passed**, 9 skipped, 2 xfailed.
+**Test baseline:** `pytest tests/` — **4275 passed**, 9 skipped, 2 xfailed.
 
 **Register sources:** [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) · [FASTAPI_READINESS_CHECKPOINT](./docs/FASTAPI_READINESS_CHECKPOINT.md) · [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md).
 
@@ -258,8 +258,8 @@ No implementation before roadmap approval.
 3. **AUTH-SESSION-02-IMPL-3** — idle extension characterization + wiring (`should_extend_idle`).
 4. **P2-HARDEN-01** — `company_id` stamping audit across FastAPI `write_*` services.
 5. **MONEY-DECIMAL-04c+** — JE balance guard / FX native Decimal math (MD-01…04b ✅).
-6. **P3.8-N** — Alembic authority default flip (after bake-in window + all DBs stamped); **P3.8-L-TESTS ✅** characterization gate complete.
-7. **PostgreSQL runtime cutover** — after decimal + Alembic authority (P3.8-N → P3.9).
+6. **P3.9** — retire `migrate_schema()` implementation (phased); **P3.8-N ✅** default flip complete.
+7. **PostgreSQL runtime cutover** — after decimal + Alembic authority (P3.9 → PG build).
 8. **React migration** — Phase D after API/service hardening.
 
 | Task | Status |
@@ -331,6 +331,7 @@ The following are **documented on the roadmap only**. Do **not** implement until
 | **POSTING-SERVICE-01** | ✅ Complete — PS-P0–P6-5 complete |
 | **P3.8-L-EXEC** | ✅ Alembic authority bake-in execution record — [P3_8_L_BAKEIN_EXEC.md](./docs/P3_8_L_BAKEIN_EXEC.md) |
 | **P3.8-L-TESTS** | ✅ Alembic authority bake-in characterization gate — [P3_8_L_TESTS.md](./docs/P3_8_L_TESTS.md) |
+| **P3.8-N** | ✅ Alembic authority default flip — [P3_8_N_DEFAULT_FLIP.md](./docs/P3_8_N_DEFAULT_FLIP.md) |
 
 ---
 
@@ -2821,7 +2822,8 @@ Does **not** authorize FastAPI/React implementation start. Baseline assessment o
 | [MONEY-DECIMAL-04b](#money-decimal-04b) | Allocation `money_to_float` wiring | ✅ Complete |
 | [P3.8-L-EXEC](#p38-l-exec) | Alembic authority bake-in execution | ✅ Complete |
 | [P3.8-L-TESTS](#p38-l-tests) | Alembic authority bake-in characterization gate | ✅ Complete |
-| [ALEMBIC-01](#alembic-01) | Alembic replaces `migrate_schema()` | 🟡 Partial — L-EXEC + L-TESTS ✅; P3.8-N next |
+| [P3.8-N](#p38-n) | Alembic authority default flip | ✅ Complete |
+| [ALEMBIC-01](#alembic-01) | Alembic replaces `migrate_schema()` | 🟡 Partial — L-EXEC/L-TESTS/N ✅; P3.9 next |
 | [BANKING-SERVICE-01](#banking-service-01) | Banking subledger logic | 🟡 Partial |
 | [REPORTS-SERVICE-01](#reports-service-01) | Report query/aggregation | 🟡 Partial (query layer) |
 | [CONTEXT-AUDIT-01](#context-audit-01) | Streamlit `_erp()` / session coupling | Open |
@@ -2923,15 +2925,15 @@ Replaces built-in `round(..., 2)` in `allocate_profit_to_partners` with `service
 #### ALEMBIC-01
 
 **Priority:** Medium (migration prep)  
-**Status:** 🟡 **Partial** — P3.8-K2 machinery wired; **P3.8-L-EXEC ✅** · **P3.8-L-TESTS ✅** (2026-06-16); **`migrate_schema()` not retired** — gated on P3.8-N default flip + P3.9 retirement
+**Status:** 🟡 **Partial** — P3.8-K2 wired; **P3.8-L-EXEC ✅** · **P3.8-L-TESTS ✅** · **P3.8-N ✅** (2026-06-16); **`migrate_schema()` retained** — P3.9 retirement next
 
 Introduce Alembic revision chain; retire silent `ALTER TABLE` / `CREATE INDEX IF NOT EXISTS` pattern in `migrate_schema()` for schema evolution audibility. Required before multi-environment FastAPI deployment and PostgreSQL production cutover (P4.2 blocker #1).
 
-**Completed slices:** P3.8-K2 startup wiring · P3.8-L bake-in review plan · P3.8-M local smoke · **P3.8-L-EXEC** · **P3.8-L-TESTS** characterization gate.
+**Completed slices:** P3.8-K2 startup wiring · P3.8-L bake-in review plan · P3.8-M local smoke · **P3.8-L-EXEC** · **P3.8-L-TESTS** · **P3.8-N** default flip.
 
-**Next slices:** **P3.8-N** (default flip) → P3.9 (retire `migrate_schema()`).
+**Next slices:** **P3.9** (phased retire `migrate_schema()`).
 
-**Docs:** [P3_8_L_BAKEIN_AUDIT.md](./docs/P3_8_L_BAKEIN_AUDIT.md) · [P3_8_L_BAKEIN_EXEC.md](./docs/P3_8_L_BAKEIN_EXEC.md) · [P3_8_L_TESTS.md](./docs/P3_8_L_TESTS.md) · contracts: `test_p3_8_k2_startup_wiring.py` · `test_p3_8_l_exec_bakein_execution.py` · `test_p3_8_l_tests_bakein_characterization.py`
+**Docs:** [P3_8_L_BAKEIN_AUDIT.md](./docs/P3_8_L_BAKEIN_AUDIT.md) · [P3_8_L_BAKEIN_EXEC.md](./docs/P3_8_L_BAKEIN_EXEC.md) · [P3_8_L_TESTS.md](./docs/P3_8_L_TESTS.md) · [P3_8_N_DEFAULT_FLIP.md](./docs/P3_8_N_DEFAULT_FLIP.md) · contracts: `test_p3_8_k2_startup_wiring.py` · `test_p3_8_l_exec_bakein_execution.py` · `test_p3_8_l_tests_bakein_characterization.py` · `test_p3_8_n_default_flip.py`
 
 #### P3.8-L-EXEC
 
@@ -2950,6 +2952,15 @@ Ran flag-on/off scenarios across real temporary SQLite DB states (at_head verify
 Tests-only slice: pins retirement-prep invariants from [P3_8_L_BAKEIN_AUDIT.md](./docs/P3_8_L_BAKEIN_AUDIT.md) §6; complements P3.8-L-EXEC e2e scenarios and P3.4-D equivalence harness. No production code change, no flag default change, no `migrate_schema()` retirement.
 
 **Doc:** [P3_8_L_TESTS.md](./docs/P3_8_L_TESTS.md) · contract: `tests/test_p3_8_l_tests_bakein_characterization.py`
+
+#### P3.8-N
+
+**Priority:** Medium (migration prep)  
+**Status:** ✅ **Complete** (2026-06-16) — `ERP_ALEMBIC_AUTHORITATIVE` default-on; explicit `=0`/`false`/`off` opts out to legacy `migrate_schema()` path
+
+Default flip slice: unset/empty env → Alembic authoritative startup; explicit opt-out restores `migrate_schema()` with no schema change. **`migrate_schema()` not removed** — P3.9 retirement remains separate.
+
+**Doc:** [P3_8_N_DEFAULT_FLIP.md](./docs/P3_8_N_DEFAULT_FLIP.md) · contract: `tests/test_p3_8_n_default_flip.py`
 
 #### BANKING-SERVICE-01
 
@@ -3039,6 +3050,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-16 | **P3.8-N** — Alembic authority default flip: unset/empty → flag-on; explicit `ERP_ALEMBIC_AUTHORITATIVE=0` → legacy `migrate_schema()` path (`parse_alembic_authoritative_flag` + `test_p3_8_n_default_flip.py`). **`migrate_schema()` retained.** Production requires stamped DB at head. Test baseline: **4275 passed**. |
 | 2026-06-16 | **P3.8-L-TESTS** — Alembic authority bake-in characterization gate: schema equivalence, single-caller guard, never-on-PG, lock-safety, flag-off parity (`test_p3_8_l_tests_bakein_characterization.py`) + [P3_8_L_TESTS.md](./docs/P3_8_L_TESTS.md). **Not ready to retire `migrate_schema()`** — P3.8-N next. Test baseline: **4250 passed**. Tests/docs only. |
 | 2026-06-16 | **P3.8-L-EXEC** — Alembic authority bake-in execution record: automated throwaway-DB scenario matrix (`test_p3_8_l_exec_bakein_execution.py`) + [P3_8_L_BAKEIN_EXEC.md](./docs/P3_8_L_BAKEIN_EXEC.md). Flag off/on/at_head/unstamped/ahead/strict-new/behind_head/rollback all **PASS**; references prior P3.8-M manual smoke. **Not ready to retire `migrate_schema()`** — P3.8-L-TESTS next. Test baseline: **4231 passed**. No flag default change, no production DB mutation. |
 | 2026-06-16 | **BANKING-SERVICE-01-BS-04** — `render_banking` manual Add Transaction form delegates to `services.write_banking.create_manual_bank_transaction`; inline balance/post removed. **Improvement:** manual path now writes `AuditLog` (previously Streamlit-only gap). Guard: `test_banking_service01_char_manual_bank_parity.py`. Doc: [BANKING_SERVICE_01_BS04](./docs/BANKING_SERVICE_01_BS04.md). |

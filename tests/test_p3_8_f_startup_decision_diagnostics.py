@@ -115,7 +115,7 @@ def test_flag_off_logs_run_migrate_schema_decision(memory_engine, caplog):
     caplog.set_level(logging.INFO)
     log_schema_startup_decision_diagnostics(
         memory_engine,
-        environ={},
+        environ={ALEMBIC_AUTHORITATIVE_ENV_VAR: "0"},
         logger=logging.getLogger("test.schema"),
     )
     decision_lines = [r.message for r in caplog.records if "decision action=" in r.message]
@@ -176,7 +176,9 @@ def test_build_decision_does_not_mutate_db(memory_engine):
                 f"AND name='{ALEMBIC_VERSION_TABLE}'"
             )
         ).fetchone()
-    build_schema_startup_decision(memory_engine, environ={})
+    build_schema_startup_decision(
+        memory_engine, environ={ALEMBIC_AUTHORITATIVE_ENV_VAR: "0"}
+    )
     with memory_engine.connect() as conn:
         after = conn.execute(
             text(
