@@ -224,7 +224,7 @@ No implementation before roadmap approval.
 | **REPORTS-SERVICE-01** | 🟡 **Partial** — query/read layer in `services/read_*`; Streamlit presentation (`render_*`, trial balance loop) remains in `app.py` until React |
 | **BANKING-SERVICE-01** | 🟡 **Partial** — `write_banking` + `write_reconciliation` + `read_reconciliation` shipped; **BS-02 ✅** · **BS-04 ✅** · `match_post` / `company_card` `_app()` coupling remains · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) |
 | **FastAPI foundation** | 🟡 **Partial (strong)** — P0/P1/P2 routes + 38+ `test_fastapi_*` files; writes feature-flagged; Streamlit primary; **not production-complete** |
-| **PostgreSQL runtime** | 🟡 **Partial / test-only** — SQLite remains runtime; PG test-only; **MONEY-DECIMAL-04a** ✅ posting helpers · **MD-04b+** PG blocker |
+| **PostgreSQL runtime** | 🟡 **Partial / test-only** — SQLite remains runtime; PG test-only; **MONEY-DECIMAL-04b-CHAR** ✅ · **MD-04b+** PG blocker |
 | **React migration** | ⬜ **Not started** — `ERP_DS_05` spec only; no SPA |
 | **FULL-SERVICE-READINESS-AUDIT** | ✅ **Recorded (2026-06-05)** — whole-repo service-extraction snapshot · [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) |
 | **DOCS-MIGRATION-CHECKPOINT-01** | ✅ **Recorded (2026-06)** — register drift fix after FASTAPI-READINESS-CHECKPOINT · [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) |
@@ -2814,6 +2814,7 @@ Does **not** authorize FastAPI/React implementation start. Baseline assessment o
 | [MONEY-DECIMAL-03](#money-decimal-03) | `services/money.py` Decimal helpers | ✅ Complete |
 | [MONEY-DECIMAL-04-CHAR](#money-decimal-04-char) | Posting kernel money math characterization | ✅ Complete |
 | [MONEY-DECIMAL-04a](#money-decimal-04a) | Wire `services.money` at posting boundaries | ✅ Complete |
+| [MONEY-DECIMAL-04b-CHAR](#money-decimal-04b-char) | Profit allocation rounding characterization | ✅ Complete |
 | [ALEMBIC-01](#alembic-01) | Alembic replaces `migrate_schema()` | Open |
 | [BANKING-SERVICE-01](#banking-service-01) | Banking subledger logic | 🟡 Partial |
 | [REPORTS-SERVICE-01](#reports-service-01) | Report query/aggregation | 🟡 Partial (query layer) |
@@ -2892,6 +2893,17 @@ Tests-only slice: source-level audit of `services/posting.py` (no `services.mone
 Posting-only slice: `_normalize_money_amount` (`money_to_float`) on sale/expense/purchase/bank post paths; `_je_line_money` (`parse_money` → float) on JE line debit/credit. Balance guard, allocation, FX native, reports, and Float columns unchanged.
 
 **Doc:** [MONEY_DECIMAL_04A_POSTING_HELPERS.md](./docs/MONEY_DECIMAL_04A_POSTING_HELPERS.md) · parity: MD-02 + MD-04-CHAR + `test_posting_service01_*`
+
+#### MONEY-DECIMAL-04b-CHAR
+
+**Priority:** High (migration prep)  
+**Status:** ✅ **Complete** (2026-06-16) — profit/loss allocation float rounding characterized before Decimal changes
+
+Tests-only slice: pins Python `round` share loop, last-partner remainder absorption, profit/loss JE orientation, void reversal, 0.01 edge cases, share validation messages, and no `services.money` in allocation kernel.
+
+**Doc:** [MONEY_DECIMAL_04B_PROFIT_ALLOCATION_CHAR.md](./docs/MONEY_DECIMAL_04B_PROFIT_ALLOCATION_CHAR.md) · contract: `tests/test_money_decimal_04b_char_profit_allocation_rounding.py`
+
+**Rules honored:** no posting, model, schema, Alembic, or Decimal wiring changes.
 
 #### ALEMBIC-01
 
