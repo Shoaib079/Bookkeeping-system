@@ -8,6 +8,10 @@ from typing import Any
 from models import BankAccount, BankStatementImport, BankStatementRow, BankTransaction, JournalEntry
 from registry.service import get_setting
 from services import audit as audit_svc
+from services.banking_balance import (
+    apply_account_balance_delta,
+    reverse_account_balance_delta,
+)
 
 COMPANY_CC_PAYMENT_METHOD = "Credit Card"
 
@@ -40,36 +44,6 @@ def get_company_credit_card_accounts(session, company_id: int) -> list[BankAccou
         .all()
     )
     return rows
-
-
-def apply_account_balance_delta(ba: BankAccount, txn_type: str, amount: float) -> None:
-    """Update cached BankAccount.balance (bank asset vs credit-card liability)."""
-    amt = round(float(amount), 2)
-    bal = ba.balance or 0
-    if is_credit_card_account(ba):
-        if txn_type in ("withdrawal", "transfer"):
-            ba.balance = bal + amt
-        else:
-            ba.balance = bal - amt
-    elif txn_type == "deposit":
-        ba.balance = bal + amt
-    else:
-        ba.balance = bal - amt
-
-
-def reverse_account_balance_delta(ba: BankAccount, txn_type: str, amount: float) -> None:
-    """Undo a balance change when voiding a BankTransaction."""
-    amt = round(float(amount), 2)
-    bal = ba.balance or 0
-    if is_credit_card_account(ba):
-        if txn_type in ("withdrawal", "transfer"):
-            ba.balance = bal - amt
-        else:
-            ba.balance = bal + amt
-    elif txn_type == "deposit":
-        ba.balance = bal - amt
-    else:
-        ba.balance = bal + amt
 
 
 def cc_subledger_stmt_ref(reference_type: str, reference_id: int) -> str:
