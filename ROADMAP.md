@@ -153,7 +153,7 @@ No implementation before roadmap approval.
 | Company creation (14D-D) | ✅ Complete |
 | Sidebar uses company role (nav fix) | ✅ Complete |
 | Simplified Company Setup UI | ✅ Complete (Expert policies stub) |
-| Automated tests | ✅ **4653 passing, 11 skipped, 2 xfailed** (run `pytest tests/` on host) |
+| Automated tests | ✅ **4654 passing, 11 skipped, 2 xfailed** (run `pytest tests/` on host) |
 | Member management (14D-E) | ✅ Complete |
 | Member roster polish (14D-F) | ✅ Complete |
 | Setup wizard v1 (14D-G) | ✅ Complete — **superseded by SETUP-01** |
@@ -179,6 +179,7 @@ No implementation before roadmap approval.
 | DEVELOPMENT_MODE | ✅ **Resolved by DEV-AUTH-01** — env-gated dev mode: `DEV_MODE = os.getenv("ERP_DEV_MODE", "0") == "1"` (default off). **Production checklist: must not run with `ERP_DEV_MODE=1`** |
 | Shell / mobile chrome (Phase A) | ✅ Stabilized — fixed header, 968px breakpoint, People hub wired |
 | Sidebar / navigation redesign (AD-UI-001) | 🟡 **D1 + D2-P0 shipped** — Financial Statements routes + promoted daily lookup route (app.py `AD-UI-001 D2-P0` wrapper); D2+ remainder gated — see [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §16 |
+| **NAV-ARCH** — Navigation single source of truth | 📋 **Planned (Deferred)** — after PG parity, before React; see [§ NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
 | **MOB-AT-C1** — Concept C Mobile AT UI | ✅ **Accepted** — reference implementation; 747 tests passing |
 | **MOBILE-11** — Mobile Design System | ✅ **Approved** — `docs/MOBILE_UI_SYSTEM.md` is the governing document for all future mobile work |
 | **MOBILE-12** — Design Governance | ✅ **Approved** — open decisions recorded; phased migration path defined |
@@ -225,7 +226,7 @@ No implementation before roadmap approval.
 | **BANKING-SERVICE-01** | 🟡 **Partial** — `write_banking` + `write_reconciliation` + `read_reconciliation` shipped; **BS-02 ✅** · **BS-04 ✅** · `match_post` / `company_card` `_app()` coupling remains · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) |
 | **FastAPI foundation** | 🟡 **Partial (strong)** — P0/P1/P2 routes + 38+ `test_fastapi_*` files; writes feature-flagged; Streamlit primary; **not production-complete** |
 | **PostgreSQL runtime** | 🟡 **Partial / test-only** — SQLite remains runtime; PG test-only; **MONEY-DECIMAL-04b** ✅ allocation helpers · **MD-04c+** PG blocker |
-| **React migration** | ⬜ **Not started** — `ERP_DS_05` spec only; no SPA |
+| **React migration** | ⬜ **Not started** — `ERP_DS_05` spec only; no SPA; preceded by [NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
 | **FULL-SERVICE-READINESS-AUDIT** | ✅ **Recorded (2026-06-05)** — whole-repo service-extraction snapshot · [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) |
 | **DOCS-MIGRATION-CHECKPOINT-01** | ✅ **Recorded (2026-06)** — register drift fix after FASTAPI-READINESS-CHECKPOINT · [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) |
 | **FUTURE-MIGRATION-AUDIT-01** | 📊 **Recorded (2026-06-13 baseline)** — score **62/100**; historical snapshot — blocker list superseded by [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
@@ -1141,6 +1142,60 @@ Complete dark mode, readability, header/sidebar polish, mobile pass.
 
 ---
 
+## NAV-ARCH — Navigation Single Source of Truth
+
+**Status:** 📋 **Planned (Deferred)**  
+**Priority:** After PostgreSQL parity, before React migration  
+**Blocker:** None  
+**Depends on:**
+
+- **NAV-UX-02** (S1–S7)
+- **PostgreSQL build + dual-run parity**
+
+**Purpose:** Eliminate navigation drift by deriving all navigation structures from one registry while preserving current behavior.
+
+**Problem:** Current navigation uses seven parallel structures:
+
+- `registry/nav_keys.py`
+- `_NAV_ACCORDION`
+- `_NAV_DIRECT_PAGES`
+- `_NAV_ROLE_PAGES`
+- `_MOBILE_BOTTOM_NAV`
+- `_MOBILE_HUB_CONFIG`
+- `_PAGE_DISPATCH`
+
+Current parity tests mitigate drift, but architecture still relies on hand-synced lists.
+
+**Hard rules:**
+
+- No duplicate fixes.
+- Build on **NAV-UX-02**; do not re-open completed slices.
+- No business logic in navigation.
+- Navigation remains UI-independent and FastAPI/React-ready.
+- Render functions stay thin.
+- React routes become the long-term contract.
+
+**Future slices:**
+
+| Slice | Scope |
+|-------|--------|
+| **NAV-ARCH-S0 — Guardrails** | No new navigation structures may be introduced. Any new page must either (1) be added to the future registry, or (2) explicitly document why derivation is deferred. |
+| **NAV-ARCH-S1 — Parity tests** | Ensure dispatch ↔ role ↔ accordion ↔ mobile consistency. Preserve `KNOWN_HIDDEN` allow-list. |
+| **NAV-ARCH-S2 — Introduce `registry/navigation.py`** | Add per-page metadata: `route_key`, label/i18n, `render_fn`, surfaces, `accordion_group`, roles, `react_route`. |
+| **NAV-ARCH-S3 — Derive structures incrementally** | Derive `_PAGE_DISPATCH` first. Then derive accordion/direct/role/mobile one at a time. Behavior must remain unchanged. |
+| **NAV-ARCH-S4 — Freeze React route contract** | `react_route` becomes the migration contract for React. |
+
+**Success criteria:**
+
+- Single source of truth for navigation.
+- No route drift.
+- No duplicate route definitions.
+- React migration consumes the same registry.
+
+**Note:** This is **not** a PostgreSQL blocker and should not delay production cutover. It is a **pre-React** architecture improvement.
+
+---
+
 ## FUTURE UX / NAVIGATION VISION
 
 **Status:** Planned Future Work  
@@ -1154,6 +1209,7 @@ Record approved future-direction decisions so they are not forgotten. **No code,
 | Existing roadmap item | Relationship |
 |----------------------|--------------|
 | **AD-UI-001** | D1 statement routes done; D2+ = incremental Reports/sidebar dedup — **not** this vision |
+| **NAV-ARCH** | Pre-React navigation registry — deferred until PG parity; see [§ NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
 | **Phase 18-MUX** | Mobile Add Transaction shipped; **current bottom nav unchanged** |
 | **Phase 16D** | Header foundation (truncation, responsive) — **not** MOBILE-10 compact SaaS header |
 | **SETUP-01 / SETUP-02 / SETUP-03** | Onboarding at company creation — separate from **DESIGN-05** progressive disclosure |
@@ -2549,7 +2605,8 @@ Restaurant (POS, recipes), retail (barcode), services (projects), tourism (booki
 | 8 | **DASH-KPI-01 … 03** | Forecast · runway · sales-by-payment-type |
 | 9 | **AI-BOOKKEEPER-01** | Business explanation AI (read-only) |
 | 10 | **FastAPI foundation** | [FUTURE-MIGRATION-01](#future-architecture--long-term-roadmap) Phase B |
-| 11 | **React migration** | [FUTURE-MIGRATION-01](#future-architecture--long-term-roadmap) Phase D |
+| 10a | **NAV-ARCH** | Navigation single source of truth — after PG parity, before React · [§ NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
+| 11 | **React migration** | [FUTURE-MIGRATION-01](#future-architecture--long-term-roadmap) Phase D — consumes NAV-ARCH `react_route` contract |
 
 ---
 
@@ -3153,6 +3210,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-16 | **NAV-ARCH** — Record planned navigation single-source-of-truth epic (S0–S4): derive dispatch/accordion/role/mobile from `registry/navigation.py` after PG parity, before React; not a PG blocker. Docs only. |
 | 2026-06-16 | **BANKING-SERVICE-01-BS-03 (closure)** — Verified CC bill payment JE already uses explicit `company_id` via `services.posting` (`713ac3c`); doc [BANKING_SERVICE_01_BS03.md](./docs/BANKING_SERVICE_01_BS03.md). Tag: `banking-service-01-bs03-company-card-company-scope`. Next: **P2-HARDEN-01**. |
 | 2026-06-16 | **AUTH-SESSION-02-IMPL-3 (closure)** — Verified idle extension already shipped (`ee57dc1`); ROADMAP/TECH_DEBT sync; doc [AUTH_SESSION_02_IMPL_3.md](./docs/AUTH_SESSION_02_IMPL_3.md). Tag: `auth-session-02-impl3-idle-extension`. Next: **BANKING-SERVICE-01-BS-03**. |
 | 2026-06-16 | **MONEY-DECIMAL-05-IMPL-5** — Flag-gated `0001→0002` cutover wiring (`ERP_MONEY_NUMERIC_CUTOVER` + P3.8 gate); post-cutover cache re-sync; Alembic runner `DATABASE_URL` + PATH fix. Baseline **4651 passed** (+18). Tag: `money-decimal-05-impl5-cutover-gate`. Next: PG build + dual-run parity. |
