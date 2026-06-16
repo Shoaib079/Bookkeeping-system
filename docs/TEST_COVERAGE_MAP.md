@@ -1,7 +1,7 @@
 # Test Coverage Map — Banking, Reconciliation & Company CC
 
-**Last updated:** 2026-06-16 (DRY UI refactor — shared utilities)  
-**Full suite:** run `pytest tests/` — **3977 passed, 2 xfailed** (see latest `pytest tests/ -q` tail).
+**Last updated:** 2026-06-16 (coverage-gap audit)  
+**Full suite:** run `pytest tests/` — **4403 passed, 8 skipped, 2 xfailed** (see latest `pytest tests/ -q` tail).
 
 This map covers the **minimum regression set** for banking/CC work. Run these before and after any change in those areas.
 
@@ -947,6 +947,21 @@ pytest tests/test_phase16a_theme.py tests/test_ui1_design_language.py -q
 | `stFormSubmitButton` + `stFileUploader` + `stNumberInput` CSS | Form submit, upload, number stepper readability |
 | Popover `pointer-events` + desktop skips `erp_at_mobile_screen` | New Transaction selectbox post-pick click trap |
 | `TestNewTransactionTypeState` bank/customer/sync | AT form state preserved across selector changes |
+
+---
+
+## Coverage-gap audit — 2026-06-16
+
+226 new unit tests added to close the biggest coverage gaps:
+
+| New test file | Module under test | Before | Tests added |
+|---|---|---|---|
+| `test_exports_coverage.py` | `exports.py` | 16% | 27 |
+| `test_statement_parse_coverage.py` | `reconciliation/statement_parse.py` | 59% | 79 |
+| `test_settlement_parse_coverage.py` | `reconciliation/settlement_parse.py` | 45% | 25 |
+| `test_banking_config_coverage.py` | `registry/banking_config.py` | 57% | 52 |
+| `test_categories_seed_coverage.py` | `registry/categories_seed.py` | 60% | 11 |
+| `test_amounts_coverage.py` | `reconciliation/amounts.py` | 61% | 32 |
 
 ---
 
