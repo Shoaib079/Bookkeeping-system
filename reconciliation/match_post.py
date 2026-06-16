@@ -24,7 +24,11 @@ from models import (
     Vendor,
 )
 from services.commit_modes import RECONCILIATION_FAMILY
-from services.posting import _kernel_persist, create_journal_entry as _posting_create_journal_entry
+from services.posting import (
+    _kernel_persist,
+    create_journal_entry as _posting_create_journal_entry,
+    get_account_by_name as _posting_get_account_by_name,
+)
 
 _PARTNER_REF_TYPES = {
     "CapitalContribution": "PartnerCapital",
@@ -46,6 +50,12 @@ def _app():
     import app as app_module
 
     return app_module
+
+
+def _get_account_by_name(session, name, currency=None, *, company_id: int):
+    return _posting_get_account_by_name(
+        session, name, currency=currency, company_id=company_id
+    )
 
 
 def _recon_persist(session) -> None:
@@ -236,7 +246,6 @@ def post_deposit_clearing_match(
     confirm_inferred_fee: bool = False,
 ) -> dict[str, Any]:
     """Match a bank deposit to card sales in clearing and post settlement JE."""
-    app = _app()
     row, imp = _row_context(session, row_id, company_id)
     if not row.credit_amount and row.debit_amount:
         raise MatchPostError("This row is a withdrawal, not a deposit")
@@ -244,6 +253,9 @@ def post_deposit_clearing_match(
         raise MatchPostError("Select at least one card sale to match")
 
     from reconciliation.clearing import get_unsettled_card_sales
+
+    def _account_lookup(session, name, currency=None):
+        return _get_account_by_name(session, name, currency=currency, company_id=company_id)
 
     window_start = row.date - datetime.timedelta(days=7) if row.date else imp.start_date
     window_end = row.date + datetime.timedelta(days=7) if row.date else imp.end_date
@@ -254,7 +266,7 @@ def post_deposit_clearing_match(
             company_id,
             date_from=window_start or row.date,
             date_to=window_end or row.date,
-            get_account_by_name=app.get_account_by_name,
+            get_account_by_name=_account_lookup,
         )
     }
     selected: list[dict] = []
@@ -276,14 +288,14 @@ def post_deposit_clearing_match(
         confirm_inferred_fee=confirm_inferred_fee,
     )
 
-    bank_gl = app.get_account_by_name(session, "Bank", currency=imp.currency)
-    clearing_gl = app.get_account_by_name(session, "Card Sales Clearing")
+    bank_gl = _get_account_by_name(session, "Bank", currency=imp.currency, company_id=company_id)
+    clearing_gl = _get_account_by_name(session, "Card Sales Clearing", company_id=company_id)
     if not bank_gl or not clearing_gl:
         raise MatchPostError("Bank or Card Sales Clearing GL account missing")
 
     charges_gl = None
     if fee_amt > 0.01:
-        charges_gl = app.get_account_by_name(session, "Bank Charges")
+        charges_gl = _get_account_by_name(session, "Bank Charges", company_id=company_id)
         if not charges_gl:
             raise MatchPostError("Bank Charges GL account missing")
 
@@ -352,14 +364,15 @@ def post_generic_deposit(
     user_id: int | None,
 ) -> dict[str, Any]:
     """Post a deposit to Bank with user-selected credit GL (non-clearing)."""
-    app = _app()
     row, imp = _row_context(session, row_id, company_id)
     if row.debit_amount and not row.credit_amount:
         raise MatchPostError("This row is a withdrawal, not a deposit")
 
     amt = round(float(row.amount), 2)
-    bank_gl = app.get_account_by_name(session, "Bank", currency=imp.currency)
-    credit_gl = app.get_account_by_name(session, credit_account_name, currency=imp.currency)
+    bank_gl = _get_account_by_name(session, "Bank", currency=imp.currency, company_id=company_id)
+    credit_gl = _get_account_by_name(
+        session, credit_account_name, currency=imp.currency, company_id=company_id
+    )
     if not bank_gl or not credit_gl:
         raise MatchPostError("GL accounts not found for deposit posting")
 
@@ -411,7 +424,6 @@ def post_partner_statement_match(
     user_id: int | None,
 ) -> dict[str, Any]:
     """Post a bank statement line as a partner movement (salary, drawing, advance, etc.)."""
-    app = _app()
     row, imp = _row_context(session, row_id, company_id)
     if movement_type not in _PARTNER_REF_TYPES:
         raise MatchPostError(f"Unknown partner movement type: {movement_type}")
@@ -440,7 +452,7 @@ def post_partner_statement_match(
     if amt <= 0:
         raise MatchPostError("Amount must be positive.")
 
-    bank_gl = app.get_account_by_name(session, "Bank", currency=imp.currency)
+    bank_gl = _get_account_by_name(session, "Bank", currency=imp.currency, company_id=company_id)
     if not bank_gl:
         raise MatchPostError("Bank GL account not found")
 
@@ -546,9 +558,9 @@ def post_worker_statement_match(
     if not worker or not worker.is_active or worker.company_id != company_id:
         raise MatchPostError("Worker not found or inactive.")
 
-    salary_exp = app.get_account_by_name(session, "Salary Expense")
-    adv_acct = app.get_account_by_name(session, "Employee Advances")
-    bank_gl = app.get_account_by_name(session, "Bank", currency=imp.currency)
+    salary_exp = _get_account_by_name(session, "Salary Expense", company_id=company_id)
+    adv_acct = _get_account_by_name(session, "Employee Advances", company_id=company_id)
+    bank_gl = _get_account_by_name(session, "Bank", currency=imp.currency, company_id=company_id)
     if not bank_gl:
         raise MatchPostError("Bank GL account not found")
     if movement_type == "Salary" and not salary_exp:
@@ -677,13 +689,12 @@ def post_equity_statement_match(
     user_id: int | None,
 ) -> dict[str, Any]:
     """Post owner drawing/capital or company loan payment/receipt from a statement line."""
-    app = _app()
     row, imp = _row_context(session, row_id, company_id)
     amt = round(float(row.amount), 2)
     if amt <= 0:
         raise MatchPostError("Amount must be positive")
 
-    bank_gl = app.get_account_by_name(session, "Bank", currency=imp.currency)
+    bank_gl = _get_account_by_name(session, "Bank", currency=imp.currency, company_id=company_id)
     if not bank_gl:
         raise MatchPostError("Bank GL account not found")
 
@@ -698,7 +709,7 @@ def post_equity_statement_match(
     if equity_kind == "owner_drawing":
         if not is_withdrawal:
             raise MatchPostError("Owner drawing requires a bank withdrawal line.")
-        draw_gl = app.get_account_by_name(session, "Owner Drawings")
+        draw_gl = _get_account_by_name(session, "Owner Drawings", company_id=company_id)
         if not draw_gl:
             raise MatchPostError("Owner Drawings account missing")
         lines = [(draw_gl.id, amt, 0), (bank_gl.id, 0, amt)]
@@ -709,7 +720,7 @@ def post_equity_statement_match(
     elif equity_kind == "owner_capital":
         if not is_deposit:
             raise MatchPostError("Capital contribution requires a bank deposit line.")
-        cap_gl = app.get_account_by_name(session, "Owner Capital")
+        cap_gl = _get_account_by_name(session, "Owner Capital", company_id=company_id)
         if not cap_gl:
             raise MatchPostError("Owner Capital account missing")
         lines = [(bank_gl.id, amt, 0), (cap_gl.id, 0, amt)]
@@ -720,7 +731,7 @@ def post_equity_statement_match(
     elif equity_kind == "loan_payment":
         if not is_withdrawal:
             raise MatchPostError("Loan payment requires a bank withdrawal line.")
-        loan_gl = app.get_account_by_name(session, "Loans")
+        loan_gl = _get_account_by_name(session, "Loans", company_id=company_id)
         if not loan_gl:
             raise MatchPostError("Loans account missing")
         lines = [(loan_gl.id, amt, 0), (bank_gl.id, 0, amt)]
@@ -731,7 +742,7 @@ def post_equity_statement_match(
     elif equity_kind == "loan_receipt":
         if not is_deposit:
             raise MatchPostError("Loan receipt requires a bank deposit line.")
-        loan_gl = app.get_account_by_name(session, "Loans")
+        loan_gl = _get_account_by_name(session, "Loans", company_id=company_id)
         if not loan_gl:
             raise MatchPostError("Loans account missing")
         lines = [(bank_gl.id, amt, 0), (loan_gl.id, 0, amt)]
@@ -788,7 +799,6 @@ def post_vendor_outflow(
     create_expense: bool = False,
 ) -> dict[str, Any]:
     """Post a bank withdrawal against a payable or as ad-hoc expense."""
-    app = _app()
     row, imp = _row_context(session, row_id, company_id)
     if row.credit_amount and not row.debit_amount:
         raise MatchPostError("This row is a deposit, not a withdrawal")
@@ -798,7 +808,7 @@ def post_vendor_outflow(
         raise MatchPostError("Vendor not found")
 
     amt = round(float(row.amount), 2)
-    bank_gl = app.get_account_by_name(session, "Bank", currency=imp.currency)
+    bank_gl = _get_account_by_name(session, "Bank", currency=imp.currency, company_id=company_id)
     if not bank_gl:
         raise MatchPostError("Bank GL account not found")
 
@@ -811,7 +821,7 @@ def post_vendor_outflow(
             raise MatchPostError("Payable not found for this vendor")
         if payable.paid:
             raise MatchPostError("Payable is already paid")
-        ap_gl = app.get_account_by_name(session, "Accounts Payable")
+        ap_gl = _get_account_by_name(session, "Accounts Payable", company_id=company_id)
         if not ap_gl:
             raise MatchPostError("Accounts Payable GL missing")
         pay_amt = min(amt, round(float(payable.balance or payable.amount), 2))
@@ -1198,7 +1208,6 @@ def post_bank_charge_outflow(
     charge_subtype: str | None = None,
 ) -> dict[str, Any]:
     """Post a bank fee withdrawal to Bank Charges (POS commission or transfer fee)."""
-    app = _app()
     row, imp = _row_context(session, row_id, company_id)
     if row.credit_amount and not row.debit_amount:
         raise MatchPostError("This row is a deposit, not a bank charge")
@@ -1214,8 +1223,8 @@ def post_bank_charge_outflow(
     subtype = charge_subtype or infer_bank_charge_subtype(row.description or "")
     fee_label = bank_charge_fee_label(subtype)
 
-    charges_gl = app.get_account_by_name(session, "Bank Charges")
-    bank_gl = app.get_account_by_name(session, "Bank", currency=imp.currency)
+    charges_gl = _get_account_by_name(session, "Bank Charges", company_id=company_id)
+    bank_gl = _get_account_by_name(session, "Bank", currency=imp.currency, company_id=company_id)
     if not charges_gl or not bank_gl:
         raise MatchPostError("Bank Charges or Bank GL account missing")
 

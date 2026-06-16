@@ -1,15 +1,15 @@
-"""BANKING-SERVICE-01 BS-02-CHAR — match_post account resolution characterization.
+"""BANKING-SERVICE-01 BS-02 — match_post account resolution regression guard.
 
-Pins ``_app().get_account_by_name`` resolution per ``match_post`` posting branch
-before BS-02 replaces it with ``services.posting.get_account_by_name``.
+Pins ``services.posting.get_account_by_name(..., company_id=...)`` resolution per
+``match_post`` posting branch after BS-02 removed ``_app().get_account_by_name``.
 
-CHARACTERIZATION ONLY — no production changes.
+BS-02-CHAR pre-migration tests established baseline behavior; this module guards
+the posting-service lookup path.
 """
 from __future__ import annotations
 
 import datetime
 import sys
-import types
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -46,9 +46,9 @@ MATCH_POST_SRC = (
     Path(__file__).resolve().parents[1] / "reconciliation" / "match_post.py"
 ).read_text(encoding="utf-8")
 
-CHAR_MARKER = "CHARACTERIZATION ONLY"
+CHAR_MARKER = "BS-02 regression guard"
 
-# Seven ``_app()`` posting kernels; equity/vendor/worker/clearing add sub-branches.
+# Six posting kernels use posting-service account lookup; worker keeps _app() for advance balance.
 _APP_POSTING_FUNCTIONS = (
     "post_deposit_clearing_match",
     "post_generic_deposit",
@@ -58,6 +58,7 @@ _APP_POSTING_FUNCTIONS = (
     "post_vendor_outflow",
     "post_bank_charge_outflow",
 )
+_WORKER_ONLY_APP_FUNCTION = "post_worker_statement_match"
 
 # Distinct account-resolution scenarios exercised below (BS-02 pre-migration inventory).
 RESOLUTION_BRANCHES: tuple[dict, ...] = (
@@ -314,27 +315,26 @@ def _expected_codes(db, company_id: int) -> dict[str, str]:
 
 def _install_resolution_tracker(monkeypatch) -> list[dict]:
     calls: list[dict] = []
+    real_lookup = posting_svc.get_account_by_name
 
-    def tracking_get_account_by_name(session, name, currency=None):
-        acct = erp_app.get_account_by_name(session, name, currency=currency)
+    def tracking_get_account_by_name(session, name, currency=None, *, company_id=None):
+        acct = real_lookup(session, name, currency=currency, company_id=company_id)
         calls.append(
             {
                 "name": name,
                 "currency": currency,
+                "company_id": company_id,
                 "account_id": acct.id if acct else None,
                 "account_code": acct.account_code if acct else None,
-                "company_id": acct.company_id if acct else None,
+                "resolved_company_id": acct.company_id if acct else None,
             }
         )
         return acct
 
-    def fake_app():
-        return types.SimpleNamespace(
-            get_account_by_name=tracking_get_account_by_name,
-            get_worker_advance_balance=erp_app.get_worker_advance_balance,
-        )
-
-    monkeypatch.setattr("reconciliation.match_post._app", fake_app)
+    monkeypatch.setattr(
+        "reconciliation.match_post._posting_get_account_by_name",
+        tracking_get_account_by_name,
+    )
     monkeypatch.setattr(
         "reconciliation.match_post._create_bank_txn",
         lambda *args, **kwargs: (_ for _ in ()).throw(AccountResolutionPin()),
@@ -360,16 +360,17 @@ def _card_sale(db, company_id, amount: float = 100.0):
 
 
 class TestCharacterizationContract:
-    def test_module_docstring_marks_characterization_only(self):
+    def test_module_docstring_marks_bs02_regression_guard(self):
         doc = Path(__file__).read_text(encoding="utf-8")
         assert CHAR_MARKER in doc
-        assert "BS-02-CHAR" in doc
+        assert "BS-02" in doc
 
-    def test_match_post_still_uses_app_lazy_import_for_account_resolution(self):
-        assert "def _app():" in MATCH_POST_SRC
-        assert "import app as app_module" in MATCH_POST_SRC
-        assert MATCH_POST_SRC.count("app = _app()") == len(_APP_POSTING_FUNCTIONS)
-        assert "app.get_account_by_name(session" in MATCH_POST_SRC
+    def test_match_post_uses_posting_service_not_app_for_account_lookup(self):
+        assert "def _get_account_by_name(" in MATCH_POST_SRC
+        assert "_posting_get_account_by_name" in MATCH_POST_SRC
+        assert "app.get_account_by_name(session" not in MATCH_POST_SRC
+        assert MATCH_POST_SRC.count("app = _app()") == 1
+        assert f"def {_WORKER_ONLY_APP_FUNCTION}" in MATCH_POST_SRC
 
     def test_resolution_branch_inventory_matches_match_post_functions(self):
         branch_functions = {b["function"] for b in RESOLUTION_BRANCHES}
@@ -383,25 +384,27 @@ class TestBranchInventory:
         assert names
         if branch["function"] == "post_generic_deposit":
             assert "credit_account_name" in MATCH_POST_SRC
-            assert 'app.get_account_by_name(session, "Bank"' in MATCH_POST_SRC
+            assert '_get_account_by_name(session, "Bank"' in MATCH_POST_SRC
             return
         for name in names:
             assert f'"{name}"' in MATCH_POST_SRC or f"'{name}'" in MATCH_POST_SRC
 
 
 class TestCompanyScopedResolution:
-    def test_bank_resolves_to_active_company_chart(self, db):
+    def test_explicit_company_id_scopes_posting_service_lookup(self, db):
         co_a = _company(db, slug="bs02_co_a")
         co_b = _company(db, slug="bs02_co_b")
         db.commit()
-        _set_active(co_b.id)
+        _set_active(co_a.id)
 
         bank_b = (
             db.query(models.ChartOfAccounts)
             .filter_by(account_name="Bank", company_id=co_b.id, currency="TRY")
             .one()
         )
-        resolved = erp_app.get_account_by_name(db, "Bank", currency="TRY")
+        resolved = posting_svc.get_account_by_name(
+            db, "Bank", currency="TRY", company_id=co_b.id
+        )
         assert resolved is not None
         assert resolved.id == bank_b.id
         assert resolved.account_code == "1010"
@@ -432,28 +435,29 @@ class TestCompanyScopedResolution:
             assert svc_acct is not None, name
             assert app_acct.id == svc_acct.id, name
 
-    def test_ambient_company_drives_lookup_not_explicit_company_id(self, db):
-        """Pin current _app() coupling: explicit company_id on row does not scope GL lookup."""
+    def test_match_post_passes_explicit_company_id_not_ambient(self, db, monkeypatch):
         co_a = _company(db, slug="bs02_amb_a")
         co_b = _company(db, slug="bs02_amb_b")
+        ba = _bank(db, co_b.id)
+        row, _imp = _stmt_row(db, co_b.id, ba.id, credit=True, amount=250.0)
         db.commit()
-
-        bank_a = (
-            db.query(models.ChartOfAccounts)
-            .filter_by(account_name="Bank", company_id=co_a.id, currency="TRY")
-            .one()
-        )
-        bank_b = (
-            db.query(models.ChartOfAccounts)
-            .filter_by(account_name="Bank", company_id=co_b.id, currency="TRY")
-            .one()
-        )
-        assert bank_a.id != bank_b.id
-
         _set_active(co_a.id)
-        resolved_for_b_context = erp_app.get_account_by_name(db, "Bank", currency="TRY")
-        assert resolved_for_b_context.id == bank_a.id
-        assert resolved_for_b_context.id != bank_b.id
+
+        calls = _install_resolution_tracker(monkeypatch)
+        with pytest.raises(AccountResolutionPin):
+            post_generic_deposit(
+                db,
+                row_id=row.id,
+                company_id=co_b.id,
+                credit_account_name="Sales Revenue",
+                user_id=1,
+            )
+
+        db.rollback()
+        bank_calls = [c for c in calls if c["name"] == "Bank"]
+        assert bank_calls
+        assert all(c["company_id"] == co_b.id for c in calls)
+        assert bank_calls[-1]["resolved_company_id"] == co_b.id
 
 
 class TestAccountResolutionCalls:
