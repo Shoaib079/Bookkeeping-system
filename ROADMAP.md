@@ -153,7 +153,7 @@ No implementation before roadmap approval.
 | Company creation (14D-D) | ✅ Complete |
 | Sidebar uses company role (nav fix) | ✅ Complete |
 | Simplified Company Setup UI | ✅ Complete (Expert policies stub) |
-| Automated tests | ✅ **3883 passing, 9 skipped, 2 xfailed** (run `pytest tests/` on host) |
+| Automated tests | ✅ **4231 passing, 9 skipped, 2 xfailed** (run `pytest tests/` on host) |
 | Member management (14D-E) | ✅ Complete |
 | Member roster polish (14D-F) | ✅ Complete |
 | Setup wizard v1 (14D-G) | ✅ Complete — **superseded by SETUP-01** |
@@ -247,7 +247,7 @@ No implementation before roadmap approval.
 
 **Use the system daily** — build only what causes friction during real bookkeeping.
 
-**Test baseline:** `pytest tests/` — **3883 passed**, 9 skipped, 2 xfailed.
+**Test baseline:** `pytest tests/` — **4231 passed**, 9 skipped, 2 xfailed.
 
 **Register sources:** [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) · [FASTAPI_READINESS_CHECKPOINT](./docs/FASTAPI_READINESS_CHECKPOINT.md) · [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md).
 
@@ -258,8 +258,9 @@ No implementation before roadmap approval.
 3. **AUTH-SESSION-02-IMPL-3** — idle extension characterization + wiring (`should_extend_idle`).
 4. **P2-HARDEN-01** — `company_id` stamping audit across FastAPI `write_*` services.
 5. **MONEY-DECIMAL-04c+** — JE balance guard / FX native Decimal math (MD-01…04b ✅).
-6. **PostgreSQL runtime cutover** — after decimal + Alembic authority bake-in.
-7. **React migration** — Phase D after API/service hardening.
+6. **P3.8-L-TESTS** — Alembic authority characterization (schema equivalence, single-caller guard, never-on-PG); **P3.8-L-EXEC ✅** bake-in evidence recorded.
+7. **PostgreSQL runtime cutover** — after decimal + Alembic authority bake-in (P3.8-L-TESTS → P3.8-N → P3.9).
+8. **React migration** — Phase D after API/service hardening.
 
 | Task | Status |
 |------|--------|
@@ -327,7 +328,8 @@ The following are **documented on the roadmap only**. Do **not** implement until
 | **BANKING-SERVICE-01** audit | ✅ Banking/reconciliation readiness map |
 | **BANKING-SERVICE-01-BS-02-CHAR** | ✅ `match_post` account-resolution characterization tests |
 | **BANKING-SERVICE-01-BS-04** | ✅ Streamlit manual bank → `write_banking` · [BS-04 note](./docs/BANKING_SERVICE_01_BS04.md) |
-| **POSTING-SERVICE-01** | ✅ PS-P0–P6-5 complete |
+| **POSTING-SERVICE-01** | ✅ Complete — PS-P0–P6-5 complete |
+| **P3.8-L-EXEC** | ✅ Alembic authority bake-in execution record — [P3_8_L_BAKEIN_EXEC.md](./docs/P3_8_L_BAKEIN_EXEC.md) |
 
 ---
 
@@ -2816,7 +2818,8 @@ Does **not** authorize FastAPI/React implementation start. Baseline assessment o
 | [MONEY-DECIMAL-04a](#money-decimal-04a) | Wire `services.money` at posting boundaries | ✅ Complete |
 | [MONEY-DECIMAL-04b-CHAR](#money-decimal-04b-char) | Profit allocation rounding characterization | ✅ Complete |
 | [MONEY-DECIMAL-04b](#money-decimal-04b) | Allocation `money_to_float` wiring | ✅ Complete |
-| [ALEMBIC-01](#alembic-01) | Alembic replaces `migrate_schema()` | Open |
+| [P3.8-L-EXEC](#p38-l-exec) | Alembic authority bake-in execution | ✅ Complete |
+| [ALEMBIC-01](#alembic-01) | Alembic replaces `migrate_schema()` | 🟡 Partial — machinery wired; L-EXEC ✅; L-TESTS next |
 | [BANKING-SERVICE-01](#banking-service-01) | Banking subledger logic | 🟡 Partial |
 | [REPORTS-SERVICE-01](#reports-service-01) | Report query/aggregation | 🟡 Partial (query layer) |
 | [CONTEXT-AUDIT-01](#context-audit-01) | Streamlit `_erp()` / session coupling | Open |
@@ -2851,7 +2854,7 @@ Replace `Float` money columns and arithmetic with `Decimal`/`Numeric` across mod
 
 **Audit:** [MONEY_DECIMAL_01_AUDIT.md](./docs/MONEY_DECIMAL_01_AUDIT.md) · contract: `tests/test_money_decimal_01_audit.py`
 
-**Next slices:** ~~MD-02~~ ✅ · ~~MD-03~~ ✅ · ~~MD-04-CHAR~~ ✅ · ~~MD-04a~~ ✅ → **MD-04b+** kernel Decimal math → MD-05 Alembic Numeric (PG test)
+**Next slices:** ~~MD-02~~ ✅ · ~~MD-03~~ ✅ · ~~MD-04-CHAR~~ ✅ · ~~MD-04a~~ ✅ · ~~MD-04b~~ ✅ → **MD-04c+** kernel Decimal math → MD-05 Alembic Numeric (PG test)
 
 Aligns with [TD-MIG-04](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#global-migration-td-mig).
 
@@ -2918,9 +2921,24 @@ Replaces built-in `round(..., 2)` in `allocate_profit_to_partners` with `service
 #### ALEMBIC-01
 
 **Priority:** Medium (migration prep)  
-**Status:** Open
+**Status:** 🟡 **Partial** — P3.8-K2 machinery wired; **P3.8-L-EXEC ✅** (2026-06-16); **`migrate_schema()` not retired** — gated on P3.8-L-TESTS + P3.8-N default flip + P3.9 retirement
 
-Introduce Alembic revision chain; retire silent `ALTER TABLE` / `CREATE INDEX IF NOT EXISTS` pattern in `migrate_schema()` for schema evolution audibility. Required before multi-environment FastAPI deployment.
+Introduce Alembic revision chain; retire silent `ALTER TABLE` / `CREATE INDEX IF NOT EXISTS` pattern in `migrate_schema()` for schema evolution audibility. Required before multi-environment FastAPI deployment and PostgreSQL production cutover (P4.2 blocker #1).
+
+**Completed slices:** P3.8-K2 startup wiring · P3.8-L bake-in review plan · P3.8-M local smoke · **P3.8-L-EXEC** automated bake-in matrix + execution record.
+
+**Next slices:** **P3.8-L-TESTS** (schema equivalence, single-caller guard, never-on-PG, lock-safety, flag-off parity) → P3.8-N (default flip) → P3.9 (retire `migrate_schema()`).
+
+**Docs:** [P3_8_L_BAKEIN_AUDIT.md](./docs/P3_8_L_BAKEIN_AUDIT.md) · [P3_8_L_BAKEIN_EXEC.md](./docs/P3_8_L_BAKEIN_EXEC.md) · contracts: `test_p3_8_k2_startup_wiring.py` · `test_p3_8_l_exec_bakein_execution.py`
+
+#### P3.8-L-EXEC
+
+**Priority:** Medium (migration prep)  
+**Status:** ✅ **Complete** (2026-06-16) — automated throwaway-DB bake-in matrix + execution record; prior P3.8-M manual smoke referenced
+
+Ran flag-on/off scenarios across real temporary SQLite DB states (at_head verify_only, unstamped block, ahead/unknown fail-closed, strict-new upgrade, populated behind_head block even with gate, rollback). No flag default change, no production DB mutation, no `migrate_schema()` retirement.
+
+**Doc:** [P3_8_L_BAKEIN_EXEC.md](./docs/P3_8_L_BAKEIN_EXEC.md) · contract: `tests/test_p3_8_l_exec_bakein_execution.py`
 
 #### BANKING-SERVICE-01
 
@@ -3010,6 +3028,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-16 | **P3.8-L-EXEC** — Alembic authority bake-in execution record: automated throwaway-DB scenario matrix (`test_p3_8_l_exec_bakein_execution.py`) + [P3_8_L_BAKEIN_EXEC.md](./docs/P3_8_L_BAKEIN_EXEC.md). Flag off/on/at_head/unstamped/ahead/strict-new/behind_head/rollback all **PASS**; references prior P3.8-M manual smoke. **Not ready to retire `migrate_schema()`** — P3.8-L-TESTS next. Test baseline: **4231 passed**. No flag default change, no production DB mutation. |
 | 2026-06-16 | **BANKING-SERVICE-01-BS-04** — `render_banking` manual Add Transaction form delegates to `services.write_banking.create_manual_bank_transaction`; inline balance/post removed. **Improvement:** manual path now writes `AuditLog` (previously Streamlit-only gap). Guard: `test_banking_service01_char_manual_bank_parity.py`. Doc: [BANKING_SERVICE_01_BS04](./docs/BANKING_SERVICE_01_BS04.md). |
 | 2026-06-05 | **ROADMAP-SYNC-01** — Register sync from [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) + [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md): POSTING complete; REPORTS/BANKING/AUTH-SESSION/FastAPI/PG partial; RECEIPT-AI-01 + RECEIPT-AI-02 IMPL-1–5 complete; POS-AI/Z-report/cash-card automation **paused until user explicitly requests**; current priority reordered (BS-02 → BS-04 char → AUTH-SESSION-IMPL-3 → P2-HARDEN-01 → MONEY-DECIMAL-01 → PG → React); roadmap hygiene rule + `test_roadmap_sync_01.py`. Test baseline: **3883 passed**. Docs only. |
 | 2026-06-15 | **POS-CONFIG-01** — Sales Source & Reconciliation Settings spec approved (docs only): per-company `pos.*` configuration for sales source, verification source, card/cash verification modes, duplicate protection keys, auto-post policy, document classification, and workflow mode. **Rules:** no company-wide assumptions; settings determine AI behaviour; default suggest-only; complements `banking.*` + DSC. **Sequencing:** POS-CONFIG-01-IMPL-1 before POS-AI-01. Spec: [docs/POS_CONFIG_01_SPEC.md](./docs/POS_CONFIG_01_SPEC.md). No `app.py`/schema change. |
