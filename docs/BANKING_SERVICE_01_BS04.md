@@ -65,5 +65,5 @@ This aligns Streamlit manual banking with the FastAPI `POST /api/v1/bank-transac
 
 ## Next slices (from audit)
 
-- **BS-03** — `company_card` CC bill payment explicit `company_id` on JE
+- ~~**BS-03**~~ ✅ — [BANKING_SERVICE_01_BS03.md](./BANKING_SERVICE_01_BS03.md)
 - **BS-05** — balance helper module extraction

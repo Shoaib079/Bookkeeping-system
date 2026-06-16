@@ -255,6 +255,13 @@ def seeded(db: Session):
 
 
 class TestBS03CharContract:
+    def test_bs03_doc_exists(self):
+        doc = Path(__file__).resolve().parents[1] / "docs" / "BANKING_SERVICE_01_BS03.md"
+        assert doc.exists()
+        text = doc.read_text(encoding="utf-8").lower()
+        assert "create_journal_entry" in text
+        assert "company_id" in text
+
     def test_module_marker_present(self):
         text = CHAR_MODULE.read_text(encoding="utf-8")
         assert CHAR_MARKER in text
