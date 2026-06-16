@@ -225,7 +225,7 @@ No implementation before roadmap approval.
 | **REPORTS-SERVICE-01** | 🟡 **Partial** — query/read layer in `services/read_*`; Streamlit presentation (`render_*`, trial balance loop) remains in `app.py` until React |
 | **BANKING-SERVICE-01** | 🟡 **Partial** — `write_banking` + `write_reconciliation` + `read_reconciliation` shipped; **BS-02 ✅** · **BS-04 ✅** · `match_post` / `company_card` `_app()` coupling remains · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) |
 | **FastAPI foundation** | 🟡 **Partial (strong)** — P0/P1/P2 routes + 38+ `test_fastapi_*` files; writes feature-flagged; Streamlit primary; **not production-complete** |
-| **PostgreSQL runtime** | 🟡 **Partial / test-only** — SQLite remains runtime; **real SQLite→PG dry run ✅** · production switch **blocked** |
+| **PostgreSQL runtime** | 🟡 **Partial** — **production cutover ✅ (testing)** · flag-gated PG runtime wired · SQLite rollback preserved |
 | **React migration** | ⬜ **Not started** — `ERP_DS_05` spec only; no SPA; preceded by [NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
 | **FULL-SERVICE-READINESS-AUDIT** | ✅ **Recorded (2026-06-05)** — whole-repo service-extraction snapshot · [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) |
 | **DOCS-MIGRATION-CHECKPOINT-01** | ✅ **Recorded (2026-06)** — register drift fix after FASTAPI-READINESS-CHECKPOINT · [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) |
@@ -248,7 +248,7 @@ No implementation before roadmap approval.
 
 **Use the system daily** — build only what causes friction during real bookkeeping.
 
-**Test baseline:** `pytest tests/` — **4718 passed**, 19 skipped, 2 xfailed.
+**Test baseline:** `pytest tests/` — **4736 passed**, 25 skipped, 2 xfailed.
 
 **MD-05-IMPL-5 (2026-06-16):** Flag-gated `0001→0002` cutover via `ERP_MONEY_NUMERIC_CUTOVER=1` + P3.8 backup/confirmation; post-cutover cache re-sync; production `erp_data.db` blocked. Tag: `money-decimal-05-impl5-cutover-gate`. Doc: [MONEY_DECIMAL_05_IMPL_5.md](./docs/MONEY_DECIMAL_05_IMPL_5.md).
 
@@ -261,6 +261,8 @@ No implementation before roadmap approval.
 **POSTGRES-PG-BUILD (verified 2026-06-16):** Alembic `upgrade head` PG test build + dual-run parity harness (report fingerprints). Tag: `postgres-pg-build-dual-run-parity`. Doc: [POSTGRES_PG_BUILD_DUAL_RUN_PARITY.md](./docs/POSTGRES_PG_BUILD_DUAL_RUN_PARITY.md).
 
 **POSTGRES-RUNTIME-CUTOVER-PREP (verified 2026-06-16):** Test-only SQLite→PG data copy harness + parse-only runtime gate; production still SQLite. Tag: `postgres-runtime-cutover-prep`. Doc: [POSTGRES_RUNTIME_CUTOVER_PREP.md](./docs/POSTGRES_RUNTIME_CUTOVER_PREP.md).
+
+**POSTGRES-PRODUCTION-CUTOVER (verified 2026-06-16):** Flag-gated PostgreSQL runtime wired; SQLite data migrated to PG; parity verified companies 1–4; backup preserved. Tag: `postgres-production-cutover`. Doc: [POSTGRES_PRODUCTION_CUTOVER.md](./docs/POSTGRES_PRODUCTION_CUTOVER.md).
 
 **POSTGRES-REAL-DRY-RUN (verified 2026-06-16):** Real copy-only SQLite→PG migration dry run; row counts + TB + reports match companies 1–4; `erp_data.db` untouched. Tag: `postgres-real-dry-run-20260616`. Doc: [POSTGRES_REAL_DRY_RUN_20260616.md](./docs/POSTGRES_REAL_DRY_RUN_20260616.md).
 
@@ -285,7 +287,7 @@ No implementation before roadmap approval.
 7. ~~**PostgreSQL build + dual-run parity**~~ ✅ — Alembic PG test build + harness ([PG build doc](./docs/POSTGRES_PG_BUILD_DUAL_RUN_PARITY.md)).
 8. ~~**PostgreSQL runtime cutover prep**~~ ✅ — test-only SQLite→PG copy + runtime gate parse-only ([prep doc](./docs/POSTGRES_RUNTIME_CUTOVER_PREP.md)).
 9. ~~**Real SQLite→PG dry run**~~ ✅ — copy-only migration verified on `erp_pytest` ([dry run doc](./docs/POSTGRES_REAL_DRY_RUN_20260616.md)).
-10. **PostgreSQL production runtime cutover** — operator approval + backup + runtime gate wiring (**blocked** — data parity met, switch not approved).
+10. ~~**PostgreSQL production runtime cutover**~~ ✅ — flag-gated PG runtime wired; testing cutover verified ([cutover doc](./docs/POSTGRES_PRODUCTION_CUTOVER.md)).
 11. **React migration** — Phase D after API/service hardening.
 
 | Task | Status |
@@ -297,7 +299,7 @@ No implementation before roadmap approval.
 | **RECEIPT-AI-01** | ✅ Complete — service seam; no OCR provider |
 | **RECEIPT-AI-02** | ✅ IMPL-1–5 complete — prefill loop; approval/void hooks deferred |
 | **FastAPI foundation** | 🟡 Partial (strong) — P0–P2; writes flag-gated; not production-complete |
-| **PostgreSQL runtime** | 🟡 Partial / test-only — SQLite runtime; **real dry run ✅** · production cutover **blocked** |
+| **PostgreSQL runtime** | 🟡 Partial — **production cutover ✅ (testing)** · SQLite rollback preserved |
 | **React migration** | ⬜ Not started — specs only |
 
 **🚧 BUILD GATE (active):** Do **not** build large new Streamlit UI surfaces before **banking service extraction** and **API hardening** land. Allowed: OBS-01 friction fixes, service-first screen-light phases (RC-P2B/P3 class), thin UI over existing services. Screens are the layer React replaces — invest in services, not chrome.
@@ -2961,7 +2963,7 @@ Replace `Float` money columns and arithmetic with `Decimal`/`Numeric` across mod
 
 **Audit:** [MONEY_DECIMAL_01_AUDIT.md](./docs/MONEY_DECIMAL_01_AUDIT.md) · contract: `tests/test_money_decimal_01_audit.py`
 
-**Next slices:** ~~PG build + dual-run parity~~ ✅ · ~~runtime cutover prep~~ ✅ · ~~real SQLite→PG dry run~~ ✅ → **PostgreSQL production runtime cutover** (operator-gated; **blocked**)
+**Next slices:** ~~PG build + dual-run parity~~ ✅ · ~~runtime cutover prep~~ ✅ · ~~real SQLite→PG dry run~~ ✅ · ~~production runtime cutover~~ ✅ → **React migration**
 
 Aligns with [TD-MIG-04](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md#global-migration-td-mig).
 
@@ -3056,11 +3058,11 @@ Wires PostgreSQL test databases through **`alembic upgrade head`** (revision `00
 **Behavior changes:** None (test harness + parse-only gate)  
 **Status:** ✅ **Closed** (2026-06-16)
 
-Test-only SQLite file → PostgreSQL row copy on Alembic `0002` schemas; money snapshot parity on smoke tenant. Parse-only `ERP_POSTGRES_RUNTIME_CUTOVER` gate module (**not wired** to startup).
+Test-only SQLite file → PostgreSQL row copy on Alembic `0002` schemas; money snapshot parity on smoke tenant. Runtime cutover gate **wired** via `paths.get_database_url()`.
 
 **Doc:** [POSTGRES_RUNTIME_CUTOVER_PREP.md](./docs/POSTGRES_RUNTIME_CUTOVER_PREP.md) · contracts: `tests/test_postgres_runtime_cutover_prep.py` · `tests/test_postgres_runtime_cutover_gate.py` · tag: `postgres-runtime-cutover-prep`
 
-**Remaining:** production-shaped migration · runtime wiring · operator backup/approval
+**Remaining:** ~~production-shaped migration~~ ✅ · ~~runtime wiring~~ ✅ · ~~operator backup/approval~~ ✅
 
 #### POSTGRES-REAL-DRY-RUN — Copy-Only Migration Verified (2026-06-16)
 
@@ -3073,7 +3075,18 @@ Real production-shaped SQLite copy migrated to disposable PostgreSQL (`ERP_TEST_
 
 **Doc:** [POSTGRES_REAL_DRY_RUN_20260616.md](./docs/POSTGRES_REAL_DRY_RUN_20260616.md) · contract: `tests/test_postgres_real_dry_run_20260616.py` · tag: `postgres-real-dry-run-20260616`
 
-**Not approved:** production `DATABASE_URL` switch · runtime gate wiring · decommission SQLite
+#### POSTGRES-PRODUCTION-CUTOVER — Runtime Wired (2026-06-16)
+
+**Priority:** High (migration)  
+**Risk:** Medium (operator-gated)  
+**Behavior changes:** Runtime resolves to PostgreSQL when cutover env gates pass  
+**Status:** ✅ **Verified** (testing environment)
+
+Flag-gated PostgreSQL runtime; operator migration script; full parity + smoke verified. SQLite backup + rollback preserved.
+
+**Doc:** [POSTGRES_PRODUCTION_CUTOVER.md](./docs/POSTGRES_PRODUCTION_CUTOVER.md) · contracts: `tests/test_postgres_production_cutover.py` · `tests/test_postgres_production_cutover_smoke.py` · tag: `postgres-production-cutover`
+
+**Not decommissioned:** SQLite `erp_data.db` (rollback target)
 
 #### MONEY-DECIMAL-05-IMPL-1
 
@@ -3263,7 +3276,8 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
-| 2026-06-16 | **POSTGRES-REAL-DRY-RUN** — Real copy-only SQLite→PG dry run verified: row counts + TB + reports match (companies 1–4); `erp_data.db` untouched; `safe_for_production_cutover: true` (data parity only). Doc: [POSTGRES_REAL_DRY_RUN_20260616.md](./docs/POSTGRES_REAL_DRY_RUN_20260616.md). Tag: `postgres-real-dry-run-20260616`. Production switch **still blocked**. |
+| 2026-06-16 | **POSTGRES-PRODUCTION-CUTOVER** — Flag-gated PostgreSQL runtime wired; SQLite→PG migration + parity verified (companies 1–4); smoke flows pass; backup preserved. Doc: [POSTGRES_PRODUCTION_CUTOVER.md](./docs/POSTGRES_PRODUCTION_CUTOVER.md). Tag: `postgres-production-cutover`. |
+| 2026-06-16 | **POSTGRES-REAL-DRY-RUN** — Real copy-only SQLite→PG dry run verified: row counts + TB + reports match (companies 1–4); `erp_data.db` untouched; `safe_for_production_cutover: true` (data parity only). Doc: [POSTGRES_REAL_DRY_RUN_20260616.md](./docs/POSTGRES_REAL_DRY_RUN_20260616.md). Tag: `postgres-real-dry-run-20260616`. |
 | 2026-06-16 | **POSTGRES-RUNTIME-CUTOVER-PREP (closure)** — Test-only SQLite→PG data copy harness + parse-only runtime gate; money snapshot parity on smoke tenant; production still SQLite. Doc: [POSTGRES_RUNTIME_CUTOVER_PREP.md](./docs/POSTGRES_RUNTIME_CUTOVER_PREP.md). Tag: `postgres-runtime-cutover-prep`. Next: **real SQLite→PG dry run**. |
 | 2026-06-16 | **POSTGRES-PG-BUILD (closure)** — PG test DBs built via Alembic `upgrade head` (0002); dual-run harness compares SQLite vs PG posting + report fingerprints; `bootstrap_postgres_via_alembic` in `tests/postgres_utils.py`. No production runtime switch. Doc: [POSTGRES_PG_BUILD_DUAL_RUN_PARITY.md](./docs/POSTGRES_PG_BUILD_DUAL_RUN_PARITY.md). Tag: `postgres-pg-build-dual-run-parity`. Next: **PostgreSQL runtime cutover prep**. |
 | 2026-06-16 | **MONEY-DECIMAL-04c+ (closure)** — JE guard / FX native Decimal boundary verified; float guard preserved (MD-02 locked); `persist_fx` + `services/money.py` boundaries confirmed; no runtime changes. Doc: [MONEY_DECIMAL_04C_JE_FX_DECIMAL.md](./docs/MONEY_DECIMAL_04C_JE_FX_DECIMAL.md). Tag: `money-decimal-04c-je-fx-decimal-guard`. Next: **PostgreSQL build + dual-run parity**. |

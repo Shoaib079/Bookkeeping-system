@@ -1,8 +1,8 @@
 """POSTGRES-CUTOVER-PREP — test-only SQLite → PostgreSQL data copy helpers.
 
-Copies row data from an ephemeral Alembic-built SQLite file DB into a disposable
-PostgreSQL test DB (also Alembic-built). Never touches ``paths.DATABASE_URL`` or
-production ``erp_data.db``.
+Thin wrapper over ``services.pg_sqlite_data_migration`` with stricter test-only
+SQLite URL validation. Never touches production ``erp_data.db`` unless explicitly
+allowed by operator cutover scripts in ``services/``.
 """
 
 from __future__ import annotations
@@ -11,21 +11,19 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import MetaData, create_engine, inspect, select, text
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-import models  # noqa: F401 — register metadata
-from db import Base
 from postgres_utils import (
     bootstrap_postgres_via_alembic,
     drop_all_pg_objects,
     validate_test_postgres_url,
 )
+from services.pg_sqlite_data_migration import (
+    copy_sqlite_rows_to_postgres as _copy_sqlite_rows_to_postgres,
+)
 from tests.md05_migration_smoke_utils import (
     MoneySnapshot,
     capture_money_snapshot,
-    make_sqlite_file_engine,
     run_alembic_upgrade,
     seed_smoke_tenant,
     session_for_url,
@@ -69,77 +67,10 @@ def build_seeded_sqlite_at_head(db_path: Path) -> str:
     return database_url
 
 
-def _table_names_in_dependency_order(metadata: MetaData) -> list[str]:
-    return [table.name for table in metadata.sorted_tables]
-
-
-_SKIP_COPY_TABLES = frozenset({"alembic_version"})
-
-
 def copy_sqlite_rows_to_postgres(*, sqlite_url: str, pg_url: str) -> dict[str, int]:
-    """Bulk-copy all ORM tables from SQLite to PostgreSQL (test DBs only)."""
     safe_sqlite = validate_sqlite_test_url(sqlite_url)
     safe_pg = validate_test_postgres_url(pg_url)
-
-    sqlite_engine = make_sqlite_file_engine(Path(safe_sqlite.replace("sqlite:///", "")))
-    pg_engine = create_engine(safe_pg, pool_pre_ping=True, future=True)
-    row_counts: dict[str, int] = {}
-
-    try:
-        with pg_engine.begin() as pg_conn:
-            pg_conn.execute(text("SET session_replication_role = 'replica'"))
-
-        sqlite_session = sessionmaker(bind=sqlite_engine)()
-        pg_session = sessionmaker(bind=pg_engine)()
-        try:
-            for table_name in _table_names_in_dependency_order(Base.metadata):
-                if table_name in _SKIP_COPY_TABLES:
-                    continue
-                table = Base.metadata.tables[table_name]
-                rows = sqlite_session.execute(select(table)).mappings().all()
-                if not rows:
-                    row_counts[table_name] = 0
-                    continue
-                pg_session.execute(table.insert(), [dict(row) for row in rows])
-                row_counts[table_name] = len(rows)
-            pg_session.commit()
-        finally:
-            sqlite_session.close()
-            pg_session.close()
-
-        _reset_pg_sequences(pg_engine)
-        with pg_engine.begin() as pg_conn:
-            pg_conn.execute(text("SET session_replication_role = 'origin'"))
-    finally:
-        sqlite_engine.dispose()
-        pg_engine.dispose()
-
-    return row_counts
-
-
-def _reset_pg_sequences(engine: Engine) -> None:
-    """Advance serial/identity sequences after explicit-id inserts."""
-    insp = inspect(engine)
-    with engine.begin() as conn:
-        for table_name in insp.get_table_names():
-            pk_cols = insp.get_pk_constraint(table_name).get("constrained_columns") or []
-            if len(pk_cols) != 1:
-                continue
-            pk_col = pk_cols[0]
-            default = conn.execute(
-                text(
-                    "SELECT pg_get_serial_sequence(:tbl, :col)"
-                ),
-                {"tbl": table_name, "col": pk_col},
-            ).scalar_one_or_none()
-            if not default:
-                continue
-            conn.execute(
-                text(
-                    f'SELECT setval(:seq, COALESCE((SELECT MAX("{pk_col}") FROM "{table_name}"), 1))'
-                ),
-                {"seq": default},
-            )
+    return _copy_sqlite_rows_to_postgres(sqlite_url=safe_sqlite, pg_url=safe_pg)
 
 
 def money_snapshots_equal(left: MoneySnapshot, right: MoneySnapshot) -> bool:

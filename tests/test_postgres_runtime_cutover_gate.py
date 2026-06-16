@@ -29,6 +29,8 @@ def test_blocked_when_flag_off():
     reason = gate.runtime_cutover_blocked_reason(
         cutover_flag=False,
         approval_given=True,
+        backup_valid=True,
+        runtime_url_valid=True,
         target_is_sqlite=False,
     )
     assert reason is not None
@@ -39,16 +41,42 @@ def test_blocked_without_approval():
     reason = gate.runtime_cutover_blocked_reason(
         cutover_flag=True,
         approval_given=False,
+        backup_valid=True,
+        runtime_url_valid=True,
         target_is_sqlite=False,
     )
     assert reason is not None
     assert "approval" in reason.lower()
 
 
+def test_blocked_without_backup():
+    reason = gate.runtime_cutover_blocked_reason(
+        cutover_flag=True,
+        approval_given=True,
+        backup_valid=False,
+        runtime_url_valid=True,
+        target_is_sqlite=False,
+    )
+    assert reason is not None
+    assert "backup" in reason.lower()
+
+
 def test_blocked_while_sqlite_target():
     reason = gate.runtime_cutover_blocked_reason(
         cutover_flag=True,
         approval_given=True,
+        backup_valid=True,
+        runtime_url_valid=True,
         target_is_sqlite=True,
     )
     assert reason is not None
+
+
+def test_validate_runtime_url_rejects_sqlite():
+    with pytest.raises(gate.InvalidPostgresRuntimeUrlError):
+        gate.validate_postgres_runtime_url("sqlite:///erp_data.db")
+
+
+def test_validate_runtime_url_accepts_postgres():
+    url = gate.validate_postgres_runtime_url("postgresql+psycopg://localhost/erp_pytest")
+    assert url.startswith("postgresql")

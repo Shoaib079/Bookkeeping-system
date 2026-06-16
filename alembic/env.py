@@ -29,9 +29,9 @@ target_metadata = Base.metadata
 def _database_url() -> str:
     import os
 
-    from paths import DATABASE_URL as default_url
+    from paths import get_database_url
 
-    return os.environ.get("DATABASE_URL") or default_url
+    return os.environ.get("DATABASE_URL") or get_database_url()
 
 
 def run_migrations_offline() -> None:

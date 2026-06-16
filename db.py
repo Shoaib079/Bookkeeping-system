@@ -1,14 +1,22 @@
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-from paths import DATABASE_URL
+from paths import get_database_url
 
 Base = declarative_base()
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False}
-)
+
+def _build_engine():
+    url = get_database_url()
+    kwargs: dict = {}
+    if url.startswith("sqlite"):
+        kwargs["connect_args"] = {"check_same_thread": False}
+    else:
+        kwargs["pool_pre_ping"] = True
+    return create_engine(url, **kwargs)
+
+
+engine = _build_engine()
 
 
 @event.listens_for(engine, "connect")

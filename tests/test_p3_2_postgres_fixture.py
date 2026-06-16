@@ -70,12 +70,13 @@ def test_forbidden_erp_data_db_name_rejected():
         )
 
 
-def test_db_py_unchanged_contract():
-    """P3.2-C must not alter runtime db.py engine wiring."""
+def test_db_py_runtime_url_contract():
+    """Runtime db.py resolves URL via paths.get_database_url (PG cutover gate)."""
     text = Path(db.__file__).read_text(encoding="utf-8")
-    assert "DATABASE_URL" in text
+    assert "get_database_url" in text
     assert "ERP_TEST_POSTGRES_URL" not in text
     assert "postgresql://" not in text.lower()
+    assert "pool_pre_ping" in text
 
 
 def test_fixtures_doc_exists():

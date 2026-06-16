@@ -14,7 +14,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP.md"
 
-PYTEST_BASELINE = "4718 passed"
+PYTEST_BASELINE = "4736 passed"
 
 
 @pytest.fixture(scope="module")
@@ -87,11 +87,10 @@ class TestStatusAtAGlance:
         assert "Partial" in glance
         assert "not production-complete" in glance
 
-    def test_postgresql_test_only(self, text: str):
+    def test_postgres_production_cutover_recorded(self, text: str):
         glance = _section_after("## Status at a glance", text, limit=16000)
         assert "PostgreSQL runtime" in glance
-        assert "test-only" in glance
-        assert "SQLite" in glance
+        assert "cutover" in glance.lower() or "production cutover" in glance.lower()
         assert "MONEY-DECIMAL-04c" in glance or "MD-04c" in glance
 
     def test_p2_harden_01_closed(self, text: str):
@@ -106,7 +105,7 @@ class TestStatusAtAGlance:
     def test_postgres_real_dry_run_recorded(self, text: str):
         glance = _section_after("## Status at a glance", text, limit=16000)
         assert "PostgreSQL runtime" in glance
-        assert "dry run" in glance.lower() or "real SQLite" in glance
+        assert "dry run" in glance.lower() or "cutover" in glance.lower()
 
     def test_react_not_started(self, text: str):
         glance = _section_after("## Status at a glance", text, limit=16000)
@@ -117,7 +116,7 @@ class TestStatusAtAGlance:
 
 class TestCurrentPriority:
     def test_priority_contains_bs02_characterization(self, text: str):
-        block = _section_after("## Current priority", text, limit=5000)
+        block = _section_after("## Current priority", text, limit=6500)
         assert "BS-03" in block or "BS-04" in block
         assert "BS-04" in block or "write_banking" in block
 
@@ -128,7 +127,7 @@ class TestCurrentPriority:
         assert "P2-HARDEN-01" in block
         assert "MONEY-DECIMAL-04c" in block or "MD-04c" in block
         assert "MONEY-DECIMAL-05" in block or "MD-05" in block
-        assert "PostgreSQL runtime cutover" in block
+        assert "PostgreSQL production runtime cutover" in block or "PostgreSQL runtime cutover" in block
         assert "React migration" in block
 
 

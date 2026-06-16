@@ -1,8 +1,8 @@
 # POSTGRES Runtime Cutover Prep
 
-**Status:** ✅ **Prep slice closed** (2026-06-16)  
-**Tag:** `postgres-runtime-cutover-prep`  
-**Verdict:** **Production runtime cutover still blocked** — prep harness + gate module only
+**Status:** ✅ **Prep + production cutover closed** (2026-06-16)  
+**Tag:** `postgres-runtime-cutover-prep` · `postgres-production-cutover`  
+**Verdict:** Flag-gated PostgreSQL runtime wired; SQLite rollback preserved
 
 ## Purpose
 

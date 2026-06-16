@@ -45,7 +45,7 @@ class TestCutoverPrepDoc:
         assert DOC_PATH.exists()
         text = DOC_PATH.read_text(encoding="utf-8").lower()
         assert "prep" in text
-        assert "not ready" in text or "blocked" in text
+        assert "not ready" in text or "blocked" in text or "wired" in text
         assert "erp_test_postgres_url" in text
         assert "no production runtime switch" in text or "production remains" in text
 
@@ -103,9 +103,11 @@ class TestSqliteToPostgresDataMigration:
 
 
 class TestRuntimeCutoverGateModule:
-    def test_gate_module_exists_and_defaults_off(self):
+    def test_gate_module_wired_to_paths(self):
         assert GATE_MODULE.exists()
         src = GATE_MODULE.read_text(encoding="utf-8")
         assert "ERP_POSTGRES_RUNTIME_CUTOVER" in src
-        assert "default off" in src.lower() or "defaults off" in src.lower()
-        assert "paths.DATABASE_URL" not in src or "does not mutate" in src.lower()
+        assert "resolve_runtime_database_url" in src
+        paths_src = (ROOT / "paths.py").read_text(encoding="utf-8")
+        assert "get_database_url" in paths_src
+        assert "resolve_runtime_database_url" in paths_src

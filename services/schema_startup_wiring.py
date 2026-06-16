@@ -16,7 +16,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from paths import DATABASE_URL
+from paths import get_database_url
 from services.alembic_runner import AlembicCommandResult, run_upgrade_head
 from services.schema_migration_gate import (
     ACTION_UPGRADE_HEAD,
@@ -191,7 +191,7 @@ def prepare_schema_startup_authoritative(
         )
         return _session_plan
 
-    url = database_url or DATABASE_URL
+    url = database_url or get_database_url()
     backup_available, confirmation_given, backup_path, confirmation = (
         _operator_gate_inputs(environ)
     )
