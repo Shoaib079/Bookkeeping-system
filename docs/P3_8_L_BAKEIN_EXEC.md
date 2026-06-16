@@ -11,7 +11,7 @@
 
 **P3.8-L bake-in execution: PASS** on automated throwaway-DB matrix + prior P3.8-M manual smoke on stamped `erp_data.db`.
 
-**Still NOT ready to retire `migrate_schema()`** — P3.8-L-TESTS (schema-equivalence gate, single-caller guard, never-on-PG wiring test, lock-safety) and P3.8-N default flip remain gated.
+**Still NOT ready to retire `migrate_schema()`** — P3.8-N default flip and P3.8-N/P3.9 retirement remain gated on operational bake-in window + all DBs stamped at head. **P3.8-L-TESTS ✅** characterization gate complete — see [P3_8_L_TESTS.md](./P3_8_L_TESTS.md).
 
 ---
 
@@ -50,11 +50,12 @@ Backups verified; no data loss observed during manual smoke.
 
 | Evidence | Status |
 |----------|--------|
-| Full `pytest` green | **PASS** — **4231 passed**, 9 skipped, 2 xfailed |
+| Full `pytest` green | **PASS** — **4250 passed**, 9 skipped, 2 xfailed |
+| Schema-equivalence gate | **PASS** — P3.8-L-TESTS + P3.4-D harness |
 | App starts flag off (`migrate_schema`) | **PASS** (P3.8-M + automated flag-off scenario) |
 | App starts flag on `at_head` (`verify_only`) | **PASS** (P3.8-M + automated at_head scenario) |
 | No data loss | **PASS** (manual smoke; automated uses throwaway DBs only) |
-| No schema drift | **OPEN** — requires P3.8-L-TESTS schema-equivalence gate |
+| No schema drift | **PASS** — P3.8-L-TESTS schema-equivalence gate (Alembic 0001 ≡ migrate_schema-evolved) |
 | Rollback verified (disable flag) | **PASS** |
 | Logs reviewed | **PASS** (P3.8-M manual; `[schema]` diagnostics in K2/EXEC tests) |
 
@@ -68,11 +69,8 @@ None triggered during this execution window.
 
 ## Next slices (sequenced)
 
-1. **P3.8-L-TESTS** — add §6 characterization tests from [P3_8_L_BAKEIN_AUDIT.md](./P3_8_L_BAKEIN_AUDIT.md) (schema equivalence, single-caller guard, never-on-PG, lock-safety, flag-off parity).
-2. **P3.8-N** — default flip to flag-on (after L-TESTS + equivalence green).
-3. **P3.9** — retire `migrate_schema()` implementation.
-4. **MD-05** — Numeric migration (parallel critical path).
-5. **P4.2** — PostgreSQL cutover (after Alembic authority + Numeric).
+1. **P3.8-N** — default flip to flag-on (after bake-in window + all DBs stamped).
+2. **P3.9** — retire `migrate_schema()` implementation.
 
 ---
 

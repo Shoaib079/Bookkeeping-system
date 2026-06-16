@@ -271,7 +271,7 @@ Independent architectural review (Claude) — baseline FastAPI/React readiness a
 |----|------|----------|--------|----------------|
 | **POSTING-SERVICE-01** | Extract GL posting engine from `app.py` (`create_journal_entry`, reversals, `post_*` wrappers) | **Critical** | **Complete** | PS-P0–P6-5 shipped; PS-P7 hardening deferred |
 | **MONEY-DECIMAL-01** | `Float` → `Decimal` for money fields across models and services | High | **Audit complete** (2026-06-16) | [MONEY_DECIMAL_01_AUDIT.md](./MONEY_DECIMAL_01_AUDIT.md); MD-02 golden vectors next; PG **production** blocked |
-| **ALEMBIC-01** | Alembic revision chain replaces incremental `migrate_schema()` | Medium | **Partial** — P3.8-K2 wired; **P3.8-L-EXEC ✅**; L-TESTS next; not retired | [P3_8_L_BAKEIN_EXEC.md](./P3_8_L_BAKEIN_EXEC.md); PG cutover blocker |
+| **ALEMBIC-01** | Alembic revision chain replaces incremental `migrate_schema()` | Medium | **Partial** — P3.8-K2 wired; **L-EXEC ✅** · **L-TESTS ✅**; P3.8-N next | [P3_8_L_TESTS.md](./P3_8_L_TESTS.md); PG cutover blocker |
 | **BANKING-SERVICE-01** | Extract banking subledger business logic to `services/` | High | **Partial** | `services/write_banking.py` manual API writes shipped; recon/import/balance ownership (TD-PS-08) open |
 | **REPORTS-SERVICE-01** | Extract report queries/aggregations to read-only `services/` | Medium | **Partial** | Query layer in `services/read_*` (FASTAPI-P0); Streamlit presentation in `app.py` by design |
 | **CONTEXT-AUDIT-01** | Audit `_erp()` / session-context coupling in `ui/`; plan injected context | Medium | Open | FastAPI Phase D; relates to TD-DSC-08, TD-UA-04, TD-SC-03/04 |
@@ -282,8 +282,8 @@ Independent architectural review (Claude) — baseline FastAPI/React readiness a
 2. **BANKING-SERVICE-01** — extraction audit; balance ownership; `_app()` removal
 3. **P2-HARDEN-01** — API `company_id` stamp audit
 4. **MONEY-DECIMAL-04c+** — JE balance guard / FX native Decimal math (MD-01…04b ✅)
-5. **P3.8-L-TESTS** — Alembic authority characterization (schema equivalence, single-caller guard, never-on-PG); **P3.8-L-EXEC ✅**
-6. **PostgreSQL runtime cutover** — after decimal + Alembic authority (P3.8-L-TESTS → P3.8-N → P3.9); SQLite remains production today
+5. **P3.8-N** — Alembic authority default flip (**P3.8-L-EXEC ✅** · **P3.8-L-TESTS ✅**)
+6. **PostgreSQL runtime cutover** — after decimal + Alembic authority (P3.8-N → P3.9); SQLite remains production today
 7. **React migration** — not started (`ERP_DS_05` spec only)
 
 **FastAPI foundation:** partial — P0–P2 exist; write routes feature-flagged; **not complete**. **PostgreSQL runtime:** test-only validation; **not complete**.
