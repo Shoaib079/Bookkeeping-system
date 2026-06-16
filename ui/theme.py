@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 import streamlit as st
+
+_log = logging.getLogger(__name__)
 
 _THEME_CSS_PATH = Path(__file__).with_name("theme.css")
 _WIDGETS_CSS_PATH = Path(__file__).with_name("widgets.css")
@@ -293,7 +296,7 @@ def _os_dark_from_client_hint() -> bool | None:
     """First-request fallback when the viewport cookie is not on the wire yet."""
     try:
         hint = (st.context.headers.get("Sec-CH-Prefers-Color-Scheme") or "").strip().lower()
-    except Exception:
+    except (AttributeError, TypeError):
         return None
     if hint == "dark":
         return True
@@ -306,7 +309,7 @@ def _os_dark_preferred_signal() -> bool | None:
     """OS scheme from cookie or client hint only (no session guesses)."""
     try:
         cookie = str(st.context.cookies.get("erp_os_dark") or "").strip()
-    except Exception:
+    except (AttributeError, TypeError):
         cookie = ""
     if cookie == "1":
         return True
@@ -567,6 +570,7 @@ def bootstrap_theme(session_factory, auth_user: dict | None) -> None:
                 if apply_user_theme_from_db(session, auth_user["id"]) is None:
                     st.session_state.setdefault("theme_mode", "system")
         except Exception:
+            _log.debug("bootstrap_theme: failed to load user theme", exc_info=True)
             st.session_state.setdefault("theme_mode", "system")
     else:
         st.session_state.setdefault("theme_mode", "system")

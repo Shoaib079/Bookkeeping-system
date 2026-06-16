@@ -45,8 +45,11 @@ from __future__ import annotations
 
 import datetime
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any
+
+_log = logging.getLogger(__name__)
 
 from models import (
     BankAccount,
@@ -764,6 +767,7 @@ def card_settlement_on(session, company_id: int | None) -> bool:
     try:
         return bool(get_setting(session, "banking.card_settlement_enabled", company_id=cid))
     except Exception:
+        _log.warning("card_settlement_on: failed to read setting for company %s", cid, exc_info=True)
         return False
 
 

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import secrets
 
 _PBKDF2_ITERATIONS = 260_000
+_log = logging.getLogger(__name__)
 
 
 def password_hash_fragment(password_hash: str) -> str:
@@ -13,7 +15,8 @@ def password_hash_fragment(password_hash: str) -> str:
     try:
         _salt, key_hex = password_hash.split(":", 1)
         return key_hex[:16]
-    except Exception:
+    except (ValueError, AttributeError):
+        _log.debug("password_hash_fragment: malformed hash input")
         return ""
 
 
@@ -34,5 +37,6 @@ def verify_password(password: str, stored_hash: str) -> bool:
             "sha256", password.encode(), salt.encode(), _PBKDF2_ITERATIONS
         )
         return secrets.compare_digest(key.hex(), key_hex)
-    except Exception:
+    except (ValueError, AttributeError, TypeError):
+        _log.debug("verify_password: malformed stored hash")
         return False
