@@ -278,7 +278,7 @@ Independent architectural review (Claude) — baseline FastAPI/React readiness a
 
 ### Critical path (migration prep — DOCS-MIGRATION-CHECKPOINT-01)
 
-1. **AUTH-SESSION-02-IMPL-3** — idle extension of `auth_expires`
+1. ~~**AUTH-SESSION-02-IMPL-3**~~ ✅ — idle extension ([IMPL-3 doc](./AUTH_SESSION_02_IMPL_3.md); commit `ee57dc1`)
 2. **BANKING-SERVICE-01** — extraction audit; balance ownership; `_app()` removal
 3. **P2-HARDEN-01** — API `company_id` stamp audit
 4. ~~**MONEY-DECIMAL-05-IMPL-5**~~ ✅ — flag-gated cutover (**IMPL-1 ✅** · **IMPL-2 ✅** · **IMPL-3 ✅** · **IMPL-4 ✅** · **IMPL-5 ✅**)

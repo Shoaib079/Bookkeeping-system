@@ -153,7 +153,7 @@ No implementation before roadmap approval.
 | Company creation (14D-D) | ✅ Complete |
 | Sidebar uses company role (nav fix) | ✅ Complete |
 | Simplified Company Setup UI | ✅ Complete (Expert policies stub) |
-| Automated tests | ✅ **4651 passing, 11 skipped, 2 xfailed** (run `pytest tests/` on host) |
+| Automated tests | ✅ **4653 passing, 11 skipped, 2 xfailed** (run `pytest tests/` on host) |
 | Member management (14D-E) | ✅ Complete |
 | Member roster polish (14D-F) | ✅ Complete |
 | Setup wizard v1 (14D-G) | ✅ Complete — **superseded by SETUP-01** |
@@ -231,7 +231,7 @@ No implementation before roadmap approval.
 | **FUTURE-MIGRATION-AUDIT-01** | 📊 **Recorded (2026-06-13 baseline)** — score **62/100**; historical snapshot — blocker list superseded by [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
 | **P2-HARDEN-01** — Company Stamp Audit | 🟡 **In progress** — audit + **H-01/H-02 complete** (matrix + P2 fixture fidelity); H-03 recon asserts next · see [§ P2-HARDEN-01](#p2-harden-01--company-stamp-audit) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) · [P2_AUDIT_01_LEDGER](./docs/P2_AUDIT_01_LEDGER.md) · [P2_HARDEN_01_AUDIT](./docs/P2_HARDEN_01_COMPANY_STAMP_AUDIT.md) |
 | **DASH-CASH-01** — Split Liquid Funds | ✅ **S1/S2 complete** — `compute_liquid_position` + dashboard UI shipped |
-| **AUTH-SESSION-02** — Session hardening | 🟡 **Partial** — audit ✅ · IMPL-1 session policy ✅ · IMPL-2 browser-session policy wiring ✅ · idle extension / remember-device / revocation **not started** · [AUTH_SESSION_02_AUDIT](./docs/AUTH_SESSION_02_AUDIT.md) |
+| **AUTH-SESSION-02** — Session hardening | 🟡 **Partial** — audit ✅ · IMPL-1 session policy ✅ · IMPL-2 browser-session policy wiring ✅ · **IMPL-3 idle extension ✅** · remember-device / revocation **open** · [AUTH_SESSION_02_AUDIT](./docs/AUTH_SESSION_02_AUDIT.md) · [IMPL-3](./docs/AUTH_SESSION_02_IMPL_3.md) |
 | **RECEIPT-AI-01** | ✅ **Complete** — service seam + adapter + fake extractor (IMPL-1/2/3a/3b/3c) · no real OCR provider |
 | **RECEIPT-AI-02** | ✅ **IMPL-1–5 complete** — learning store + prefill loop; **approval/void hooks deferred** · no auto-post |
 | **RECEIPT-AI-03 … RECEIPT-AI-08** | 📋 **Future** — vendor detection · item extraction · confidence · trusted auto-post last |
@@ -247,9 +247,11 @@ No implementation before roadmap approval.
 
 **Use the system daily** — build only what causes friction during real bookkeeping.
 
-**Test baseline:** `pytest tests/` — **4651 passed**, 11 skipped, 2 xfailed.
+**Test baseline:** `pytest tests/` — **4653 passed**, 11 skipped, 2 xfailed.
 
 **MD-05-IMPL-5 (2026-06-16):** Flag-gated `0001→0002` cutover via `ERP_MONEY_NUMERIC_CUTOVER=1` + P3.8 backup/confirmation; post-cutover cache re-sync; production `erp_data.db` blocked. Tag: `money-decimal-05-impl5-cutover-gate`. Doc: [MONEY_DECIMAL_05_IMPL_5.md](./docs/MONEY_DECIMAL_05_IMPL_5.md).
+
+**AUTH-SESSION-02-IMPL-3 (verified 2026-06-16):** Idle session extension — `should_extend_idle` + `_maybe_extend_idle_session()` in `main()`; implementation `ee57dc1`. Tag: `auth-session-02-impl3-idle-extension`. Doc: [AUTH_SESSION_02_IMPL_3.md](./docs/AUTH_SESSION_02_IMPL_3.md).
 
 **MD-05 track:** IMPL-1 ✅ · IMPL-2 ✅ · IMPL-3 ✅ · IMPL-4 ✅ · **IMPL-5 ✅** — see [MONEY_DECIMAL track](#money-decimal-01--float--decimal-migration) below.
 
@@ -263,7 +265,7 @@ No implementation before roadmap approval.
 
 1. **Keep `ROADMAP.md` accurate** after each audit/implementation checkpoint (ROADMAP-SYNC-01/02 hygiene rule).
 2. **BANKING-SERVICE-01-BS-03** — `company_card` CC bill payment JE explicit `company_id` (**BS-04 ✅** — [BS-04 note](./docs/BANKING_SERVICE_01_BS04.md)).
-3. **AUTH-SESSION-02-IMPL-3** — idle extension characterization + wiring (`should_extend_idle`).
+3. ~~**AUTH-SESSION-02-IMPL-3**~~ ✅ — idle extension (`should_extend_idle` wired; [IMPL-3 doc](./docs/AUTH_SESSION_02_IMPL_3.md)).
 4. **P2-HARDEN-01** — `company_id` stamping audit across FastAPI `write_*` services.
 5. **MONEY-DECIMAL-04c+** — JE balance guard / FX native Decimal math (MD-01…04b ✅).
 6. **MONEY-DECIMAL-05 (MD-05)** — Alembic Numeric migration (**IMPL-1 ✅** · **IMPL-2 ✅** · **IMPL-3 ✅** · **IMPL-4 ✅** · **IMPL-5 ✅** — flag-gated cutover) — [MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md](./docs/MONEY_DECIMAL_05_NUMERIC_MIGRATION_PLAN.md) **before** PostgreSQL runtime cutover.
@@ -275,7 +277,7 @@ No implementation before roadmap approval.
 | **POSTING-SERVICE-01** | ✅ Complete — kernel in `services/posting.py`; app shims; PS-P7 deferred, not blocker |
 | **REPORTS-SERVICE-01** | 🟡 Partial — `services/read_*` computes; Streamlit `render_*` until React |
 | **BANKING-SERVICE-01** | 🟡 Partial — `write_banking` + `write_reconciliation`; `match_post`/`company_card` `_app()` debt |
-| **AUTH-SESSION-02** | 🟡 Partial — IMPL-1/2 ✅; idle/remember/revocation open |
+| **AUTH-SESSION-02** | 🟡 Partial — IMPL-1/2/3 ✅; remember-device/revocation open |
 | **RECEIPT-AI-01** | ✅ Complete — service seam; no OCR provider |
 | **RECEIPT-AI-02** | ✅ IMPL-1–5 complete — prefill loop; approval/void hooks deferred |
 | **FastAPI foundation** | 🟡 Partial (strong) — P0–P2; writes flag-gated; not production-complete |
@@ -327,7 +329,7 @@ The following are **documented on the roadmap only**. Do **not** implement until
 |-----------|--------|
 | **NAV-UX-02** S1–S6 | ✅ Structural contracts · statements consolidation · Members mobile · Staff Expenses permissions · legacy telemetry |
 | **AUTH-SESSION-01** | ✅ Session restore + company revalidation |
-| **AUTH-SESSION-02** IMPL-1/2 | ✅ `session_policy` + browser-session TTL wiring |
+| **AUTH-SESSION-02** IMPL-1/2/3 | ✅ `session_policy` + browser-session TTL + idle extension — [IMPL-3](./docs/AUTH_SESSION_02_IMPL_3.md) |
 | **DASH-CASH-01** S1/S2 | ✅ `compute_liquid_position` + dashboard UI |
 | **RECEIPT-AI-01** IMPL-1/2/3a/3b/3c | ✅ Service seam + adapter + fake extractor |
 | **RECEIPT-AI-02** IMPL-1/2/3/4/5 | ✅ Learning store + suggestion capture + prefill (approval/void hooks deferred) |
@@ -2570,12 +2572,12 @@ Restaurant (POS, recipes), retail (barcode), services (projects), tourism (booki
 
 ### AUTH-SESSION-02 — Remember Device / Session Hardening
 
-**Status:** 📋 **Audited (2026-06)** — see [AUTH_SESSION_02_AUDIT.md](./docs/AUTH_SESSION_02_AUDIT.md). Implementation not started.
+**Status:** 🟡 **Partial** — IMPL-1 ✅ · IMPL-2 ✅ · **IMPL-3 idle extension ✅** · remember-device / revocation **open** — see [AUTH_SESSION_02_AUDIT.md](./docs/AUTH_SESSION_02_AUDIT.md) · [AUTH_SESSION_02_IMPL_3.md](./docs/AUTH_SESSION_02_IMPL_3.md).
 
 **Scope (future):**
 
-- Optional **remember-this-device** toggle (per login; default off)
-- Split **idle timeout** vs **absolute session expiry** (fix `auth_expires` non-sliding gap)
+- Optional **remember-this-device** toggle (per login; default off) — IMPL-4+
+- ~~Split **idle timeout** vs **absolute session expiry**~~ ✅ (IMPL-1/3)
 - Future **FastAPI HttpOnly cookie** + JWT refresh integration (unify with `services/tokens.py`)
 - Server revocation (`token_version`, optional `user_sessions` table)
 - Aligns with AUTH-SESSION-01-IMPL-3 / IMPL-4 backlog in [AUTH_SESSION_01_IMPLEMENTATION.md](./docs/AUTH_SESSION_01_IMPLEMENTATION.md)
@@ -3149,6 +3151,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-16 | **AUTH-SESSION-02-IMPL-3 (closure)** — Verified idle extension already shipped (`ee57dc1`); ROADMAP/TECH_DEBT sync; doc [AUTH_SESSION_02_IMPL_3.md](./docs/AUTH_SESSION_02_IMPL_3.md). Tag: `auth-session-02-impl3-idle-extension`. Next: **BANKING-SERVICE-01-BS-03**. |
 | 2026-06-16 | **MONEY-DECIMAL-05-IMPL-5** — Flag-gated `0001→0002` cutover wiring (`ERP_MONEY_NUMERIC_CUTOVER` + P3.8 gate); post-cutover cache re-sync; Alembic runner `DATABASE_URL` + PATH fix. Baseline **4651 passed** (+18). Tag: `money-decimal-05-impl5-cutover-gate`. Next: PG build + dual-run parity. |
 | 2026-06-16 | **MONEY-DECIMAL-05-IMPL-4** — Populated SQLite `0001→0002` migration smoke + optional PG NUMERIC tests; fix `0002` SQLite supplemental index re-apply after batch rebuild. Baseline **4633 passed** (+8). Tag: `money-decimal-05-impl4-migration-smoke`. Next: **MD-05-IMPL-5**. |
 | 2026-06-16 | **MONEY-DECIMAL-05-IMPL-3** — ROUND_HALF_UP via `services/money.py`; fix stale bank/payable cache paths; GL + bank cache re-sync; Alembic `0002` explicit PG ROUND USING; `ingredients.cost_per_base_unit` → NUMERIC(19,4). Baseline **4625 passed** (+14). Tag: `money-decimal-05-impl3-quantization-cache`. Next: **MD-05-IMPL-4**. |

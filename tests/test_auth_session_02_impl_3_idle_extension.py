@@ -5,9 +5,13 @@ from __future__ import annotations
 import datetime
 import inspect
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+DOC_PATH = ROOT / "docs" / "AUTH_SESSION_02_IMPL_3.md"
 
 if "streamlit" not in sys.modules:
     _st_mock = MagicMock()
@@ -52,6 +56,22 @@ _DEV_USER = {
     "last_login": None,
     "created_at": None,
 }
+
+
+class TestImpl3DocContract:
+    def test_impl3_doc_exists(self):
+        assert DOC_PATH.exists()
+        assert DOC_PATH.stat().st_size > 0
+
+    def test_impl3_doc_covers_scope(self):
+        text_doc = DOC_PATH.read_text(encoding="utf-8").lower()
+        for topic in (
+            "should_extend_idle",
+            "session_policy",
+            "_maybe_extend_idle_session",
+            "session_started_at",
+        ):
+            assert topic in text_doc, f"missing topic: {topic!r}"
 
 
 @pytest.fixture(autouse=True)
