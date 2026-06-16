@@ -227,11 +227,4 @@ def pg_numeric_column_scale(engine: Engine, table: str, column: str) -> tuple[in
     raise KeyError(f"{table}.{column}")
 
 
-def drop_all_pg_objects(engine: Engine) -> None:
-    """Reset disposable PG test DB before Alembic upgrade."""
-    from db import Base
-
-    with engine.begin() as conn:
-        conn.execute(text("DROP SCHEMA public CASCADE"))
-        conn.execute(text("CREATE SCHEMA public"))
-    Base.metadata.drop_all(bind=engine)
+from postgres_utils import drop_all_pg_objects

@@ -14,7 +14,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP.md"
 
-PYTEST_BASELINE = "4694 passed"
+PYTEST_BASELINE = "4699 passed"
 
 
 @pytest.fixture(scope="module")
@@ -102,6 +102,11 @@ class TestStatusAtAGlance:
     def test_md04c_closed(self, text: str):
         glance = _section_after("## Status at a glance", text, limit=16000)
         assert "MONEY-DECIMAL-04c" in glance or "MD-04c" in glance
+
+    def test_postgres_pg_build_closed(self, text: str):
+        glance = _section_after("## Status at a glance", text, limit=16000)
+        assert "PostgreSQL runtime" in glance
+        assert "dual-run" in glance.lower() or "Alembic build" in glance
 
     def test_react_not_started(self, text: str):
         glance = _section_after("## Status at a glance", text, limit=16000)

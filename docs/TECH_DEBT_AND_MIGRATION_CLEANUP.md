@@ -284,8 +284,9 @@ Independent architectural review (Claude) — baseline FastAPI/React readiness a
 4. ~~**MONEY-DECIMAL-04c+**~~ ✅ — JE guard / FX Decimal boundary verified ([MD-04c doc](./MONEY_DECIMAL_04C_JE_FX_DECIMAL.md))
 5. ~~**MONEY-DECIMAL-05-IMPL-5**~~ ✅ — flag-gated cutover (**IMPL-1 ✅** · **IMPL-2 ✅** · **IMPL-3 ✅** · **IMPL-4 ✅** · **IMPL-5 ✅**)
 6. **P3.9** — phased `migrate_schema()` retirement (**✅ complete** — P3.9-A/B-CHAR/B/C)
-7. **PostgreSQL build + dual-run parity** — Alembic head incl. `0002` on PG test DB; production cutover still blocked
-8. **React migration** — not started (`ERP_DS_05` spec only)
+7. ~~**PostgreSQL build + dual-run parity**~~ ✅ — Alembic PG test build + harness ([PG build doc](./POSTGRES_PG_BUILD_DUAL_RUN_PARITY.md))
+8. **PostgreSQL runtime cutover** — data migration + flag-gated switch (production still blocked)
+9. **React migration** — not started (`ERP_DS_05` spec only)
 
 **FastAPI foundation:** partial — P0–P2 exist; write routes feature-flagged; **not complete**. **PostgreSQL runtime:** test-only validation; **not complete**.
 

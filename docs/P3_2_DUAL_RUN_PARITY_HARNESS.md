@@ -37,6 +37,7 @@ Summaries are **engine-neutral aggregates** (not raw auto-increment IDs):
 |-------|---------|
 | `counts` | Row counts per watched table |
 | `journal` | JE count, line count, debit/credit totals, balanced flag, `reference_type` histogram |
+| `reports` | P&L net / totals + balance sheet assets / balanced flag |
 | `audit_count` | Total `audit_logs` rows |
 | `void_counts` | Voided rows per entity family |
 | `company_id_null_counts` | NULL `company_id` rows on key business tables |
@@ -87,9 +88,11 @@ Safety rules for the URL are enforced by `tests/postgres_utils.py` (test/dev DB 
 
 The harness:
 
-- Creates an isolated schema via `Base.metadata.create_all` (no Alembic `upgrade`)
+- Resets disposable PostgreSQL via `drop_all_pg_objects` + **`alembic upgrade head`** (revision `0002`, Numeric money)
 - Drops schema after each PostgreSQL run
 - Never connects to `db.engine` or `erp_data.db`
+
+SQLite path remains **in-memory `create_all`** for fast CI; PostgreSQL uses the Alembic build path operators will use at cutover.
 
 ---
 
@@ -106,11 +109,11 @@ The harness:
 
 ---
 
-## Limitations (P3.2-D)
+## Limitations (updated 2026-06-16)
 
 - **No dual-run in production** — test harness only
-- **No Alembic-managed schema** on PostgreSQL — `create_all` from ORM metadata (indexes/constraints from `migrate_schema()` not replicated)
-- **No `Float` → `Decimal` work** — money remains `Float` on both engines
+- **SQLite** — in-memory ORM `create_all` (fast reference path)
+- **PostgreSQL** — Alembic `upgrade head` incl. `0002` (see [POSTGRES_PG_BUILD_DUAL_RUN_PARITY.md](./POSTGRES_PG_BUILD_DUAL_RUN_PARITY.md))
 - **Small flow set** — not exhaustive of all posting families
 - **Aggregate comparison** — does not compare every column value or GL account ID mapping across engines
 - **Partner/worker `company_id`** — kernel rows may still have NULL `company_id` on movement/bank rows (same on both engines; counted in `company_id_null_counts`)
@@ -118,17 +121,13 @@ The harness:
 
 ---
 
-## Future P3.3 / Alembic relationship
+## Alembic relationship (P3.3+)
 
-When Alembic becomes authoritative (post P3.2 baseline + cutover):
-
-| Today (P3.2-D) | Future (P3.3+) |
-|----------------|----------------|
-| `Base.metadata.create_all` on both engines | `alembic upgrade head` on ephemeral PG test DB |
-| Schema may diverge from long-lived SQLite `migrate_schema()` extras | Single revision chain defines both engines |
-| Parity harness compares posting outcomes | Same harness + schema parity pre-check |
-
-P3.2-D intentionally avoids Alembic execution so parity tests do not depend on a revision chain that does not exist yet.
+| SQLite (CI default) | PostgreSQL (optional) |
+|---------------------|------------------------|
+| In-memory `create_all` | `bootstrap_postgres_via_alembic` → `alembic upgrade head` |
+| Fast local/CI path | Validates operator PG build path incl. Numeric `0002` |
+| Parity harness compares posting + report outcomes | Same harness + schema revision check |
 
 ---
 

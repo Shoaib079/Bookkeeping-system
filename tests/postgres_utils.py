@@ -15,7 +15,7 @@ from typing import Generator, Iterator
 from urllib.parse import urlparse
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
 ENV_VAR = "ERP_TEST_POSTGRES_URL"
@@ -130,6 +130,46 @@ def create_test_postgres_engine(url: str | None = None) -> Engine:
     return create_engine(safe_url, pool_pre_ping=True, future=True)
 
 
+def drop_all_pg_objects(engine: Engine) -> None:
+    """Reset disposable PG test DB before Alembic upgrade."""
+    from db import Base
+
+    with engine.begin() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE"))
+        conn.execute(text("CREATE SCHEMA public"))
+    Base.metadata.drop_all(bind=engine)
+
+
+def bootstrap_postgres_via_alembic(url: str) -> Engine:
+    """Build a disposable PostgreSQL test schema via ``alembic upgrade head``."""
+    from services.alembic_runner import run_upgrade_head
+
+    safe_url = validate_test_postgres_url(url)
+    _ensure_postgres_driver()
+    engine = create_engine(safe_url, pool_pre_ping=True, future=True)
+    drop_all_pg_objects(engine)
+    engine.dispose()
+
+    result = run_upgrade_head(database_url=safe_url, allow_execute=True)
+    if not result.success:
+        detail = (result.stderr or result.stdout or result.message or "").strip()
+        raise RuntimeError(f"Alembic upgrade head failed: {detail}")
+
+    return create_engine(safe_url, pool_pre_ping=True, future=True)
+
+
+def postgres_alembic_head_revision(engine: Engine) -> str:
+    """Return ``alembic_version.version_num`` after bootstrap."""
+    from sqlalchemy import inspect
+
+    with engine.connect() as conn:
+        if not inspect(conn).has_table("alembic_version"):
+            raise RuntimeError("alembic_version table missing after upgrade")
+        return str(
+            conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+        )
+
+
 def create_test_schema(engine: Engine) -> None:
     """Create all ORM tables on the test engine (no Alembic)."""
     from db import Base
@@ -149,8 +189,20 @@ def drop_test_schema(engine: Engine) -> None:
 @contextmanager
 def postgres_test_engine(
     url: str | None = None,
+    *,
+    use_alembic: bool = False,
 ) -> Iterator[Engine]:
     """Context manager: validated engine with create/drop schema for tests."""
+    if use_alembic:
+        configured = url or require_test_postgres_url()
+        engine = bootstrap_postgres_via_alembic(configured)
+        try:
+            yield engine
+        finally:
+            drop_all_pg_objects(engine)
+            engine.dispose()
+        return
+
     engine = create_test_postgres_engine(url)
     try:
         create_test_schema(engine)

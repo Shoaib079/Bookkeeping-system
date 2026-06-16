@@ -23,10 +23,10 @@ from services.money import line_money
 import models
 from db import Base
 from postgres_utils import (
-    create_test_postgres_engine,
-    create_test_schema,
-    drop_test_schema,
+    bootstrap_postgres_via_alembic,
+    drop_all_pg_objects,
     get_test_postgres_url,
+    postgres_alembic_head_revision,
     validate_test_postgres_url,
 )
 from registry.coa_seed import seed_chart_of_accounts_for_company
@@ -40,6 +40,8 @@ from tests.helpers.commit_parity import (
 
 POST_DATE = datetime.date(2026, 9, 1)
 DUE_DATE = datetime.date(2026, 10, 1)
+PERIOD_START = datetime.date(2026, 9, 1)
+PERIOD_END = datetime.date(2026, 9, 30)
 AMOUNT = 150.0
 CURRENCY = "TRY"
 
@@ -271,6 +273,30 @@ def void_counts(session: Session) -> dict[str, int]:
     }
 
 
+def report_metrics(session: Session) -> dict[str, Any]:
+    """Read-service fingerprints for dual-run report parity."""
+    from services.read_reports import compute_balance_sheet, compute_profit_loss
+
+    company = session.query(models.Company).order_by(models.Company.id).first()
+    if company is None:
+        return {}
+    cid = company.id
+    pl = compute_profit_loss(
+        session,
+        company_id=cid,
+        start_date=PERIOD_START,
+        end_date=PERIOD_END,
+    )
+    bs = compute_balance_sheet(session, company_id=cid, as_of=PERIOD_END)
+    return {
+        "pl_net": round(pl.net, 2),
+        "pl_total_income": round(pl.total_income, 2),
+        "pl_total_expenses": round(pl.total_expenses, 2),
+        "bs_total_assets": round(bs.total_assets, 2),
+        "bs_balanced": bs.balanced,
+    }
+
+
 def normalized_parity_summary(
     session: Session,
     *,
@@ -280,6 +306,7 @@ def normalized_parity_summary(
     return {
         "counts": table_row_counts(session, tables),
         "journal": journal_metrics(session),
+        "reports": report_metrics(session),
         "audit_count": session.query(func.count())
         .select_from(models.AuditLog)
         .scalar()
@@ -311,15 +338,15 @@ def isolated_sqlite_session() -> Iterator[Session]:
 def isolated_postgres_session(url: str) -> Iterator[Session]:
     _register_metadata()
     safe_url = validate_test_postgres_url(url)
-    engine = create_test_postgres_engine(safe_url)
-    create_test_schema(engine)
+    engine = bootstrap_postgres_via_alembic(safe_url)
+    assert postgres_alembic_head_revision(engine) == "0002"
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
     session = SessionLocal()
     try:
         yield session
     finally:
         session.close()
-        drop_test_schema(engine)
+        drop_all_pg_objects(engine)
         engine.dispose()
 
 
