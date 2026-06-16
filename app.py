@@ -410,6 +410,7 @@ from services.session_policy import (
     MODE_BROWSER_SESSION,
     build_session_policy,
     compute_session_expiry,
+    should_extend_idle,
 )
 
 # Initialize database
@@ -3007,6 +3008,40 @@ def _current_user() -> dict | None:
         st.session_state.pop("auth_user", None)
         st.session_state.pop("auth_expires", None)
     return None
+
+
+def _maybe_extend_idle_session() -> bool:
+    """AUTH-SESSION-02-IMPL-3: slide idle expiry on authenticated activity.
+
+    Recomputes ``auth_expires`` from the current time and active policy while
+    preserving ``session_started_at`` (absolute cap). Does not revive expired
+    sessions or extend past the absolute TTL.
+    """
+    if st.session_state.get(_SESSION_LOGGED_OUT):
+        return False
+    user = st.session_state.get("auth_user")
+    current_expiry = st.session_state.get("auth_expires")
+    session_started_at = st.session_state.get("session_started_at")
+    if not user or not current_expiry or not session_started_at:
+        return False
+    now = datetime.datetime.now()
+    if now >= current_expiry:
+        return False
+    policy = _active_session_policy()
+    if not should_extend_idle(
+        now,
+        current_expiry,
+        policy,
+        session_started_at=session_started_at,
+    ):
+        return False
+    new_expiry = compute_session_expiry(
+        now, policy, session_started_at=session_started_at
+    )
+    if new_expiry <= current_expiry:
+        return False
+    st.session_state["auth_expires"] = new_expiry
+    return True
 
 
 _PERMISSIONS: dict[str, set[str]] = {
@@ -26478,6 +26513,9 @@ def main():
         with get_session() as _auth_session:
             render_login(_auth_session)
         return
+
+    # ── AUTH-SESSION-02-IMPL-3: idle extension on authenticated activity ────
+    _maybe_extend_idle_session()
 
     # ── UX-01: refresh signed restore cookie while authenticated ──────────────
     with get_session() as _cookie_s:
