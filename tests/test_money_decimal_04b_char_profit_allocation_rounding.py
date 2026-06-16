@@ -197,16 +197,15 @@ class TestAllocationSourceContract:
     def posting_source(self) -> str:
         return POSTING_PATH.read_text(encoding="utf-8")
 
-    def test_uses_python_round_not_services_money(self, posting_source: str):
+    def test_uses_money_to_float_not_builtin_round(self, posting_source: str):
         start = posting_source.index("def allocate_profit_to_partners")
         end = posting_source.index("def void_profit_allocation", start)
         block = posting_source[start:end]
-        assert "round(abs_income * p.profit_share_pct / 100.0, 2)" in block
-        assert "round(abs_income - running, 2)" in block
-        assert "money_to_float" not in block
+        assert "_allocation_share_float" in block
+        assert "return money_to_float(value)" in posting_source
+        assert "round(abs_income * p.profit_share_pct / 100.0, 2)" not in block
+        assert "round(abs_income - running, 2)" not in block
         assert "quantize_money" not in block
-        assert "parse_money" not in block
-        assert "services.money" not in block
 
     def test_validate_shares_tolerance_in_source(self, posting_source: str):
         assert "99.99 <= total <= 100.01" in posting_source

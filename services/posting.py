@@ -636,6 +636,11 @@ def _je_line_money(value) -> float:
     return float(parse_money(value))
 
 
+def _allocation_share_float(value) -> float:
+    """MD-04b: partner allocation share → 2 dp ORM float via services.money."""
+    return money_to_float(value)
+
+
 def create_journal_entry(
     session,
     entry_date,
@@ -2287,9 +2292,9 @@ def allocate_profit_to_partners(
     shares, running = [], 0.0
     for i, p in enumerate(active_partners):
         if i == len(active_partners) - 1:
-            share = round(abs_income - running, 2)
+            share = _allocation_share_float(abs_income - running)
         else:
-            share = round(abs_income * p.profit_share_pct / 100.0, 2)
+            share = _allocation_share_float(abs_income * p.profit_share_pct / 100.0)
             running += share
         shares.append(share)
 

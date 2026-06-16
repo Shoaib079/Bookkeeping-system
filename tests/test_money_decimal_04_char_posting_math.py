@@ -217,9 +217,13 @@ class TestPostingSourceMoneyContract:
     def test_amount_native_uses_round_four_dp(self, posting_source: str):
         assert "amount_native=round(net * fx_rate, 4)" in posting_source
 
-    def test_allocate_profit_uses_python_round_two_dp(self, posting_source: str):
-        assert "round(abs_income * p.profit_share_pct / 100.0, 2)" in posting_source
-        assert "round(abs_income - running, 2)" in posting_source
+    def test_allocate_profit_uses_money_share_helper(self, posting_source: str):
+        assert "_allocation_share_float" in posting_source
+        assert "money_to_float" in posting_source
+        start = posting_source.index("def allocate_profit_to_partners")
+        end = posting_source.index("def void_profit_allocation", start)
+        block = posting_source[start:end]
+        assert "round(abs_income * p.profit_share_pct / 100.0, 2)" not in block
 
 
 # ── create_journal_entry amount handling ──────────────────────────────────────
