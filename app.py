@@ -1671,9 +1671,13 @@ def create_journal_entry(session, entry_date, description, reference_type, refer
 
 
 def _column_exists(session, table_name: str, column_name: str) -> bool:
-    """Return True if column_name exists in table_name (SQLite PRAGMA)."""
-    rows = session.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
-    return any(row[1] == column_name for row in rows)
+    """Return True if column_name exists on table_name (SQLite + PostgreSQL)."""
+    from sqlalchemy import inspect as sa_inspect
+
+    inspector = sa_inspect(session.get_bind())
+    if not inspector.has_table(table_name):
+        return False
+    return any(col["name"] == column_name for col in inspector.get_columns(table_name))
 
 
 def _phase14a_rebuild_tables() -> None:
