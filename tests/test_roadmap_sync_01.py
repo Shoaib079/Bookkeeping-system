@@ -14,7 +14,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "ROADMAP.md"
 
-PYTEST_BASELINE = "4699 passed"
+PYTEST_BASELINE = "4713 passed"
 
 
 @pytest.fixture(scope="module")
@@ -103,10 +103,10 @@ class TestStatusAtAGlance:
         glance = _section_after("## Status at a glance", text, limit=16000)
         assert "MONEY-DECIMAL-04c" in glance or "MD-04c" in glance
 
-    def test_postgres_pg_build_closed(self, text: str):
+    def test_postgres_cutover_prep_closed(self, text: str):
         glance = _section_after("## Status at a glance", text, limit=16000)
         assert "PostgreSQL runtime" in glance
-        assert "dual-run" in glance.lower() or "Alembic build" in glance
+        assert "prep" in glance.lower() or "cutover prep" in glance.lower()
 
     def test_react_not_started(self, text: str):
         glance = _section_after("## Status at a glance", text, limit=16000)
@@ -122,7 +122,7 @@ class TestCurrentPriority:
         assert "BS-04" in block or "write_banking" in block
 
     def test_priority_ordered_migration_path(self, text: str):
-        block = _section_after("## Current priority", text, limit=4000)
+        block = _section_after("## Current priority", text, limit=5500)
         assert "BS-03" in block
         assert "AUTH-SESSION-02-IMPL-3" in block
         assert "P2-HARDEN-01" in block
@@ -134,23 +134,23 @@ class TestCurrentPriority:
 
 class TestRoadmapSync02Register:
     def test_external_pr2_error_handling_noted(self, text: str):
-        block = _section_after("## Current priority", text, limit=4000)
+        block = _section_after("## Current priority", text, limit=5500)
         assert "PR #2" in block
         assert "error-handling" in block.lower() or "error handling" in block.lower()
 
     def test_external_pr3_coverage_tests_noted(self, text: str):
-        block = _section_after("## Current priority", text, limit=4000)
+        block = _section_after("## Current priority", text, limit=5500)
         assert "PR #3" in block
         assert "226" in block
 
     def test_p3_9_and_alembic_complete_noted(self, text: str):
-        block = _section_after("## Current priority", text, limit=4000)
+        block = _section_after("## Current priority", text, limit=5500)
         assert "P3.9" in block
         assert "ALEMBIC-01" in block
         assert "complete" in block.lower()
 
     def test_md05_before_pg_cutover(self, text: str):
-        block = _section_after("## Current priority", text, limit=4000)
+        block = _section_after("## Current priority", text, limit=5500)
         md05 = block.lower().index("md-05")
         pg = block.lower().index("postgresql runtime cutover")
         assert md05 < pg, "MD-05 must appear before PostgreSQL cutover in priority list"
