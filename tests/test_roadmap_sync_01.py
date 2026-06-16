@@ -89,7 +89,7 @@ class TestStatusAtAGlance:
         assert "PostgreSQL runtime" in glance
         assert "test-only" in glance
         assert "SQLite" in glance
-        assert "MONEY-DECIMAL-03" in glance
+        assert "MONEY-DECIMAL-04-CHAR" in glance
         assert "MONEY-DECIMAL-04" in glance
 
     def test_react_not_started(self, text: str):
