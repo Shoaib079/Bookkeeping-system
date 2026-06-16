@@ -95,6 +95,7 @@ from services.commit_modes import (
     YEAR_END_CLOSE_FAMILY,
     is_boundary_mode,
 )
+from services.money import money_to_float, parse_money
 
 # Pinned by PS-P2b-CHAR — must match registry/locales/transactional.py EN strings.
 _CC_DISABLED_MSG = (
@@ -619,6 +620,22 @@ def _kernel_persist(session, *, commit_family: str | None) -> None:
         session.commit()
 
 
+def _normalize_money_amount(value) -> float:
+    """MD-04a: business posting amount → 2 dp ORM float via services.money."""
+    if value is None:
+        return 0.0
+    return money_to_float(value)
+
+
+def _je_line_money(value) -> float:
+    """MD-04a: JE debit/credit — Decimal str parse without 2 dp quantize."""
+    if value is None:
+        return 0.0
+    if float(value) == 0.0:
+        return 0.0
+    return float(parse_money(value))
+
+
 def create_journal_entry(
     session,
     entry_date,
@@ -667,6 +684,8 @@ def create_journal_entry(
     total_credit = 0
 
     for account_id, debit, credit in lines:
+        debit = _je_line_money(debit)
+        credit = _je_line_money(credit)
         net = debit - credit  # positive = debit-side, negative = credit-side
         line = JournalEntryLine(
             journal_entry_id=entry.id,
@@ -747,6 +766,7 @@ def post_cash_sale(
     session, sale_id, amount, sale_date, currency=None, fx_rate=1.0, *, company_id: int | None = None
 ):
     """Post cash sale: Debit Cash[currency], Credit Sales Revenue"""
+    amount = _normalize_money_amount(amount)
     cash_acct = get_account_by_name(session, "Cash", currency=currency, company_id=company_id)
     sales_acct = get_account_by_name(session, "Sales Revenue", company_id=company_id)
     if cash_acct and sales_acct:
@@ -769,6 +789,7 @@ def post_card_sale(
     Default (settlement OFF): Debit Bank, Credit Sales Revenue.
     Settlement ON: Debit Card Sales Clearing, Credit Sales Revenue.
     """
+    amount = _normalize_money_amount(amount)
     if card_settlement_on(session, company_id):
         debit_acct = get_account_by_name(session, "Card Sales Clearing", company_id=company_id)
     else:
@@ -789,6 +810,7 @@ def post_credit_sale(
     session, sale_id, amount, sale_date, currency=None, fx_rate=1.0, *, company_id: int | None = None
 ):
     """Post credit sale: Debit Accounts Receivable, Credit Sales Revenue"""
+    amount = _normalize_money_amount(amount)
     ar_acct = get_account_by_name(session, "Accounts Receivable", company_id=company_id)
     sales_acct = get_account_by_name(session, "Sales Revenue", company_id=company_id)
     if ar_acct and sales_acct:
@@ -1012,6 +1034,7 @@ def post_expense(
     commit_family: str | None = None,
 ):
     """Post expense: Debit Expense Account, Credit Cash/Bank/Credit Card Payable."""
+    amount = _normalize_money_amount(amount)
     expense = session.get(ExpenseRecord, expense_id)
     credit_acct = resolve_payment_credit_account(
         session, payment_method, currency=currency, company_id=company_id
@@ -1153,6 +1176,7 @@ def post_purchase(
     company_id: int | None = None,
 ):
     """Post purchase journal entry."""
+    amount = _normalize_money_amount(amount)
     debit_acct = resolve_purchase_debit_account(session, gl_debit, company_id=company_id)
     if not debit_acct:
         return
@@ -1204,6 +1228,7 @@ def post_bank_transaction(
 
     PS-P4-1: verbatim from app.py. No BankAccount.balance mutation.
     """
+    amount = _normalize_money_amount(amount)
     cash_acct = get_account_by_name(session, "Cash", currency=currency, company_id=company_id)
     bank_acct = get_account_by_name(session, "Bank", currency=currency, company_id=company_id)
     if cash_acct and bank_acct:

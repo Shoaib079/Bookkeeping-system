@@ -193,17 +193,18 @@ class TestPostingSourceMoneyContract:
     def posting_tree(self, posting_source: str) -> ast.Module:
         return ast.parse(posting_source)
 
-    def test_posting_does_not_import_services_money(self, posting_tree: ast.Module):
+    def test_posting_imports_services_money(self, posting_source: str, posting_tree: ast.Module):
+        assert "from services.money import" in posting_source
+        imported = False
         for node in ast.walk(posting_tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    assert "services.money" not in alias.name
-                    assert alias.name != "money"
-            elif isinstance(node, ast.ImportFrom) and node.module:
-                assert node.module != "services.money"
-                assert not node.module.endswith(".money")
+            if isinstance(node, ast.ImportFrom) and node.module == "services.money":
+                names = {alias.name for alias in node.names}
+                assert "money_to_float" in names
+                assert "parse_money" in names
+                imported = True
+        assert imported
 
-    def test_posting_does_not_import_decimal(self, posting_source: str, posting_tree: ast.Module):
+    def test_posting_does_not_import_decimal_module(self, posting_source: str, posting_tree: ast.Module):
         assert "from decimal import" not in posting_source
         assert "import decimal" not in posting_source
         for node in ast.walk(posting_tree):
@@ -236,8 +237,8 @@ class TestCreateJournalEntryBalanceGuard:
             (cash_id, AMOUNT, 0.0), (inc_id, 0.0, AMOUNT),
         ]
 
-    def test_amounts_persisted_without_kernel_quantization(self, session):
-        """Kernel stores caller amounts as-is — no quantize in create_journal_entry."""
+    def test_amounts_persisted_via_je_line_parse_without_two_dp_quantize(self, session):
+        """Kernel uses parse_money path — extra precision preserved (no money_to_float on lines)."""
         raw = 100.012345
         cash_id = _acct_id(session, "Cash")
         inc_id = _acct_id(session, "Sales Revenue")
@@ -558,9 +559,9 @@ class TestMatchesMd02GoldenVectors:
         assert "balance_guard_reject_100_99_99" in MD02_GOLDEN_MANIFEST
         assert MD02_GOLDEN_MANIFEST["profit_split_100_01"] == [50.0, 50.01]
 
-    def test_services_money_not_used_by_posting_module(self):
-        money_path = ROOT / "services" / "money.py"
+    def test_services_money_wired_in_posting_module(self):
         posting_source = POSTING_PATH.read_text(encoding="utf-8")
-        assert money_path.exists()
-        assert "services.money" not in posting_source
-        assert "from services import money" not in posting_source
+        assert "_normalize_money_amount" in posting_source
+        assert "_je_line_money" in posting_source
+        assert "money_to_float" in posting_source
+        assert "parse_money" in posting_source
