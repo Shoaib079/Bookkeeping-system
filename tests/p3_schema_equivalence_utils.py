@@ -2,11 +2,11 @@
 
 Compares schema fingerprints:
   A) ``Base.metadata.create_all`` only (ORM metadata baseline)
-  B) ``create_all`` + ``migrate_schema()`` (current authoritative evolution path)
+  B) ``create_all`` + ``legacy_migrate_schema()`` (pre-P3.9-C archived evolution path)
 
-Future (P3.4-D): A becomes Alembic ``0001 upgrade``; B remains migrate_schema-evolved
-until cutover. This module never connects to ``paths.DATABASE_URL`` or production
-``erp_data.db``.
+Future (P3.4-D): A becomes Alembic ``0001 upgrade``; B uses ``tests.legacy_migrate_schema``
+for historical equivalence until fully Alembic-only. This module never connects to
+``paths.DATABASE_URL`` or production ``erp_data.db``.
 """
 
 from __future__ import annotations
@@ -14,7 +14,6 @@ from __future__ import annotations
 import re
 import sys
 import types
-import warnings
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -161,8 +160,8 @@ def build_create_all_schema_summary() -> dict[str, Any]:
 
 
 def build_migrate_evolved_schema_summary() -> dict[str, Any]:
-    """Schema B — ``create_all`` + ``migrate_schema()`` (authoritative today)."""
-    import app  # noqa: F401 — module graph for migrate_schema
+    """Schema B — ``create_all`` + archived ``legacy_migrate_schema()`` (test-only)."""
+    from legacy_migrate_schema import legacy_migrate_schema
 
     _register_models()
     engine = _make_in_memory_engine()
@@ -170,9 +169,7 @@ def build_migrate_evolved_schema_summary() -> dict[str, Any]:
     try:
         Base.metadata.create_all(bind=engine)
         with Session() as session:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", DeprecationWarning)
-                app.migrate_schema(session)
+            legacy_migrate_schema(session)
         return extract_sqlite_schema_summary(engine)
     finally:
         engine.dispose()

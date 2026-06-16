@@ -93,11 +93,28 @@ class TestP39BSourceContract:
     def test_constant_matches_message(self):
         import app
 
-        assert app.MIGRATE_SCHEMA_DEPRECATION_MESSAGE.startswith(
-            "migrate_schema() is deprecated"
-        )
+        assert app.MIGRATE_SCHEMA_DEPRECATION_MESSAGE.startswith("migrate_schema()")
         assert "ERP_ALEMBIC_AUTHORITATIVE=1" in app.MIGRATE_SCHEMA_DEPRECATION_MESSAGE
         assert "P3.9-C" in app.MIGRATE_SCHEMA_DEPRECATION_MESSAGE
+
+    def test_migrate_schema_is_no_op_stub(self):
+        import app
+
+        src = inspect.getsource(app.migrate_schema)
+        assert "ALTER TABLE" not in src
+        assert "CREATE INDEX" not in src
+        assert "return None" in src or "return" in src
+
+    def test_equivalence_harness_uses_legacy_module(self):
+        text = UTILS_PATH.read_text(encoding="utf-8")
+        assert "legacy_migrate_schema" in text
+
+
+# ── Runtime behavior ──────────────────────────────────────────────────────────
+
+
+class TestP39BDeprecationWarningBehavior:
+    _WARN_MATCH = r"migrate_schema\(\)"
 
     def test_migrate_schema_warns_with_stacklevel_two(self):
         import app
@@ -108,24 +125,13 @@ class TestP39BSourceContract:
         assert "DeprecationWarning" in src
         assert "stacklevel=2" in src
 
-    def test_equivalence_harness_filters_deprecation(self):
-        text = UTILS_PATH.read_text(encoding="utf-8")
-        assert "catch_warnings" in text
-        assert "simplefilter" in text
-        assert "DeprecationWarning" in text
-
-
-# ── Runtime behavior ──────────────────────────────────────────────────────────
-
-
-class TestP39BDeprecationWarningBehavior:
     def test_single_call_emits_deprecation_warning(self):
         import app
 
         engine = _make_memory_engine()
         Base.metadata.create_all(bind=engine)
         Session = sessionmaker(bind=engine)
-        with pytest.warns(DeprecationWarning, match=r"migrate_schema\(\) is deprecated"):
+        with pytest.warns(DeprecationWarning, match=self._WARN_MATCH):
             with Session() as session:
                 app.migrate_schema(session)
 
@@ -142,10 +148,11 @@ class TestP39BDeprecationWarningBehavior:
                 app.migrate_schema(session)
         dep = [w for w in caught if issubclass(w.category, DeprecationWarning)]
         assert len(dep) == 2
-        assert all("migrate_schema() is deprecated" in str(w.message) for w in dep)
+        assert all("migrate_schema()" in str(w.message) for w in dep)
 
-    def test_idempotent_schema_after_warning(self):
+    def test_no_op_does_not_mutate_schema(self):
         import app
+        from sqlalchemy import inspect as sa_inspect
 
         engine = _make_memory_engine()
         Base.metadata.create_all(bind=engine)
@@ -153,11 +160,12 @@ class TestP39BDeprecationWarningBehavior:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", DeprecationWarning)
             with Session() as session:
+                before = {c["name"] for c in sa_inspect(engine).get_columns("companies")}
                 app.migrate_schema(session)
-                app.migrate_schema(session)
-        # no exception — idempotency preserved
+                after = {c["name"] for c in sa_inspect(engine).get_columns("companies")}
+        assert before == after
 
-    def test_flag_off_startup_invokes_real_migrate_schema_with_warning(self):
+    def test_flag_off_startup_invokes_no_op_migrate_schema_with_warning(self):
         import app
 
         engine = _make_memory_engine()
@@ -168,7 +176,7 @@ class TestP39BDeprecationWarningBehavior:
                 database_url=str(engine.url),
                 environ=FLAG_OFF,
             )
-            with pytest.warns(DeprecationWarning, match=r"migrate_schema\(\) is deprecated"):
+            with pytest.warns(DeprecationWarning, match=self._WARN_MATCH):
                 with SessionLocal() as session:
                     run_schema_startup_in_session(
                         session,

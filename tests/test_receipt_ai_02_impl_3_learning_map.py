@@ -104,9 +104,10 @@ class TestModelSchema:
         assert records[0].approval_count == 2
 
     def test_migrate_schema_indexes_declared(self):
-        import app as erp_app
+        from legacy_migrate_schema import legacy_migrate_schema
+        import inspect
 
-        src = inspect.getsource(erp_app.migrate_schema)
+        src = inspect.getsource(legacy_migrate_schema)
         assert "ix_rcptlearn_company_id" in src
         assert "ix_rcptlearn_signature" in src
         assert "receipt_learning_map" in src
