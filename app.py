@@ -5370,7 +5370,6 @@ _AT_POST_SAVE_CLEAR_KEYS = (
     "at_date_text_sync_from",
     "_mob_at_coerce_pm_type",
     "at_pending_attachment",
-    "_at_worker_expense_active",
 )
 
 
@@ -12724,15 +12723,12 @@ def _at_presync_salary_expense_mode() -> None:
         st.session_state.setdefault("at_worker_mv_type", "Salary")
 
 
-def _at_apply_worker_expense_mode_transitions() -> None:
-    """Edge-trigger category/worker clears when entering or leaving worker expense entry."""
-    _is_worker = _at_is_worker_expense_entry()
-    _was_worker = bool(st.session_state.get("_at_worker_expense_active", False))
-    if _is_worker and not _was_worker:
+def _at_on_desktop_expense_mode_change() -> None:
+    """Radio is outside ``at_entry_form`` so this runs on every mode switch."""
+    if st.session_state.get("at_expense_mode") == "worker":
         _at_clear_category_session_state()
-    elif _was_worker and not _is_worker:
+    else:
         _at_clear_worker_entry_session_state()
-    st.session_state["_at_worker_expense_active"] = _is_worker
 
 
 def _at_list_active_workers(session) -> list:
@@ -13256,22 +13252,6 @@ def _mob_at_render_fx_hook(currency_default: str) -> None:
             amount=amount * rate,
         )
     )
-
-
-def _mob_at_render_salary_fields(session, currency_default: str) -> None:
-    """Mobile Salary type — delegate to shared worker salary amount row."""
-    _at_render_worker_salary_amount_fields(mobile=True)
-    _wid = st.session_state.get("mob_at_worker_id")
-    if _wid:
-        _adv = get_worker_advance_balance(session, _wid)
-        if _adv > 0.01:
-            st.caption(
-                _t(
-                    "worker.advance_max_hint",
-                    currency=currency_default,
-                    amount=_adv,
-                )
-            )
 
 
 def _at_clear_stale_mobile_overlay_state() -> None:
@@ -13907,7 +13887,6 @@ def _render_add_transaction_mobile(
                 st.rerun()
 
             _at_presync_salary_expense_mode()
-            _at_apply_worker_expense_mode_transitions()
 
             # ── Context-specific fields ──
             if _at_is_worker_expense_entry():
@@ -14244,6 +14223,17 @@ def render_add_transaction(session):
                         unsafe_allow_html=True,
                     )
 
+                    if txn_type == "Expense":
+                        _at_presync_salary_expense_mode()
+                        st.radio(
+                            _t("txn.expense_mode_label"),
+                            ["general", "worker"],
+                            format_func=lambda m: _t(f"txn.expense_mode.{m}"),
+                            horizontal=True,
+                            key="at_expense_mode",
+                            on_change=_at_on_desktop_expense_mode_change,
+                        )
+
                     with st.form("at_entry_form", clear_on_submit=False):
                         # ADD-TXN-FIX date UX — single Date field INSIDE the form so
                         # Enter submits; calendar helper is a collapsed expander
@@ -14292,7 +14282,6 @@ def render_add_transaction(session):
                                     )
 
                         elif txn_type == "Expense":
-                            _at_presync_salary_expense_mode()
                             fc1, fc2 = st.columns(2)
                             at_payment_method = fc1.selectbox(
                                 "💳 " + _t("form.payment_method"),
@@ -14303,15 +14292,6 @@ def render_add_transaction(session):
                             fc2.selectbox("💱 " + _t("txn.currency_label"), CURRENCIES,
                                           index=CURRENCIES.index(currency_default) if currency_default in CURRENCIES else 0,
                                           key="at_currency")
-
-                            expense_mode = st.radio(
-                                _t("txn.expense_mode_label"),
-                                ["general", "worker"],
-                                format_func=lambda m: _t(f"txn.expense_mode.{m}"),
-                                horizontal=True,
-                                key="at_expense_mode",
-                            )
-                            _at_apply_worker_expense_mode_transitions()
 
                             if _at_is_worker_expense_entry():
                                 _at_render_worker_expense_panel(
