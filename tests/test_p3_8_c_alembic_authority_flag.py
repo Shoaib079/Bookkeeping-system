@@ -82,8 +82,20 @@ def test_flag_helpers_have_no_db_or_alembic_command_path():
         assert "detect_schema_version" not in source
 
 
+def _app_text_excluding_deprecation_message_constant() -> str:
+    """Drop P3.9-B prose constant — it mentions ERP_ALEMBIC_AUTHORITATIVE in a warning only."""
+    text = APP_PATH.read_text(encoding="utf-8")
+    marker = "MIGRATE_SCHEMA_DEPRECATION_MESSAGE = ("
+    start = text.find(marker)
+    if start == -1:
+        return text
+    end = text.find("\n\n\ndef migrate_schema", start)
+    assert end != -1, "migrate_schema definition missing after deprecation constant"
+    return text[:start] + text[end:]
+
+
 def test_flag_not_wired_into_app_startup():
-    app_text = APP_PATH.read_text(encoding="utf-8")
+    app_text = _app_text_excluding_deprecation_message_constant()
     assert "ERP_ALEMBIC_AUTHORITATIVE" not in app_text
     assert "is_alembic_authoritative_enabled" not in app_text
     assert "parse_alembic_authoritative_flag" not in app_text

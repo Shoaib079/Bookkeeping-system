@@ -9,6 +9,7 @@ import math
 import os
 import secrets
 import uuid
+import warnings
 import zipfile
 from contextlib import contextmanager, nullcontext
 
@@ -1791,8 +1792,19 @@ def _phase14a_milestone_backup() -> None:
         print(f"[Phase 14A] Backup warning (non-fatal): {_e}")
 
 
+MIGRATE_SCHEMA_DEPRECATION_MESSAGE = (
+    "migrate_schema() is deprecated; use Alembic (ERP_ALEMBIC_AUTHORITATIVE=1). "
+    "Removal planned in P3.9-C."
+)
+
+
 def migrate_schema(session):
     """Add new columns to existing tables without touching historical data."""
+    warnings.warn(
+        MIGRATE_SCHEMA_DEPRECATION_MESSAGE,
+        DeprecationWarning,
+        stacklevel=2,
+    )
     # Rename invoice_number → purchase_number on purchases (idempotent: fails silently if already done).
     try:
         session.execute(text("ALTER TABLE purchases RENAME COLUMN invoice_number TO purchase_number"))

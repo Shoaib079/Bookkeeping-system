@@ -9,7 +9,6 @@ Cross-ref: docs/P3_9_B_CHAR_MIGRATE_SCHEMA_CALLERS.md
 from __future__ import annotations
 
 import ast
-import warnings
 from pathlib import Path
 
 import pytest
@@ -88,6 +87,7 @@ def _count_app_migrate_schema_calls(path: Path) -> int:
 def _scan_direct_app_migrate_schema_calls() -> dict[str, int]:
     skip_prefixes = (
         "tests/test_p3_9_b_char_migrate_schema_callers.py",
+        "tests/test_p3_9_b_deprecation.py",
     )
     found: dict[str, int] = {}
     for path in _repo_py_files():
@@ -142,16 +142,10 @@ class TestP39BCharDocContract:
     def test_required_sections(self, doc_text: str, section: str):
         assert section.lower() in doc_text.lower(), f"Missing section: {section!r}"
 
-    def test_doc_states_no_warning_yet(self, doc_text: str):
-        low = doc_text.lower()
-        assert "no" in low and "deprecationwarning" in low
-        assert "not implemented" in low or "not yet" in low or "p3.9-b" in low
-
-    def test_doc_pins_deprecation_message(self, doc_text: str):
+    def test_doc_records_deprecation_contract(self, doc_text: str):
         assert DEPRECATION_MESSAGE_SNIPPET in doc_text
-
-    def test_doc_pins_stacklevel_two(self, doc_text: str):
         assert "stacklevel=2" in doc_text or "stacklevel=2," in doc_text
+        assert "p3.9-b" in doc_text.lower()
 
 
 # ── Direct caller inventory ───────────────────────────────────────────────────
@@ -201,32 +195,7 @@ class TestRuntimeWiringInventory:
             assert (ROOT / rel).exists(), f"Missing mock-injection module: {rel}"
 
 
-# ── Pre-B: no DeprecationWarning today ───────────────────────────────────────
-
-
-class TestPreBNoDeprecationWarning:
-    def test_migrate_schema_source_has_no_warnings_warn(self, app_migrate_schema_source: str):
-        assert "warnings.warn" not in app_migrate_schema_source
-        assert "DeprecationWarning" not in app_migrate_schema_source
-
-    def test_migrate_schema_emits_no_deprecation_warning(self):
-        import app  # noqa: F401
-
-        engine = _make_memory_engine()
-        Base.metadata.create_all(bind=engine)
-        Session = sessionmaker(bind=engine)
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always", DeprecationWarning)
-            with Session() as session:
-                app.migrate_schema(session)
-        dep_warnings = [w for w in caught if issubclass(w.category, DeprecationWarning)]
-        assert dep_warnings == [], (
-            "P3.9-B-CHAR pins zero DeprecationWarning pre-B; "
-            f"found: {[str(w.message) for w in dep_warnings]}"
-        )
-
-
-# ── P3.9-B contract (future implementation pins) ─────────────────────────────
+# ── P3.9-B contract (implemented in P3.9-B — verified by test_p3_9_b_deprecation.py) ──
 
 
 class TestP39BDeprecationContractPins:

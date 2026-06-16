@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 import sys
 import types
+import warnings
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -169,7 +170,9 @@ def build_migrate_evolved_schema_summary() -> dict[str, Any]:
     try:
         Base.metadata.create_all(bind=engine)
         with Session() as session:
-            app.migrate_schema(session)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", DeprecationWarning)
+                app.migrate_schema(session)
         return extract_sqlite_schema_summary(engine)
     finally:
         engine.dispose()

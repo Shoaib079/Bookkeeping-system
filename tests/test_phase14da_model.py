@@ -275,12 +275,15 @@ class TestExistingDataPreservation:
 class TestMigrateSchemaIdempotency:
     def test_alter_table_companies_idempotent(self, db):
         """Running migrate_schema twice on the same schema must not raise."""
-        app.migrate_schema(db)
-        app.migrate_schema(db)  # second run must be silent no-op
+        with pytest.warns(DeprecationWarning, match=r"migrate_schema\(\) is deprecated"):
+            app.migrate_schema(db)
+        with pytest.warns(DeprecationWarning, match=r"migrate_schema\(\) is deprecated"):
+            app.migrate_schema(db)  # second run must be silent no-op
 
     def test_new_columns_exist_after_migrate_schema(self, db):
         """migrate_schema adds the Phase 14D-A columns on a fresh schema."""
-        app.migrate_schema(db)
+        with pytest.warns(DeprecationWarning, match=r"migrate_schema\(\) is deprecated"):
+            app.migrate_schema(db)
         inspector = _sa_inspect(db.bind)
         company_cols = {c["name"] for c in inspector.get_columns("companies")}
         cu_cols      = {c["name"] for c in inspector.get_columns("company_users")}
