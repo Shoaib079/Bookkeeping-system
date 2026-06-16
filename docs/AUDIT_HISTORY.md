@@ -46,6 +46,27 @@ After every completed feature, bug fix, accounting change, audit, migration, or 
 **Related tests:** `tests/test_ui2a_crud_polish.py` updated; full suite passes (3977 passed, 8 skipped, 2 xfailed, 1 preexisting alembic failure).
 
 ---
+
+## 2026-06-16 — Test coverage gap audit: 226 new unit tests for 6 under-tested modules
+
+**Audit / task:** Analyze test coverage across all non-app source modules and add unit tests for the modules with the lowest coverage.
+
+**Findings:** Six modules had coverage below 70%: `exports.py` (16%), `reconciliation/settlement_parse.py` (45%), `registry/banking_config.py` (57%), `reconciliation/statement_parse.py` (59%), `registry/categories_seed.py` (60%), `reconciliation/amounts.py` (61%).
+
+**Actions taken:**
+- Added 226 new unit tests across 6 new test files
+- All new tests pass; full suite: 4403 passed, 8 skipped, 2 xfailed
+- Updated `docs/TEST_COVERAGE_MAP.md` with coverage-gap audit section
+
+**Related tests:**
+- `tests/test_exports_coverage.py` (27 tests)
+- `tests/test_statement_parse_coverage.py` (79 tests)
+- `tests/test_settlement_parse_coverage.py` (25 tests)
+- `tests/test_banking_config_coverage.py` (52 tests)
+- `tests/test_categories_seed_coverage.py` (11 tests)
+- `tests/test_amounts_coverage.py` (32 tests)
+
+---
 ## 2026-06-13 — POSTING-SERVICE-01 PS-P5: self-contained equity/receivables/inventory/close voids complete
 
 **Preconditions verified:** clean tree; PS-P4 complete; PS-P5-CHAR committed (`f82c5fb`); final extraction `e2293e3` (`void_reconciliation`, `void_eod_close`, `void_year_end_close`).
