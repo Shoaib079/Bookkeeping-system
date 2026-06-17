@@ -141,11 +141,68 @@ No implementation before roadmap approval.
 
 ---
 
+## Docker Setup (Development)
+
+**Status:** ✅ **Safe local development containerization complete** (2026-06-16)
+
+### Quick Start
+
+```bash
+# Build the image (first time only)
+docker-compose build
+
+# Start the container (preserves existing erp_data.db)
+docker-compose up -d
+
+# Access the app
+open http://localhost:8501
+
+# View logs
+docker-compose logs -f erp
+
+# Stop the container
+docker-compose down
+```
+
+### Architecture
+
+- **Dockerfile** — Python 3.11, dependencies, Streamlit on port 8501
+- **docker-compose.yml** — Mounts local `erp_data.db`, `uploads/`, `.streamlit/` as volumes
+- **.dockerignore** — Excludes `.git`, backups, pycache, tests
+- **Database persistence** — SQLite volume mounted at `/app/erp_data.db` (read-write, safe)
+- **No data loss** — Existing records appear immediately; container does not create new empty DB
+
+### Safety Guarantees
+
+- Local `erp_data.db` is mounted directly into container
+- No automatic schema migrations run (Alembic authority flag unset inside container)
+- App reads/writes existing database as-is
+- Container can be destroyed without affecting local database
+- Backups created before Docker setup (see `backups/` directory)
+
+### Important Notes
+
+- Docker is for **local development only** — not production-ready
+- Do **not** run FastAPI routes inside the container yet
+- Do **not** use PostgreSQL cutover inside the container
+- Business logic and accounting remain unchanged
+- Tests run normally on host (outside container)
+
+### Files Added
+
+- `Dockerfile` — image definition
+- `docker-compose.yml` — orchestration
+- `.dockerignore` — build optimization
+- `backups/erp_data_before_docker_*.db` — safety backup
+
+---
+
 ## Status at a glance
 
 | Area | Status |
 |------|--------|
 | Core ERP & accounting engine | ✅ Complete |
+| **Docker safe local development** | ✅ **Complete (2026-06-16)** — Dockerfile + docker-compose.yml + persistent SQLite volume |
 | Multi-company isolation | ✅ Complete |
 | Company settings isolation (14D-B) | ✅ Complete |
 | Settings / module registry (14D-B2a) | ✅ Complete |

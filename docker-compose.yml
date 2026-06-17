@@ -1,0 +1,34 @@
+version: "3.9"
+
+services:
+  erp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: streamlit-erp-dev
+    ports:
+      - "8501:8501"
+    volumes:
+      # Mount existing SQLite database (read-write, safe for local dev)
+      - ./erp_data.db:/app/erp_data.db
+      # Mount uploads directory (persistent)
+      - ./uploads:/app/uploads
+      # Mount Streamlit config (optional; allows local overrides)
+      - ./.streamlit:/app/.streamlit
+      # Mount data directory (for any additional app data)
+      - ./data:/app/data
+    environment:
+      # Set database path to mounted volume
+      - DATABASE_URL=sqlite:////app/erp_data.db
+      # Streamlit config
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_SERVER_ENABLECORS=true
+    restart: unless-stopped
+    # Keep container running even if app crashes (for debugging)
+    stdin_open: true
+    tty: true
+
+volumes:
+  # Named volume for backups (optional; for future scheduled backups)
+  backups_volume:
+    driver: local
