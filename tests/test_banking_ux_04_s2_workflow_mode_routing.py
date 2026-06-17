@@ -164,12 +164,9 @@ class TestPostingInvariance:
         assert "banking.workflow_mode" not in MATCH_POST.read_text(encoding="utf-8")
 
     def test_workflow_mode_helpers_have_no_posting_imports(self):
-        text = (ROOT / "ui" / "banking.py").read_text(encoding="utf-8")
-        block = text.split("def banking_build_section_options", 1)[1].split(
-            "def banking_match_kind_confidence", 1
-        )[0]
-        assert "services.posting" not in block
-        assert "match_post" not in block
+        text = (ROOT / "ui" / "banking_workflow_ui.py").read_text(encoding="utf-8")
+        assert "services.posting" not in text
+        assert "match_post" not in text
 
 
 class TestWording:

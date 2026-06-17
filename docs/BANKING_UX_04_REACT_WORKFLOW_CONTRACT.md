@@ -75,6 +75,8 @@ Path: `ADD_TRANSACTION_REACT_PATH` = `/transactions/new` (frozen in `registry/na
 | `at_render_statement_workflow_callout` | Statement import CTA |
 | `at_render_manual_bank_advanced_gate` | Manual bank type under Advanced |
 
+**SSOT module:** `ui/banking_workflow_ui.py` (re-exported from `ui/banking.py` for tests).
+
 ## React implementation notes
 
 - Fetch `banking.workflow_mode` once per company context (React Query key: `['settings', companyId, 'banking.workflow_mode']`).

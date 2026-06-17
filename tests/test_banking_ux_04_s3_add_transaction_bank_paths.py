@@ -103,6 +103,7 @@ class TestRenderAddTransactionWiring:
         assert "_at_show_manual_bank_advanced" in src
         assert "_at_render_manual_bank_advanced_gate" in src
         assert 'st.session_state["at_workflow_mode"]' in src
+        assert "from ui.banking_workflow_ui import" in (ROOT / "app.py").read_text(encoding="utf-8")
 
     def test_mobile_type_picker_uses_split_helper(self):
         src = inspect.getsource(erp._mob_at_render_txn_type_picker_sheet)
@@ -122,12 +123,9 @@ class TestPostingInvariance:
         assert "banking.workflow_mode" not in MATCH_POST.read_text(encoding="utf-8")
 
     def test_at_helpers_have_no_posting_imports(self):
-        text = (ROOT / "ui" / "banking.py").read_text(encoding="utf-8")
-        block = text.split("AT_BANK_TXN_TYPE_IDX", 1)[1].split(
-            "def banking_match_kind_confidence", 1
-        )[0]
-        assert "services.posting" not in block
-        assert "match_post" not in block
+        text = (ROOT / "ui" / "banking_workflow_ui.py").read_text(encoding="utf-8")
+        assert "services.posting" not in text
+        assert "match_post" not in text
 
 
 class TestWording:

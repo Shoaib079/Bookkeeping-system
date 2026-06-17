@@ -281,25 +281,27 @@ from reconciliation.match_post import (
 from ui.avatar import render_user_avatar, user_initials
 from ui.crud_helpers import attachment_section_selector, void_confirmation_widget
 from ui.report_helpers import growth_comparison_kpi
-from ui.banking import (
-    apply_banking_pos_settlement_route as _apply_banking_pos_settlement_route,
-    banking_apply_default_import_tab as _banking_apply_default_import_tab,
-    banking_apply_session_landing as _banking_apply_session_landing,
-    banking_build_section_options as _banking_build_section_options,
-    banking_match_failure_label as _banking_match_failure_label,
-    banking_match_kind_confidence as _banking_match_kind_confidence,
-    banking_pos_settlement_route_keys as _banking_pos_settlement_route_keys,
-    banking_render_manual_advanced_gate as _banking_render_manual_advanced_gate,
-    banking_section_extra_valid as _banking_section_extra_valid,
-    banking_section_select as _banking_section_select,
-    banking_show_manual_advanced_panel as _banking_show_manual_advanced_panel,
-    banking_workflow_default_section as _banking_workflow_default_section,
+from ui.banking_workflow_ui import (
     at_apply_add_transaction_landing as _at_apply_add_transaction_landing,
     at_mobile_type_picker_split as _at_mobile_type_picker_split,
     at_primary_type_indices as _at_primary_type_indices,
     at_render_manual_bank_advanced_gate as _at_render_manual_bank_advanced_gate,
     at_render_statement_workflow_callout as _at_render_statement_workflow_callout,
     at_show_manual_bank_advanced as _at_show_manual_bank_advanced,
+    banking_apply_session_landing as _banking_apply_session_landing,
+    banking_build_section_options as _banking_build_section_options,
+    banking_render_manual_advanced_gate as _banking_render_manual_advanced_gate,
+    banking_section_extra_valid as _banking_section_extra_valid,
+    banking_show_manual_advanced_panel as _banking_show_manual_advanced_panel,
+    banking_workflow_default_section as _banking_workflow_default_section,
+)
+from ui.banking import (
+    apply_banking_pos_settlement_route as _apply_banking_pos_settlement_route,
+    banking_apply_default_import_tab as _banking_apply_default_import_tab,
+    banking_match_failure_label as _banking_match_failure_label,
+    banking_match_kind_confidence as _banking_match_kind_confidence,
+    banking_pos_settlement_route_keys as _banking_pos_settlement_route_keys,
+    banking_section_select as _banking_section_select,
     render_banking_match_suggestion_chip as _render_banking_match_suggestion_chip,
     render_banking_match_queue_list as _render_banking_match_queue_list,
     render_banking_recon_cockpit as _render_banking_recon_cockpit,
