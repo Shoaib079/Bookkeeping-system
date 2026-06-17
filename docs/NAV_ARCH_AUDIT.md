@@ -10,22 +10,22 @@
 
 **NAV-ARCH-S3A status:** ✅ **Complete** — `registry/navigation.py` derives `_NAV_ACCORDION` and `_NAV_DIRECT_PAGES`.
 
-**NAV-ARCH-S3B status:** ✅ **Complete** — `registry/navigation.py` derives `_NAV_ROLE_PAGES`. Mobile remains hand-edited until S3C. Permission overrides (`_apply_permission_nav_overrides`) remain in `app.py`.
+**NAV-ARCH-S3C status:** ✅ **Complete** — `registry/navigation.py` derives `_MOBILE_BOTTOM_NAV` and `_MOBILE_HUB_CONFIG`.
 
 ## 1. Navigation inventory
 
 | Concern | Mechanism | Location (app.py, 2026-06-17) |
 |---|---|---|
-| **Primary router** | `_PAGE_DISPATCH` dict → `render_*` per `nav_selection` — **derived from `registry/navigation.py`** | `26097`; dispatch call `26368` |
-| **Desktop sidebar render** | `_render_navigation_tree(st.sidebar, …)` (custom button accordion) | def `3234`; call `26325` |
-| **`st.sidebar` usage (only 2 sites)** | date-range filters; nav tree | `990-991`, `26325` |
+| **Primary router** | `_PAGE_DISPATCH` dict → `render_*` per `nav_selection` — **derived from `registry/navigation.py`** | `26050`; dispatch call `26321` |
+| **Desktop sidebar render** | `_render_navigation_tree(st.sidebar, …)` (custom button accordion) | def `3187`; call `26278` |
+| **`st.sidebar` usage (only 2 sites)** | date-range filters; nav tree | `990-991`, `26278` |
 | **`option_menu`** | **Not used** — no `streamlit-option-menu` dependency; nav is a custom button tree | (none) |
 | **radio / selectbox page selection** | **Not the primary router.** Sub-page pickers only: banking section picker (`_banking_section_select`), reports exec picker / `st.tabs` | (banking/reports render fns) |
-| **Accordion groups** | `_NAV_ACCORDION` (8 groups) — **derived from registry** | `3226` |
-| **Direct (top-level) pages** | `_NAV_DIRECT_PAGES` — **derived from registry** | `3228` |
-| **Role visibility** | `_NAV_ROLE_PAGES` (owner/manager/cashier/partner/viewer) — **derived from registry** | `3231` |
-| **Mobile bottom nav** | `_MOBILE_BOTTOM_NAV` (5 slots) | `3164` |
-| **Mobile hubs** | `_MOBILE_HUB_CONFIG` (money/reports/people/more) | `3181` |
+| **Accordion groups** | `_NAV_ACCORDION` (8 groups) — **derived from registry** | `3179` |
+| **Direct (top-level) pages** | `_NAV_DIRECT_PAGES` — **derived from registry** | `3181` |
+| **Role visibility** | `_NAV_ROLE_PAGES` (owner/manager/cashier/partner/viewer) — **derived from registry** | `3184` |
+| **Mobile bottom nav** | `_MOBILE_BOTTOM_NAV` (5 slots) — **derived from registry** | `3167` |
+| **Mobile hubs** | `_MOBILE_HUB_CONFIG` (money/reports/people/more) — **derived from registry** | `3176` |
 | **Canonical route keys** | `NAV_*` constants + `ALL_NAV_PAGE_KEYS` + `LEGACY_NAV_ALIASES` + `normalize_nav_key` | `registry/nav_keys.py` |
 | **Legacy reroutes** | `_LEGACY_NAV_TO_REPORTS_EXEC` (`3022`), `_LEGACY_RPT_EXEC_TO_STATEMENT/_TO_BOOKS`, Bank Statement Import reroute | `app.py` (per NAV-UX-02-S6) |
 
@@ -51,13 +51,14 @@ Full 43-route table with `render_fn`/`surface`/`role_gate`/`react_route` already
 
 ## 5. Risk areas
 
-- **Role/mobile hand-sync risk** — `registry/navigation.py` now owns dispatch + desktop + static role gates; `_MOBILE_BOTTOM_NAV` (3162) and `_MOBILE_HUB_CONFIG` (3181) remain hand-edited (S3C). Runtime permission override for Staff Expenses stays in `app.py`.
+- **Registry-derived navigation** — dispatch, desktop surfaces, static role gates, and mobile bottom nav + hubs all derive from `registry/navigation.py`. Residual drift risk: presentation helpers (`_MOBILE_HUB_CONFIG_ALIASES`, `_MOBILE_MORE_ACCORDION_EXCLUDE`, `_NAV_GROUP_KEYS`, permission overrides) remain in `app.py`.
+- **No business logic in navigation** — the registry is pure metadata + derivation; render functions stay thin.
 - **Legacy reroute surface** (`_LEGACY_*`) adds resolution-order complexity (NAV-UX-02-S6) — telemetry-gated, low risk.
 - **Business-logic independence:** the nav structures are pure data + a render function; **no accounting/business logic lives in navigation** — good, and must stay that way for the FastAPI/React target.
 
 ## 6. Recommended single source of truth
 
-- **One nav registry** (`registry/navigation.py` — **not yet created**) holding **per-page metadata**: `route_key`, `label`/i18n, `render_fn` reference, `surfaces` (sidebar/direct/mobile-hub), `accordion_group`, `roles`/permission, `react_route`, `hidden`, `legacy`, `order`, `icon`. **Derive** `_PAGE_DISPATCH`, `_NAV_ACCORDION`, `_NAV_DIRECT_PAGES`, `_NAV_ROLE_PAGES`, and the mobile config **from this one registry** instead of maintaining seven hand-synced lists.
+- **One nav registry** (`registry/navigation.py`) holding **per-page metadata** and deriving `_PAGE_DISPATCH`, `_NAV_ACCORDION`, `_NAV_DIRECT_PAGES`, `_NAV_ROLE_PAGES`, `_MOBILE_BOTTOM_NAV`, and `_MOBILE_HUB_CONFIG`.
 - This is **UI-independent and FastAPI/React-ready** (the `react_route` column is the migration contract from NAV-UX-02-S7) and is the natural home for the parity invariants the S1 tests already assert.
 - **Service-first:** the registry is data/metadata; render functions stay thin; no business logic moves into it.
 
@@ -72,8 +73,8 @@ Respect migration safety; **do not duplicate** the NAV-UX-02 S1–S7 work. Net-n
 | **NAV-ARCH-S2 — Introduce `registry/navigation.py`** | Per-page metadata registry; **derive `_PAGE_DISPATCH` only** | ✅ **Complete** |
 | **NAV-ARCH-S3A — Desktop derived** | Derive `_NAV_ACCORDION` + `_NAV_DIRECT_PAGES` from registry | ✅ **Complete** |
 | **NAV-ARCH-S3B — Role derived** | Derive `_NAV_ROLE_PAGES` from registry | ✅ **Complete** |
-| **NAV-ARCH-S3C — Mobile derived** | Derive `_MOBILE_BOTTOM_NAV` + `_MOBILE_HUB_CONFIG` from registry | 📋 **Next** |
-| **NAV-ARCH-S4 — React route contract** | `docs/NAV_ARCH_REACT_ROUTE_CONTRACT.md`; freeze `react_route` map | 📋 Planned |
+| **NAV-ARCH-S3C — Mobile derived** | Derive `_MOBILE_BOTTOM_NAV` + `_MOBILE_HUB_CONFIG` from registry | ✅ **Complete** |
+| **NAV-ARCH-S4 — React route contract** | `docs/NAV_ARCH_REACT_ROUTE_CONTRACT.md`; freeze `react_route` map | 📋 **Next** |
 
 **Defer** legacy-reroute retirement to the existing NAV-UX-02-S6 telemetry gate; **do not** re-open NAV-UX-02 S2/S4/S6 (already implemented).
 
@@ -98,4 +99,4 @@ Respect migration safety; **do not duplicate** the NAV-UX-02 S1–S7 work. Net-n
 
 ---
 
-*Audit refreshed 2026-06-17. Dispatch, desktop surfaces, and static role gates derive from `registry/navigation.py`. Permission-based Staff Expenses visibility remains runtime override in `app.py`. **Core risk: mobile hand-sync → drift** (S3C). Next: derive mobile nav.*
+*Audit refreshed 2026-06-17. All primary nav structures derive from `registry/navigation.py`. Next: freeze React route contract (S4).*

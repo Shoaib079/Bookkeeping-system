@@ -3,7 +3,7 @@
 S2: derives ``_PAGE_DISPATCH``.
 S3A: derives ``_NAV_ACCORDION`` and ``_NAV_DIRECT_PAGES``.
 S3B: derives ``_NAV_ROLE_PAGES`` (static role gates; permission overrides stay in app.py).
-Mobile config remains hand-edited until S3C.
+S3C: derives ``_MOBILE_BOTTOM_NAV`` and ``_MOBILE_HUB_CONFIG``.
 """
 
 from __future__ import annotations
@@ -498,6 +498,115 @@ def build_nav_role_pages() -> dict[str, list[str]]:
             p.route_key for p in sorted(NAV_PAGES, key=lambda row: row.order) if role in p.roles
         ]
     return role_pages
+
+
+MobileBottomSlot = tuple[str, str, str, str, str, str]
+MobileHubEntry = tuple[str, str, str | None, str | None]
+
+# Legacy mobile session hub keys (pre MOBILE-UX-01-A); not bottom-bar slots.
+_MOBILE_HUB_LEGACY_SESSION_KEYS = frozenset({"people", "banking"})
+
+
+def build_mobile_bottom_nav() -> tuple[MobileBottomSlot, ...]:
+    """Derive ``_MOBILE_BOTTOM_NAV`` — five slots: Home | Money | New | Reports | More."""
+    return (
+        ("home", NAV_HOME, "nav.bottom.home", "home", NAV_HOME, "home"),
+        ("hub", "money", "nav.bottom.money", "money", "Money", "landmark"),
+        ("new", NAV_NEW_TRANSACTION, "nav.bottom.new", "new", "New", "plus"),
+        ("hub", "reports", "nav.bottom.reports", "reports", NAV_REPORTS, "bar-chart"),
+        ("hub", "more", "nav.bottom.more", "more", "More", "menu"),
+    )
+
+
+def build_mobile_hub_config() -> dict[str, list[MobileHubEntry]]:
+    """Derive ``_MOBILE_HUB_CONFIG`` — money / reports / people / more hub entries."""
+    return {
+        "money": [
+            ("section", "close", None, "nav.mobile.section.close"),
+            ("page", NAV_CASH_RECONCILIATION, None, None),
+            ("page", NAV_EXTERNAL_SALES_VERIFICATION, None, None),
+            ("page", NAV_END_OF_DAY_CLOSE, None, None),
+            ("section", "bank", None, "nav.mobile.section.bank"),
+            ("page", NAV_BANKING, None, None),
+            ("page", NAV_RECON_HEALTH, None, None),
+            ("banking_import", "import", None, "nav.mobile.banking_import"),
+        ],
+        "reports": [
+            ("page", NAV_PROFIT_LOSS, None, None),
+            ("page", NAV_BALANCE_SHEET, None, None),
+            ("page", NAV_CASH_FLOW, None, None),
+            ("page", NAV_TXN_LEDGER, None, None),
+            ("report_sales", "sales", None, "nav.mobile.reports_sales"),
+            ("report_expenses", "expenses", None, "nav.mobile.reports_expenses"),
+        ],
+        "people": [
+            ("page", NAV_CUSTOMERS, None, None),
+            ("page", NAV_VENDORS, None, "nav.mobile.suppliers"),
+            ("page", NAV_RECEIVABLES, None, None),
+            ("page", NAV_PAYABLES, None, None),
+            ("page", NAV_WORKERS, None, None),
+            ("page", NAV_PARTNER_ACCOUNTS, None, None),
+        ],
+        "more": [
+            ("open_hub", "people", None, "nav.mobile.hub.people"),
+            ("section", "books", None, "nav.mobile.section.books"),
+            ("accordion", "accounting", None, None),
+            ("section", "history", None, "nav.mobile.section.history"),
+            ("accordion", "transactions", None, None),
+            ("page", NAV_INVENTORY, None, None),
+            ("section", "admin", None, "nav.mobile.section.admin"),
+            ("page", NAV_COMPANY_SETTINGS, None, None),
+            ("page", NAV_MEMBERS, None, None),
+            ("page", NAV_BACKUP_RESTORE, None, None),
+            ("page", NAV_AUDIT_LOG, None, None),
+        ],
+    }
+
+
+def build_mobile_hub_keys(
+    bottom_nav: tuple[MobileBottomSlot, ...] | None = None,
+) -> frozenset[str]:
+    """Derive ``_MOBILE_HUB_KEYS`` from bottom-bar hubs + legacy session aliases."""
+    validate_mobile_surfaces()
+    nav = bottom_nav or build_mobile_bottom_nav()
+    bar_hubs = {payload for kind, payload, *_rest in nav if kind == "hub"}
+    return frozenset(bar_hubs) | _MOBILE_HUB_LEGACY_SESSION_KEYS
+
+
+def validate_mobile_surfaces() -> None:
+    """Raise on invalid mobile bottom nav / hub configuration."""
+    bottom = build_mobile_bottom_nav()
+    if len(bottom) != 5:
+        raise ValueError(f"Mobile bottom nav must have exactly 5 slots, got {len(bottom)}")
+
+    hub_config = build_mobile_hub_config()
+    accordion_groups = {g.group_key for g in NAV_ACCORDION_GROUPS}
+    dispatch_keys = {p.route_key for p in NAV_PAGES}
+
+    bar_hub_targets = {payload for kind, payload, *_ in bottom if kind == "hub"}
+    missing_hubs = bar_hub_targets - set(hub_config)
+    if missing_hubs:
+        raise ValueError(f"Bottom hub targets missing from hub config: {missing_hubs}")
+
+    mobile_page_keys: list[str] = []
+    for hub_key, entries in hub_config.items():
+        for kind, payload, *_rest in entries:
+            if kind == "page":
+                if payload not in dispatch_keys:
+                    raise ValueError(f"Mobile hub page {payload!r} missing from dispatch")
+                mobile_page_keys.append(payload)
+            elif kind == "accordion":
+                if payload not in accordion_groups:
+                    raise ValueError(f"Mobile accordion {payload!r} not in NAV_ACCORDION_GROUPS")
+            elif kind == "open_hub":
+                if payload not in hub_config:
+                    raise ValueError(f"open_hub target {payload!r} missing from hub config")
+
+    for hub_key, entries in hub_config.items():
+        pages = [payload for kind, payload, *_ in entries if kind == "page"]
+        hub_dupes = {p for p in pages if pages.count(p) > 1}
+        if hub_dupes:
+            raise ValueError(f"Duplicate page entries in hub {hub_key!r}: {hub_dupes}")
 
 
 def build_page_dispatch(

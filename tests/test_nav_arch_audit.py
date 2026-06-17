@@ -77,7 +77,7 @@ def test_inventory_mechanisms_with_line_numbers(doc_text):
     assert str(_app_line("def _render_navigation_tree(")) in doc_text
     assert str(_app_line("_NAV_ACCORDION = build_nav_accordion()")) in doc_text
     assert str(_app_line("_NAV_ROLE_PAGES = build_nav_role_pages()")) in doc_text
-    assert str(_app_line("_MOBILE_BOTTOM_NAV = (")) in doc_text
+    assert str(_app_line("_MOBILE_BOTTOM_NAV = build_mobile_bottom_nav()")) in doc_text
 
 
 def test_no_option_menu(doc_text):
@@ -99,10 +99,10 @@ def test_settings_inside_settings_checked(doc_text):
     assert "not a nested-settings recursion" in low or "distinct admin pages" in low
 
 
-def test_risk_seven_structures(doc_text):
+def test_risk_areas_documented(doc_text):
     low = doc_text.lower()
-    assert "seven" in low and "sync" in low
-    assert "drift" in low
+    assert "risk areas" in low
+    assert "registry-derived" in low or "registry/navigation.py" in low
     assert "no" in low and "business logic" in low and "navigation" in low
 
 

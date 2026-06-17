@@ -177,6 +177,9 @@ from registry.locales.i18n_maps import (
 from registry.i18n import nav_display, normalize_locale, page_title, t
 from registry.navigation import (
     NavPageDef,
+    build_mobile_bottom_nav,
+    build_mobile_hub_config,
+    build_mobile_hub_keys,
     build_nav_accordion,
     build_nav_all_pages,
     build_nav_direct_pages,
@@ -3161,16 +3164,8 @@ def _nav_page_button(
 # Bottom bar: Home | Money | New (FAB, center) | Reports | More
 # (kind, page_or_hub_key, i18n_key, slug, label_fallback, tab_icon)
 # MOBILE-NAV-ICON-01 — last field is the icon_svg registry name (was emoji).
-_MOBILE_BOTTOM_NAV = (
-    ("home", NAV_HOME, "nav.bottom.home", "home", NAV_HOME, "home"),
-    ("hub", "money", "nav.bottom.money", "money", "Money", "landmark"),
-    ("new", NAV_NEW_TRANSACTION, "nav.bottom.new", "new", "New", "plus"),
-    ("hub", "reports", "nav.bottom.reports", "reports", NAV_REPORTS, "bar-chart"),
-    ("hub", "more", "nav.bottom.more", "more", "More", "menu"),
-)
-_MOBILE_HUB_KEYS = frozenset(
-    payload for kind, payload, _, _, _, _ in _MOBILE_BOTTOM_NAV if kind == "hub"
-) | frozenset({"people", "banking"})  # banking: legacy session key (pre MOBILE-UX-01-A)
+_MOBILE_BOTTOM_NAV = build_mobile_bottom_nav()
+_MOBILE_HUB_KEYS = build_mobile_hub_keys(_MOBILE_BOTTOM_NAV)
 _MOBILE_HUB_CONFIG_ALIASES = {"banking": "money"}
 
 # Pages omitted from mobile More accordions (desktop sidebar unchanged).
@@ -3178,49 +3173,7 @@ _MOBILE_MORE_ACCORDION_EXCLUDE: dict[str, frozenset[str]] = {
     "accounting": frozenset({NAV_RECON_HEALTH}),
 }
 
-# (hub_key, entry_kind, payload, label_i18n_or_none)
-# entry_kind: page | banking_import | report_sales | report_expenses | section
-_MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
-    "money": [
-        ("section", "close", None, "nav.mobile.section.close"),
-        ("page", NAV_CASH_RECONCILIATION, None, None),
-        ("page", NAV_EXTERNAL_SALES_VERIFICATION, None, None),
-        ("page", NAV_END_OF_DAY_CLOSE, None, None),
-        ("section", "bank", None, "nav.mobile.section.bank"),
-        ("page", NAV_BANKING, None, None),
-        ("page", NAV_RECON_HEALTH, None, None),
-        ("banking_import", "import", None, "nav.mobile.banking_import"),
-    ],
-    "reports": [
-        ("page", NAV_PROFIT_LOSS, None, None),
-        ("page", NAV_BALANCE_SHEET, None, None),
-        ("page", NAV_CASH_FLOW, None, None),
-        ("page", _TXN_LEDGER_PAGE_KEY, None, None),
-        ("report_sales", "sales", None, "nav.mobile.reports_sales"),
-        ("report_expenses", "expenses", None, "nav.mobile.reports_expenses"),
-    ],
-    "people": [
-        ("page", NAV_CUSTOMERS, None, None),
-        ("page", NAV_VENDORS, None, "nav.mobile.suppliers"),
-        ("page", NAV_RECEIVABLES, None, None),
-        ("page", NAV_PAYABLES, None, None),
-        ("page", NAV_WORKERS, None, None),
-        ("page", NAV_PARTNER_ACCOUNTS, None, None),
-    ],
-    "more": [
-        ("open_hub", "people", None, "nav.mobile.hub.people"),
-        ("section", "books", None, "nav.mobile.section.books"),
-        ("accordion", "accounting", None, None),
-        ("section", "history", None, "nav.mobile.section.history"),
-        ("accordion", "transactions", None, None),
-        ("page", NAV_INVENTORY, None, None),
-        ("section", "admin", None, "nav.mobile.section.admin"),
-        ("page", NAV_COMPANY_SETTINGS, None, None),
-        ("page", NAV_MEMBERS, None, None),
-        ("page", NAV_BACKUP_RESTORE, None, None),
-        ("page", NAV_AUDIT_LOG, None, None),
-    ],
-}
+_MOBILE_HUB_CONFIG = build_mobile_hub_config()
 
 # Sidebar / mobile hub accordion — NAV-ARCH-S3A: derived from registry.navigation.
 _NAV_ACCORDION = build_nav_accordion()

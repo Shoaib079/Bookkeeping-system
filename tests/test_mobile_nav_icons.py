@@ -12,6 +12,8 @@ import re
 import sys
 from pathlib import Path
 
+import app as erp
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -26,9 +28,7 @@ _EMOJI_RE = re.compile(
 
 
 def _nav_tuple_block() -> str:
-    m = re.search(r"_MOBILE_BOTTOM_NAV = \((.*?)\n\)", APP, flags=re.S)
-    assert m, "_MOBILE_BOTTOM_NAV tuple not found"
-    return m.group(1)
+    return repr(erp._MOBILE_BOTTOM_NAV)
 
 
 def _render_fn_block() -> str:
@@ -46,11 +46,10 @@ def test_bottom_nav_definition_has_no_emoji():
 
 
 def test_bottom_nav_icons_exist_in_svg_registry():
-    block = _nav_tuple_block()
-    icons = re.findall(r',\s*"([a-z][a-z0-9-]*)"\)', block)
-    assert icons, "no icon names parsed from _MOBILE_BOTTOM_NAV"
+    icons = {slot[5] for slot in erp._MOBILE_BOTTOM_NAV}
+    assert icons, "no icon names in _MOBILE_BOTTOM_NAV"
     expected = {"home", "landmark", "plus", "bar-chart", "menu"}
-    assert set(icons) == expected, f"unexpected mapping: {icons}"
+    assert icons == expected, f"unexpected mapping: {icons}"
     for name in icons:
         assert name in _ICON_PATHS, f"icon {name!r} missing from icon_svg registry"
         svg = icon_svg(name)
