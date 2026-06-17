@@ -176,13 +176,19 @@ def test_implementation_slices_documented(doc_text, slice_id):
     assert slice_id in doc_text.lower(), f"Slice plan missing: {slice_id}"
 
 
-def test_s0_complete_s1_next(doc_text):
+def test_epic_complete_all_slices_marked(doc_text):
+    low = doc_text.lower()
+    table = low.split("implementation slices")[1][:2000]
+    for sid in ("mono-theme-02-s1", "mono-theme-02-s2", "mono-theme-02-s3", "mono-theme-02-s4", "mono-theme-02-s5"):
+        assert sid in table
+        chunk = table.split(sid)[1][:120]
+        assert "complete" in chunk or "✅" in chunk, f"{sid} not marked complete"
+
+
+def test_s0_complete_s1_documented(doc_text):
     low = doc_text.lower()
     assert "mono-theme-02-s0" in low
-    table_block = low.split("implementation slices")[1][:1200]
-    assert "complete" in table_block.split("mono-theme-02-s0")[1][:300]
-    assert "mono-theme-02-s1" in low
-    assert "sidebar polish" in low or "sidebar" in low.split("mono-theme-02-s1")[1][:200]
+    assert "complete" in low.split("mono-theme-02-s0")[1][:300]
 
 
 def test_doc_no_raw_hex_outside_cited_accent(doc_text):

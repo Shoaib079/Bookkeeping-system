@@ -239,7 +239,7 @@ docker-compose down
 | **NAV-ARCH** — Navigation single source of truth | ✅ **S4 complete** — registry + React route contract frozen — see [§ NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
 | **UI-SYSTEM-02** — ERP-wide UI & theme modernization | ✅ **S1–S5 complete** — see [§ UI-SYSTEM-02](#ui-system-02--erp-wide-ui--theme-modernization) |
 | **MONO-THEME-01** — Option A+ unified mono ERP theme | ✅ **Complete** — S1–S7 — see [§ MONO-THEME-01](#mono-theme-01--option-a-unified-mono-erp-theme) |
-| **MONO-THEME-02** — Real UI visual refinement pass | 🟡 **S2 complete** — top bar — see [§ MONO-THEME-02](#mono-theme-02--real-ui-visual-refinement-pass) |
+| **MONO-THEME-02** — Real UI visual refinement pass | ✅ **Complete** — S0–S5 — see [§ MONO-THEME-02](#mono-theme-02--real-ui-visual-refinement-pass) |
 | **MOB-AT-C1** — Concept C Mobile AT UI | ✅ **Accepted** — reference implementation; 747 tests passing |
 | **MOBILE-11** — Mobile Design System | ✅ **Approved** — `docs/MOBILE_UI_SYSTEM.md` is the governing document for all future mobile work |
 | **MOBILE-12** — Design Governance | ✅ **Approved** — open decisions recorded; phased migration path defined |
@@ -286,6 +286,7 @@ docker-compose down
 | **REPORTS-SERVICE-01** | 🟡 **Partial** — query/read layer in `services/read_*`; Streamlit presentation (`render_*`, trial balance loop) remains in `app.py` until React |
 | **BANKING-SERVICE-01** | 🟡 **Partial** — `write_banking` + `write_reconciliation` + `read_reconciliation` shipped; **BS-02 ✅** · **BS-04 ✅** · `match_post` / `company_card` `_app()` coupling remains · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) |
 | **FastAPI foundation** | 🟡 **Partial (strong)** — P0/P1/P2 routes + 38+ `test_fastapi_*` files; writes feature-flagged; Streamlit primary; **not production-complete** |
+| **FASTAPI-REACT-00** | ✅ **Audit complete** — baseline migration snapshot; see [§ FASTAPI-REACT-00](#fastapi-react-00--migration-baseline-audit) |
 | **PostgreSQL runtime** | 🟡 **Partial** — **production cutover ✅ (testing)** · flag-gated PG runtime wired · SQLite rollback preserved |
 | **React migration** | ⬜ **Not started** — `ERP_DS_05` spec only; no SPA; preceded by [NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
 | **FULL-SERVICE-READINESS-AUDIT** | ✅ **Recorded (2026-06-05)** — whole-repo service-extraction snapshot · [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) |
@@ -1353,7 +1354,7 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **MONO-THEME-01-S6** | Reports, tables, banking statuses | ✅ **Complete** |
 | **MONO-THEME-01-S7** | Cleanup + React contract update | ✅ **Complete** |
 
-**Next slice:** MONO-THEME-01 epic **complete** — **MONO-THEME-02-S4** tables (S1 sidebar ✅ · S2 top bar ✅ · S3 dashboard ✅).
+**Next slice:** MONO-THEME-02 epic **complete** — **FASTAPI-REACT-00** baseline audit (see [§ FASTAPI-REACT-00](#fastapi-react-00--migration-baseline-audit)).
 
 ---
 
@@ -1365,7 +1366,7 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 
 **Goal:** Make the actual desktop/mobile app match the approved Option A+ direction — **refined, denser, stronger hierarchy** — without redesign, new colors, or business-logic changes.
 
-**Contract:** [MONO_THEME_02_VISUAL_CONTRACT.md](./docs/MONO_THEME_02_VISUAL_CONTRACT.md) · **Tests:** `tests/test_mono_theme_02_visual_contract.py`, `tests/test_mono_theme_02_s1_sidebar_polish.py`, `tests/test_mono_theme_02_s2_topbar_refinement.py`, `tests/test_mono_theme_02_s3_dashboard_refinement.py`, `tests/test_mono_theme_02_s4_table_refinement.py`, `tests/test_mono_theme_02_s5_mobile_parity.py`
+**Contract:** [MONO_THEME_02_VISUAL_CONTRACT.md](./docs/MONO_THEME_02_VISUAL_CONTRACT.md) · **Tests:** `tests/test_mono_theme_02_visual_contract.py`, `tests/test_mono_theme_02_epic_matrix.py`, slice tests S1–S5
 
 **Hard rules:** No accounting/PostgreSQL/nav-route/business-logic changes · no new palette · existing `--erp-*` grammar tokens only · semantic colors immutable · CSS/layout only per slice.
 
@@ -1379,6 +1380,28 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **MONO-THEME-02-S5** | Mobile parity — bottom nav, KPI chips, hub sheets | ✅ **Complete** |
 
 **Next slice:** MONO-THEME-02 epic **complete**.
+
+---
+
+## FASTAPI-REACT-00 — Migration Baseline Audit
+
+**Status:** ✅ **Complete (audit only)** — baseline snapshot for FastAPI + React planning  
+**Priority:** High — gates FASTAPI-REACT-01+ implementation slices  
+**Depends on:** POSTING-SERVICE-01 extracted · FASTAPI-P0/P1/P2 partial · MONO-THEME-02 complete · UI/NAV React contracts frozen
+
+**Goal:** Single authoritative audit of FastAPI foundation state, frozen React contracts, blockers, and phased slice plan — **no implementation**.
+
+**Audit:** [FASTAPI_REACT_00_AUDIT.md](./docs/FASTAPI_REACT_00_AUDIT.md) · **Tests:** `tests/test_fastapi_react_00_audit.py`
+
+**Hard rules:** No accounting changes · Streamlit remains primary · no React `package.json` bootstrap · no Docker file edits unless required · does **not** authorize production API cutover.
+
+| Slice | Scope | Status |
+|-------|--------|--------|
+| **FASTAPI-REACT-00** | Baseline audit — FastAPI partial, React not started, contracts inventory | ✅ **Complete** |
+| **FASTAPI-REACT-01** | PS-P7 posting boundary hardening | 📋 Planned |
+| **FASTAPI-REACT-02+** | Auth spine, API hardening, React bootstrap (see audit §6) | 📋 Planned |
+
+**Next slice:** **FASTAPI-REACT-01** — posting boundary hardening (when approved).
 
 ---
 
@@ -3469,6 +3492,8 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-00 (closure)** — Migration baseline audit: FastAPI partial, React not started, frozen contracts inventory, blocker matrix, FASTAPI-REACT-01+ slice plan; `docs/FASTAPI_REACT_00_AUDIT.md` + `tests/test_fastapi_react_00_audit.py`. Audit only. Next: **FASTAPI-REACT-01** (posting boundary hardening). |
+| 2026-06-05 | **MONO-THEME-02 (epic closure)** — S0–S5 complete; epic matrix `tests/test_mono_theme_02_epic_matrix.py`; implementation audit updated. Tags: `mono-theme-02-s0` through `mono-theme-02-s5`. |
 | 2026-06-05 | **MONO-THEME-02-S5 (closure)** — Mobile parity: removed widgets mob_bar/hub override drift, mobile KPI chips + tables use `--erp-card-*`/`--erp-table-*`, hub sheet card radius; `tests/test_mono_theme_02_s5_mobile_parity.py`. Tag: `mono-theme-02-s5-mobile-parity`. **MONO-THEME-02 epic complete.** |
 | 2026-06-05 | **MONO-THEME-02-S4 (closure)** — Desktop table density: tighter `.erp-fin-table`/`.erp-data-table` padding, sticky fin headers, stTable row hover + tabular-nums; `tests/test_mono_theme_02_s4_table_refinement.py`. Tag: `mono-theme-02-s4-table-refinement`. Next: **MONO-THEME-02-S5** (mobile parity). |
 | 2026-06-05 | **MONO-THEME-02-S3 (closure)** — Desktop dashboard density: tighter KPI grid/cards, card-shell insight rows, activity hover focal point, bordered Streamlit panels; `tests/test_mono_theme_02_s3_dashboard_refinement.py`. Tag: `mono-theme-02-s3-dashboard-refinement`. Next: **MONO-THEME-02-S4** (tables). |
