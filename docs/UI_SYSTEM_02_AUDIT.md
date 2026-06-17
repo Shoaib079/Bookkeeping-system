@@ -260,12 +260,12 @@ Home, New Transaction, Transaction Ledger          [direct — matches registry 
 
 | ID | Item | Location | Action (future slice) |
 |----|------|----------|----------------------|
-| UI-02-D1 | `.erp-mobile-report-filters` visibility duplicate | `theme.css:1106–1108` | Remove in S4 (line 1353 is live) |
-| UI-02-D2 | 96× `[data-pct]` expense bar width rules | `theme.css:1789–1884` | Replace with dynamic width in S4 |
+| UI-02-D1 | `.erp-mobile-report-filters` visibility duplicate | `theme.css:1106–1108` | **Resolved** S4 — desktop hide only |
+| UI-02-D2 | 96× `[data-pct]` expense bar width rules | `theme.css:1789–1884` | **Resolved** S4 — inline width in `app.py` |
 | UI-02-D3 | `--role-*` hue tokens unused for mono avatar policy | `theme.css:46–52` | Deprecate in S2 token registry |
 | UI-02-D4 | `_NAV_GROUP_KEYS` duplicates registry group i18n keys | `app.py:3049–3058` | Derive from registry in S3 |
-| UI-02-D5 | Header mobile layout duplicated | `theme.css` + `mobile_shell.css` | Consolidate to `mobile_header.css` in S4 |
-| UI-02-D6 | `.erp-mob-kpi-grid` in 3 files | mobile_components/reports/txn | Unify KPI grid owner in S4 |
+| UI-02-D5 | Header mobile layout duplicated | `theme.css` + `mobile_shell.css` | Deferred to S5 — MOBILE-14 ownership doc governs |
+| UI-02-D6 | `.erp-mob-kpi-grid` in 3 files | mobile_components/reports/txn | **Resolved** S4 — `mobile_components.css` + modifiers |
 | UI-02-D7 | `banking.css` stub (30 lines) | `ui/banking.css` | Expand in Banking UX epic, not here |
 
 **Not dead (confirmed in use):** `.nav-grp-hdr-mark`, `.nav-item-active-mark`, `.erp-dash-*`, `.erp-co-switch-confirm-host`, chip `st-key-mob_rpt_sel_*` rules.
@@ -280,10 +280,10 @@ Home, New Transaction, Transaction Ledger          [direct — matches registry 
 | **UI-SYSTEM-02-S1 — Audit** | This document + contract tests | ✅ **Complete** |
 | **UI-SYSTEM-02-S2 — Design token registry** | Centralize colour/spacing/radius/shadow/typography; deprecate stale role hues; resolve UI-02-C1 `--hdr-h` | ✅ **Complete** |
 | **UI-SYSTEM-02-S3 — Sidebar modernization** | Visual grouping/spacing/icons only; derive presentation from registry; no route moves | ✅ **Complete** |
-| **UI-SYSTEM-02-S4 — Unified shell/component pass** | Dedupe header/sidebar mobile rules; KPI grid single owner; expense bar ladder; desktop/mobile component parity | 📋 Planned |
+| **UI-SYSTEM-02-S4 — Unified shell/component pass** | Dead report-filters CSS; expense-bar inline width; KPI grid single owner; mob-space → erp-space aliases | ✅ **Complete** |
 | **UI-SYSTEM-02-S5 — Theme governance / React design contract** | `docs/UI_SYSTEM_02_REACT_DESIGN_CONTRACT.md`; component prop map; retire Streamlit selector list | 📋 Planned |
 
-**Recommended next slice:** **UI-SYSTEM-02-S4** (unified shell/component pass).
+**Recommended next slice:** **UI-SYSTEM-02-S5** (theme governance / React design contract).
 
 ---
 
@@ -292,6 +292,7 @@ Home, New Transaction, Transaction Ledger          [direct — matches registry 
 | Guard | Test module |
 |-------|-------------|
 | Audit doc contract | `tests/test_ui_system_02_audit.py` |
+| S4 shell/component pass | `tests/test_ui_system_02_s4_shell_component_pass.py` |
 | Theme authority | `tests/test_theme_authority01.py` |
 | UI-1 design language | `tests/test_ui1_design_language.py` |
 | Mobile layout keys | `tests/test_mobile_layout_contract.py` |
@@ -307,4 +308,4 @@ Home, New Transaction, Transaction Ledger          [direct — matches registry 
 
 ---
 
-*Audit dated 2026-06-05. Post NAV-ARCH S0–S4; S2 token registry shipped; next S3 sidebar modernization.*
+*Audit dated 2026-06-05. Post NAV-ARCH S0–S4; S4 shell/component pass shipped; next S5 React design contract.*

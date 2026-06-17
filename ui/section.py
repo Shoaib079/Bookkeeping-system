@@ -163,8 +163,11 @@ def mobile_kpi_chip_html(label: str, value: str, *, variant: str = "") -> str:
     )
 
 
-def mobile_kpi_grid_html(*chips: str) -> str:
-    return f'<div class="erp-mob-kpi-grid">{"".join(chips)}</div>'
+def mobile_kpi_grid_html(*chips: str, modifier: str = "") -> str:
+    cls = "erp-mob-kpi-grid"
+    if modifier:
+        cls += f" erp-mob-kpi-grid--{modifier}"
+    return f'<div class="{cls}">{"".join(chips)}</div>'
 
 
 def mobile_empty_state_html(message: str) -> str:

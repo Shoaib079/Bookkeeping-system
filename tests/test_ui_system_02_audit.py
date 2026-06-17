@@ -203,10 +203,10 @@ def test_duplicate_class_selectors_bounded():
     assert len(multi) <= 20, f"Unexpected cross-file selector growth: {len(multi)}"
 
 
-def test_dead_report_filters_duplicate_still_present_for_s4():
-    """UI-02-D1: redundant rule documented; must not be silently removed before S4."""
+def test_dead_report_filters_duplicate_removed_in_s4():
+    """UI-02-D1 resolved in S4 — only desktop hide rule remains."""
     theme = (ROOT / "ui" / "theme.css").read_text(encoding="utf-8")
-    assert theme.count(".erp-mobile-report-filters") >= 2
+    assert theme.count(".erp-mobile-report-filters") == 1
 
 
 def test_hdr_h_mobile_conflict_resolved():

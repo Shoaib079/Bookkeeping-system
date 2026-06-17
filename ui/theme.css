@@ -1120,9 +1120,6 @@
   [class*="st-key-hdr_shell_inner"] [data-testid="stTextInput"] input {
     width: 100% !important;
   }
-  .erp-mobile-report-filters {
-    display: block;
-  }
   .dev-mode-stripe {
     font-size: 10px !important;
     padding: 4px 8px !important;
@@ -1803,102 +1800,6 @@ section[data-testid="stSidebarContent"] {
   font-weight: 700;
   white-space: nowrap;
 }
-.erp-dash-expense-bar-fill[data-pct="5"] { width: 5%; }
-.erp-dash-expense-bar-fill[data-pct="6"] { width: 6%; }
-.erp-dash-expense-bar-fill[data-pct="7"] { width: 7%; }
-.erp-dash-expense-bar-fill[data-pct="8"] { width: 8%; }
-.erp-dash-expense-bar-fill[data-pct="9"] { width: 9%; }
-.erp-dash-expense-bar-fill[data-pct="10"] { width: 10%; }
-.erp-dash-expense-bar-fill[data-pct="11"] { width: 11%; }
-.erp-dash-expense-bar-fill[data-pct="12"] { width: 12%; }
-.erp-dash-expense-bar-fill[data-pct="13"] { width: 13%; }
-.erp-dash-expense-bar-fill[data-pct="14"] { width: 14%; }
-.erp-dash-expense-bar-fill[data-pct="15"] { width: 15%; }
-.erp-dash-expense-bar-fill[data-pct="16"] { width: 16%; }
-.erp-dash-expense-bar-fill[data-pct="17"] { width: 17%; }
-.erp-dash-expense-bar-fill[data-pct="18"] { width: 18%; }
-.erp-dash-expense-bar-fill[data-pct="19"] { width: 19%; }
-.erp-dash-expense-bar-fill[data-pct="20"] { width: 20%; }
-.erp-dash-expense-bar-fill[data-pct="21"] { width: 21%; }
-.erp-dash-expense-bar-fill[data-pct="22"] { width: 22%; }
-.erp-dash-expense-bar-fill[data-pct="23"] { width: 23%; }
-.erp-dash-expense-bar-fill[data-pct="24"] { width: 24%; }
-.erp-dash-expense-bar-fill[data-pct="25"] { width: 25%; }
-.erp-dash-expense-bar-fill[data-pct="26"] { width: 26%; }
-.erp-dash-expense-bar-fill[data-pct="27"] { width: 27%; }
-.erp-dash-expense-bar-fill[data-pct="28"] { width: 28%; }
-.erp-dash-expense-bar-fill[data-pct="29"] { width: 29%; }
-.erp-dash-expense-bar-fill[data-pct="30"] { width: 30%; }
-.erp-dash-expense-bar-fill[data-pct="31"] { width: 31%; }
-.erp-dash-expense-bar-fill[data-pct="32"] { width: 32%; }
-.erp-dash-expense-bar-fill[data-pct="33"] { width: 33%; }
-.erp-dash-expense-bar-fill[data-pct="34"] { width: 34%; }
-.erp-dash-expense-bar-fill[data-pct="35"] { width: 35%; }
-.erp-dash-expense-bar-fill[data-pct="36"] { width: 36%; }
-.erp-dash-expense-bar-fill[data-pct="37"] { width: 37%; }
-.erp-dash-expense-bar-fill[data-pct="38"] { width: 38%; }
-.erp-dash-expense-bar-fill[data-pct="39"] { width: 39%; }
-.erp-dash-expense-bar-fill[data-pct="40"] { width: 40%; }
-.erp-dash-expense-bar-fill[data-pct="41"] { width: 41%; }
-.erp-dash-expense-bar-fill[data-pct="42"] { width: 42%; }
-.erp-dash-expense-bar-fill[data-pct="43"] { width: 43%; }
-.erp-dash-expense-bar-fill[data-pct="44"] { width: 44%; }
-.erp-dash-expense-bar-fill[data-pct="45"] { width: 45%; }
-.erp-dash-expense-bar-fill[data-pct="46"] { width: 46%; }
-.erp-dash-expense-bar-fill[data-pct="47"] { width: 47%; }
-.erp-dash-expense-bar-fill[data-pct="48"] { width: 48%; }
-.erp-dash-expense-bar-fill[data-pct="49"] { width: 49%; }
-.erp-dash-expense-bar-fill[data-pct="50"] { width: 50%; }
-.erp-dash-expense-bar-fill[data-pct="51"] { width: 51%; }
-.erp-dash-expense-bar-fill[data-pct="52"] { width: 52%; }
-.erp-dash-expense-bar-fill[data-pct="53"] { width: 53%; }
-.erp-dash-expense-bar-fill[data-pct="54"] { width: 54%; }
-.erp-dash-expense-bar-fill[data-pct="55"] { width: 55%; }
-.erp-dash-expense-bar-fill[data-pct="56"] { width: 56%; }
-.erp-dash-expense-bar-fill[data-pct="57"] { width: 57%; }
-.erp-dash-expense-bar-fill[data-pct="58"] { width: 58%; }
-.erp-dash-expense-bar-fill[data-pct="59"] { width: 59%; }
-.erp-dash-expense-bar-fill[data-pct="60"] { width: 60%; }
-.erp-dash-expense-bar-fill[data-pct="61"] { width: 61%; }
-.erp-dash-expense-bar-fill[data-pct="62"] { width: 62%; }
-.erp-dash-expense-bar-fill[data-pct="63"] { width: 63%; }
-.erp-dash-expense-bar-fill[data-pct="64"] { width: 64%; }
-.erp-dash-expense-bar-fill[data-pct="65"] { width: 65%; }
-.erp-dash-expense-bar-fill[data-pct="66"] { width: 66%; }
-.erp-dash-expense-bar-fill[data-pct="67"] { width: 67%; }
-.erp-dash-expense-bar-fill[data-pct="68"] { width: 68%; }
-.erp-dash-expense-bar-fill[data-pct="69"] { width: 69%; }
-.erp-dash-expense-bar-fill[data-pct="70"] { width: 70%; }
-.erp-dash-expense-bar-fill[data-pct="71"] { width: 71%; }
-.erp-dash-expense-bar-fill[data-pct="72"] { width: 72%; }
-.erp-dash-expense-bar-fill[data-pct="73"] { width: 73%; }
-.erp-dash-expense-bar-fill[data-pct="74"] { width: 74%; }
-.erp-dash-expense-bar-fill[data-pct="75"] { width: 75%; }
-.erp-dash-expense-bar-fill[data-pct="76"] { width: 76%; }
-.erp-dash-expense-bar-fill[data-pct="77"] { width: 77%; }
-.erp-dash-expense-bar-fill[data-pct="78"] { width: 78%; }
-.erp-dash-expense-bar-fill[data-pct="79"] { width: 79%; }
-.erp-dash-expense-bar-fill[data-pct="80"] { width: 80%; }
-.erp-dash-expense-bar-fill[data-pct="81"] { width: 81%; }
-.erp-dash-expense-bar-fill[data-pct="82"] { width: 82%; }
-.erp-dash-expense-bar-fill[data-pct="83"] { width: 83%; }
-.erp-dash-expense-bar-fill[data-pct="84"] { width: 84%; }
-.erp-dash-expense-bar-fill[data-pct="85"] { width: 85%; }
-.erp-dash-expense-bar-fill[data-pct="86"] { width: 86%; }
-.erp-dash-expense-bar-fill[data-pct="87"] { width: 87%; }
-.erp-dash-expense-bar-fill[data-pct="88"] { width: 88%; }
-.erp-dash-expense-bar-fill[data-pct="89"] { width: 89%; }
-.erp-dash-expense-bar-fill[data-pct="90"] { width: 90%; }
-.erp-dash-expense-bar-fill[data-pct="91"] { width: 91%; }
-.erp-dash-expense-bar-fill[data-pct="92"] { width: 92%; }
-.erp-dash-expense-bar-fill[data-pct="93"] { width: 93%; }
-.erp-dash-expense-bar-fill[data-pct="94"] { width: 94%; }
-.erp-dash-expense-bar-fill[data-pct="95"] { width: 95%; }
-.erp-dash-expense-bar-fill[data-pct="96"] { width: 96%; }
-.erp-dash-expense-bar-fill[data-pct="97"] { width: 97%; }
-.erp-dash-expense-bar-fill[data-pct="98"] { width: 98%; }
-.erp-dash-expense-bar-fill[data-pct="99"] { width: 99%; }
-.erp-dash-expense-bar-fill[data-pct="100"] { width: 100%; }
 
 .erp-dash-insight-row {
   display: flex;

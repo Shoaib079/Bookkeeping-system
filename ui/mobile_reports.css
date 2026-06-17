@@ -30,14 +30,7 @@
     padding: 0 !important;
   }
 
-  /* Cash flow KPI row — shared erp-mob-kpi-grid */
-  [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] .erp-mob-kpi-grid {
-    margin: 0 0 var(--mob-space-3) !important;
-  }
-
-  [data-testid="stMain"] [class*="st-key-mob_rpt_cf_kpi"] .erp-mob-kpi-value {
-    font-size: 14px !important;
-  }
+  /* Cash flow KPI — layout/typography owned by mobile_components.css (--reports-cf modifier) */
 
   /* Global mobile date bar — single surface (no nested expanders) */
   [data-testid="stMain"] .erp-mobile-report-filters ~ [data-testid="stExpander"],

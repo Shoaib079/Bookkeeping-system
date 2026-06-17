@@ -35,8 +35,15 @@ def test_dashboard_welcome_uses_flat_card_class():
 
 def test_dashboard_no_inline_styles_d2():
     src = _dashboard_src()
-    assert 'style="' not in src
-    assert "style='" not in src
+    # UI-SYSTEM-02-S4: dynamic expense-bar width is the only sanctioned inline style.
+    lines = [
+        ln
+        for ln in src.splitlines()
+        if not ("erp-dash-expense-bar-fill" in ln and 'style="width:' in ln)
+    ]
+    joined = "\n".join(lines)
+    assert 'style="' not in joined
+    assert "style='" not in joined
 
 
 def test_dashboard_named_alert_card_not_inline_border():

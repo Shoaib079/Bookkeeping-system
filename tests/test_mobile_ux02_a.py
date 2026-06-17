@@ -93,6 +93,9 @@ def test_pill_styles_not_duplicated_in_txh_css():
 
 
 def test_cf_kpi_uses_shared_chip_not_card():
-    reports = _read("ui", "mobile_reports.css")
-    assert "erp-mob-kpi-grid" in reports
-    assert ".card" not in reports.split("mob_rpt_cf_kpi")[1].split("Global mobile date")[0]
+    app = _read("app.py")
+    components = _read("ui", "mobile_components.css")
+    cf_block = app.split('key="mob_rpt_cf_kpi"')[1][:800]
+    assert 'modifier="reports-cf"' in cf_block
+    assert ".erp-mob-kpi-grid--reports-cf" in components
+    assert 'class="card"' not in cf_block

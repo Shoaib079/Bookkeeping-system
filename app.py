@@ -11184,7 +11184,7 @@ def render_dashboard(session):
                         f'<div class="erp-dash-expense-bar-row">'
                         f'<span class="erp-dash-expense-bar-label">{_lbl}</span>'
                         f'<div class="erp-dash-expense-bar-track">'
-                        f'<div class="erp-dash-expense-bar-fill" data-pct="{_pw}">'
+                        f'<div class="erp-dash-expense-bar-fill" style="width:{_pw}%;">'
                         f'<span class="erp-dash-expense-bar-val">'
                         f'{currency} {val:,.0f}</span></div></div></div>'
                     )
@@ -25621,6 +25621,7 @@ def render_cash_flow(session, start_date=None, end_date=None):
                 _cf_kpi(_t("cf.net_operating"), net_op),
                 _cf_kpi(_t("cf.net_financing"), net_fin),
                 _cf_kpi(_t("cf.net_change"), net_total),
+                modifier="reports-cf",
             ),
             unsafe_allow_html=True,
         )

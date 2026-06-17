@@ -1,12 +1,12 @@
 /* MOBILE-UX-02-A — shared mobile component grammar (token-driven; extends --theme-*) */
 
 :root {
-  --mob-space-1: 4px;
-  --mob-space-2: 8px;
-  --mob-space-3: 12px;
-  --mob-space-4: 16px;
-  --mob-space-5: 24px;
-  --mob-space-6: 32px;
+  --mob-space-1: var(--erp-space-1, 4px);
+  --mob-space-2: var(--erp-space-2, 8px);
+  --mob-space-3: var(--erp-space-3, 12px);
+  --mob-space-4: var(--erp-space-4, 16px);
+  --mob-space-5: var(--erp-space-5, 24px);
+  --mob-space-6: var(--erp-space-6, 32px);
   --mob-radius-sm: var(--erp-field-radius, 8px);
   --mob-radius-md: 10px;
   --mob-radius-lg: 12px;
@@ -111,6 +111,10 @@
 .erp-mob-kpi-value.amt-zero,
 .erp-mob-at-kpi-value.amt-zero {
   color: var(--theme-text);
+}
+
+.erp-mob-kpi-grid--reports-cf .erp-mob-kpi-value {
+  font-size: 14px;
 }
 
 /* Card surface — filters, panels, inline cards */

@@ -134,13 +134,7 @@
     padding: 0 !important;
   }
 
-  /* Today KPI row — shared erp-mob-kpi-grid (mobile_components.css) */
-  [data-testid="stMain"] [class*="st-key-erp_at_mobile_screen"] .erp-mob-kpi-grid {
-    display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: var(--mob-space-2) !important;
-    margin: 0 0 var(--mob-space-3) !important;
-  }
+  /* Today KPI row — erp-mob-kpi-grid owned by mobile_components.css */
 
   .erp-mob-at-row-icon {
     width: 30px;

@@ -1250,7 +1250,7 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **UI-SYSTEM-02-S1 — Audit + guardrails** | `docs/UI_SYSTEM_02_AUDIT.md` + `tests/test_ui_system_02_audit.py`; no runtime change | ✅ **Complete** |
 | **UI-SYSTEM-02-S2 — Design token registry** | Centralize colour/spacing/radius/shadow/typography; resolve `--hdr-h` mobile conflict; deprecate stale role hues | ✅ **Complete** |
 | **UI-SYSTEM-02-S3 — Sidebar modernization** | Visual grouping/spacing/icons only; derive presentation from registry; **no route moves** | ✅ **Complete** |
-| **UI-SYSTEM-02-S4 — Unified shell/component pass** | Header/sidebar mobile dedupe; KPI grid single owner; expense-bar ladder; desktop/mobile component parity | 📋 Planned |
+| **UI-SYSTEM-02-S4 — Unified shell/component pass** | Dead report-filters CSS; expense-bar inline width; KPI grid single owner (`mobile_components.css`); mob-space aliases | ✅ **Complete** |
 | **UI-SYSTEM-02-S5 — Theme governance / React design contract** | Frozen component + token contract for FastAPI/React migration | 📋 Planned |
 
 **Success criteria:**
@@ -1260,7 +1260,7 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 - Sidebar visually modern without route drift.
 - React team can port `AppShell`, `SidebarNav`, `KpiGrid`, `ChipSelector` from documented contract.
 
-**Next slice:** **UI-SYSTEM-02-S4** (unified shell/component pass).
+**Next slice:** **UI-SYSTEM-02-S5** (theme governance / React design contract).
 
 ---
 
@@ -3351,6 +3351,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **UI-SYSTEM-02-S4 (closure)** — Unified shell/component pass: removed dead `.erp-mobile-report-filters` mobile block rule; 96× expense-bar `[data-pct]` ladder → inline `width:%`; KPI grid owned by `mobile_components.css` with `--reports-cf` modifier; `--mob-space-*` alias `--erp-space-*`. Tests: `tests/test_ui_system_02_s4_shell_component_pass.py`. Tag: `ui-system-02-s4-unified-shell-component-pass`. Next: **UI-SYSTEM-02-S5** (React design contract). |
 | 2026-06-05 | **UI-SYSTEM-02-S3 (closure)** — Sidebar modernization: `registry/sidebar_layout.py` drives desktop render tree; `_NAV_GROUP_KEYS` derived; tokenized section headers + CSS chevrons. Tests: `tests/test_ui_system_02_s3_sidebar_modernization.py`. Tag: `ui-system-02-s3-sidebar-modernization`. Next: **UI-SYSTEM-02-S4** (unified shell/component pass). |
 | 2026-06-05 | **UI-SYSTEM-02-S2 (closure)** — Design token registry: `ui/design_tokens.py` derives `LIGHT_ROOT_VARS`/`DARK_ROOT_VARS`; spacing/radius/shadow/typography scales in `theme.css`; resolved mobile `--hdr-h` conflict (removed stale 120px). Tests: `tests/test_ui_system_02_s2_design_token_registry.py`. Tag: `ui-system-02-s2-design-token-registry`. Next: **UI-SYSTEM-02-S3** (sidebar modernization). |
 | 2026-06-05 | **UI-SYSTEM-02-S1 (closure)** — ERP-wide UI & theme audit: `docs/UI_SYSTEM_02_AUDIT.md` + `tests/test_ui_system_02_audit.py`; 14 CSS files / 7,379 lines inventoried; sidebar visual readiness documented; no runtime change. Tag: `ui-system-02-s1-ui-theme-audit`. Next: **UI-SYSTEM-02-S2** (design token registry). |
