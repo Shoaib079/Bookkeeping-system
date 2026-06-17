@@ -1,0 +1,173 @@
+{
+  "routes": [
+    {
+      "path": "/",
+      "routeKey": "Home"
+    },
+    {
+      "path": "/transactions/new",
+      "routeKey": "New Transaction"
+    },
+    {
+      "path": "/transactions/ledger",
+      "routeKey": "Transaction Ledger"
+    },
+    {
+      "path": "/sales",
+      "routeKey": "Sales"
+    },
+    {
+      "path": "/expenses",
+      "routeKey": "Expenses"
+    },
+    {
+      "path": "/expenses/staff-capture",
+      "routeKey": "Staff Expenses"
+    },
+    {
+      "path": "/expenses/recurring",
+      "routeKey": "Recurring Expenses"
+    },
+    {
+      "path": "/purchases",
+      "routeKey": "Purchases"
+    },
+    {
+      "path": "/closings/cash-recon",
+      "routeKey": "Cash Reconciliation"
+    },
+    {
+      "path": "/closings/external-sales",
+      "routeKey": "External Sales Verification"
+    },
+    {
+      "path": "/recipes/ingredients",
+      "routeKey": "Ingredients"
+    },
+    {
+      "path": "/recipes",
+      "routeKey": "Recipes"
+    },
+    {
+      "path": "/recipes/cost-breakdown",
+      "routeKey": "Cost Breakdown"
+    },
+    {
+      "path": "/recipes/menu-items",
+      "routeKey": "Menu Items"
+    },
+    {
+      "path": "/closings/eod",
+      "routeKey": "End-of-Day Close"
+    },
+    {
+      "path": "/customers",
+      "routeKey": "Customers"
+    },
+    {
+      "path": "/vendors",
+      "routeKey": "Vendors"
+    },
+    {
+      "path": "/receivables",
+      "routeKey": "Receivables"
+    },
+    {
+      "path": "/payables",
+      "routeKey": "Payables"
+    },
+    {
+      "path": "/inventory",
+      "routeKey": "Inventory"
+    },
+    {
+      "path": "/banking",
+      "routeKey": "Banking"
+    },
+    {
+      "path": "/reports",
+      "routeKey": "Reports"
+    },
+    {
+      "path": "/reports/profit-loss",
+      "routeKey": "Profit & Loss"
+    },
+    {
+      "path": "/reports/balance-sheet",
+      "routeKey": "Balance Sheet"
+    },
+    {
+      "path": "/reports/cash-flow",
+      "routeKey": "Cash Flow"
+    },
+    {
+      "path": "/books/general-ledger",
+      "routeKey": "General Ledger"
+    },
+    {
+      "path": "/books/trial-balance",
+      "routeKey": "Trial Balance"
+    },
+    {
+      "path": "/books/journal-entries",
+      "routeKey": "Journal Entries"
+    },
+    {
+      "path": "/books/fiscal-periods",
+      "routeKey": "Fiscal Periods"
+    },
+    {
+      "path": "/books/year-end-close",
+      "routeKey": "Year-End Close"
+    },
+    {
+      "path": "/books/budget",
+      "routeKey": "Budget"
+    },
+    {
+      "path": "/books/chart-of-accounts",
+      "routeKey": "Chart of Accounts"
+    },
+    {
+      "path": "/books/recon-health",
+      "routeKey": "Recon Health"
+    },
+    {
+      "path": "/partners",
+      "routeKey": "Partner Accounts"
+    },
+    {
+      "path": "/workers",
+      "routeKey": "Workers"
+    },
+    {
+      "path": "/settings/company",
+      "routeKey": "Company Settings"
+    },
+    {
+      "path": "/settings/members",
+      "routeKey": "Members"
+    },
+    {
+      "path": "/settings/permissions",
+      "routeKey": "Permissions"
+    },
+    {
+      "path": "/settings/audit-log",
+      "routeKey": "Audit Log"
+    },
+    {
+      "path": "/settings/backup-restore",
+      "routeKey": "Backup & Restore"
+    },
+    {
+      "path": "/books/opening-balances",
+      "routeKey": "Opening Balances"
+    },
+    {
+      "path": "/account",
+      "routeKey": "My Account"
+    }
+  ],
+  "version": "NAV-ARCH-S4"
+}

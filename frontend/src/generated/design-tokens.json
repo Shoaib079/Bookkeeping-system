@@ -1,0 +1,162 @@
+{
+  "cardGrammarKeys": [
+    "--erp-card-bg",
+    "--erp-card-border",
+    "--erp-card-radius",
+    "--erp-card-shadow",
+    "--erp-card-muted-bg"
+  ],
+  "chipGrammarExtensionKeys": [
+    "--erp-chip-radius",
+    "--erp-chip-border",
+    "--erp-chip-padding-x",
+    "--erp-chip-padding-y"
+  ],
+  "chipKeys": [
+    "--erp-chip-active-bg",
+    "--erp-chip-active-fg",
+    "--erp-chip-active-border",
+    "--erp-chip-idle-bg",
+    "--erp-chip-idle-fg",
+    "--erp-chip-idle-border"
+  ],
+  "componentGrammar": {
+    "--erp-card-bg": "var(--theme-card)",
+    "--erp-card-border": "var(--theme-border)",
+    "--erp-card-muted-bg": "color-mix(in srgb, var(--theme-bg) 50%, var(--theme-card) 50%)",
+    "--erp-card-radius": "var(--erp-radius-lg)",
+    "--erp-card-shadow": "var(--erp-shadow-sm)",
+    "--erp-chip-border": "var(--erp-chip-idle-border)",
+    "--erp-chip-padding-x": "var(--erp-space-3)",
+    "--erp-chip-padding-y": "var(--erp-space-1)",
+    "--erp-chip-radius": "var(--erp-radius-pill)",
+    "--erp-nav-active-bar": "var(--erp-primary-fill)",
+    "--erp-nav-active-bg": "color-mix(in srgb, var(--theme-info) 12%, var(--theme-card) 88%)",
+    "--erp-nav-active-fg": "var(--theme-info)",
+    "--erp-nav-hover-bg": "color-mix(in srgb, var(--theme-bg) 6%, var(--theme-card) 94%)",
+    "--erp-nav-section-fg": "var(--theme-muted)",
+    "--erp-table-border": "var(--theme-border)",
+    "--erp-table-header-bg": "color-mix(in srgb, var(--theme-bg) 45%, var(--theme-card) 55%)",
+    "--erp-table-row-hover-bg": "color-mix(in srgb, var(--theme-bg) 35%, var(--theme-card) 65%)",
+    "--erp-table-total-bg": "color-mix(in srgb, var(--theme-bg) 30%, var(--theme-card) 70%)"
+  },
+  "dark": {
+    "--erp-primary-fill": "#2563EB",
+    "--erp-primary-fill-hover": "#1D4ED8",
+    "--hdr-bg": "#1A2332",
+    "--theme-banner-primary-end": "#3b82f6",
+    "--theme-banner-primary-start": "#1e3a8a",
+    "--theme-bg": "#0B1220",
+    "--theme-border": "#2D3A4D",
+    "--theme-caption": "#B8C4D0",
+    "--theme-card": "#141C2B",
+    "--theme-danger": "#F87171",
+    "--theme-danger-text": "#F87171",
+    "--theme-focus": "#60A5FA",
+    "--theme-info": "#3B82F6",
+    "--theme-input-border": "#334155",
+    "--theme-muted": "#9CA8B8",
+    "--theme-purple": "#8B5CF6",
+    "--theme-shadow": "rgba(0,0,0,0.35)",
+    "--theme-success": "#4ADE80",
+    "--theme-success-text": "#4ADE80",
+    "--theme-teal": "#14B8A6",
+    "--theme-text": "#E8EDF4",
+    "--theme-warning": "#FBBF24",
+    "--theme-warning-text": "#FBBF24"
+  },
+  "deprecated": [
+    "--role-cashier",
+    "--role-default",
+    "--role-manager",
+    "--role-owner",
+    "--role-partner",
+    "--role-viewer"
+  ],
+  "grammarVersion": "MONO-THEME-01-S7",
+  "kpiGridModifiers": [
+    "reports-cf"
+  ],
+  "layout": {
+    "--bottom-nav-h": "62px",
+    "--erp-field-radius": "8px",
+    "--erp-on-primary": "#ffffff",
+    "--erp-sidebar-w": "244px",
+    "--hdr-h": "60px",
+    "--mob-top-nav-h": "0px",
+    "--side-nav-w": "244px"
+  },
+  "light": {
+    "--erp-primary-fill": "#2563EB",
+    "--erp-primary-fill-hover": "#1D4ED8",
+    "--hdr-bg": "#EEF2F7",
+    "--theme-banner-primary-end": "#2563eb",
+    "--theme-banner-primary-start": "#1e3a8a",
+    "--theme-bg": "#F8FAFC",
+    "--theme-border": "#E6E9EE",
+    "--theme-caption": "#475569",
+    "--theme-card": "#FFFFFF",
+    "--theme-danger": "#DC2626",
+    "--theme-danger-text": "#B91C1C",
+    "--theme-focus": "#2563EB",
+    "--theme-info": "#2563EB",
+    "--theme-input-border": "#CBD5E1",
+    "--theme-muted": "#475569",
+    "--theme-purple": "#6D28D9",
+    "--theme-shadow": "rgba(0,0,0,0.08)",
+    "--theme-success": "#16A34A",
+    "--theme-success-text": "#15803D",
+    "--theme-teal": "#0EA5A4",
+    "--theme-text": "#0F172A",
+    "--theme-warning": "#D97706",
+    "--theme-warning-text": "#B45309"
+  },
+  "mobileHeaderLayout": {
+    "--hdr-h": "56px",
+    "--hdr-h-search": "86px",
+    "--hdr-toolbar-cluster-w": "72px",
+    "--hdr-toolbar-edge": "12px",
+    "--hdr-toolbar-gap": "8px"
+  },
+  "navGrammarKeys": [
+    "--erp-nav-active-bg",
+    "--erp-nav-active-fg",
+    "--erp-nav-active-bar",
+    "--erp-nav-hover-bg",
+    "--erp-nav-section-fg"
+  ],
+  "radius": {
+    "--erp-radius-lg": "12px",
+    "--erp-radius-md": "8px",
+    "--erp-radius-pill": "999px",
+    "--erp-radius-sm": "6px"
+  },
+  "shadow": {
+    "--erp-shadow-lg": "0 4px 16px var(--theme-shadow)",
+    "--erp-shadow-md": "0 2px 8px var(--theme-shadow)",
+    "--erp-shadow-sm": "0 1px 2px var(--theme-shadow)"
+  },
+  "spacing": {
+    "--erp-space-1": "4px",
+    "--erp-space-2": "8px",
+    "--erp-space-3": "12px",
+    "--erp-space-4": "16px",
+    "--erp-space-5": "24px",
+    "--erp-space-6": "32px"
+  },
+  "tableGrammarKeys": [
+    "--erp-table-border",
+    "--erp-table-header-bg",
+    "--erp-table-row-hover-bg",
+    "--erp-table-total-bg"
+  ],
+  "typography": {
+    "--erp-font-body": "13px",
+    "--erp-font-caption": "11px",
+    "--erp-font-subtitle": "15px",
+    "--erp-font-title": "18px",
+    "--erp-line-body": "1.45",
+    "--erp-line-tight": "1.2"
+  },
+  "version": "UI-SYSTEM-02-S5"
+}
