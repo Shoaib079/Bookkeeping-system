@@ -13,7 +13,9 @@ import { BankingReadinessPage } from "../pages/BankingReadinessPage";
 import { LedgerPage } from "../pages/LedgerPage";
 import { PartnerStatementPage } from "../pages/PartnerStatementPage";
 import { PayablesPage } from "../pages/PayablesPage";
+import { ProfitLossPage } from "../pages/ProfitLossPage";
 import { ReceivablesPage } from "../pages/ReceivablesPage";
+import { ReportsPage } from "../pages/ReportsPage";
 import { NewTransactionPage } from "../pages/NewTransactionPage";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 
@@ -25,6 +27,8 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/payables": PayablesPage,
   "/partners": PartnerStatementPage,
   "/banking": BankingReadinessPage,
+  "/reports": ReportsPage,
+  "/reports/profit-loss": ProfitLossPage,
 };
 
 const WRITE_PAGES: Record<string, ComponentType> = {

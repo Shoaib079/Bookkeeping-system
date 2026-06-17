@@ -24,6 +24,8 @@ REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/payables", "PayablesPage", "payables"),
     ("/partners", "PartnerStatementPage", "partners"),
     ("/banking", "BankingReadinessPage", "banking"),
+    ("/reports", "ReportsPage", "reports"),
+    ("/reports/profit-loss", "ProfitLossPage", "profit_loss"),
 )
 
 HOME_READ_API_PATHS: tuple[str, ...] = (
@@ -56,6 +58,14 @@ BANKING_READINESS_READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/banking/readiness",
 )
 
+REPORTS_HUB_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/reports/profit-loss",
+)
+
+PROFIT_LOSS_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/reports/profit-loss",
+)
+
 REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/config/featureFlags.ts",
     "frontend/src/lib/api/session.ts",
@@ -67,6 +77,8 @@ REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/pages/PayablesPage.tsx",
     "frontend/src/pages/PartnerStatementPage.tsx",
     "frontend/src/pages/BankingReadinessPage.tsx",
+    "frontend/src/pages/ReportsPage.tsx",
+    "frontend/src/pages/ProfitLossPage.tsx",
     "frontend/src/components/ReadApiSetup.tsx",
 )
 
@@ -105,15 +117,28 @@ FR17_DEFERRED_ITEMS: tuple[str, ...] = (
     "chart-of-accounts picker",
 )
 
-DEFERRED_ITEMS: tuple[str, ...] = (
+# Frozen for FR-18 audit tests (do not mutate).
+FR18_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-19",
     "chart-of-accounts picker",
     "partner picker",
     "transaction ledger read page",
 )
 
-# Frozen for FR-18 audit tests (do not mutate).
 FR18_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/partners", "PartnerStatementPage", "partners"),
     ("/banking", "BankingReadinessPage", "banking"),
+)
+
+DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-20",
+    "transaction ledger read page",
+    "cash flow read page",
+    "chart-of-accounts picker",
+)
+
+# Frozen for FR-19 audit tests (do not mutate).
+FR19_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("/reports", "ReportsPage", "reports"),
+    ("/reports/profit-loss", "ProfitLossPage", "profit_loss"),
 )
