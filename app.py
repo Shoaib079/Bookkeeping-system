@@ -2949,10 +2949,6 @@ def _format_at_display_date(d: datetime.date) -> str:
     return date_ui.format_display_date(d)
 
 
-def _at_date_input_placeholder() -> str:
-    return date_input_placeholder(_active_user_date_format())
-
-
 def _at_defer_date_text_display(d: datetime.date) -> None:
     """Queue formatted desktop date text — applied before the widget renders."""
     st.session_state["at_date_text_sync_from"] = d
@@ -4376,6 +4372,8 @@ _COMPANY_SCOPED_AT_KEYS = (
     "at_date",
     "at_date_text",
     "at_date_text_sync_from",
+    "at_date_cal",
+    "mob_at_date_custom_cal",
     "at_subcat_sync_from",
     "at_subcat_sync_clear",
     "at_submit_resolved_date",
@@ -11571,25 +11569,40 @@ def _at_resolve_submit_subcategory(
 def _at_resolve_entry_date() -> datetime.date:
     """Resolve entry date.
 
-    Desktop: typed text wins when the user is entering a date; an explicit
-    backdated ``at_date`` (``at_date_follows_today`` is False) wins over stale
-    today-shaped display text left in ``at_date_text``.
+    Desktop: typed text wins when the user is entering a date; calendar picks
+    are reconciled on submit via :func:`date_ui.reconcile_text_and_calendar`.
+    An explicit backdated ``at_date`` (``at_date_follows_today`` is False) wins
+    over stale today-shaped display text left in ``at_date_text``.
     Mobile: the date sheet writes ``at_date`` directly — desktop text is ignored.
     """
     if not _is_mobile_ui():
-        if st.session_state.get("at_date_follows_today", True) is False:
-            d = st.session_state.get("at_date")
-            if isinstance(d, datetime.date):
-                return d
-
+        reconciled = date_ui.reconcile_text_and_calendar(
+            "at_date_text",
+            "at_date_cal",
+            canonical_key="at_date",
+            preference=_active_user_date_format(),
+        )
         raw = st.session_state.get("at_date_text")
-        typed = _at_parse_date_text(str(raw)) if raw and str(raw).strip() else None
+        typed = reconciled
+        if typed is None:
+            typed = _at_parse_date_text(str(raw)) if raw and str(raw).strip() else None
         canonical = st.session_state.get("at_date")
         if not isinstance(canonical, datetime.date):
             canonical = None
 
-        if typed is not None:
-            today = datetime.date.today()
+        today = datetime.date.today()
+        cal = st.session_state.get("at_date_cal")
+        cal_is_today = isinstance(cal, datetime.date) and cal == today
+        if (
+            st.session_state.get("at_date_follows_today") is False
+            and canonical is not None
+            and canonical != today
+            and typed == today
+            and (not isinstance(cal, datetime.date) or cal_is_today)
+        ):
+            # Stale today-shaped text/calendar must not override a backdated pick.
+            resolved = canonical
+        elif typed is not None:
             if (
                 canonical is not None
                 and canonical != today
@@ -11606,7 +11619,7 @@ def _at_resolve_entry_date() -> datetime.date:
         elif canonical is not None:
             resolved = canonical
         else:
-            resolved = datetime.date.today()
+            resolved = today
             st.session_state["at_date_follows_today"] = True
 
         st.session_state["at_date"] = resolved
@@ -11640,6 +11653,9 @@ def _at_render_desktop_date_field() -> None:
         "📅 " + _t("col.date"),
         "at_date_text",
         in_form=True,
+        show_calendar=True,
+        calendar_key="at_date_cal",
+        calendar_label=_tf("txn.date_calendar", "Calendar"),
         help=_t("txn.date_help"),
         invalid_message=_t("txn.date_invalid"),
     )
@@ -12546,7 +12562,7 @@ def _mob_at_render_date_closed_period_notice(session, entry_date: datetime.date)
 
 
 def _mob_at_render_date_picker_sheet(session) -> bool:
-    """Mobile date picker — Today / Yesterday / Custom (no Streamlit calendar popup)."""
+    """Mobile date picker — Today / Yesterday / Custom (+ calendar on custom path)."""
     today = datetime.date.today()
     yesterday = today - datetime.timedelta(days=1)
     current = st.session_state.get("at_date", today)
@@ -12604,6 +12620,9 @@ def _mob_at_render_date_picker_sheet(session) -> bool:
                 _tf("txn.mob.date_custom_label", "Date"),
                 "mob_at_date_custom_str",
                 label_visibility="collapsed",
+                show_calendar=True,
+                calendar_key="mob_at_date_custom_cal",
+                calendar_label=_tf("txn.date_calendar", "Calendar"),
                 invalid_message=_t("txn.date_invalid"),
             )
             if st.button(
@@ -12612,9 +12631,16 @@ def _mob_at_render_date_picker_sheet(session) -> bool:
                 use_container_width=True,
                 type="primary",
             ):
-                parsed = _mob_at_parse_date_text(
-                    st.session_state.get("mob_at_date_custom_str", "")
+                parsed = date_ui.reconcile_text_and_calendar(
+                    "mob_at_date_custom_str",
+                    "mob_at_date_custom_cal",
+                    canonical_key="at_date",
+                    preference=_active_user_date_format(),
                 )
+                if parsed is None:
+                    parsed = _mob_at_parse_date_text(
+                        st.session_state.get("mob_at_date_custom_str", "")
+                    )
                 if parsed is None:
                     st.warning(_t("txn.date_invalid"))
                     return False
@@ -14252,9 +14278,8 @@ def render_add_transaction(session):
                         )
 
                     with st.form("at_entry_form", clear_on_submit=False):
-                        # ADD-TXN-FIX date UX — single Date field INSIDE the form so
-                        # Enter submits; calendar helper is a collapsed expander
-                        # (callback-free; reconciled in _at_resolve_entry_date).
+                        # ADD-TXN-FIX date UX — typed date + calendar INSIDE the form;
+                        # reconciled in _at_resolve_entry_date on submit.
                         _at_render_desktop_date_field()
                         # ── CONDITIONAL FIELDS BY TRANSACTION TYPE ─────────────────────
                         if txn_type == "Sale":

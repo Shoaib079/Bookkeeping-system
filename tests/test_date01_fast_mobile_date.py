@@ -236,9 +236,8 @@ def test_backdated_css_contract():
 
 
 def test_desktop_date_field_is_single_text_input_only():
-    """ADD-TXN date UX final: desktop AT has exactly one date control — a typed
-    text field (in-form, Enter submits). No checkbox, no calendar expander,
-    no st.date_input. Mobile keeps its own date sheet."""
+    """UX-STABILIZE-03: desktop AT uses masked text + calendar via shared helper
+    (in-form, Enter submits). No duplicate widgets in app.py."""
     src = inspect.getsource(erp.render_add_transaction)
     form_pos = src.index('st.form("at_entry_form"')
     assert "_at_render_desktop_date_field()" in src
@@ -246,6 +245,7 @@ def test_desktop_date_field_is_single_text_input_only():
     date_helper = inspect.getsource(erp._at_render_desktop_date_field)
     assert "at_date_text" in date_helper
     assert "render_preferred_date_input" in date_helper
+    assert "show_calendar=True" in date_helper
     for banned in ("st.checkbox", "st.date_input", "st.expander", "st.popover",
                    "at_date_manual_entry"):
         assert banned not in date_helper

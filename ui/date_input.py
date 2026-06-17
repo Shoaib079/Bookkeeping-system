@@ -95,6 +95,66 @@ def normalize_date_text_key(key: str, preference: str | None = None) -> None:
     sync_date_text_mask(key, preference)
 
 
+def _resolved_calendar_value(
+    text_key: str,
+    calendar_key: str,
+    *,
+    default: datetime.date | None,
+    preference: str | None,
+) -> datetime.date:
+    """Seed the calendar widget from parsed text, prior calendar, or default."""
+    pref = preference or get_active_date_format()
+    parsed = parse_bound_date(text_key, pref)
+    if parsed is not None:
+        return parsed
+    cal = st.session_state.get(calendar_key)
+    if isinstance(cal, datetime.date):
+        return cal
+    if default is not None:
+        return default
+    return datetime.date.today()
+
+
+def _sync_text_from_calendar(
+    text_key: str,
+    calendar_key: str,
+    preference: str | None = None,
+) -> None:
+    cal = st.session_state.get(calendar_key)
+    if isinstance(cal, datetime.date):
+        st.session_state[text_key] = format_display_date(cal, preference)
+
+
+def reconcile_text_and_calendar(
+    text_key: str,
+    calendar_key: str,
+    *,
+    canonical_key: str | None = None,
+    preference: str | None = None,
+) -> datetime.date | None:
+    """Resolve typed text vs calendar when both differ (form-safe submit path)."""
+    pref = preference or get_active_date_format()
+    typed = parse_bound_date(text_key, pref)
+    cal = st.session_state.get(calendar_key)
+    if not isinstance(cal, datetime.date):
+        return typed
+    if typed is None:
+        return cal
+    if typed == cal:
+        return typed
+    prev = None
+    if canonical_key:
+        prev = st.session_state.get(canonical_key)
+        if not isinstance(prev, datetime.date):
+            prev = None
+    if prev is not None:
+        if typed == prev:
+            return cal
+        if cal == prev:
+            return typed
+    return typed
+
+
 def render_preferred_date_input(
     label: str,
     key: str,
@@ -109,11 +169,16 @@ def render_preferred_date_input(
     invalid_message: str | None = None,
     preference: str | None = None,
     disabled: bool = False,
+    show_calendar: bool = False,
+    calendar_key: str | None = None,
+    calendar_label: str | None = None,
 ) -> datetime.date | None:
-    """Single masked text date field. Returns parsed date or None.
+    """Masked text date field with optional calendar picker. Returns parsed date or None.
 
     When *in_form* is True, omits ``on_change`` (Streamlit forms forbid it).
     Masking then happens via :func:`normalize_date_text_key` on submit/resolve.
+    When *show_calendar* is True, an ``st.date_input`` is rendered below the text
+    field; reconcile with :func:`reconcile_text_and_calendar` on form submit.
     """
     pref = preference or get_active_date_format()
     if default is not None:
@@ -139,6 +204,30 @@ def render_preferred_date_input(
         err = date_text_error(key, pref, invalid_message=invalid_message)
         if err:
             st.caption(f"⚠️ {err}")
+
+    if show_calendar:
+        ck = calendar_key or f"{key}__cal"
+        cal_value = _resolved_calendar_value(key, ck, default=default, preference=pref)
+        st.session_state[ck] = cal_value
+        cal_lbl = calendar_label or "Calendar"
+        if in_form:
+            with st.expander(cal_lbl, expanded=False):
+                st.date_input(
+                    cal_lbl,
+                    key=ck,
+                    label_visibility="collapsed",
+                )
+        else:
+            def _on_cal_pick() -> None:
+                _sync_text_from_calendar(key, ck, pref)
+
+            st.date_input(
+                cal_lbl,
+                key=ck,
+                label_visibility="collapsed",
+                on_change=_on_cal_pick,
+            )
+
     return parse_bound_date(key, pref)
 
 

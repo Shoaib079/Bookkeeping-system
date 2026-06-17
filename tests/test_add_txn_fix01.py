@@ -211,12 +211,14 @@ def test_inline_rows_use_form_submit_buttons_inside_at_form():
 
 
 def test_desktop_date_field_single_visible_control():
-    """Exactly ONE visible date control: a text input. No checkbox, no
-    calendar expander, no st.date_input, no second widget of any kind."""
+    """Desktop AT: masked text field + optional calendar via shared helper (no
+    duplicate date widgets or manual-entry checkbox in app.py)."""
     src = inspect.getsource(erp._at_render_desktop_date_field)
     assert "render_preferred_date_input" in src
     assert "in_form=True" in src
+    assert "show_calendar=True" in src
     assert "at_date_text" in src
+    assert "calendar_key=\"at_date_cal\"" in src
     for banned in (
         "st.checkbox",
         "st.date_input",
@@ -226,7 +228,6 @@ def test_desktop_date_field_single_visible_control():
         "date_enter_manually",
     ):
         assert banned not in src, f"banned widget/pattern in date field: {banned}"
-    assert "render_preferred_date_input" in src
     assert "isoformat()" not in src
 
 
@@ -369,12 +370,13 @@ def test_at_date_text_is_company_scoped():
     assert "at_date_text" in erp._COMPANY_SCOPED_AT_KEYS
     assert "at_date_text_sync_from" in erp._COMPANY_SCOPED_AT_KEYS
     assert "at_date" in erp._COMPANY_SCOPED_AT_KEYS
+    assert "at_date_cal" in erp._COMPANY_SCOPED_AT_KEYS
+    assert "mob_at_date_custom_cal" in erp._COMPANY_SCOPED_AT_KEYS
 
 
-def test_no_desktop_date_input_in_add_transaction_path():
-    """The desktop AT flow contains no st.date_input — the typed field is the
-    only date control. (Mobile keeps its own date sheet; global sidebar filters
-    and other pages are out of scope.)"""
+def test_no_direct_date_input_in_add_transaction_path():
+    """Calendar lives in ui.date_input via render_preferred_date_input — app.py
+    must not call st.date_input directly on the Add Transaction path."""
     for fn in (erp._at_render_desktop_date_field, erp.render_add_transaction):
         src = inspect.getsource(fn)
         assert "st.date_input" not in src, f"st.date_input found in {fn.__name__}"

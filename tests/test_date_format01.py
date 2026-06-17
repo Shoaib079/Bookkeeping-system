@@ -200,6 +200,7 @@ def test_desktop_date_field_single_widget_with_mask_helper():
     src = inspect.getsource(erp._at_render_desktop_date_field)
     assert "render_preferred_date_input" in src
     assert "in_form=True" in src
+    assert "show_calendar=True" in src
     assert "st.text_input" not in src
     for banned in ("st.checkbox", "st.date_input", "st.expander", "st.popover"):
         assert banned not in src
