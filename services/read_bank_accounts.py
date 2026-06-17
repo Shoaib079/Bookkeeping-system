@@ -32,6 +32,7 @@ def compute_bank_accounts_list(
     company_id: int,
     active_only: bool = True,
     exclude_kind: str | None = None,
+    kind: str | None = None,
 ) -> BankAccountsListPage:
     query = (
         session.query(BankAccount)
@@ -42,6 +43,8 @@ def compute_bank_accounts_list(
         query = query.filter(BankAccount.is_active == True)  # noqa: E712
     if exclude_kind:
         query = query.filter(BankAccount.kind != exclude_kind)
+    if kind:
+        query = query.filter(BankAccount.kind == kind)
     rows = tuple(
         BankAccountListRow(
             id=account.id,

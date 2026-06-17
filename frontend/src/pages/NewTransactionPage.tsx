@@ -1,8 +1,12 @@
 import { FormEvent, useMemo, useState } from "react";
 
 import { BankAccountPicker } from "../components/BankAccountPicker";
+import { CoaAccountPicker } from "../components/CoaAccountPicker";
+import { FiscalPeriodPicker } from "../components/FiscalPeriodPicker";
 import { PartnerPicker } from "../components/PartnerPicker";
 import { ReadApiSetup } from "../components/ReadApiSetup";
+import { StatementRowPicker } from "../components/StatementRowPicker";
+import { VendorPicker } from "../components/VendorPicker";
 import { WorkerPicker } from "../components/WorkerPicker";
 import {
   reactWriteEnabled,
@@ -30,6 +34,7 @@ import type {
   PartnerMovementType,
   PeriodCloseResponse,
   ProfitAllocationResponse,
+  ReconciliationMatchRequest,
   ReconciliationMatchResponse,
   ReconciliationMatchType,
   ReconciliationUnmatchResponse,
@@ -94,6 +99,35 @@ function parsePositiveInt(raw: string): number | null {
   }
   return Math.trunc(parsed);
 }
+
+function parseCommaSeparatedIds(raw: string): number[] | null {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const ids: number[] = [];
+  for (const part of trimmed.split(",")) {
+    const piece = part.trim();
+    if (!piece) {
+      continue;
+    }
+    const parsed = Number(piece);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      return null;
+    }
+    ids.push(Math.trunc(parsed));
+  }
+  return ids.length ? ids : null;
+}
+
+type ReconPartnerMovementType =
+  | "CapitalContribution"
+  | "Drawing"
+  | "Salary"
+  | "Advance"
+  | "Repayment";
+
+type ReconWorkerMovementType = "Salary" | "Advance";
 
 export function NewTransactionPage() {
   const salesOn = reactWriteSalesEnabled();
@@ -193,7 +227,28 @@ export function NewTransactionPage() {
   const [statementRowId, setStatementRowId] = useState("");
   const [reconMatchType, setReconMatchType] =
     useState<ReconciliationMatchType>("generic_deposit");
+  const [reconCoaAccountId, setReconCoaAccountId] = useState("");
   const [reconCreditAccountName, setReconCreditAccountName] = useState("Sales Revenue");
+  const [reconChargeSubtype, setReconChargeSubtype] = useState("");
+  const [reconSaleIds, setReconSaleIds] = useState("");
+  const [reconSettlementRowId, setReconSettlementRowId] = useState("");
+  const [reconConfirmInferredFee, setReconConfirmInferredFee] = useState(false);
+  const [reconVendorId, setReconVendorId] = useState("");
+  const [reconPayableId, setReconPayableId] = useState("");
+  const [reconExpenseCategory, setReconExpenseCategory] = useState("Office Expense");
+  const [reconCreateExpense, setReconCreateExpense] = useState(false);
+  const [reconPartnerId, setReconPartnerId] = useState("");
+  const [reconPartnerMovementType, setReconPartnerMovementType] =
+    useState<ReconPartnerMovementType>("CapitalContribution");
+  const [reconWorkerId, setReconWorkerId] = useState("");
+  const [reconWorkerMovementType, setReconWorkerMovementType] =
+    useState<ReconWorkerMovementType>("Advance");
+  const [reconGrossSalary, setReconGrossSalary] = useState("");
+  const [reconDeductions, setReconDeductions] = useState("");
+  const [reconAdvanceRecovery, setReconAdvanceRecovery] = useState("");
+  const [reconPayPeriod, setReconPayPeriod] = useState("");
+  const [reconEquityKind, setReconEquityKind] = useState("owner_capital");
+  const [reconCreditCardAccountId, setReconCreditCardAccountId] = useState("");
   const [reconUnmatchReason, setReconUnmatchReason] = useState("");
   const [reconMatchResult, setReconMatchResult] =
     useState<ReconciliationMatchResponse | null>(null);
@@ -761,7 +816,7 @@ export function NewTransactionPage() {
     }
     const rowId = parsePositiveInt(statementRowId);
     if (rowId === null) {
-      setError("Enter a valid statement row id.");
+      setError("Select a statement row.");
       return;
     }
 
@@ -771,22 +826,106 @@ export function NewTransactionPage() {
     setReconUnmatchResult(null);
     try {
       if (reconcileAction === "match") {
-        const creditAccount = reconCreditAccountName.trim();
-        if (reconMatchType === "generic_deposit" && !creditAccount) {
-          setError("Enter a credit account name for generic deposit.");
-          setLoading(false);
-          return;
-        }
-        const body: {
-          statement_row_id: number;
-          match_type: ReconciliationMatchType;
-          credit_account_name?: string;
-        } = {
+        const body: ReconciliationMatchRequest = {
           statement_row_id: rowId,
           match_type: reconMatchType,
         };
-        if (creditAccount) {
+        if (reconMatchType === "generic_deposit") {
+          const creditAccount = reconCreditAccountName.trim();
+          if (!creditAccount) {
+            setError("Select a credit account for generic deposit.");
+            setLoading(false);
+            return;
+          }
           body.credit_account_name = creditAccount;
+        } else if (reconMatchType === "bank_charge") {
+          const subtype = reconChargeSubtype.trim();
+          if (subtype) {
+            body.charge_subtype = subtype;
+          }
+        } else if (reconMatchType === "deposit_clearing") {
+          const saleIds = parseCommaSeparatedIds(reconSaleIds);
+          if (saleIds === null) {
+            setError("Enter one or more sale ids (comma-separated).");
+            setLoading(false);
+            return;
+          }
+          body.sale_ids = saleIds;
+          const settlementId = parsePositiveInt(reconSettlementRowId);
+          if (settlementId !== null) {
+            body.settlement_row_id = settlementId;
+          }
+          if (reconConfirmInferredFee) {
+            body.confirm_inferred_fee = true;
+          }
+        } else if (reconMatchType === "vendor_outflow") {
+          const vendorId = parsePositiveInt(reconVendorId);
+          if (vendorId === null) {
+            setError("Select a vendor.");
+            setLoading(false);
+            return;
+          }
+          body.vendor_id = vendorId;
+          const payableId = parsePositiveInt(reconPayableId);
+          if (payableId !== null) {
+            body.payable_id = payableId;
+          }
+          const category = reconExpenseCategory.trim();
+          if (category) {
+            body.expense_category = category;
+          }
+          if (reconCreateExpense) {
+            body.create_expense = true;
+          }
+        } else if (reconMatchType === "partner") {
+          const partnerId = parsePositiveInt(reconPartnerId);
+          if (partnerId === null) {
+            setError("Select a partner.");
+            setLoading(false);
+            return;
+          }
+          body.partner_id = partnerId;
+          body.movement_type = reconPartnerMovementType;
+        } else if (reconMatchType === "worker") {
+          const workerId = parsePositiveInt(reconWorkerId);
+          if (workerId === null) {
+            setError("Select a worker.");
+            setLoading(false);
+            return;
+          }
+          body.worker_id = workerId;
+          body.movement_type = reconWorkerMovementType;
+          if (reconWorkerMovementType === "Salary") {
+            const gross = parseAmount(reconGrossSalary);
+            if (gross === null) {
+              setError("Enter a valid gross salary greater than zero.");
+              setLoading(false);
+              return;
+            }
+            body.gross_salary = gross;
+            const deductions = parseAmount(reconDeductions);
+            if (deductions !== null) {
+              body.deductions = deductions;
+            }
+            const recovery = parseAmount(reconAdvanceRecovery);
+            if (recovery !== null) {
+              body.advance_recovery = recovery;
+            }
+            const payPeriod = reconPayPeriod.trim();
+            if (payPeriod) {
+              body.pay_period = payPeriod;
+            }
+          }
+        } else if (reconMatchType === "equity") {
+          body.equity_kind = reconEquityKind;
+        } else if (reconMatchType === "cc_bill_payment") {
+          const cardAccountId = parsePositiveInt(reconCreditCardAccountId);
+          if (cardAccountId === null) {
+            setError("Select a credit card account.");
+            setLoading(false);
+            return;
+          }
+          body.credit_card_account_id = cardAccountId;
         }
         const response = await apiPost<ReconciliationMatchResponse>(
           "/api/v1/reconciliation/match",
@@ -836,7 +975,7 @@ export function NewTransactionPage() {
       if (closingAction === "close") {
         const periodId = parsePositiveInt(closingPeriodId);
         if (periodId === null) {
-          setError("Enter a valid period id.");
+          setError("Select a fiscal period.");
           setLoading(false);
           return;
         }
@@ -849,7 +988,7 @@ export function NewTransactionPage() {
       } else if (closingAction === "allocate") {
         const periodId = parsePositiveInt(closingPeriodId);
         if (periodId === null) {
-          setError("Enter a valid period id.");
+          setError("Select a fiscal period.");
           setLoading(false);
           return;
         }
@@ -1678,16 +1817,12 @@ export function NewTransactionPage() {
               <option value="unmatch">Unmatch</option>
             </select>
           </label>
-          <label>
-            Statement row id
-            <input
-              type="number"
-              min={1}
-              value={statementRowId}
-              onChange={(event) => setStatementRowId(event.target.value)}
-              required
-            />
-          </label>
+          <StatementRowPicker
+            value={statementRowId}
+            onChange={setStatementRowId}
+            session={session}
+            disabled={loading}
+          />
           {reconcileAction === "match" ? (
             <>
               <label>
@@ -1708,14 +1843,216 @@ export function NewTransactionPage() {
                   <option value="cc_bill_payment">cc_bill_payment</option>
                 </select>
               </label>
-              <label>
-                Credit account name
-                <input
-                  type="text"
-                  value={reconCreditAccountName}
-                  onChange={(event) => setReconCreditAccountName(event.target.value)}
+              {reconMatchType === "generic_deposit" ? (
+                <CoaAccountPicker
+                  label="Credit account"
+                  value={reconCoaAccountId}
+                  onChange={setReconCoaAccountId}
+                  onAccountNameChange={setReconCreditAccountName}
+                  session={session}
+                  disabled={loading}
                 />
-              </label>
+              ) : null}
+              {reconMatchType === "bank_charge" ? (
+                <label>
+                  Charge subtype (optional)
+                  <select
+                    value={reconChargeSubtype}
+                    onChange={(event) => setReconChargeSubtype(event.target.value)}
+                  >
+                    <option value="">Infer from description</option>
+                    <option value="interest">interest</option>
+                    <option value="credit_card_fee">credit_card_fee</option>
+                    <option value="card_settlement_fee">card_settlement_fee</option>
+                    <option value="transfer_fee">transfer_fee</option>
+                  </select>
+                </label>
+              ) : null}
+              {reconMatchType === "deposit_clearing" ? (
+                <>
+                  <label>
+                    Sale ids (comma-separated)
+                    <input
+                      type="text"
+                      value={reconSaleIds}
+                      onChange={(event) => setReconSaleIds(event.target.value)}
+                      placeholder="1, 2, 3"
+                      required
+                    />
+                  </label>
+                  <label>
+                    Settlement row id (optional)
+                    <input
+                      type="number"
+                      min={1}
+                      value={reconSettlementRowId}
+                      onChange={(event) => setReconSettlementRowId(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={reconConfirmInferredFee}
+                      onChange={(event) =>
+                        setReconConfirmInferredFee(event.target.checked)
+                      }
+                    />{" "}
+                    Confirm inferred fee
+                  </label>
+                </>
+              ) : null}
+              {reconMatchType === "vendor_outflow" ? (
+                <>
+                  <VendorPicker
+                    value={reconVendorId}
+                    onChange={setReconVendorId}
+                    session={session}
+                    disabled={loading}
+                  />
+                  <label>
+                    Payable id (optional)
+                    <input
+                      type="number"
+                      min={1}
+                      value={reconPayableId}
+                      onChange={(event) => setReconPayableId(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Expense category
+                    <input
+                      type="text"
+                      value={reconExpenseCategory}
+                      onChange={(event) => setReconExpenseCategory(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={reconCreateExpense}
+                      onChange={(event) => setReconCreateExpense(event.target.checked)}
+                    />{" "}
+                    Create expense record
+                  </label>
+                </>
+              ) : null}
+              {reconMatchType === "partner" ? (
+                <>
+                  <PartnerPicker
+                    value={reconPartnerId}
+                    onChange={setReconPartnerId}
+                    session={session}
+                    disabled={loading}
+                  />
+                  <label>
+                    Movement type
+                    <select
+                      value={reconPartnerMovementType}
+                      onChange={(event) =>
+                        setReconPartnerMovementType(
+                          event.target.value as ReconPartnerMovementType,
+                        )
+                      }
+                    >
+                      <option value="CapitalContribution">CapitalContribution</option>
+                      <option value="Drawing">Drawing</option>
+                      <option value="Salary">Salary</option>
+                      <option value="Advance">Advance</option>
+                      <option value="Repayment">Repayment</option>
+                    </select>
+                  </label>
+                </>
+              ) : null}
+              {reconMatchType === "worker" ? (
+                <>
+                  <WorkerPicker
+                    value={reconWorkerId}
+                    onChange={setReconWorkerId}
+                    session={session}
+                    disabled={loading}
+                  />
+                  <label>
+                    Movement type
+                    <select
+                      value={reconWorkerMovementType}
+                      onChange={(event) =>
+                        setReconWorkerMovementType(
+                          event.target.value as ReconWorkerMovementType,
+                        )
+                      }
+                    >
+                      <option value="Salary">Salary</option>
+                      <option value="Advance">Advance</option>
+                    </select>
+                  </label>
+                  {reconWorkerMovementType === "Salary" ? (
+                    <>
+                      <label>
+                        Gross salary
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={reconGrossSalary}
+                          onChange={(event) => setReconGrossSalary(event.target.value)}
+                          required
+                        />
+                      </label>
+                      <label>
+                        Deductions (optional)
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={reconDeductions}
+                          onChange={(event) => setReconDeductions(event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        Advance recovery (optional)
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={reconAdvanceRecovery}
+                          onChange={(event) =>
+                            setReconAdvanceRecovery(event.target.value)
+                          }
+                        />
+                      </label>
+                      <label>
+                        Pay period (optional)
+                        <input
+                          type="text"
+                          value={reconPayPeriod}
+                          onChange={(event) => setReconPayPeriod(event.target.value)}
+                        />
+                      </label>
+                    </>
+                  ) : null}
+                </>
+              ) : null}
+              {reconMatchType === "equity" ? (
+                <label>
+                  Equity kind
+                  <select
+                    value={reconEquityKind}
+                    onChange={(event) => setReconEquityKind(event.target.value)}
+                  >
+                    <option value="owner_capital">owner_capital</option>
+                    <option value="owner_drawing">owner_drawing</option>
+                    <option value="loan_payment">loan_payment</option>
+                    <option value="loan_receipt">loan_receipt</option>
+                  </select>
+                </label>
+              ) : null}
+              {reconMatchType === "cc_bill_payment" ? (
+                <BankAccountPicker
+                  label="Credit card account"
+                  value={reconCreditCardAccountId}
+                  onChange={setReconCreditCardAccountId}
+                  session={session}
+                  disabled={loading}
+                  creditCardOnly
+                />
+              ) : null}
             </>
           ) : (
             <label>
@@ -1777,16 +2114,14 @@ export function NewTransactionPage() {
             </>
           ) : (
             <>
-              <label>
-                Period id
-                <input
-                  type="number"
-                  min={1}
-                  value={closingPeriodId}
-                  onChange={(event) => setClosingPeriodId(event.target.value)}
-                  required
-                />
-              </label>
+              <FiscalPeriodPicker
+                value={closingPeriodId}
+                onChange={setClosingPeriodId}
+                session={session}
+                disabled={loading}
+                openOnly={closingAction === "close"}
+                closedOnly={closingAction === "allocate"}
+              />
               {closingAction === "allocate" ? (
                 <label>
                   Notes (optional)

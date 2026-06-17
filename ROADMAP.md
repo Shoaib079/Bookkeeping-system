@@ -1416,11 +1416,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-20** | Cash flow + transaction ledger read pages | ✅ **Complete** |
 | **FASTAPI-REACT-21** | COA + partner pickers | ✅ **Complete** |
 | **FASTAPI-REACT-22** | Bank/worker/partner write pickers | ✅ **Complete** |
-| **FASTAPI-REACT-23+** | Match-type payload forms + statement/fiscal pickers | 📋 Planned |
+| **FASTAPI-REACT-23** | Reconcile/closing pickers + match-type forms | ✅ **Complete** |
+| **FASTAPI-REACT-24+** | Receivable sale picker + allocation picker | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_22_REACT_WRITE_PICKERS_AUDIT.md](./docs/FASTAPI_REACT_22_REACT_WRITE_PICKERS_AUDIT.md) · **Tests:** `tests/test_fastapi_react_22_react_write_pickers.py` · **Tag:** `fastapi-react-22-react-write-pickers`
+**Audit:** [FASTAPI_REACT_23_REACT_WRITE_RECON_FORMS_AUDIT.md](./docs/FASTAPI_REACT_23_REACT_WRITE_RECON_FORMS_AUDIT.md) · **Tests:** `tests/test_fastapi_react_23_react_write_recon_forms.py` · **Tag:** `fastapi-react-23-react-write-recon-forms`
 
-**Next slice:** **FASTAPI-REACT-23** — full match-type payload forms, statement row picker, fiscal period picker; see FR-22 audit §9.
+**Next slice:** **FASTAPI-REACT-24** — receivable sale picker + allocation picker; see FR-23 audit §10.
 
 ---
 
@@ -3511,6 +3512,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-23 (closure)** — Reconcile/closing pickers + match-type forms: thin P1 list APIs (`/api/v1/bank-statement-rows`, `/api/v1/fiscal-periods`, `/api/v1/vendors`) + `StatementRowPicker`, `FiscalPeriodPicker`, `VendorPicker`, and per-match-type payload fields on `NewTransactionPage`. Tag: `fastapi-react-23-react-write-recon-forms`. Next: **FASTAPI-REACT-24**. |
 | 2026-06-05 | **FASTAPI-REACT-22 (closure)** — Bank/worker/partner write pickers: thin P1 list APIs (`/api/v1/bank-accounts`, `/api/v1/workers`) + `BankAccountPicker` / `WorkerPicker` / reused `PartnerPicker` on `NewTransactionPage` write tabs. Tag: `fastapi-react-22-react-write-pickers`. Next: **FASTAPI-REACT-23**. |
 | 2026-06-05 | **FASTAPI-REACT-21 (closure)** — COA + partner pickers: thin P1 list APIs (`/api/v1/chart-of-accounts`, `/api/v1/partners`) + `CoaAccountPicker` / `PartnerPicker` on Ledger and Partner Statement pages behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-21-react-read-pickers`. Next: **FASTAPI-REACT-22**. |
 | 2026-06-05 | **FASTAPI-REACT-20 (closure)** — Cash flow + transaction ledger: thin P1 APIs (`/api/v1/reports/cash-flow`, `/api/v1/transactions`) + `services/read_transaction_history.py`; `CashFlowPage`, `TransactionLedgerPage` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-20-react-read-cashflow-txn-ledger`. Next: **FASTAPI-REACT-21**. |

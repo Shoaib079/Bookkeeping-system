@@ -11,6 +11,7 @@ type BankAccountPickerProps = {
   disabled?: boolean;
   label?: string;
   excludeCreditCard?: boolean;
+  creditCardOnly?: boolean;
 };
 
 export function BankAccountPicker({
@@ -20,6 +21,7 @@ export function BankAccountPicker({
   disabled = false,
   label = "Bank account",
   excludeCreditCard = false,
+  creditCardOnly = false,
 }: BankAccountPickerProps) {
   const [accounts, setAccounts] = useState<BankAccountsListResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,9 +35,11 @@ export function BankAccountPicker({
     async function load() {
       setError(null);
       try {
-        const path = excludeCreditCard
-          ? "/api/v1/bank-accounts?exclude_kind=credit_card"
-          : "/api/v1/bank-accounts";
+        const path = creditCardOnly
+          ? "/api/v1/bank-accounts?kind=credit_card"
+          : excludeCreditCard
+            ? "/api/v1/bank-accounts?exclude_kind=credit_card"
+            : "/api/v1/bank-accounts";
         const data = await apiGet<BankAccountsListResponse>(path, {
           session,
           companyScoped: true,
@@ -58,7 +62,7 @@ export function BankAccountPicker({
     return () => {
       cancelled = true;
     };
-  }, [session, excludeCreditCard]);
+  }, [session, excludeCreditCard, creditCardOnly]);
 
   return (
     <label>

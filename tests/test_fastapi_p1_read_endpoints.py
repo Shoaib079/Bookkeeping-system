@@ -17,8 +17,10 @@ from api.dependencies import get_db
 from api.main import create_app
 from api.serialization import (
     bank_accounts_list_to_dict,
+    bank_statement_rows_list_to_dict,
     cash_flow_to_dict,
     coa_list_to_dict,
+    fiscal_periods_list_to_dict,
     ledger_page_to_dict,
     partner_statement_to_dict,
     partners_list_to_dict,
@@ -26,11 +28,12 @@ from api.serialization import (
     receivables_page_to_dict,
     statement_readiness_list_to_dict,
     transaction_history_page_to_dict,
+    vendors_list_to_dict,
     workers_list_to_dict,
 )
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
-from services import read_ar_ap, read_bank_accounts, read_coa, read_ledger, read_partner_statement, read_partners, read_reconciliation, read_reports, read_transaction_history, read_workers
+from services import read_ar_ap, read_bank_accounts, read_bank_statement_rows, read_coa, read_fiscal_periods, read_ledger, read_partner_statement, read_partners, read_reconciliation, read_reports, read_transaction_history, read_vendors, read_workers
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
@@ -315,28 +318,49 @@ def seeded_tenant(db):
     )
     db.add(bank_a)
     db.flush()
-    db.add(
-        models.BankStatementImport(
-            company_id=co_a.id,
-            bank_account_id=bank_a.id,
-            file_name="stmt.csv",
-            file_hash="p11hash",
-            file_size=10,
-            file_path="/tmp/stmt.csv",
-            status="staging",
-            import_date=POST_DATE,
-            start_date=FROM_DATE,
-            end_date=TO_DATE,
-            starting_balance=5000.0,
-            ending_balance=5100.0,
-            row_count=1,
-            valid_count=1,
-            flagged_count=0,
-            error_count=0,
-            currency="TRY",
-            created_at=datetime.datetime.now(),
-        )
+    stmt_import = models.BankStatementImport(
+        company_id=co_a.id,
+        bank_account_id=bank_a.id,
+        file_name="stmt.csv",
+        file_hash="p11hash",
+        file_size=10,
+        file_path="/tmp/stmt.csv",
+        status="staging",
+        import_date=POST_DATE,
+        start_date=FROM_DATE,
+        end_date=TO_DATE,
+        starting_balance=5000.0,
+        ending_balance=5100.0,
+        row_count=1,
+        valid_count=1,
+        flagged_count=0,
+        error_count=0,
+        currency="TRY",
+        created_at=datetime.datetime.now(),
     )
+    db.add(stmt_import)
+    db.flush()
+    stmt_row = models.BankStatementRow(
+        bank_statement_import_id=stmt_import.id,
+        status="staging",
+        import_row_index=1,
+        date=POST_DATE,
+        description="Deposit",
+        credit_amount=100.0,
+        amount=100.0,
+        currency="TRY",
+        original_amount=100.0,
+        parsed_successfully=True,
+        created_at=datetime.datetime.now(),
+    )
+    fiscal_period = models.FiscalPeriod(
+        name="H1 2026",
+        start_date=FROM_DATE,
+        end_date=TO_DATE,
+        is_closed=False,
+        company_id=co_a.id,
+    )
+    db.add_all([stmt_row, fiscal_period])
     db.commit()
 
     cash_b = (
@@ -357,6 +381,9 @@ def seeded_tenant(db):
         "cash_account_b_id": cash_b.id,
         "partner_id": partner.id,
         "worker_id": worker.id,
+        "vendor_a_id": vendor_a.id,
+        "statement_row_id": stmt_row.id,
+        "fiscal_period_id": fiscal_period.id,
         "from_date_iso": FROM_DATE.isoformat(),
         "to_date_iso": TO_DATE.isoformat(),
     }
@@ -454,6 +481,30 @@ READ_ENDPOINTS = [
         workers_list_to_dict,
         lambda db, tenant: {"company_id": tenant["company_a_id"]},
     ),
+    (
+        "bank_statement_rows_list",
+        "/api/v1/bank-statement-rows",
+        {},
+        read_bank_statement_rows.compute_bank_statement_rows_list,
+        bank_statement_rows_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
+        "fiscal_periods_list",
+        "/api/v1/fiscal-periods",
+        {},
+        read_fiscal_periods.compute_fiscal_periods_list,
+        fiscal_periods_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
+        "vendors_list",
+        "/api/v1/vendors",
+        {},
+        read_vendors.compute_vendors_list,
+        vendors_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
 ]
 
 
@@ -533,6 +584,9 @@ class TestReadEndpointGuards:
             ("/api/v1/payables", {}),
             ("/api/v1/partners", {}),
             ("/api/v1/bank-accounts", {}),
+            ("/api/v1/bank-statement-rows", {}),
+            ("/api/v1/fiscal-periods", {}),
+            ("/api/v1/vendors", {}),
             ("/api/v1/workers", {}),
             ("/api/v1/banking/readiness", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
@@ -560,6 +614,9 @@ class TestReadEndpointGuards:
             ("/api/v1/payables", {}),
             ("/api/v1/partners", {}),
             ("/api/v1/bank-accounts", {}),
+            ("/api/v1/bank-statement-rows", {}),
+            ("/api/v1/fiscal-periods", {}),
+            ("/api/v1/vendors", {}),
             ("/api/v1/workers", {}),
             ("/api/v1/banking/readiness", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
@@ -589,6 +646,7 @@ class TestReadEndpointGuards:
             ("/api/v1/receivables", {}),
             ("/api/v1/payables", {}),
             ("/api/v1/partners", {}),
+            ("/api/v1/fiscal-periods", {}),
             ("/api/v1/workers", {}),
             ("/api/v1/banking/readiness", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
@@ -631,6 +689,9 @@ class TestReadEndpointNoCommit:
             ("/api/v1/chart-of-accounts", {}),
             ("/api/v1/partners", {}),
             ("/api/v1/bank-accounts", {}),
+            ("/api/v1/bank-statement-rows", {}),
+            ("/api/v1/fiscal-periods", {}),
+            ("/api/v1/vendors", {}),
             ("/api/v1/workers", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/transactions", _DATE_PARAMS),

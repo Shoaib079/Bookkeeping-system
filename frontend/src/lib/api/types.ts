@@ -135,6 +135,49 @@ export type WorkersListResponse = {
   row_count: number;
 };
 
+export type BankStatementRowListItem = {
+  id: number;
+  import_row_index: number;
+  date: string | null;
+  description: string;
+  amount: number;
+  status: string;
+  currency: string;
+  bank_statement_import_id: number;
+  company_id: number;
+};
+
+export type BankStatementRowsListResponse = {
+  rows: BankStatementRowListItem[];
+  row_count: number;
+};
+
+export type FiscalPeriodListRow = {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_closed: boolean;
+  company_id: number;
+};
+
+export type FiscalPeriodsListResponse = {
+  rows: FiscalPeriodListRow[];
+  row_count: number;
+};
+
+export type VendorListRow = {
+  id: number;
+  name: string;
+  is_active: boolean;
+  company_id: number;
+};
+
+export type VendorsListResponse = {
+  rows: VendorListRow[];
+  row_count: number;
+};
+
 export type BalanceSheetResponse = {
   as_of: string;
   total_assets: number;
@@ -473,6 +516,22 @@ export type ReconciliationMatchRequest = {
   match_type: ReconciliationMatchType;
   credit_account_name?: string;
   charge_subtype?: string;
+  sale_ids?: number[];
+  settlement_row_id?: number;
+  confirm_inferred_fee?: boolean;
+  vendor_id?: number;
+  payable_id?: number;
+  expense_category?: string;
+  create_expense?: boolean;
+  partner_id?: number;
+  movement_type?: string;
+  worker_id?: number;
+  gross_salary?: number;
+  deductions?: number;
+  advance_recovery?: number;
+  pay_period?: string;
+  equity_kind?: string;
+  credit_card_account_id?: number;
 };
 
 export type ReconciliationMatchResponse = {

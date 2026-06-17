@@ -2,52 +2,48 @@ import { useEffect, useState } from "react";
 
 import { apiGet } from "../lib/api/client";
 import type { ReadSession } from "../lib/api/session";
-import type { CoaListResponse } from "../lib/api/types";
+import type { VendorsListResponse } from "../lib/api/types";
 
-type CoaAccountPickerProps = {
+type VendorPickerProps = {
   value: string;
-  onChange: (accountId: string) => void;
-  onAccountNameChange?: (accountName: string) => void;
+  onChange: (vendorId: string) => void;
   session: ReadSession | null;
   disabled?: boolean;
-  label?: string;
 };
 
-export function CoaAccountPicker({
+export function VendorPicker({
   value,
   onChange,
-  onAccountNameChange,
   session,
   disabled = false,
-  label = "Account",
-}: CoaAccountPickerProps) {
-  const [accounts, setAccounts] = useState<CoaListResponse | null>(null);
+}: VendorPickerProps) {
+  const [vendors, setVendors] = useState<VendorsListResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) {
-      setAccounts(null);
+      setVendors(null);
       return;
     }
     let cancelled = false;
     async function load() {
       setError(null);
       try {
-        const data = await apiGet<CoaListResponse>("/api/v1/chart-of-accounts", {
+        const data = await apiGet<VendorsListResponse>("/api/v1/vendors", {
           session,
           companyScoped: true,
         });
         if (!cancelled) {
-          setAccounts(data);
+          setVendors(data);
         }
       } catch (err) {
         if (!cancelled) {
           const detail =
             err && typeof err === "object" && "detail" in err
               ? String((err as { detail: string }).detail)
-              : "Failed to load chart of accounts.";
+              : "Failed to load vendors.";
           setError(detail);
-          setAccounts(null);
+          setVendors(null);
         }
       }
     }
@@ -57,27 +53,19 @@ export function CoaAccountPicker({
     };
   }, [session]);
 
-  function handleChange(nextId: string) {
-    onChange(nextId);
-    if (onAccountNameChange) {
-      const row = accounts?.rows.find((item) => String(item.id) === nextId);
-      onAccountNameChange(row?.account_name ?? "");
-    }
-  }
-
   return (
     <label>
-      {label}
+      Vendor
       <select
         value={value}
-        onChange={(event) => handleChange(event.target.value)}
-        disabled={disabled || !session || !accounts}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={disabled || !session || !vendors}
         required
       >
-        <option value="">Select account…</option>
-        {accounts?.rows.map((row) => (
+        <option value="">Select vendor…</option>
+        {vendors?.rows.map((row) => (
           <option key={row.id} value={String(row.id)}>
-            {row.account_code} — {row.account_name} ({row.account_type})
+            {row.name}
           </option>
         ))}
       </select>

@@ -112,16 +112,35 @@ PARTNERS_LIST_READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/partners",
 )
 
+BANK_STATEMENT_ROWS_LIST_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/bank-statement-rows",
+)
+
+FISCAL_PERIODS_LIST_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/fiscal-periods",
+)
+
+VENDORS_LIST_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/vendors",
+)
+
 WRITE_PICKER_READ_API_PATHS: tuple[str, ...] = (
     *BANK_ACCOUNTS_LIST_READ_API_PATHS,
     *WORKERS_LIST_READ_API_PATHS,
     *PARTNERS_LIST_READ_API_PATHS,
+    *BANK_STATEMENT_ROWS_LIST_READ_API_PATHS,
+    *FISCAL_PERIODS_LIST_READ_API_PATHS,
+    *VENDORS_LIST_READ_API_PATHS,
 )
 
 WRITE_PICKER_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/components/BankAccountPicker.tsx",
     "frontend/src/components/WorkerPicker.tsx",
     "frontend/src/components/PartnerPicker.tsx",
+    "frontend/src/components/StatementRowPicker.tsx",
+    "frontend/src/components/FiscalPeriodPicker.tsx",
+    "frontend/src/components/VendorPicker.tsx",
+    "frontend/src/components/CoaAccountPicker.tsx",
 )
 
 REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
@@ -311,10 +330,18 @@ FR21_DEFERRED_ITEMS: tuple[str, ...] = (
     "production COMMIT_MODE_* flip",
 )
 
-DEFERRED_ITEMS: tuple[str, ...] = (
+# Frozen for FR-22 audit tests (write contract; do not mutate).
+FR22_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-23",
     "full match-type payload forms",
     "statement row picker",
     "fiscal period picker",
+    "production COMMIT_MODE_* flip",
+)
+
+DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-24",
+    "receivable sale picker",
+    "allocation id picker",
     "production COMMIT_MODE_* flip",
 )

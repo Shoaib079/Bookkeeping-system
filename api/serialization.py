@@ -22,7 +22,13 @@ from services.read_reports import (
 )
 from services.read_coa import CoaListPage, CoaRow
 from services.read_bank_accounts import BankAccountListRow, BankAccountsListPage
+from services.read_bank_statement_rows import (
+    BankStatementRowListItem,
+    BankStatementRowsListPage,
+)
+from services.read_fiscal_periods import FiscalPeriodListRow, FiscalPeriodsListPage
 from services.read_partners import PartnerListRow, PartnersListPage
+from services.read_vendors import VendorListRow, VendorsListPage
 from services.read_workers import WorkerListRow, WorkersListPage
 from services.read_transaction_history import TransactionHistoryPage, TransactionHistoryRow
 
@@ -194,6 +200,61 @@ def _worker_list_row_to_dict(row: WorkerListRow) -> dict[str, Any]:
 def workers_list_to_dict(page: WorkersListPage) -> dict[str, Any]:
     return {
         "rows": [_worker_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+    }
+
+
+def _bank_statement_row_list_item_to_dict(row: BankStatementRowListItem) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "import_row_index": row.import_row_index,
+        "date": row.date.isoformat() if row.date is not None else None,
+        "description": row.description,
+        "amount": row.amount,
+        "status": row.status,
+        "currency": row.currency,
+        "bank_statement_import_id": row.bank_statement_import_id,
+        "company_id": row.company_id,
+    }
+
+
+def bank_statement_rows_list_to_dict(page: BankStatementRowsListPage) -> dict[str, Any]:
+    return {
+        "rows": [_bank_statement_row_list_item_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+    }
+
+
+def _fiscal_period_list_row_to_dict(row: FiscalPeriodListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "name": row.name,
+        "start_date": row.start_date.isoformat(),
+        "end_date": row.end_date.isoformat(),
+        "is_closed": row.is_closed,
+        "company_id": row.company_id,
+    }
+
+
+def fiscal_periods_list_to_dict(page: FiscalPeriodsListPage) -> dict[str, Any]:
+    return {
+        "rows": [_fiscal_period_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+    }
+
+
+def _vendor_list_row_to_dict(row: VendorListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "name": row.name,
+        "is_active": row.is_active,
+        "company_id": row.company_id,
+    }
+
+
+def vendors_list_to_dict(page: VendorsListPage) -> dict[str, Any]:
+    return {
+        "rows": [_vendor_list_row_to_dict(r) for r in page.rows],
         "row_count": page.row_count,
     }
 

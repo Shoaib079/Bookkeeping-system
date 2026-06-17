@@ -51,6 +51,18 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Staff directory for write-tab pickers.",
     },
     {
+        "name": "bank-statement-rows",
+        "description": "Imported bank statement rows for reconciliation pickers.",
+    },
+    {
+        "name": "fiscal-periods",
+        "description": "Fiscal period directory for closing pickers.",
+    },
+    {
+        "name": "vendors",
+        "description": "Vendor directory for reconciliation pickers.",
+    },
+    {
         "name": "transactions",
         "description": "Cross-module transaction history for a date range.",
     },

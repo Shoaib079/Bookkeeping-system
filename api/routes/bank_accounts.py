@@ -34,6 +34,10 @@ def get_bank_accounts(
             description="Omit accounts of this kind (e.g. credit_card for card-sale deposit targets)"
         ),
     ] = None,
+    kind: Annotated[
+        str | None,
+        Query(description="Return only accounts of this kind (e.g. credit_card)"),
+    ] = None,
 ) -> dict:
     company_id = require_company_read_access(
         session,
@@ -48,5 +52,6 @@ def get_bank_accounts(
         company_id=company_id,
         active_only=active_only,
         exclude_kind=exclude_kind,
+        kind=kind,
     )
     return bank_accounts_list_to_dict(page)
