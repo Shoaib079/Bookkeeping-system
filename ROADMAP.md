@@ -1405,11 +1405,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-05** | React bootstrap (ThemeProvider + router shell) | ✅ **Complete** |
 | **FASTAPI-REACT-06** | First React pages (Home + Ledger read-only) | ✅ **Complete** |
 | **FASTAPI-REACT-07** | PG boundary matrix / TD-PS-01 characterization | ✅ **Complete** |
-| **FASTAPI-REACT-08+** | React write pages or extended PG matrix | 📋 Planned |
+| **FASTAPI-REACT-08** | First React write page (cash sale) | ✅ **Complete** |
+| **FASTAPI-REACT-09+** | More write pages / sale types | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_07_PG_BOUNDARY_MATRIX_AUDIT.md](./docs/FASTAPI_REACT_07_PG_BOUNDARY_MATRIX_AUDIT.md) · **Tests:** `tests/test_fastapi_react_07_api_boundary_matrix.py`, `tests/test_fastapi_react_07_pg_boundary_matrix.py` · **Tag:** `fastapi-react-07-pg-boundary-matrix`
+**Audit:** [FASTAPI_REACT_08_REACT_WRITE_AUDIT.md](./docs/FASTAPI_REACT_08_REACT_WRITE_AUDIT.md) · **Tests:** `tests/test_fastapi_react_08_react_write.py` · **Tag:** `fastapi-react-08-react-write`
 
-**Next slice:** **FASTAPI-REACT-08** — first React write page or extended boundary matrix; see FR-07 audit §10.
+**Next slice:** **FASTAPI-REACT-09** — expense write or card/credit sale fields; see FR-08 audit §10.
 
 ---
 
@@ -3500,6 +3501,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-08 (closure)** — First React write page: cash sale form on `/transactions/new` via `POST /api/v1/sales` behind `VITE_ERP_REACT_WRITE_SALES=1` + `VITE_ERP_REACT_PAGES=1` + `ERP_API_WRITE_SALES=1`; `registry/react_write_contract.py` + `docs/FASTAPI_REACT_08_REACT_WRITE_AUDIT.md` + `tests/test_fastapi_react_08_react_write.py`. Streamlit primary unchanged. Tag: `fastapi-react-08-react-write`. Next: **FASTAPI-REACT-09**. |
 | 2026-06-05 | **FASTAPI-REACT-07 (closure)** — PG boundary matrix / TD-PS-01: API write-path dual-run (cash sale, expense, void) + failure rollback; optional PostgreSQL parity when `ERP_TEST_POSTGRES_URL` set; `registry/pg_boundary_contract.py` + `docs/FASTAPI_REACT_07_PG_BOUNDARY_MATRIX_AUDIT.md` + matrix tests. Default `internal` unchanged. Tag: `fastapi-react-07-pg-boundary-matrix`. Next: **FASTAPI-REACT-08**. |
 | 2026-06-05 | **FASTAPI-REACT-06 (closure)** — First React pages: `HomePage` (P&L MTD) + `LedgerPage` (GL read-only) wired to P1 read API behind `VITE_ERP_REACT_PAGES=1`; `registry/react_pages_contract.py` + `docs/FASTAPI_REACT_06_REACT_PAGES_AUDIT.md` + `tests/test_fastapi_react_06_react_pages.py`. Streamlit primary unchanged. Tag: `fastapi-react-06-react-pages`. Next: **FASTAPI-REACT-07**. |
 | 2026-06-05 | **FASTAPI-REACT-05 (closure)** — React bootstrap: `frontend/` Vite+React shell, `ThemeProvider` from `react_token_bundle()`, NAV-ARCH-S4 router (42 placeholder routes), `scripts/export_react_bootstrap_assets.py`; `docs/FASTAPI_REACT_05_REACT_BOOTSTRAP_AUDIT.md` + `tests/test_fastapi_react_05_react_bootstrap.py`. Streamlit primary unchanged. Tag: `fastapi-react-05-react-bootstrap`. Next: **FASTAPI-REACT-06**. |

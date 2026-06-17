@@ -1,21 +1,36 @@
 import type { ComponentType } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
-import { reactPagesEnabled } from "../config/featureFlags";
+import {
+  reactPagesEnabled,
+  reactWriteSalesEnabled,
+} from "../config/featureFlags";
 import { AppShell } from "../layouts/AppShell";
 import { routeSpecs, type RouteSpec } from "../lib/routes";
 import { HomePage } from "../pages/HomePage";
 import { LedgerPage } from "../pages/LedgerPage";
+import { NewTransactionPage } from "../pages/NewTransactionPage";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 
-const REAL_PAGES: Record<string, ComponentType> = {
+const READ_PAGES: Record<string, ComponentType> = {
   "/": HomePage,
   "/books/general-ledger": LedgerPage,
 };
 
+const WRITE_PAGES: Record<string, ComponentType> = {
+  "/transactions/new": NewTransactionPage,
+};
+
 function RoutePage({ route }: { route: RouteSpec }) {
-  if (reactPagesEnabled() && route.path in REAL_PAGES) {
-    const Page = REAL_PAGES[route.path];
+  if (!reactPagesEnabled()) {
+    return <PlaceholderPage />;
+  }
+  if (route.path in WRITE_PAGES && reactWriteSalesEnabled()) {
+    const Page = WRITE_PAGES[route.path];
+    return <Page />;
+  }
+  if (route.path in READ_PAGES) {
+    const Page = READ_PAGES[route.path];
     return <Page />;
   }
   return <PlaceholderPage />;

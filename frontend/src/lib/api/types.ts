@@ -53,3 +53,19 @@ export type LedgerPageResponse = {
   account_type: string;
   current_balance: number;
 };
+
+export type CreateSaleRequest = {
+  date: string;
+  amount: number;
+  currency: string;
+  payment_method: "Cash";
+  notes?: string;
+};
+
+export type CreateSaleResponse = {
+  sale_id: number;
+  journal_entry_id: number | null;
+  invoice_number: string;
+  message: string;
+  status: string;
+};
