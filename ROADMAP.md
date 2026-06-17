@@ -182,6 +182,7 @@ No implementation before roadmap approval.
 | **NAV-ARCH** — Navigation single source of truth | ✅ **S4 complete** — registry + React route contract frozen — see [§ NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
 | **UI-SYSTEM-02** — ERP-wide UI & theme modernization | ✅ **S1–S5 complete** — see [§ UI-SYSTEM-02](#ui-system-02--erp-wide-ui--theme-modernization) |
 | **MONO-THEME-01** — Option A+ unified mono ERP theme | ✅ **Complete** — S1–S7 — see [§ MONO-THEME-01](#mono-theme-01--option-a-unified-mono-erp-theme) |
+| **MONO-THEME-02** — Real UI visual refinement pass | 🟡 **S0 complete** — visual contract frozen — see [§ MONO-THEME-02](#mono-theme-02--real-ui-visual-refinement-pass) |
 | **MOB-AT-C1** — Concept C Mobile AT UI | ✅ **Accepted** — reference implementation; 747 tests passing |
 | **MOBILE-11** — Mobile Design System | ✅ **Approved** — `docs/MOBILE_UI_SYSTEM.md` is the governing document for all future mobile work |
 | **MOBILE-12** — Design Governance | ✅ **Approved** — open decisions recorded; phased migration path defined |
@@ -1295,7 +1296,32 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **MONO-THEME-01-S6** | Reports, tables, banking statuses | ✅ **Complete** |
 | **MONO-THEME-01-S7** | Cleanup + React contract update | ✅ **Complete** |
 
-**Next slice:** MONO-THEME-01 epic **complete** — proceed to **DS-6 React build** or next UI epic per ROADMAP priority.
+**Next slice:** **MONO-THEME-02-S1** — sidebar polish (see [§ MONO-THEME-02](#mono-theme-02--real-ui-visual-refinement-pass)).
+
+---
+
+## MONO-THEME-02 — Real UI Visual Refinement Pass
+
+**Status:** 🟡 **In progress** — S0 visual contract ✅ · S1 sidebar 📋 · S2 top bar 📋 · S3 dashboard 📋 · S4 mobile parity 📋 · S5 final polish 📋  
+**Priority:** High — closes the gap between MONO-THEME-01 grammar tokens and live screenshot quality  
+**Depends on:** MONO-THEME-01 complete · UI-SYSTEM-02 token foundation · user-approved screenshots
+
+**Goal:** Make the actual desktop/mobile app match the approved Option A+ direction — **refined, denser, stronger hierarchy** — without redesign, new colors, or business-logic changes.
+
+**Contract:** [MONO_THEME_02_VISUAL_CONTRACT.md](./docs/MONO_THEME_02_VISUAL_CONTRACT.md) · **Tests:** `tests/test_mono_theme_02_visual_contract.py`
+
+**Hard rules:** No accounting/PostgreSQL/nav-route/business-logic changes · no new palette · existing `--erp-*` grammar tokens only · semantic colors immutable · CSS/layout only per slice.
+
+| Slice | Scope | Status |
+|-------|--------|--------|
+| **MONO-THEME-02-S0** | Option A+ visual contract (audit only) | ✅ **Complete** |
+| **MONO-THEME-02-S1** | Sidebar — subtle active tint + accent bar, spacing rhythm | 📋 Planned |
+| **MONO-THEME-02-S2** | Top bar — compact alignment, search prominence | 📋 Planned |
+| **MONO-THEME-02-S3** | Dashboard — density, KPI grid, activity hierarchy | 📋 Planned |
+| **MONO-THEME-02-S4** | Mobile parity — bottom nav, KPI chips, hub sheets | 📋 Planned |
+| **MONO-THEME-02-S5** | Final polish — tables/lists, dark mode, scorecard closure | 📋 Planned |
+
+**Next slice:** **MONO-THEME-02-S1** — sidebar polish.
 
 ---
 
@@ -3386,6 +3412,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **MONO-THEME-02-S0 (closure)** — Option A+ visual contract frozen: `docs/MONO_THEME_02_VISUAL_CONTRACT.md` + `tests/test_mono_theme_02_visual_contract.py`. Audit only; screenshots = source of truth; S1–S5 slice plan. Next: **MONO-THEME-02-S1** (sidebar polish). |
 | 2026-06-05 | **MONO-THEME-01-S7 (closure)** — Epic complete: `react_token_bundle()` exports `componentGrammar` + grammar key families; `auth.css` mono role chips (no `--role-*`); `tests/test_mono_theme_01_s7_react_contract_cleanup.py`. Tag: `mono-theme-01-s7-react-contract-cleanup`. Next: **DS-6 React build** or next ROADMAP epic. |
 | 2026-06-05 | **MONO-THEME-01-S6 (closure)** — Table/status grammar: `--erp-table-*` on fin/data/stTable/txn-ledger surfaces; chip extensions on status pills + banking/report selectors; `tests/test_mono_theme_01_s6_table_status_grammar.py`. Tag: `mono-theme-01-s6-table-status-grammar`. Next: **MONO-THEME-01-S7** (React contract + cleanup). |
 | 2026-06-05 | **MONO-THEME-01-S5 (closure)** — Mobile card grammar: KPI/list/sheet/form surfaces route through `--erp-card-*` (`mobile_components.css`, `mobile_shell.css`, `mobile_txn.css`, `mobile_reports.css`); `tests/test_mono_theme_01_s5_mobile_card_grammar.py`. Tag: `mono-theme-01-s5-mobile-card-grammar`. Next: **MONO-THEME-01-S6** (tables/statuses). |
