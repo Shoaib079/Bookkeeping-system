@@ -181,7 +181,7 @@ No implementation before roadmap approval.
 | Sidebar / navigation redesign (AD-UI-001) | 🟡 **D1 + D2-P0 shipped** — Financial Statements routes + promoted daily lookup route (app.py `AD-UI-001 D2-P0` wrapper); D2+ remainder gated — see [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §16 |
 | **NAV-ARCH** — Navigation single source of truth | ✅ **S4 complete** — registry + React route contract frozen — see [§ NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
 | **UI-SYSTEM-02** — ERP-wide UI & theme modernization | ✅ **S1–S5 complete** — see [§ UI-SYSTEM-02](#ui-system-02--erp-wide-ui--theme-modernization) |
-| **MONO-THEME-01** — Option A+ unified mono ERP theme | 🟡 **S1 complete** — audit + design spec — see [§ MONO-THEME-01](#mono-theme-01--option-a-unified-mono-erp-theme) |
+| **MONO-THEME-01** — Option A+ unified mono ERP theme | ✅ **Complete** — S1–S7 — see [§ MONO-THEME-01](#mono-theme-01--option-a-unified-mono-erp-theme) |
 | **MOB-AT-C1** — Concept C Mobile AT UI | ✅ **Accepted** — reference implementation; 747 tests passing |
 | **MOBILE-11** — Mobile Design System | ✅ **Approved** — `docs/MOBILE_UI_SYSTEM.md` is the governing document for all future mobile work |
 | **MOBILE-12** — Design Governance | ✅ **Approved** — open decisions recorded; phased migration path defined |
@@ -1267,19 +1267,19 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 - Sidebar visually modern without route drift.
 - React team can port `AppShell`, `SidebarNav`, `KpiGrid`, `ChipSelector` from documented contract.
 
-**Next slice:** UI-SYSTEM-02 epic **complete** — DS-6 React build or **MONO-THEME-01** (Option A+ shared grammar).
+**Next slice:** MONO-THEME-01 epic **complete** — DS-6 React build or next prioritized epic.
 
 ---
 
 ## MONO-THEME-01 — Option A+ Unified Mono ERP Theme
 
-**Status:** 🟡 **In progress** — S1 audit ✅ · S2 shared grammar tokens ✅ · S3 nav active ✅ · S4 desktop components ✅ · S5 mobile components ✅ · S6 tables/statuses ✅ · S7 React contract 📋  
+**Status:** ✅ **Complete** — S1–S7 (shared grammar + React contract export)  
 **Priority:** High — after UI-SYSTEM-02 token foundation; before React DS-6 build  
 **Depends on:** UI-SYSTEM-02-S2 (`ui/design_tokens.py`) · MOBILE-UX-02 theme audits · UI-SYSTEM-02-S5 React contract
 
 **User-approved direction (Option A+ Final Blend):** accounting-first shadcn-style spine · mono/neutral by default · one blue accent · dense accounting tables · rich dashboard only where meaningful · desktop and mobile feel like one ERP · no rainbow UI · color only when it carries meaning.
 
-**Audit:** [MONO_THEME_01_AUDIT.md](./docs/MONO_THEME_01_AUDIT.md) · **Tests:** `tests/test_mono_theme_01_audit.py`, `tests/test_mono_theme_01_s2_shared_grammar_tokens.py`, `tests/test_mono_theme_01_s3_nav_active_grammar.py`, `tests/test_mono_theme_01_s4_desktop_card_grammar.py`, `tests/test_mono_theme_01_s5_mobile_card_grammar.py`, `tests/test_mono_theme_01_s6_table_status_grammar.py`
+**Audit:** [MONO_THEME_01_AUDIT.md](./docs/MONO_THEME_01_AUDIT.md) · **Tests:** `tests/test_mono_theme_01_audit.py`, `tests/test_mono_theme_01_s2_shared_grammar_tokens.py`, `tests/test_mono_theme_01_s3_nav_active_grammar.py`, `tests/test_mono_theme_01_s4_desktop_card_grammar.py`, `tests/test_mono_theme_01_s5_mobile_card_grammar.py`, `tests/test_mono_theme_01_s6_table_status_grammar.py`, `tests/test_mono_theme_01_s7_react_contract_cleanup.py`
 
 **Core finding:** Token foundation already matches Option A+. Problem is **duplicated component grammar** — desktop and mobile CSS style cards/nav/chips separately despite shared tokens.
 
@@ -1293,9 +1293,9 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **MONO-THEME-01-S4** | Desktop cards, dashboard, forms, buttons | ✅ **Complete** |
 | **MONO-THEME-01-S5** | Mobile shell, cards, forms, lists | ✅ **Complete** |
 | **MONO-THEME-01-S6** | Reports, tables, banking statuses | ✅ **Complete** |
-| **MONO-THEME-01-S7** | Cleanup + React contract update | 📋 Planned |
+| **MONO-THEME-01-S7** | Cleanup + React contract update | ✅ **Complete** |
 
-**Next slice:** **MONO-THEME-01-S7** — cleanup + React contract update.
+**Next slice:** MONO-THEME-01 epic **complete** — proceed to **DS-6 React build** or next UI epic per ROADMAP priority.
 
 ---
 
@@ -3386,6 +3386,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **MONO-THEME-01-S7 (closure)** — Epic complete: `react_token_bundle()` exports `componentGrammar` + grammar key families; `auth.css` mono role chips (no `--role-*`); `tests/test_mono_theme_01_s7_react_contract_cleanup.py`. Tag: `mono-theme-01-s7-react-contract-cleanup`. Next: **DS-6 React build** or next ROADMAP epic. |
 | 2026-06-05 | **MONO-THEME-01-S6 (closure)** — Table/status grammar: `--erp-table-*` on fin/data/stTable/txn-ledger surfaces; chip extensions on status pills + banking/report selectors; `tests/test_mono_theme_01_s6_table_status_grammar.py`. Tag: `mono-theme-01-s6-table-status-grammar`. Next: **MONO-THEME-01-S7** (React contract + cleanup). |
 | 2026-06-05 | **MONO-THEME-01-S5 (closure)** — Mobile card grammar: KPI/list/sheet/form surfaces route through `--erp-card-*` (`mobile_components.css`, `mobile_shell.css`, `mobile_txn.css`, `mobile_reports.css`); `tests/test_mono_theme_01_s5_mobile_card_grammar.py`. Tag: `mono-theme-01-s5-mobile-card-grammar`. Next: **MONO-THEME-01-S6** (tables/statuses). |
 | 2026-06-05 | **MONO-THEME-01-S4 (closure)** — Desktop card grammar: KPI/dashboard/banner/activity cards + form containers route through `--erp-card-*` tokens (`theme.css`, `widgets.css`); `tests/test_mono_theme_01_s4_desktop_card_grammar.py`. Tag: `mono-theme-01-s4-desktop-card-grammar`. Next: **MONO-THEME-01-S5** (mobile card parity). |

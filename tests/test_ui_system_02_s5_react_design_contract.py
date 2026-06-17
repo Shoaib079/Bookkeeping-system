@@ -92,6 +92,21 @@ def test_react_token_bundle_serializable():
     assert parsed["version"] == "UI-SYSTEM-02-S5"
     assert "light" in parsed and "dark" in parsed
     assert "spacing" in parsed and "deprecated" in parsed
+    assert parsed["grammarVersion"] == "MONO-THEME-01-S7"
+    assert "componentGrammar" in parsed
+    assert "--erp-nav-active-bg" in parsed["componentGrammar"]
+
+
+def test_react_token_bundle_grammar_key_families():
+    bundle = react_token_bundle()
+    for key in (
+        "navGrammarKeys",
+        "cardGrammarKeys",
+        "chipGrammarExtensionKeys",
+        "tableGrammarKeys",
+    ):
+        assert key in bundle
+        assert len(bundle[key]) > 0
 
 
 def test_deprecated_role_tokens_in_bundle():

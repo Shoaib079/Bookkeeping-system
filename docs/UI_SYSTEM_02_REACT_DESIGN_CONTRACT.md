@@ -50,6 +50,26 @@ bundle = react_token_bundle()  # JSON-serializable; version UI-SYSTEM-02-S5
 | `chipKeys` | Chip grammar variable names (CSS color-mix) |
 | `deprecated` | `--role-*` keys — **do not use in new React UI** |
 | `kpiGridModifiers` | BEM modifiers e.g. `reports-cf` |
+| `grammarVersion` | MONO-THEME grammar slice id (`MONO-THEME-01-S7`) |
+| `componentGrammar` | Shared `--erp-nav-*` / `--erp-card-*` / `--erp-chip-*` ext / `--erp-table-*` values from `COMPONENT_GRAMMAR_TOKENS` |
+| `navGrammarKeys` | Nav active grammar variable names |
+| `cardGrammarKeys` | Card shell grammar variable names |
+| `chipGrammarExtensionKeys` | Chip radius/padding/border extensions (semantic chip colours remain in `chipKeys`) |
+| `tableGrammarKeys` | Dense table grammar variable names |
+
+### MONO-THEME-01 shared grammar (S7)
+
+MONO-THEME-01-S2–S6 migrated desktop and mobile CSS to a **single component-grammar token layer**. S7 records that layer in `react_token_bundle()` so the React `ThemeProvider` can bootstrap nav/card/chip/table shells without forking Streamlit CSS.
+
+```python
+bundle = react_token_bundle()
+assert bundle["grammarVersion"] == "MONO-THEME-01-S7"
+nav_bg = bundle["componentGrammar"]["--erp-nav-active-bg"]
+```
+
+React rule: import grammar values from the bundle; do **not** re-derive color-mix strings in the SPA. Semantic colours (`--theme-success`, `--theme-danger`, …) remain in `light`/`dark` and are unchanged.
+
+**Tests:** `tests/test_mono_theme_01_s7_react_contract_cleanup.py`
 
 ### Deprecated tokens (governance)
 
@@ -129,15 +149,16 @@ validate_react_design_contract()  # raises ValueError on drift
 
 ## No-change statement
 
-This slice **does not** change Streamlit runtime UI, CSS selectors, or navigation behavior. It freezes the migration contract only.
+UI-SYSTEM-02-S5 froze the migration contract without changing Streamlit runtime UI. **MONO-THEME-01-S7** extends the token export only and removes deprecated per-role hue styling from `auth.css` (mono role chips). No nav/posting/accounting change.
 
 ## Related documents
 
 | Doc | Role |
 |-----|------|
 | [UI_SYSTEM_02_AUDIT.md](./UI_SYSTEM_02_AUDIT.md) | S1–S5 epic audit |
+| [MONO_THEME_01_AUDIT.md](./MONO_THEME_01_AUDIT.md) | Shared grammar tokens S2–S7 |
 | [NAV_ARCH_REACT_ROUTE_CONTRACT.md](./NAV_ARCH_REACT_ROUTE_CONTRACT.md) | Route paths |
 | [ERP_DS_04_MASTER_DESIGN_SYSTEM.md](./ERP_DS_04_MASTER_DESIGN_SYSTEM.md) | Visual spec |
 | [ERP_DS_05_REACT_ARCHITECTURE.md](./ERP_DS_05_REACT_ARCHITECTURE.md) | SPA architecture |
 
-*Frozen 2026-06-05. UI-SYSTEM-02 epic S1–S5 complete.*
+*Frozen 2026-06-05. UI-SYSTEM-02 epic S1–S5 complete. MONO-THEME-01-S7 grammar export added 2026-06-05.*

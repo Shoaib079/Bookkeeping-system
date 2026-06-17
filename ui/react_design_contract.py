@@ -12,17 +12,25 @@ from typing import Final
 
 from ui import section as section_module
 from ui.design_tokens import (
+    CARD_GRAMMAR_TOKEN_KEYS,
+    CHIP_GRAMMAR_EXTENSION_KEYS,
     CHIP_TOKEN_KEYS,
+    COMPONENT_GRAMMAR_TOKENS,
     DEPRECATED_ROLE_TOKEN_KEYS,
     LAYOUT_TOKENS,
     MOBILE_HEADER_LAYOUT_TOKENS,
+    NAV_GRAMMAR_TOKEN_KEYS,
     RADIUS_TOKENS,
     SHADOW_TOKENS,
     SPACING_TOKENS,
+    TABLE_GRAMMAR_TOKEN_KEYS,
     TYPOGRAPHY_TOKENS,
     build_dark_root_vars,
     build_light_root_vars,
+    grammar_values_reference_only,
 )
+
+GRAMMAR_CONTRACT_VERSION: Final[str] = "MONO-THEME-01-S7"
 
 CONTRACT_DOC = "docs/UI_SYSTEM_02_REACT_DESIGN_CONTRACT.md"
 
@@ -431,6 +439,12 @@ def react_token_bundle() -> dict[str, object]:
         "chipKeys": list(CHIP_TOKEN_KEYS),
         "deprecated": sorted(DEPRECATED_REACT_TOKEN_KEYS),
         "kpiGridModifiers": sorted(KPI_GRID_MODIFIERS),
+        "grammarVersion": GRAMMAR_CONTRACT_VERSION,
+        "componentGrammar": dict(COMPONENT_GRAMMAR_TOKENS),
+        "navGrammarKeys": list(NAV_GRAMMAR_TOKEN_KEYS),
+        "cardGrammarKeys": list(CARD_GRAMMAR_TOKEN_KEYS),
+        "chipGrammarExtensionKeys": list(CHIP_GRAMMAR_EXTENSION_KEYS),
+        "tableGrammarKeys": list(TABLE_GRAMMAR_TOKEN_KEYS),
     }
 
 
@@ -466,3 +480,25 @@ def validate_react_design_contract() -> None:
 
     if "reports-cf" not in KPI_GRID_MODIFIERS:
         raise ValueError("KPI_GRID_MODIFIERS must include reports-cf (cash flow mobile row)")
+
+    bundle = react_token_bundle()
+    for key in (
+        "grammarVersion",
+        "componentGrammar",
+        "navGrammarKeys",
+        "cardGrammarKeys",
+        "chipGrammarExtensionKeys",
+        "tableGrammarKeys",
+    ):
+        if key not in bundle:
+            raise ValueError(f"react_token_bundle missing grammar export key: {key!r}")
+
+    if bundle["grammarVersion"] != GRAMMAR_CONTRACT_VERSION:
+        raise ValueError("grammarVersion drift vs GRAMMAR_CONTRACT_VERSION")
+
+    grammar = bundle["componentGrammar"]
+    if set(grammar) != set(COMPONENT_GRAMMAR_TOKENS):
+        raise ValueError("componentGrammar keys drift vs COMPONENT_GRAMMAR_TOKENS")
+
+    if not grammar_values_reference_only():
+        raise ValueError("COMPONENT_GRAMMAR_TOKENS must reference existing tokens only (no raw hex)")

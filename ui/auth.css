@@ -71,6 +71,7 @@
   line-height: 1.25;
 }
 
+/* MONO-THEME-01-S7 — mono role chips; per-role hue classes kept for DOM compat only */
 .erp-auth-role-chip {
   display: inline-block;
   font-size: 10px;
@@ -82,31 +83,6 @@
   border: 1px solid var(--theme-border);
   background: color-mix(in srgb, var(--theme-info) 8%, var(--theme-card) 92%);
   color: var(--theme-muted);
-}
-
-.erp-auth-role-chip.erp-auth-role-owner {
-  border-color: color-mix(in srgb, var(--role-owner) 35%, var(--theme-border) 65%);
-  color: var(--role-owner);
-}
-
-.erp-auth-role-chip.erp-auth-role-manager {
-  border-color: color-mix(in srgb, var(--role-manager) 35%, var(--theme-border) 65%);
-  color: var(--role-manager);
-}
-
-.erp-auth-role-chip.erp-auth-role-cashier {
-  border-color: color-mix(in srgb, var(--role-cashier) 35%, var(--theme-border) 65%);
-  color: var(--role-cashier);
-}
-
-.erp-auth-role-chip.erp-auth-role-partner {
-  border-color: color-mix(in srgb, var(--role-partner) 35%, var(--theme-border) 65%);
-  color: var(--role-partner);
-}
-
-.erp-auth-role-chip.erp-auth-role-viewer {
-  border-color: color-mix(in srgb, var(--role-viewer) 35%, var(--theme-border) 65%);
-  color: var(--role-viewer);
 }
 
 [data-testid="stMain"] [class*="st-key-select_user_"] [data-testid="stButton"] {
