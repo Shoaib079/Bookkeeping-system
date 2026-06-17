@@ -58,8 +58,10 @@ export type CreateSaleRequest = {
   date: string;
   amount: number;
   currency: string;
-  payment_method: "Cash";
+  payment_method: "Cash" | "Card" | "Credit";
   notes?: string;
+  customer_name?: string;
+  card_bank_account_id?: number;
 };
 
 export type CreateSaleResponse = {
@@ -74,10 +76,11 @@ export type CreateExpenseRequest = {
   date: string;
   amount: number;
   currency: string;
-  payment_method: "Cash";
+  payment_method: "Cash" | "Bank";
   notes?: string;
   category_name: string;
   subcategory_name?: string;
+  bank_account_id?: number;
 };
 
 export type CreateExpenseResponse = {

@@ -82,7 +82,7 @@ def test_new_transaction_page_posts_sales_api():
     )
     for path in contract.WRITE_API_PATHS:
         assert path in src, path
-    assert 'payment_method: "Cash"' in src or "payment_method: 'Cash'" in src
+    assert "salePaymentMethod" in src
     assert contract.WRITE_METHOD_NAME in src
 
 

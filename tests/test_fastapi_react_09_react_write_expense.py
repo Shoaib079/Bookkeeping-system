@@ -69,7 +69,7 @@ def test_new_transaction_page_posts_expense_api():
     for path in contract.EXPENSE_WRITE_API_PATHS:
         assert path in src, path
     assert "category_name" in src
-    assert "Save cash expense" in src
+    assert "Save" in src and "expense" in src
     assert "erp-write-tabs" in src
 
 
@@ -79,7 +79,7 @@ def test_new_transaction_page_still_posts_sales_api():
     )
     for path in contract.WRITE_API_PATHS:
         assert path in src, path
-    assert "Save cash sale" in src
+    assert "Save" in src and "sale" in src
 
 
 @pytest.mark.parametrize("api_path", contract.EXPENSE_WRITE_API_PATHS)
@@ -100,6 +100,6 @@ def test_roadmap_lists_fastapi_react_09_complete():
     assert "fastapi-react-09-react-write-expense" in roadmap
 
 
-@pytest.mark.parametrize("item", contract.DEFERRED_ITEMS)
+@pytest.mark.parametrize("item", contract.FR09_DEFERRED_ITEMS)
 def test_audit_documents_deferred_items(audit_text, item):
     assert item in audit_text

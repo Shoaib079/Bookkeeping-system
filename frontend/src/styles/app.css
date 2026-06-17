@@ -213,7 +213,8 @@ a {
 }
 
 .erp-write-form input,
-.erp-write-form textarea {
+.erp-write-form textarea,
+.erp-write-form select {
   padding: 0.5rem;
   border: 1px solid var(--erp-border, #ddd);
   border-radius: var(--erp-radius-sm, 4px);

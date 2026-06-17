@@ -41,9 +41,18 @@ REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/pages/NewTransactionPage.tsx",
 )
 
-# Cash sale (FR-08) and cash expense (FR-09) — card/credit/bank deferred.
-ALLOWED_SALE_PAYMENT_METHODS: tuple[str, ...] = ("Cash",)
-ALLOWED_EXPENSE_PAYMENT_METHODS: tuple[str, ...] = ("Cash",)
+# FR-08 cash only; FR-09 cash expense; FR-10 adds Card/Credit + Bank.
+ALLOWED_SALE_PAYMENT_METHODS: tuple[str, ...] = ("Cash", "Card", "Credit")
+ALLOWED_EXPENSE_PAYMENT_METHODS: tuple[str, ...] = ("Cash", "Bank")
+
+SALE_PAYMENT_OPTIONAL_FIELDS: tuple[str, ...] = (
+    "customer_name",
+    "card_bank_account_id",
+)
+
+EXPENSE_PAYMENT_OPTIONAL_FIELDS: tuple[str, ...] = (
+    "bank_account_id",
+)
 
 FORBIDDEN_FRONTEND_PATTERNS: tuple[str, ...] = (
     "create_journal_entry",
@@ -67,10 +76,18 @@ FR08_DEFERRED_ITEMS: tuple[str, ...] = (
     "production COMMIT_MODE_* flip",
 )
 
-DEFERRED_ITEMS: tuple[str, ...] = (
+# Frozen for FR-09 audit tests (do not mutate).
+FR09_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-10",
     "card sale form",
     "credit sale form",
     "bank expense payment",
+    "production COMMIT_MODE_* flip",
+)
+
+DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-11",
+    "void write page",
+    "purchase write page",
     "production COMMIT_MODE_* flip",
 )

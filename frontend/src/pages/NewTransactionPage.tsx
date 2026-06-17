@@ -15,6 +15,11 @@ import type {
 import { apiPost } from "../lib/api/writeClient";
 
 type WriteTab = "sale" | "expense";
+type SalePaymentMethod = "Cash" | "Card" | "Credit";
+type ExpensePaymentMethod = "Cash" | "Bank";
+
+const CREDIT_CUSTOMER_MSG =
+  "Enter a customer name for on-account (credit) sales.";
 
 function todayIso(): string {
   const now = new Date();
@@ -30,6 +35,14 @@ function parseAmount(raw: string): number | null {
   return parsed;
 }
 
+function parsePositiveInt(raw: string): number | null {
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return null;
+  }
+  return Math.trunc(parsed);
+}
+
 export function NewTransactionPage() {
   const salesOn = reactWriteSalesEnabled();
   const expensesOn = reactWriteExpensesEnabled();
@@ -42,6 +55,13 @@ export function NewTransactionPage() {
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("TRY");
   const [notes, setNotes] = useState("");
+  const [salePaymentMethod, setSalePaymentMethod] =
+    useState<SalePaymentMethod>("Cash");
+  const [customerName, setCustomerName] = useState("");
+  const [cardBankAccountId, setCardBankAccountId] = useState("");
+  const [expensePaymentMethod, setExpensePaymentMethod] =
+    useState<ExpensePaymentMethod>("Cash");
+  const [bankAccountId, setBankAccountId] = useState("");
   const [categoryName, setCategoryName] = useState("Office");
   const [subcategoryName, setSubcategoryName] = useState("Other");
   const [loading, setLoading] = useState(false);
@@ -75,24 +95,58 @@ export function NewTransactionPage() {
       return;
     }
 
+    if (salePaymentMethod === "Credit") {
+      const name = customerName.trim();
+      if (!name || name === "Walk-in Customer") {
+        setError(CREDIT_CUSTOMER_MSG);
+        return;
+      }
+    }
+    let cardAccount: number | undefined;
+    if (salePaymentMethod === "Card") {
+      const parsed = parsePositiveInt(cardBankAccountId);
+      if (parsed === null) {
+        setError("Enter a bank account id for card sales.");
+        return;
+      }
+      cardAccount = parsed;
+    }
+
     setLoading(true);
     setError(null);
     setSaleResult(null);
     try {
+      const body: {
+        date: string;
+        amount: number;
+        currency: string;
+        payment_method: SalePaymentMethod;
+        notes: string;
+        customer_name?: string;
+        card_bank_account_id?: number;
+      } = {
+        date,
+        amount: parsedAmount,
+        currency,
+        payment_method: salePaymentMethod,
+        notes: notes.trim(),
+      };
+      if (salePaymentMethod === "Credit") {
+        body.customer_name = customerName.trim();
+      }
+      if (salePaymentMethod === "Card" && cardAccount !== undefined) {
+        body.card_bank_account_id = cardAccount;
+      }
       const response = await apiPost<CreateSaleResponse>(
         "/api/v1/sales",
-        {
-          date,
-          amount: parsedAmount,
-          currency,
-          payment_method: "Cash",
-          notes: notes.trim(),
-        },
+        body,
         { session },
       );
       setSaleResult(response);
       setAmount("");
       setNotes("");
+      setCustomerName("");
+      setCardBankAccountId("");
     } catch (err) {
       const apiErr = err as ApiError;
       setError(apiErr.detail ?? "Failed to save sale.");
@@ -117,6 +171,15 @@ export function NewTransactionPage() {
       setError("Category name is required.");
       return;
     }
+    let bankId: number | undefined;
+    if (expensePaymentMethod === "Bank") {
+      const parsed = parsePositiveInt(bankAccountId);
+      if (parsed === null) {
+        setError("Enter a bank account id for bank expenses.");
+        return;
+      }
+      bankId = parsed;
+    }
 
     setLoading(true);
     setError(null);
@@ -126,21 +189,25 @@ export function NewTransactionPage() {
         date: string;
         amount: number;
         currency: string;
-        payment_method: "Cash";
+        payment_method: ExpensePaymentMethod;
         notes: string;
         category_name: string;
         subcategory_name?: string;
+        bank_account_id?: number;
       } = {
         date,
         amount: parsedAmount,
         currency,
-        payment_method: "Cash",
+        payment_method: expensePaymentMethod,
         notes: notes.trim(),
         category_name: category,
       };
       const sub = subcategoryName.trim();
       if (sub) {
         body.subcategory_name = sub;
+      }
+      if (expensePaymentMethod === "Bank" && bankId !== undefined) {
+        body.bank_account_id = bankId;
       }
       const response = await apiPost<CreateExpenseResponse>(
         "/api/v1/expenses",
@@ -150,6 +217,7 @@ export function NewTransactionPage() {
       setExpenseResult(response);
       setAmount("");
       setNotes("");
+      setBankAccountId("");
     } catch (err) {
       const apiErr = err as ApiError;
       setError(apiErr.detail ?? "Failed to save expense.");
@@ -205,6 +273,42 @@ export function NewTransactionPage() {
       {tab === "sale" && salesOn ? (
         <form className="erp-write-form" onSubmit={handleSaleSubmit}>
           <label>
+            Payment method
+            <select
+              value={salePaymentMethod}
+              onChange={(event) =>
+                setSalePaymentMethod(event.target.value as SalePaymentMethod)
+              }
+            >
+              <option value="Cash">Cash</option>
+              <option value="Card">Card</option>
+              <option value="Credit">Credit</option>
+            </select>
+          </label>
+          {salePaymentMethod === "Credit" ? (
+            <label>
+              Customer name
+              <input
+                type="text"
+                value={customerName}
+                onChange={(event) => setCustomerName(event.target.value)}
+                required
+              />
+            </label>
+          ) : null}
+          {salePaymentMethod === "Card" ? (
+            <label>
+              Card bank account id
+              <input
+                type="number"
+                min={1}
+                value={cardBankAccountId}
+                onChange={(event) => setCardBankAccountId(event.target.value)}
+                required
+              />
+            </label>
+          ) : null}
+          <label>
             Date
             <input
               type="date"
@@ -242,15 +346,38 @@ export function NewTransactionPage() {
               rows={3}
             />
           </label>
-          <p className="erp-muted">Payment method: Cash</p>
           <button type="submit" disabled={!session || loading}>
-            {loading ? "Saving…" : "Save cash sale"}
+            {loading ? "Saving…" : `Save ${salePaymentMethod.toLowerCase()} sale`}
           </button>
         </form>
       ) : null}
 
       {tab === "expense" && expensesOn ? (
         <form className="erp-write-form" onSubmit={handleExpenseSubmit}>
+          <label>
+            Payment method
+            <select
+              value={expensePaymentMethod}
+              onChange={(event) =>
+                setExpensePaymentMethod(event.target.value as ExpensePaymentMethod)
+              }
+            >
+              <option value="Cash">Cash</option>
+              <option value="Bank">Bank</option>
+            </select>
+          </label>
+          {expensePaymentMethod === "Bank" ? (
+            <label>
+              Bank account id
+              <input
+                type="number"
+                min={1}
+                value={bankAccountId}
+                onChange={(event) => setBankAccountId(event.target.value)}
+                required
+              />
+            </label>
+          ) : null}
           <label>
             Date
             <input
@@ -306,9 +433,8 @@ export function NewTransactionPage() {
               rows={3}
             />
           </label>
-          <p className="erp-muted">Payment method: Cash</p>
           <button type="submit" disabled={!session || loading}>
-            {loading ? "Saving…" : "Save cash expense"}
+            {loading ? "Saving…" : `Save ${expensePaymentMethod.toLowerCase()} expense`}
           </button>
         </form>
       ) : null}
