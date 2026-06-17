@@ -2565,12 +2565,28 @@ def _scroll_main_to_top() -> None:
     """Scroll Streamlit main view to top after sidebar / bottom-nav page change."""
     js = (
         "(function(){"
+        "function scrollAll(doc,win){"
+        "if(win)win.scrollTo(0,0);"
+        "var sel=["
+        "'[data-testid=\"stMainBlockContainer\"]',"
+        "'section[data-testid=\"stMain\"]',"
+        "'section.main',"
+        "'[data-testid=\"stAppViewContainer\"]'"
+        "];"
+        "for(var i=0;i<sel.length;i++){"
+        "var el=doc.querySelector(sel[i]);"
+        "if(el){el.scrollTop=0;if(el.scrollTo)el.scrollTo(0,0);}"
+        "}"
+        "}"
+        "function run(){"
         "var w=window.parent!==window?window.parent:window;"
-        "w.scrollTo(0,0);"
-        "var m=w.document.querySelector('section.main');"
-        "if(m)m.scrollTo(0,0);"
-        "var app=w.document.querySelector('[data-testid=\"stAppViewContainer\"]');"
-        "if(app)app.scrollTop=0;"
+        "scrollAll(w.document,w);"
+        "}"
+        "run();"
+        "var w=window.parent!==window?window.parent:window;"
+        "if(w.requestAnimationFrame){"
+        "w.requestAnimationFrame(function(){run();w.setTimeout(run,0);});"
+        "}else{w.setTimeout(run,0);w.setTimeout(run,50);}"
         "})();"
     )
     import importlib
@@ -11027,61 +11043,62 @@ def render_dashboard(session):
     )
 
     # Mobile AR / AP — one box, two tappable halves (below today KPIs)
-    _ar_sub_plain = (
-        f"⚠️ {currency} {overdue_rec_amount:,.2f} {_tf('dash.mobile.overdue', 'overdue')}"
-        if overdue_count else _tf("dash.mobile.all_current", "All current")
-    )
-    if overdue_pay_count:
-        _ap_sub_plain = (
-            f"⚠️ {overdue_pay_count} {_tf('dash.mobile.overdue', 'overdue')} · "
-            f"{currency} {overdue_pay_amount:,.2f}"
+    if _is_mobile_ui():
+        _ar_sub_plain = (
+            f"⚠️ {currency} {overdue_rec_amount:,.2f} {_tf('dash.mobile.overdue', 'overdue')}"
+            if overdue_count else _tf("dash.mobile.all_current", "All current")
         )
-    elif open_payables_count > 0:
-        _ap_sub_plain = f"{open_payables_count} {_tf('dash.mobile.open', 'open')}"
-    else:
-        _ap_sub_plain = _tf("dash.mobile.all_current", "All current")
-    with st.container(border=False, key="erp_mob_ar_ap"):
-        st.markdown('<div class="erp-dash-mobile-arap-host"></div>', unsafe_allow_html=True)
-        _mar1, _mar2 = st.columns(2, gap="small")
-        with _mar1:
-            if st.button(
-                f"📄 {_t('dash.receivables')}\n{_fmt(outstanding_rec, currency)}\n{_ar_sub_plain}",
-                key="mob_dash_ar",
-                use_container_width=True,
-            ):
-                st.session_state["nav_selection"] = NAV_RECEIVABLES
-                st.rerun()
-        with _mar2:
-            if st.button(
-                f"📌 {_t('dash.payables')}\n{_fmt(outstanding_pay, currency)}\n{_ap_sub_plain}",
-                key="mob_dash_ap",
-                use_container_width=True,
-            ):
-                st.session_state["nav_selection"] = NAV_PAYABLES
-                st.rerun()
+        if overdue_pay_count:
+            _ap_sub_plain = (
+                f"⚠️ {overdue_pay_count} {_tf('dash.mobile.overdue', 'overdue')} · "
+                f"{currency} {overdue_pay_amount:,.2f}"
+            )
+        elif open_payables_count > 0:
+            _ap_sub_plain = f"{open_payables_count} {_tf('dash.mobile.open', 'open')}"
+        else:
+            _ap_sub_plain = _tf("dash.mobile.all_current", "All current")
+        with st.container(border=False, key="erp_mob_ar_ap"):
+            st.markdown('<div class="erp-dash-mobile-arap-host"></div>', unsafe_allow_html=True)
+            _mar1, _mar2 = st.columns(2, gap="small")
+            with _mar1:
+                if st.button(
+                    f"📄 {_t('dash.receivables')}\n{_fmt(outstanding_rec, currency)}\n{_ar_sub_plain}",
+                    key="mob_dash_ar",
+                    use_container_width=True,
+                ):
+                    st.session_state["nav_selection"] = NAV_RECEIVABLES
+                    st.rerun()
+            with _mar2:
+                if st.button(
+                    f"📌 {_t('dash.payables')}\n{_fmt(outstanding_pay, currency)}\n{_ap_sub_plain}",
+                    key="mob_dash_ap",
+                    use_container_width=True,
+                ):
+                    st.session_state["nav_selection"] = NAV_PAYABLES
+                    st.rerun()
 
-    # Mobile liquid funds — Cash | Bank (GL as-of today)
-    with st.container(border=False, key="erp_mob_liquid"):
-        st.markdown('<div class="erp-dash-mobile-liquid-host"></div>', unsafe_allow_html=True)
-        _mliq1, _mliq2 = st.columns(2, gap="small")
-        with _mliq1:
-            if st.button(
-                f"💵 {_t('dash.kpi.cash_in_hand')}\n{_fmt(_liq_cash_pri, currency)}",
-                key="mob_dash_cash",
-                use_container_width=True,
-            ):
-                st.session_state["nav_selection"] = NAV_CASH_RECONCILIATION
-                st.rerun()
-        with _mliq2:
-            if st.button(
-                f"🏦 {_t('dash.kpi.bank_balance')}\n{_fmt(_liq_bank_pri, currency)}",
-                key="mob_dash_bank",
-                use_container_width=True,
-            ):
-                st.session_state["nav_selection"] = NAV_BANKING
-                st.rerun()
+        # Mobile liquid funds — Cash | Bank (GL as-of today)
+        with st.container(border=False, key="erp_mob_liquid"):
+            st.markdown('<div class="erp-dash-mobile-liquid-host"></div>', unsafe_allow_html=True)
+            _mliq1, _mliq2 = st.columns(2, gap="small")
+            with _mliq1:
+                if st.button(
+                    f"💵 {_t('dash.kpi.cash_in_hand')}\n{_fmt(_liq_cash_pri, currency)}",
+                    key="mob_dash_cash",
+                    use_container_width=True,
+                ):
+                    st.session_state["nav_selection"] = NAV_CASH_RECONCILIATION
+                    st.rerun()
+            with _mliq2:
+                if st.button(
+                    f"🏦 {_t('dash.kpi.bank_balance')}\n{_fmt(_liq_bank_pri, currency)}",
+                    key="mob_dash_bank",
+                    use_container_width=True,
+                ):
+                    st.session_state["nav_selection"] = NAV_BANKING
+                    st.rerun()
 
-    _render_mobile_quick_create()
+        _render_mobile_quick_create()
 
     # ── Alert strip (only when there are alerts) ──────────────────────────────
     _alert_parts = []
@@ -26484,7 +26501,9 @@ def main():
             render_sidebar_filters()
 
     # Clear transient confirm / void / payment dialogs on page change
+    _nav_page_changed = False
     if st.session_state.get("_current_page") != selection:
+        _nav_page_changed = True
         _stale = [
             k for k in list(st.session_state.keys())
             if k.startswith(("confirm_", "deactivate_", "void_", "paying_",
@@ -26503,7 +26522,6 @@ def main():
         st.session_state.pop("mob_co_switch_open", None)
         st.session_state.pop("mob_profile_open", None)
         _mobile_clear_company_switch_confirm()
-        _scroll_main_to_top()
         if selection != NAV_REPORTS:
             st.session_state.pop("mob_reports_tab", None)
         # Auto-open the group when navigating programmatically
@@ -26562,6 +26580,9 @@ def main():
 
     # ── Mobile chrome (after page — fixed top + bottom nav on every authenticated page) ─
     _render_mobile_chrome(selection, _allowed, _NAV_ACCORDION_BY_KEY)
+
+    if _nav_page_changed:
+        _scroll_main_to_top()
 
 
 def _render_company_picker_shell(session) -> None:

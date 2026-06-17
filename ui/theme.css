@@ -1360,6 +1360,8 @@
   [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-dash-mobile-arap-host) {
     display: none !important;
   }
+  /* UX-STABILIZE-02 — erp_mob_ar_ap / erp_mob_liquid no longer render on desktop;
+     rules kept as belt-and-suspenders if session flag and viewport disagree. */
 }
 [data-testid="stSidebar"] > div:first-child {
   padding-top: 0 !important;

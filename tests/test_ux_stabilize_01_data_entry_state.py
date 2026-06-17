@@ -168,12 +168,17 @@ def test_mobile_salary_branch_uses_worker_panel():
 def test_main_page_change_calls_scroll_helper():
     src = inspect.getsource(erp.main)
     nav_block = src.split('if st.session_state.get("_current_page") != selection:', 1)[1]
-    assert "_scroll_main_to_top()" in nav_block.split("# ── Page dispatch")[0]
+    assert "_scroll_main_to_top()" not in nav_block.split("# ── Page dispatch")[0]
+    after_dispatch = src.split("# ── Page dispatch", 1)[1]
+    assert "if _nav_page_changed:" in after_dispatch
+    assert "_scroll_main_to_top()" in after_dispatch.split("def _render_company_picker_shell", 1)[0]
 
 
 def test_scroll_main_to_top_uses_components_html():
     src = inspect.getsource(erp._scroll_main_to_top)
     assert "scrollTo(0,0)" in src
+    assert "stMainBlockContainer" in src
+    assert "requestAnimationFrame" in src
     assert "components.v1" in src or "components.html" in src
 
 
