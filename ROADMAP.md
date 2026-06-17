@@ -180,6 +180,7 @@ No implementation before roadmap approval.
 | Shell / mobile chrome (Phase A) | ✅ Stabilized — fixed header, 968px breakpoint, People hub wired |
 | Sidebar / navigation redesign (AD-UI-001) | 🟡 **D1 + D2-P0 shipped** — Financial Statements routes + promoted daily lookup route (app.py `AD-UI-001 D2-P0` wrapper); D2+ remainder gated — see [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §16 |
 | **NAV-ARCH** — Navigation single source of truth | ✅ **S4 complete** — registry + React route contract frozen — see [§ NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
+| **UI-SYSTEM-02** — ERP-wide UI & theme modernization | 🟡 **S1 complete** — audit + guardrails — see [§ UI-SYSTEM-02](#ui-system-02--erp-wide-ui--theme-modernization) |
 | **MOB-AT-C1** — Concept C Mobile AT UI | ✅ **Accepted** — reference implementation; 747 tests passing |
 | **MOBILE-11** — Mobile Design System | ✅ **Approved** — `docs/MOBILE_UI_SYSTEM.md` is the governing document for all future mobile work |
 | **MOBILE-12** — Design Governance | ✅ **Approved** — open decisions recorded; phased migration path defined |
@@ -1214,6 +1215,52 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 - React migration consumes the same registry.
 
 **Note:** This is **not** a PostgreSQL blocker and should not delay production cutover. It is a **pre-React** architecture improvement.
+
+---
+
+## UI-SYSTEM-02 — ERP-Wide UI & Theme Modernization
+
+**Status:** 🟡 **In progress — S1 complete**  
+**Priority:** High — after NAV-ARCH, before Banking UX  
+**Blocker:** None  
+**Depends on:**
+
+- **NAV-ARCH** ✅ S0–S4 complete
+- **MOBILE-14** ✅ closed (ownership baseline)
+- **CSS-01 / CSS-02** approved ownership standard
+
+**Purpose:** Prepare a unified professional SaaS look across desktop and mobile; one ERP feel; React migration-ready design contract. **No rainbow accents**; restrained slate + blue primary.
+
+**Audit:** [UI_SYSTEM_02_AUDIT.md](./docs/UI_SYSTEM_02_AUDIT.md) · **Tests:** `tests/test_ui_system_02_audit.py` (+ existing UI/theme/nav contract tests)
+
+**Hard rules:**
+
+- No accounting, database, or business-logic changes.
+- No navigation route changes in S1–S2.
+- No sidebar visual redesign until **S3**.
+- No broad CSS rewrite without a scoped slice.
+- Audit first; implement in S2–S5 only.
+- CSS-02 remains the ongoing ownership law.
+
+**Slices:**
+
+| Slice | Scope | Status |
+|-------|--------|--------|
+| **UI-SYSTEM-02-S0 — Guardrails** | Audit-only; CSS-02; no parallel theme systems | ✅ Active |
+| **UI-SYSTEM-02-S1 — Audit + guardrails** | `docs/UI_SYSTEM_02_AUDIT.md` + `tests/test_ui_system_02_audit.py`; no runtime change | ✅ **Complete** |
+| **UI-SYSTEM-02-S2 — Design token registry** | Centralize colour/spacing/radius/shadow/typography; resolve `--hdr-h` mobile conflict; deprecate stale role hues | 📋 Planned |
+| **UI-SYSTEM-02-S3 — Sidebar modernization** | Visual grouping/spacing/icons only; derive presentation from registry; **no route moves** | 📋 Planned |
+| **UI-SYSTEM-02-S4 — Unified shell/component pass** | Header/sidebar mobile dedupe; KPI grid single owner; expense-bar ladder; desktop/mobile component parity | 📋 Planned |
+| **UI-SYSTEM-02-S5 — Theme governance / React design contract** | Frozen component + token contract for FastAPI/React migration | 📋 Planned |
+
+**Success criteria:**
+
+- Single token registry consumed by CSS and charts.
+- Desktop and mobile share one component language.
+- Sidebar visually modern without route drift.
+- React team can port `AppShell`, `SidebarNav`, `KpiGrid`, `ChipSelector` from documented contract.
+
+**Next slice:** **UI-SYSTEM-02-S2** (design token registry).
 
 ---
 
@@ -3304,6 +3351,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **UI-SYSTEM-02-S1 (closure)** — ERP-wide UI & theme audit: `docs/UI_SYSTEM_02_AUDIT.md` + `tests/test_ui_system_02_audit.py`; 14 CSS files / 7,379 lines inventoried; sidebar visual readiness documented; no runtime change. Tag: `ui-system-02-s1-ui-theme-audit`. Next: **UI-SYSTEM-02-S2** (design token registry). |
 | 2026-06-17 | **NAV-ARCH-S4 (closure)** — React route contract frozen: `docs/NAV_ARCH_REACT_ROUTE_CONTRACT.md` + `validate_react_route_contract()`; 42 routes 1:1; legacy aliases canonical only. Tag: `nav-arch-s4-react-route-contract`. **NAV-ARCH epic S0–S4 complete.** |
 | 2026-06-17 | **NAV-ARCH-S3C (closure)** — Mobile nav derived: `_MOBILE_BOTTOM_NAV` + `_MOBILE_HUB_CONFIG` from `registry/navigation.py`; five bottom slots + money/reports/people/more hubs preserved. Tests: `tests/test_nav_arch_s3c_mobile_derived.py`. Tag: `nav-arch-s3c-mobile-derived`. Next: **NAV-ARCH-S4** (React route contract). |
 | 2026-06-17 | **NAV-ARCH-S3B (closure)** — Static role gates derived: `_NAV_ROLE_PAGES` from `registry/navigation.py`; permission override for Staff Expenses unchanged in `app.py`. Tests: `tests/test_nav_arch_s3b_role_derived.py`. Tag: `nav-arch-s3b-role-derived`. Next: **NAV-ARCH-S3C** (derive mobile nav). |
