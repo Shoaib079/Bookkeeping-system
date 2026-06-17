@@ -210,11 +210,18 @@ def test_dead_report_filters_duplicate_still_present_for_s4():
     assert theme.count(".erp-mobile-report-filters") >= 2
 
 
-def test_hdr_h_mobile_conflict_documented_in_theme_and_header():
+def test_hdr_h_mobile_conflict_resolved():
+    """UI-02-C1 resolved in S2 — theme.css desktop 60px only; mobile_header owns 56px."""
     theme = (ROOT / "ui" / "theme.css").read_text(encoding="utf-8")
     header = (ROOT / "ui" / "mobile_header.css").read_text(encoding="utf-8")
-    assert re.search(r"@media.*max-width:\s*968px[\s\S]*--hdr-h:\s*120px", theme)
+    mobile_chunk = theme.split("@media (max-width: 968px)", 1)[-1][:5000]
+    for line in mobile_chunk.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("/*") or stripped.startswith("*"):
+            continue
+        assert "--hdr-h: 120px" not in stripped
     assert "--hdr-h: 56px" in header
+    assert (ROOT / "ui" / "design_tokens.py").exists()
 
 
 def test_chip_tokens_owned_by_theme_not_duplicated_in_mobile_reports():

@@ -8,6 +8,8 @@ from pathlib import Path
 
 import streamlit as st
 
+from ui.design_tokens import build_dark_root_vars, build_light_root_vars
+
 _log = logging.getLogger(__name__)
 
 _THEME_CSS_PATH = Path(__file__).with_name("theme.css")
@@ -46,57 +48,9 @@ MOBILE_VIEWPORT_CSS_OWNER_FILES: tuple[str, ...] = (
 )
 
 # Injected after theme.css; wins over @media (prefers-color-scheme).
-LIGHT_ROOT_VARS: dict[str, str] = {
-    "--hdr-bg": "#EEF2F7",
-    "--theme-bg": "#F8FAFC",
-    "--theme-card": "#FFFFFF",
-    "--theme-border": "#E6E9EE",
-    "--theme-text": "#0F172A",
-    "--theme-muted": "#475569",
-    "--theme-caption": "#475569",
-    "--theme-success": "#16A34A",
-    "--theme-danger": "#DC2626",
-    "--theme-warning": "#D97706",
-    "--theme-info": "#2563EB",
-    "--erp-primary-fill": "#2563EB",
-    "--erp-primary-fill-hover": "#1D4ED8",
-    "--theme-success-text": "#15803D",
-    "--theme-warning-text": "#B45309",
-    "--theme-danger-text": "#B91C1C",
-    "--theme-purple": "#6D28D9",
-    "--theme-teal": "#0EA5A4",
-    "--theme-input-border": "#CBD5E1",
-    "--theme-focus": "#2563EB",
-    "--theme-banner-primary-start": "#1e3a8a",
-    "--theme-banner-primary-end": "#2563eb",
-    "--theme-shadow": "rgba(0,0,0,0.08)",
-}
-
-DARK_ROOT_VARS: dict[str, str] = {
-    "--hdr-bg": "#1A2332",
-    "--theme-bg": "#0B1220",
-    "--theme-card": "#141C2B",
-    "--theme-border": "#2D3A4D",
-    "--theme-text": "#E8EDF4",
-    "--theme-muted": "#9CA8B8",
-    "--theme-caption": "#B8C4D0",
-    "--theme-success": "#4ADE80",
-    "--theme-danger": "#F87171",
-    "--theme-warning": "#FBBF24",
-    "--theme-info": "#3B82F6",
-    "--erp-primary-fill": "#2563EB",
-    "--erp-primary-fill-hover": "#1D4ED8",
-    "--theme-success-text": "#4ADE80",
-    "--theme-warning-text": "#FBBF24",
-    "--theme-danger-text": "#F87171",
-    "--theme-purple": "#8B5CF6",
-    "--theme-teal": "#14B8A6",
-    "--theme-input-border": "#334155",
-    "--theme-focus": "#60A5FA",
-    "--theme-banner-primary-start": "#1e3a8a",
-    "--theme-banner-primary-end": "#3b82f6",
-    "--theme-shadow": "rgba(0,0,0,0.35)",
-}
+# UI-SYSTEM-02-S2: derived from ui/design_tokens.py
+LIGHT_ROOT_VARS: dict[str, str] = build_light_root_vars()
+DARK_ROOT_VARS: dict[str, str] = build_dark_root_vars()
 
 ROLE_CSS_VARS: dict[str, str] = {
     "owner": "--role-owner",

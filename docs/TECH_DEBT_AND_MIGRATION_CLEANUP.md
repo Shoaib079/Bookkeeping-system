@@ -90,12 +90,12 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 
 | ID | Item | Priority | Status | When / trigger |
 |----|------|----------|--------|----------------|
-| **TD-UI-SYSTEM-02-01** | **Mobile `--hdr-h` conflict** — `theme.css` sets `120px` at `max-width: 968px` while `mobile_header.css` owns `56px` / `86px` | High | Open | UI-SYSTEM-02-S2 token registry |
-| **TD-UI-SYSTEM-02-02** | **Triple token source** — `theme.css :root`, `ui/theme.py` `LIGHT/DARK_ROOT_VARS`, and `@media (prefers-color-scheme: dark)` — no single registry file | Medium | Open | UI-SYSTEM-02-S2 |
+| **TD-UI-SYSTEM-02-01** | **Mobile `--hdr-h` conflict** — `theme.css` sets `120px` at `max-width: 968px` while `mobile_header.css` owns `56px` / `86px` | High | **Resolved** — S2 removed stale override | UI-SYSTEM-02-S2 |
+| **TD-UI-SYSTEM-02-02** | **Triple token source** — `theme.css :root`, `ui/theme.py` `LIGHT/DARK_ROOT_VARS`, and `@media (prefers-color-scheme: dark)` — no single registry file | Medium | **Resolved** — `ui/design_tokens.py` + parity tests | UI-SYSTEM-02-S2 |
 | **TD-UI-SYSTEM-02-03** | **Sidebar render order hand-authored** — `_render_navigation_tree` does not consume `_NAV_DIRECT_PAGES`; Banking/section placement drifts from registry `sidebar_direct_order` | Medium | Open | UI-SYSTEM-02-S3 sidebar modernization |
 | **TD-UI-SYSTEM-02-04** | **Dead CSS** — `.erp-mobile-report-filters { display: block }` duplicate at `theme.css:1106–1108` (live hide at `1353–1355`) | Low | Open | UI-SYSTEM-02-S4 shell pass |
 | **TD-UI-SYSTEM-02-05** | **Expense bar width ladder** — 96× `[data-pct]` rules in `theme.css:1789–1884` | Low | Open | UI-SYSTEM-02-S4 or React port |
-| **TD-UI-SYSTEM-02-06** | **Stale role hue tokens** — `--role-*` in `:root` unused under mono avatar policy (`role_accent_css_var`) | Low | Open | UI-SYSTEM-02-S2 deprecate |
+| **TD-UI-SYSTEM-02-06** | **Stale role hue tokens** — `--role-*` in `:root` unused under mono avatar policy (`role_accent_css_var`) | Low | **Deprecated** — marked in CSS; values kept for compat | UI-SYSTEM-02-S5 governance |
 | **TD-UI-SYSTEM-02-07** | **KPI grid split** — `.erp-mob-kpi-grid` / `.erp-mob-kpi-value` across `mobile_components.css`, `mobile_reports.css`, `mobile_txn.css` | Medium | Open | UI-SYSTEM-02-S4 component pass |
 | **TD-UI-SYSTEM-02-08** | **No `mobile_banking.css`** — banking mobile layout adaptation deferred (ROADMAP Banking UX) | Medium | Open | Banking UX epic |
 

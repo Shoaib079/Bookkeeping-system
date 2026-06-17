@@ -1,5 +1,6 @@
 /* Accounting ERP — global theme (Phase 16A)
- * Tokens: override via :root injection in ui/theme.py (user light/dark preference).
+ * Tokens: colour injection via ui/theme.py (ui/design_tokens.py).
+ * Scales: --erp-space-*, --erp-radius-*, --erp-shadow-*, --erp-font-* (UI-SYSTEM-02-S2).
  * OS dark fallback: @media (prefers-color-scheme: dark) when no injection yet.
  */
 
@@ -36,6 +37,29 @@
   --theme-shadow: rgba(0, 0, 0, 0.08);
   --erp-field-radius: 8px;
   --erp-on-primary: #ffffff;
+  /* UI-SYSTEM-02-S2 — spacing scale */
+  --erp-space-1: 4px;
+  --erp-space-2: 8px;
+  --erp-space-3: 12px;
+  --erp-space-4: 16px;
+  --erp-space-5: 24px;
+  --erp-space-6: 32px;
+  /* UI-SYSTEM-02-S2 — radius scale */
+  --erp-radius-sm: 6px;
+  --erp-radius-md: 8px;
+  --erp-radius-lg: 12px;
+  --erp-radius-pill: 999px;
+  /* UI-SYSTEM-02-S2 — elevation scale */
+  --erp-shadow-sm: 0 1px 2px var(--theme-shadow);
+  --erp-shadow-md: 0 2px 8px var(--theme-shadow);
+  --erp-shadow-lg: 0 4px 16px var(--theme-shadow);
+  /* UI-SYSTEM-02-S2 — typography scale */
+  --erp-font-caption: 11px;
+  --erp-font-body: 13px;
+  --erp-font-subtitle: 15px;
+  --erp-font-title: 18px;
+  --erp-line-tight: 1.2;
+  --erp-line-body: 1.45;
   /* UI-1 — unified chip grammar (selection, not CTA) */
   --erp-chip-active-bg: color-mix(in srgb, var(--theme-info) 14%, var(--theme-card) 86%);
   --erp-chip-active-fg: var(--theme-info);
@@ -43,7 +67,7 @@
   --erp-chip-idle-bg: color-mix(in srgb, var(--theme-bg) 55%, var(--theme-card) 45%);
   --erp-chip-idle-fg: var(--theme-text);
   --erp-chip-idle-border: var(--theme-border);
-  /* Role badge colors (header profile) — 16C: move to CSS classes */
+  /* DEPRECATED UI-SYSTEM-02-S2 — role hue tokens; mono avatar policy uses --theme-info mix */
   --role-owner: #1e40af;
   --role-manager: #0891b2;
   --role-cashier: #065f46;
@@ -863,17 +887,10 @@
     display: none !important;
   }
 }
-/* Sidebar — mobile (<=968px): off-canvas overlay drawer + keyed header chrome */
+/* Sidebar — mobile (<=968px): keyed header chrome; --hdr-h owned by mobile_header.css */
 @media (max-width: 968px) {
-  :root {
-    --hdr-h: 120px;
-    --bottom-nav-h: 62px;
-  }
-  .block-container {
-    padding-top: calc(var(--hdr-h) + 16px) !important;
-  }
-  /* M6 — sidebar hide removed (redundant copy); mobile_shell.css is the sole owner
-     of mobile sidebar hiding (viewport media rule + html.erp-mobile fallback). */
+  /* UI-SYSTEM-02-S2 — removed stale --hdr-h: 120px + block-container padding-top;
+     mobile_header.css owns mobile header height and main padding-top (HDR-01 / M2). */
   [data-testid="stAppViewContainer"] {
     margin-left: 0 !important;
   }
