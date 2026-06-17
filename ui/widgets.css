@@ -637,26 +637,27 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
   font-weight: 700 !important;
 }
 
-/* UI-1 — Mobile chrome + header: secondary/global rules must not override frozen nav */
+/* UI-1 — Mobile chrome: bottom-nav + hub sheets owned by mobile_shell.css (MONO-THEME-02-S5) */
 @media (max-width: 968px),
   ((max-width: 1366px) and (hover: none) and (pointer: coarse)),
   ((max-height: 520px) and (hover: none) and (pointer: coarse)) {
-  [data-testid="stMain"] [class*="st-key-mob_bar_"]:not([class*="mob_bar_new"]) button[kind="secondary"],
-  [data-testid="stMain"] [class*="st-key-mob_bar_"]:not([class*="mob_bar_new"]) button[kind="primary"] {
-    background: transparent !important;
-    border: none !important;
-    color: var(--theme-muted) !important;
+  /* MONO-THEME-02-S5 — mobile stTable density, row hover, tighter metrics */
+  [data-testid="stMain"] [data-testid="stTable"] th {
+    padding: 7px 10px !important;
+    font-size: 10px !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
   }
-  [data-testid="stMain"] [class*="st-key-mob_bar_"] button[kind="primary"]:not([class*="mob_bar_new"]) {
-    color: var(--theme-info) !important;
+  [data-testid="stMain"] [data-testid="stTable"] td {
+    padding: 8px 10px !important;
+    vertical-align: middle !important;
+    font-variant-numeric: tabular-nums !important;
   }
-  [data-testid="stMain"] [class*="st-key-mob_hub_"]:not([class*="mob_hub_close"]) button[kind="secondary"],
-  [data-testid="stMain"] [class*="st-key-mob_hub_"]:not([class*="mob_hub_close"]) button[kind="primary"] {
-    background: transparent !important;
-    border: none !important;
-    border-bottom: 1px solid var(--theme-border) !important;
-    color: var(--theme-text) !important;
-    font-weight: 500 !important;
+  [data-testid="stMain"] [data-testid="stTable"] tbody tr:hover td {
+    background: var(--erp-table-row-hover-bg) !important;
+  }
+  [data-testid="stMain"] [data-testid="stMetric"] {
+    padding: 10px 12px !important;
   }
 }
 

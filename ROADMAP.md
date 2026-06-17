@@ -1302,13 +1302,13 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 
 ## MONO-THEME-02 — Real UI Visual Refinement Pass
 
-**Status:** 🟡 **In progress** — S0 visual contract ✅ · S1 sidebar ✅ · S2 top bar ✅ · S3 dashboard/cards ✅ · S4 tables ✅ · S5 mobile parity 📋  
+**Status:** ✅ **Complete** — S0 visual contract ✅ · S1 sidebar ✅ · S2 top bar ✅ · S3 dashboard/cards ✅ · S4 tables ✅ · S5 mobile parity ✅  
 **Priority:** High — closes the gap between MONO-THEME-01 grammar tokens and live screenshot quality  
 **Depends on:** MONO-THEME-01 complete · UI-SYSTEM-02 token foundation · user-approved screenshots
 
 **Goal:** Make the actual desktop/mobile app match the approved Option A+ direction — **refined, denser, stronger hierarchy** — without redesign, new colors, or business-logic changes.
 
-**Contract:** [MONO_THEME_02_VISUAL_CONTRACT.md](./docs/MONO_THEME_02_VISUAL_CONTRACT.md) · **Tests:** `tests/test_mono_theme_02_visual_contract.py`, `tests/test_mono_theme_02_s1_sidebar_polish.py`, `tests/test_mono_theme_02_s2_topbar_refinement.py`, `tests/test_mono_theme_02_s3_dashboard_refinement.py`, `tests/test_mono_theme_02_s4_table_refinement.py`
+**Contract:** [MONO_THEME_02_VISUAL_CONTRACT.md](./docs/MONO_THEME_02_VISUAL_CONTRACT.md) · **Tests:** `tests/test_mono_theme_02_visual_contract.py`, `tests/test_mono_theme_02_s1_sidebar_polish.py`, `tests/test_mono_theme_02_s2_topbar_refinement.py`, `tests/test_mono_theme_02_s3_dashboard_refinement.py`, `tests/test_mono_theme_02_s4_table_refinement.py`, `tests/test_mono_theme_02_s5_mobile_parity.py`
 
 **Hard rules:** No accounting/PostgreSQL/nav-route/business-logic changes · no new palette · existing `--erp-*` grammar tokens only · semantic colors immutable · CSS/layout only per slice.
 
@@ -1319,9 +1319,9 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **MONO-THEME-02-S2** | Top bar — compact desktop header, search prominence | ✅ **Complete** |
 | **MONO-THEME-02-S3** | Dashboard + cards — density, KPI grid, activity hierarchy | ✅ **Complete** |
 | **MONO-THEME-02-S4** | Tables + lists — row density, hover, money alignment | ✅ **Complete** |
-| **MONO-THEME-02-S5** | Mobile parity — bottom nav, KPI chips, hub sheets | 📋 Planned |
+| **MONO-THEME-02-S5** | Mobile parity — bottom nav, KPI chips, hub sheets | ✅ **Complete** |
 
-**Next slice:** **MONO-THEME-02-S5** — mobile parity.
+**Next slice:** MONO-THEME-02 epic **complete**.
 
 ---
 
@@ -3412,6 +3412,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **MONO-THEME-02-S5 (closure)** — Mobile parity: removed widgets mob_bar/hub override drift, mobile KPI chips + tables use `--erp-card-*`/`--erp-table-*`, hub sheet card radius; `tests/test_mono_theme_02_s5_mobile_parity.py`. Tag: `mono-theme-02-s5-mobile-parity`. **MONO-THEME-02 epic complete.** |
 | 2026-06-05 | **MONO-THEME-02-S4 (closure)** — Desktop table density: tighter `.erp-fin-table`/`.erp-data-table` padding, sticky fin headers, stTable row hover + tabular-nums; `tests/test_mono_theme_02_s4_table_refinement.py`. Tag: `mono-theme-02-s4-table-refinement`. Next: **MONO-THEME-02-S5** (mobile parity). |
 | 2026-06-05 | **MONO-THEME-02-S3 (closure)** — Desktop dashboard density: tighter KPI grid/cards, card-shell insight rows, activity hover focal point, bordered Streamlit panels; `tests/test_mono_theme_02_s3_dashboard_refinement.py`. Tag: `mono-theme-02-s3-dashboard-refinement`. Next: **MONO-THEME-02-S4** (tables). |
 | 2026-06-05 | **MONO-THEME-02-S2 (closure)** — Desktop top bar: compact `--hdr-h` 52px, search card prominence, softer toolbar controls; `tests/test_mono_theme_02_s2_topbar_refinement.py`. Tag: `mono-theme-02-s2-topbar-refinement`. Next: **MONO-THEME-02-S3** (dashboard/cards). |

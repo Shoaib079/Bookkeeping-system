@@ -1385,6 +1385,39 @@
   [data-testid="stMain"] [data-testid="stElementContainer"]:has(.erp-page-title-desktop-only) {
     display: none !important;
   }
+  /* MONO-THEME-02-S5 — mobile dashboard KPI + table parity with desktop grammar */
+  .erp-dash-mobile-kpi-chip {
+    background: var(--erp-card-bg);
+    border: 1px solid var(--erp-card-border);
+    border-radius: var(--erp-card-radius);
+    box-shadow: var(--erp-card-shadow);
+  }
+  .erp-dash-mobile-kpi-value {
+    font-variant-numeric: tabular-nums;
+  }
+  [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-dash-mobile-arap-host) {
+    background: var(--erp-card-bg) !important;
+    border: 1px solid var(--erp-card-border) !important;
+    border-radius: var(--erp-card-radius) !important;
+    box-shadow: var(--erp-card-shadow) !important;
+  }
+  [data-testid="stMain"] [class*="st-key-mob_dash_ar"] {
+    border-right: 1px solid var(--erp-card-border) !important;
+  }
+  .erp-data-table th {
+    padding: 7px 10px;
+  }
+  .erp-data-table td {
+    padding: 8px 10px;
+    vertical-align: middle;
+  }
+  .erp-fin-table thead th {
+    padding: 7px 10px;
+  }
+  .erp-fin-table td {
+    padding: 8px 10px;
+    vertical-align: middle;
+  }
 }
 @media (min-width: 969px) {
   .erp-mobile-report-filters {
