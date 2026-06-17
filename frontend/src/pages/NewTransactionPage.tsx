@@ -4,16 +4,19 @@ import { ReadApiSetup } from "../components/ReadApiSetup";
 import {
   reactWriteEnabled,
   reactWriteBankingEnabled,
+  reactWriteClosingEnabled,
   reactWriteExpensesEnabled,
   reactWritePartnerWorkerEnabled,
   reactWritePurchasesEnabled,
   reactWriteReceivablePaymentsEnabled,
+  reactWriteReconciliationEnabled,
   reactWriteSalesEnabled,
   reactWriteVoidsEnabled,
 } from "../config/featureFlags";
 import type { ApiError } from "../lib/api/client";
 import { getReadSession } from "../lib/api/session";
 import type {
+  AllocationVoidResponse,
   CreateBankTransactionResponse,
   CreateExpenseResponse,
   CreatePartnerMovementResponse,
@@ -22,6 +25,11 @@ import type {
   CreateSaleResponse,
   CreateWorkerPaymentResponse,
   PartnerMovementType,
+  PeriodCloseResponse,
+  ProfitAllocationResponse,
+  ReconciliationMatchResponse,
+  ReconciliationMatchType,
+  ReconciliationUnmatchResponse,
   VoidResponse,
   VoidTargetType,
   WorkerMovementType,
@@ -36,7 +44,11 @@ type WriteTab =
   | "receivable"
   | "banking"
   | "partner"
-  | "worker";
+  | "worker"
+  | "reconcile"
+  | "closing";
+type ReconcileAction = "match" | "unmatch";
+type ClosingAction = "close" | "allocate" | "voidAllocation";
 type SalePaymentMethod = "Cash" | "Card" | "Credit";
 type ExpensePaymentMethod = "Cash" | "Bank";
 type PurchasePaymentMethod = "Cash" | "Bank" | "Credit";
@@ -87,6 +99,8 @@ export function NewTransactionPage() {
   const receivableOn = reactWriteReceivablePaymentsEnabled();
   const bankingOn = reactWriteBankingEnabled();
   const partnerWorkerOn = reactWritePartnerWorkerEnabled();
+  const reconcileOn = reactWriteReconciliationEnabled();
+  const closingOn = reactWriteClosingEnabled();
   const defaultTab: WriteTab = salesOn
     ? "sale"
     : expensesOn
@@ -99,7 +113,11 @@ export function NewTransactionPage() {
             ? "banking"
             : partnerWorkerOn
               ? "partner"
-              : "void";
+              : reconcileOn
+                ? "reconcile"
+                : closingOn
+                  ? "closing"
+                  : "void";
 
   const [sessionTick, setSessionTick] = useState(0);
   const session = useMemo(() => getReadSession(), [sessionTick]);
@@ -167,6 +185,27 @@ export function NewTransactionPage() {
   const [workerPayPeriod, setWorkerPayPeriod] = useState("");
   const [workerResult, setWorkerResult] =
     useState<CreateWorkerPaymentResponse | null>(null);
+  const [reconcileAction, setReconcileAction] = useState<ReconcileAction>("match");
+  const [statementRowId, setStatementRowId] = useState("");
+  const [reconMatchType, setReconMatchType] =
+    useState<ReconciliationMatchType>("generic_deposit");
+  const [reconCreditAccountName, setReconCreditAccountName] = useState("Sales Revenue");
+  const [reconUnmatchReason, setReconUnmatchReason] = useState("");
+  const [reconMatchResult, setReconMatchResult] =
+    useState<ReconciliationMatchResponse | null>(null);
+  const [reconUnmatchResult, setReconUnmatchResult] =
+    useState<ReconciliationUnmatchResponse | null>(null);
+  const [closingAction, setClosingAction] = useState<ClosingAction>("close");
+  const [closingPeriodId, setClosingPeriodId] = useState("");
+  const [closingAllocationId, setClosingAllocationId] = useState("");
+  const [closingVoidReason, setClosingVoidReason] = useState("");
+  const [closingNotes, setClosingNotes] = useState("");
+  const [periodCloseResult, setPeriodCloseResult] =
+    useState<PeriodCloseResponse | null>(null);
+  const [allocationResult, setAllocationResult] =
+    useState<ProfitAllocationResponse | null>(null);
+  const [allocationVoidResult, setAllocationVoidResult] =
+    useState<AllocationVoidResponse | null>(null);
 
   if (!reactWriteEnabled()) {
     return (
@@ -178,7 +217,9 @@ export function NewTransactionPage() {
           <code>VITE_ERP_REACT_WRITE_PURCHASES=1</code>,{" "}
           <code>VITE_ERP_REACT_WRITE_RECEIVABLE_PAYMENTS=1</code>,{" "}
           <code>VITE_ERP_REACT_WRITE_BANKING=1</code>,{" "}
-          <code>VITE_ERP_REACT_WRITE_PARTNER_WORKER=1</code>, and/or{" "}
+          <code>VITE_ERP_REACT_WRITE_PARTNER_WORKER=1</code>,{" "}
+          <code>VITE_ERP_REACT_WRITE_RECONCILIATION=1</code>,{" "}
+          <code>VITE_ERP_REACT_WRITE_CLOSING=1</code>, and/or{" "}
           <code>VITE_ERP_REACT_WRITE_VOIDS=1</code>.
         </p>
       </section>
@@ -708,6 +749,146 @@ export function NewTransactionPage() {
     }
   }
 
+  async function handleReconcileSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!session) {
+      setError("Save a read API session before posting.");
+      return;
+    }
+    const rowId = parsePositiveInt(statementRowId);
+    if (rowId === null) {
+      setError("Enter a valid statement row id.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setReconMatchResult(null);
+    setReconUnmatchResult(null);
+    try {
+      if (reconcileAction === "match") {
+        const creditAccount = reconCreditAccountName.trim();
+        if (reconMatchType === "generic_deposit" && !creditAccount) {
+          setError("Enter a credit account name for generic deposit.");
+          setLoading(false);
+          return;
+        }
+        const body: {
+          statement_row_id: number;
+          match_type: ReconciliationMatchType;
+          credit_account_name?: string;
+        } = {
+          statement_row_id: rowId,
+          match_type: reconMatchType,
+        };
+        if (creditAccount) {
+          body.credit_account_name = creditAccount;
+        }
+        const response = await apiPost<ReconciliationMatchResponse>(
+          "/api/v1/reconciliation/match",
+          body,
+          { session },
+        );
+        setReconMatchResult(response);
+      } else {
+        const reason = reconUnmatchReason.trim();
+        if (!reason) {
+          setError(VOID_REASON_MSG);
+          setLoading(false);
+          return;
+        }
+        const response = await apiPost<ReconciliationUnmatchResponse>(
+          "/api/v1/reconciliation/unmatch",
+          {
+            statement_row_id: rowId,
+            reason,
+          },
+          { session },
+        );
+        setReconUnmatchResult(response);
+        setReconUnmatchReason("");
+      }
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setError(apiErr.detail ?? "Failed to post reconciliation action.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleClosingSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!session) {
+      setError("Save a read API session before posting.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setPeriodCloseResult(null);
+    setAllocationResult(null);
+    setAllocationVoidResult(null);
+    try {
+      if (closingAction === "close") {
+        const periodId = parsePositiveInt(closingPeriodId);
+        if (periodId === null) {
+          setError("Enter a valid period id.");
+          setLoading(false);
+          return;
+        }
+        const response = await apiPost<PeriodCloseResponse>(
+          `/api/v1/periods/${periodId}/close`,
+          {},
+          { session },
+        );
+        setPeriodCloseResult(response);
+      } else if (closingAction === "allocate") {
+        const periodId = parsePositiveInt(closingPeriodId);
+        if (periodId === null) {
+          setError("Enter a valid period id.");
+          setLoading(false);
+          return;
+        }
+        const body: { period_id: number; notes?: string } = { period_id: periodId };
+        const trimmedNotes = closingNotes.trim();
+        if (trimmedNotes) {
+          body.notes = trimmedNotes;
+        }
+        const response = await apiPost<ProfitAllocationResponse>(
+          "/api/v1/profit-allocations",
+          body,
+          { session },
+        );
+        setAllocationResult(response);
+      } else {
+        const allocationId = parsePositiveInt(closingAllocationId);
+        if (allocationId === null) {
+          setError("Enter a valid allocation id.");
+          setLoading(false);
+          return;
+        }
+        const reason = closingVoidReason.trim();
+        if (!reason) {
+          setError(VOID_REASON_MSG);
+          setLoading(false);
+          return;
+        }
+        const response = await apiPost<AllocationVoidResponse>(
+          `/api/v1/profit-allocations/${allocationId}/void`,
+          { reason },
+          { session },
+        );
+        setAllocationVoidResult(response);
+        setClosingVoidReason("");
+      }
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setError(apiErr.detail ?? "Failed to post closing action.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleVoidSubmit(event: FormEvent) {
     event.preventDefault();
     if (!session) {
@@ -760,6 +941,11 @@ export function NewTransactionPage() {
     setBankingResult(null);
     setPartnerResult(null);
     setWorkerResult(null);
+    setReconMatchResult(null);
+    setReconUnmatchResult(null);
+    setPeriodCloseResult(null);
+    setAllocationResult(null);
+    setAllocationVoidResult(null);
   }
 
   return (
@@ -859,6 +1045,28 @@ export function NewTransactionPage() {
             onClick={() => switchTab("worker")}
           >
             Worker
+          </button>
+        ) : null}
+        {reconcileOn ? (
+          <button
+            type="button"
+            className={
+              tab === "reconcile" ? "erp-write-tabs__btn active" : "erp-write-tabs__btn"
+            }
+            onClick={() => switchTab("reconcile")}
+          >
+            Reconcile
+          </button>
+        ) : null}
+        {closingOn ? (
+          <button
+            type="button"
+            className={
+              tab === "closing" ? "erp-write-tabs__btn active" : "erp-write-tabs__btn"
+            }
+            onClick={() => switchTab("closing")}
+          >
+            Closing
           </button>
         ) : null}
       </nav>
@@ -1489,6 +1697,153 @@ export function NewTransactionPage() {
         </form>
       ) : null}
 
+      {tab === "reconcile" && reconcileOn ? (
+        <form className="erp-write-form" onSubmit={handleReconcileSubmit}>
+          <label>
+            Action
+            <select
+              value={reconcileAction}
+              onChange={(event) =>
+                setReconcileAction(event.target.value as ReconcileAction)
+              }
+            >
+              <option value="match">Match</option>
+              <option value="unmatch">Unmatch</option>
+            </select>
+          </label>
+          <label>
+            Statement row id
+            <input
+              type="number"
+              min={1}
+              value={statementRowId}
+              onChange={(event) => setStatementRowId(event.target.value)}
+              required
+            />
+          </label>
+          {reconcileAction === "match" ? (
+            <>
+              <label>
+                Match type
+                <select
+                  value={reconMatchType}
+                  onChange={(event) =>
+                    setReconMatchType(event.target.value as ReconciliationMatchType)
+                  }
+                >
+                  <option value="generic_deposit">generic_deposit</option>
+                  <option value="bank_charge">bank_charge</option>
+                  <option value="deposit_clearing">deposit_clearing</option>
+                  <option value="vendor_outflow">vendor_outflow</option>
+                  <option value="partner">partner</option>
+                  <option value="worker">worker</option>
+                  <option value="equity">equity</option>
+                  <option value="cc_bill_payment">cc_bill_payment</option>
+                </select>
+              </label>
+              <label>
+                Credit account name
+                <input
+                  type="text"
+                  value={reconCreditAccountName}
+                  onChange={(event) => setReconCreditAccountName(event.target.value)}
+                />
+              </label>
+            </>
+          ) : (
+            <label>
+              Unmatch reason
+              <textarea
+                value={reconUnmatchReason}
+                onChange={(event) => setReconUnmatchReason(event.target.value)}
+                rows={3}
+                required
+              />
+            </label>
+          )}
+          <button type="submit" disabled={!session || loading}>
+            {loading
+              ? "Saving…"
+              : reconcileAction === "match"
+                ? "Match statement row"
+                : "Unmatch statement row"}
+          </button>
+        </form>
+      ) : null}
+
+      {tab === "closing" && closingOn ? (
+        <form className="erp-write-form" onSubmit={handleClosingSubmit}>
+          <label>
+            Action
+            <select
+              value={closingAction}
+              onChange={(event) =>
+                setClosingAction(event.target.value as ClosingAction)
+              }
+            >
+              <option value="close">Close period</option>
+              <option value="allocate">Profit allocation</option>
+              <option value="voidAllocation">Void allocation</option>
+            </select>
+          </label>
+          {closingAction === "voidAllocation" ? (
+            <>
+              <label>
+                Allocation id
+                <input
+                  type="number"
+                  min={1}
+                  value={closingAllocationId}
+                  onChange={(event) => setClosingAllocationId(event.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                Void reason
+                <textarea
+                  value={closingVoidReason}
+                  onChange={(event) => setClosingVoidReason(event.target.value)}
+                  rows={3}
+                  required
+                />
+              </label>
+            </>
+          ) : (
+            <>
+              <label>
+                Period id
+                <input
+                  type="number"
+                  min={1}
+                  value={closingPeriodId}
+                  onChange={(event) => setClosingPeriodId(event.target.value)}
+                  required
+                />
+              </label>
+              {closingAction === "allocate" ? (
+                <label>
+                  Notes (optional)
+                  <textarea
+                    value={closingNotes}
+                    onChange={(event) => setClosingNotes(event.target.value)}
+                    rows={3}
+                  />
+                </label>
+              ) : null}
+            </>
+          )}
+          <button type="submit" disabled={!session || loading}>
+            {loading
+              ? "Saving…"
+              : closingAction === "close"
+                ? "Close period"
+                : closingAction === "allocate"
+                  ? "Allocate profit"
+                  : "Void allocation"}
+          </button>
+        </form>
+      ) : null}
+
       {tab === "void" && voidsOn ? (
         <form className="erp-write-form" onSubmit={handleVoidSubmit}>
           <label>
@@ -1603,6 +1958,43 @@ export function NewTransactionPage() {
           <h2>Worker payment saved</h2>
           <p>{workerResult.message}</p>
           <p className="erp-muted">Payment #{workerResult.payment_id}</p>
+        </article>
+      ) : null}
+      {reconMatchResult ? (
+        <article className="erp-card erp-write-result">
+          <h2>Statement row matched</h2>
+          <p>{reconMatchResult.message}</p>
+          <p className="erp-muted">
+            Row #{reconMatchResult.statement_row_id} · match #{reconMatchResult.match_id}
+          </p>
+        </article>
+      ) : null}
+      {reconUnmatchResult ? (
+        <article className="erp-card erp-write-result">
+          <h2>Statement row unmatched</h2>
+          <p>{reconUnmatchResult.message}</p>
+          <p className="erp-muted">Row #{reconUnmatchResult.statement_row_id}</p>
+        </article>
+      ) : null}
+      {periodCloseResult ? (
+        <article className="erp-card erp-write-result">
+          <h2>Period closed</h2>
+          <p>{periodCloseResult.message}</p>
+          <p className="erp-muted">Period #{periodCloseResult.period_id}</p>
+        </article>
+      ) : null}
+      {allocationResult ? (
+        <article className="erp-card erp-write-result">
+          <h2>Profit allocated</h2>
+          <p>{allocationResult.message}</p>
+          <p className="erp-muted">Allocation #{allocationResult.allocation_id}</p>
+        </article>
+      ) : null}
+      {allocationVoidResult ? (
+        <article className="erp-card erp-write-result">
+          <h2>Allocation voided</h2>
+          <p>{allocationVoidResult.message}</p>
+          <p className="erp-muted">Allocation #{allocationVoidResult.allocation_id}</p>
         </article>
       ) : null}
     </section>

@@ -213,3 +213,69 @@ export type CreateWorkerPaymentResponse = {
   message: string;
   status: string;
 };
+
+export type ReconciliationMatchType =
+  | "generic_deposit"
+  | "bank_charge"
+  | "deposit_clearing"
+  | "vendor_outflow"
+  | "partner"
+  | "worker"
+  | "equity"
+  | "cc_bill_payment";
+
+export type ReconciliationMatchRequest = {
+  statement_row_id: number;
+  match_type: ReconciliationMatchType;
+  credit_account_name?: string;
+  charge_subtype?: string;
+};
+
+export type ReconciliationMatchResponse = {
+  statement_row_id: number;
+  match_id: number;
+  journal_entry_id: number | null;
+  message: string;
+  status: string;
+};
+
+export type ReconciliationUnmatchRequest = {
+  statement_row_id: number;
+  reason: string;
+};
+
+export type ReconciliationUnmatchResponse = {
+  statement_row_id: number;
+  message: string;
+  status: string;
+};
+
+export type PeriodCloseResponse = {
+  period_id: number;
+  journal_entry_id: number;
+  message: string;
+  status: string;
+};
+
+export type ProfitAllocationRequest = {
+  period_id: number;
+  notes?: string;
+};
+
+export type ProfitAllocationResponse = {
+  allocation_id: number;
+  journal_entry_id: number | null;
+  message: string;
+  status: string;
+};
+
+export type AllocationVoidRequest = {
+  reason: string;
+};
+
+export type AllocationVoidResponse = {
+  allocation_id: number;
+  journal_entry_id: number | null;
+  message: string;
+  status: string;
+};

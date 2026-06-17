@@ -20,6 +20,8 @@ WRITE_PURCHASES_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_PURCHASES"
 WRITE_RECEIVABLE_PAYMENTS_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_RECEIVABLE_PAYMENTS"
 WRITE_BANKING_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_BANKING"
 WRITE_PARTNER_WORKER_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_PARTNER_WORKER"
+WRITE_RECONCILIATION_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_RECONCILIATION"
+WRITE_CLOSING_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_CLOSING"
 API_WRITE_SALES_ENV: Final[str] = "ERP_API_WRITE_SALES"
 API_WRITE_EXPENSES_ENV: Final[str] = "ERP_API_WRITE_EXPENSES"
 API_WRITE_VOIDS_ENV: Final[str] = "ERP_API_WRITE_VOIDS"
@@ -27,6 +29,8 @@ API_WRITE_PURCHASES_ENV: Final[str] = "ERP_API_WRITE_PURCHASES"
 API_WRITE_RECEIVABLE_PAYMENTS_ENV: Final[str] = "ERP_API_WRITE_RECEIVABLE_PAYMENTS"
 API_WRITE_BANKING_ENV: Final[str] = "ERP_API_WRITE_BANKING"
 API_WRITE_PARTNER_WORKER_ENV: Final[str] = "ERP_API_WRITE_PARTNER_WORKER"
+API_WRITE_RECONCILIATION_ENV: Final[str] = "ERP_API_WRITE_RECONCILIATION"
+API_WRITE_CLOSING_ENV: Final[str] = "ERP_API_WRITE_CLOSING"
 
 # (react_path, page_component, page_key)
 WRITE_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
@@ -65,6 +69,16 @@ WORKER_PAYMENT_WRITE_API_PATHS: tuple[str, ...] = (
     "/api/v1/worker-payments",
 )
 
+RECONCILIATION_WRITE_API_PATHS: tuple[str, ...] = (
+    "/api/v1/reconciliation/match",
+    "/api/v1/reconciliation/unmatch",
+)
+
+CLOSING_WRITE_API_PATHS: tuple[str, ...] = (
+    "/api/v1/periods/",
+    "/api/v1/profit-allocations",
+)
+
 VOID_TARGET_TYPES: tuple[str, ...] = (
     "Sale",
     "ExpenseRecord",
@@ -83,6 +97,8 @@ P2_RECEIVABLE_PAYMENT_WRITE_TEST: Final[str] = (
 )
 P2_BANKING_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_banking_write.py"
 P2_PARTNER_WORKER_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_partner_worker_write.py"
+P2_RECONCILIATION_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_reconciliation_write.py"
+P2_CLOSING_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_closing_write.py"
 
 REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/config/featureFlags.ts",
@@ -105,6 +121,21 @@ ALLOWED_PARTNER_MOVEMENT_TYPES: tuple[str, ...] = (
     "AdvanceOffset",
 )
 ALLOWED_WORKER_MOVEMENT_TYPES: tuple[str, ...] = ("Salary", "Advance", "Repayment")
+ALLOWED_RECONCILIATION_MATCH_TYPES: tuple[str, ...] = (
+    "generic_deposit",
+    "bank_charge",
+    "deposit_clearing",
+    "vendor_outflow",
+    "partner",
+    "worker",
+    "equity",
+    "cc_bill_payment",
+)
+CLOSING_WRITE_ACTIONS: tuple[str, ...] = (
+    "close_period",
+    "profit_allocation",
+    "void_allocation",
+)
 
 SALE_PAYMENT_OPTIONAL_FIELDS: tuple[str, ...] = (
     "customer_name",
@@ -141,6 +172,15 @@ WORKER_PAYMENT_OPTIONAL_FIELDS: tuple[str, ...] = (
     "deductions",
     "advance_recovery",
     "pay_period",
+    "notes",
+)
+
+RECONCILIATION_MATCH_OPTIONAL_FIELDS: tuple[str, ...] = (
+    "credit_account_name",
+    "charge_subtype",
+)
+
+CLOSING_OPTIONAL_FIELDS: tuple[str, ...] = (
     "notes",
 )
 
@@ -218,11 +258,20 @@ FR14_DEFERRED_ITEMS: tuple[str, ...] = (
     "production COMMIT_MODE_* flip",
 )
 
-DEFERRED_ITEMS: tuple[str, ...] = (
+# Frozen for FR-15 audit tests (do not mutate).
+FR15_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-16",
     "reconciliation write",
     "closing write",
     "partner picker",
     "worker picker",
+    "production COMMIT_MODE_* flip",
+)
+
+DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-17",
+    "full match-type payload forms",
+    "statement row picker",
+    "fiscal period picker",
     "production COMMIT_MODE_* flip",
 )

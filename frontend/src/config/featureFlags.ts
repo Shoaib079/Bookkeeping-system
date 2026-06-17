@@ -30,6 +30,14 @@ export function reactWritePartnerWorkerEnabled(): boolean {
   return import.meta.env.VITE_ERP_REACT_WRITE_PARTNER_WORKER === "1";
 }
 
+export function reactWriteReconciliationEnabled(): boolean {
+  return import.meta.env.VITE_ERP_REACT_WRITE_RECONCILIATION === "1";
+}
+
+export function reactWriteClosingEnabled(): boolean {
+  return import.meta.env.VITE_ERP_REACT_WRITE_CLOSING === "1";
+}
+
 export function reactWriteEnabled(): boolean {
   return (
     reactWriteSalesEnabled() ||
@@ -38,6 +46,8 @@ export function reactWriteEnabled(): boolean {
     reactWritePurchasesEnabled() ||
     reactWriteReceivablePaymentsEnabled() ||
     reactWriteBankingEnabled() ||
-    reactWritePartnerWorkerEnabled()
+    reactWritePartnerWorkerEnabled() ||
+    reactWriteReconciliationEnabled() ||
+    reactWriteClosingEnabled()
   );
 }

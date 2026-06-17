@@ -1410,12 +1410,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-10** | Card/credit sale + bank expense | ✅ **Complete** |
 | **FASTAPI-REACT-11** | Void write tab (New Transaction) | ✅ **Complete** |
 | **FASTAPI-REACT-12** | Purchase write tab (New Transaction) | ✅ **Complete** |
-| **FASTAPI-REACT-15** | Partner/worker movement write tabs (New Transaction) | ✅ **Complete** |
-| **FASTAPI-REACT-16+** | Reconciliation/closing write UI | 📋 Planned |
+| **FASTAPI-REACT-16** | Reconciliation/closing write tabs (New Transaction) | ✅ **Complete** |
+| **FASTAPI-REACT-17+** | Read expansion / match-type payloads | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_15_REACT_WRITE_PARTNER_WORKER_AUDIT.md](./docs/FASTAPI_REACT_15_REACT_WRITE_PARTNER_WORKER_AUDIT.md) · **Tests:** `tests/test_fastapi_react_15_react_write_partner_worker.py` · **Tag:** `fastapi-react-15-react-write-partner-worker`
+**Audit:** [FASTAPI_REACT_16_REACT_WRITE_RECON_CLOSING_AUDIT.md](./docs/FASTAPI_REACT_16_REACT_WRITE_RECON_CLOSING_AUDIT.md) · **Tests:** `tests/test_fastapi_react_16_react_write_recon_closing.py` · **Tag:** `fastapi-react-16-react-write-recon-closing`
 
-**Next slice:** **FASTAPI-REACT-16** — reconciliation/closing write UI; see FR-15 audit §8.
+**Next slice:** **FASTAPI-REACT-17** — read-page expansion or full recon match-type forms; see FR-16 audit §8.
 
 ---
 
@@ -3506,6 +3506,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-16 (closure)** — Reconciliation + Closing write tabs on `/transactions/new` via P2.8/P2.9 APIs behind `VITE_ERP_REACT_WRITE_RECONCILIATION` / `VITE_ERP_REACT_WRITE_CLOSING`; `docs/FASTAPI_REACT_16_REACT_WRITE_RECON_CLOSING_AUDIT.md` + `tests/test_fastapi_react_16_react_write_recon_closing.py`. Completes P2 write UI coverage. Tag: `fastapi-react-16-react-write-recon-closing`. Next: **FASTAPI-REACT-17**. |
 | 2026-06-05 | **FASTAPI-REACT-15 (closure)** — Partner + Worker write tabs on `/transactions/new` via `POST /api/v1/partner-movements` and `POST /api/v1/worker-payments` behind `VITE_ERP_REACT_WRITE_PARTNER_WORKER=1`; `docs/FASTAPI_REACT_15_REACT_WRITE_PARTNER_WORKER_AUDIT.md` + `tests/test_fastapi_react_15_react_write_partner_worker.py`. Streamlit primary unchanged. Tag: `fastapi-react-15-react-write-partner-worker`. Next: **FASTAPI-REACT-16**. |
 | 2026-06-05 | **FASTAPI-REACT-14 (closure)** — Bank transaction write tab on `/transactions/new` via `POST /api/v1/bank-transactions` behind `VITE_ERP_REACT_WRITE_BANKING=1`; `docs/FASTAPI_REACT_14_REACT_WRITE_BANKING_AUDIT.md` + `tests/test_fastapi_react_14_react_write_banking.py`. Streamlit primary unchanged. Tag: `fastapi-react-14-react-write-banking`. Next: **FASTAPI-REACT-15**. |
 | 2026-06-05 | **FASTAPI-REACT-13 (closure)** — Receivable payment write tab on `/transactions/new` via `POST /api/v1/receivable-payments` behind `VITE_ERP_REACT_WRITE_RECEIVABLE_PAYMENTS=1`; `docs/FASTAPI_REACT_13_REACT_WRITE_RECEIVABLE_PAYMENT_AUDIT.md` + `tests/test_fastapi_react_13_react_write_receivable_payment.py`. Streamlit primary unchanged. Tag: `fastapi-react-13-react-write-receivable-payment`. Next: **FASTAPI-REACT-14**. |
