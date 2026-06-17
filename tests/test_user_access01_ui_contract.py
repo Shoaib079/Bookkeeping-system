@@ -81,9 +81,12 @@ def test_owner_lockout_error_displayed(ui_src: str):
 
 
 def test_app_dispatches_to_ui_renderer(app_src: str):
+    from registry.nav_keys import NAV_PERMISSIONS
+    from registry.navigation import dispatch_render_spec
+
+    assert dispatch_render_spec()[NAV_PERMISSIONS] == "render_permissions_management"
     assert "render_permissions_management" in app_src
-    assert "NAV_PERMISSIONS:" in app_src
-    assert "render_permissions_management" in app_src.split("NAV_PERMISSIONS:")[1][:80]
+    assert "NAV_PERMISSIONS" in app_src
 
 
 def test_nav_wired_under_settings(app_src: str):

@@ -101,14 +101,26 @@ def test_restaurant_friendly_labels(ui_src: str):
 
 
 def test_app_dispatches_to_ui_renderers(app_src: str):
-    assert "render_recipe_ingredients" in app_src
-    assert "render_recipe_recipes" in app_src
-    assert "render_recipe_cost_breakdown" in app_src
-    assert "render_recipe_menu_items" in app_src
-    assert "NAV_RC_INGREDIENTS: render_recipe_ingredients" in app_src
-    assert "NAV_RC_RECIPES: render_recipe_recipes" in app_src
-    assert "NAV_RC_COST_BREAKDOWN: render_recipe_cost_breakdown" in app_src
-    assert "NAV_RC_MENU_ITEMS: render_recipe_menu_items" in app_src
+    from registry.nav_keys import (
+        NAV_RC_COST_BREAKDOWN,
+        NAV_RC_INGREDIENTS,
+        NAV_RC_MENU_ITEMS,
+        NAV_RC_RECIPES,
+    )
+    from registry.navigation import dispatch_render_spec
+
+    spec = dispatch_render_spec()
+    assert spec[NAV_RC_INGREDIENTS] == "render_recipe_ingredients"
+    assert spec[NAV_RC_RECIPES] == "render_recipe_recipes"
+    assert spec[NAV_RC_COST_BREAKDOWN] == "render_recipe_cost_breakdown"
+    assert spec[NAV_RC_MENU_ITEMS] == "render_recipe_menu_items"
+    for fn in (
+        "render_recipe_ingredients",
+        "render_recipe_recipes",
+        "render_recipe_cost_breakdown",
+        "render_recipe_menu_items",
+    ):
+        assert fn in app_src
 
 
 def test_nav_wired_under_recipe_costing(app_src: str):

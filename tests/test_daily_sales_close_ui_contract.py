@@ -78,9 +78,14 @@ def test_source_name_is_text_input_not_vendor_dropdown(ui_src: str):
 
 
 def test_app_dispatches_to_ui_renderer(app_src: str):
+    from registry.nav_keys import NAV_EXTERNAL_SALES_VERIFICATION
+    from registry.navigation import dispatch_render_spec
+
+    assert dispatch_render_spec()[NAV_EXTERNAL_SALES_VERIFICATION] == (
+        "render_external_sales_verification"
+    )
     assert "render_external_sales_verification" in app_src
     assert "NAV_EXTERNAL_SALES_VERIFICATION" in app_src
-    assert "NAV_EXTERNAL_SALES_VERIFICATION: render_external_sales_verification" in app_src
 
 
 def test_app_has_no_esv_business_logic(app_src: str):

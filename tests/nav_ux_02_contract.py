@@ -122,7 +122,11 @@ DIALOG_FUNCTION_NAMES = frozenset(
 
 
 def page_dispatch_from_main() -> dict[str, str]:
-    """Parse _PAGE_DISPATCH inside main() — keys and handler names."""
+    """Return route_key → render_fn name for the active page dispatch map."""
+    if hasattr(erp, "_PAGE_DISPATCH") and isinstance(erp._PAGE_DISPATCH, dict):
+        from registry.navigation import dispatch_render_spec
+
+        return dispatch_render_spec()
     source = inspect.getsource(erp.main)
     tree = ast.parse(source)
     for node in ast.walk(tree):

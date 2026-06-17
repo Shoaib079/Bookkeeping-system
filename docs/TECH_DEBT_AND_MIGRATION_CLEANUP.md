@@ -78,7 +78,7 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 
 | ID | Item | Priority | Status | When / trigger |
 |----|------|----------|--------|----------------|
-| **TD-NAV-ARCH-01** | **Seven hand-synced nav structures** — `registry/nav_keys.py`, `_PAGE_DISPATCH`, `_NAV_ACCORDION`, `_NAV_DIRECT_PAGES`, `_NAV_ROLE_PAGES`, `_MOBILE_BOTTOM_NAV`, `_MOBILE_HUB_CONFIG` maintained in parallel; drift risk mitigated by parity tests only | High | **In progress** — S1 guardrails shipped | NAV-ARCH-S2: introduce `registry/navigation.py` and derive dispatch |
+| **TD-NAV-ARCH-01** | **Seven hand-synced nav structures** — dispatch now registry-derived (`registry/navigation.py`); accordion/direct/role/mobile still hand-edited in `app.py` | High | **In progress** — S2 dispatch derived | NAV-ARCH-S3A/S3B/S3C |
 | **TD-NAV-ARCH-02** | **Derive desktop/role/mobile from registry** — accordion, direct pages, role gates, mobile bottom nav + hubs still hand-edited in `app.py` | High | Open | NAV-ARCH-S3A/S3B/S3C |
 | **TD-NAV-ARCH-03** | **React route contract not frozen** — `react_route` metadata scattered; no `docs/NAV_ARCH_REACT_ROUTE_CONTRACT.md` yet | Medium | Open | NAV-ARCH-S4 |
 

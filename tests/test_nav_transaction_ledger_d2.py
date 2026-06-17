@@ -9,32 +9,9 @@ from unittest.mock import MagicMock
 import app as erp
 from registry.i18n import nav_display, t
 from registry.nav_keys import NAV_TXN_LEDGER
-
+from registry.navigation import dispatch_render_spec
+from tests.nav_ux_02_contract import page_dispatch_from_main
 _TXN_LEDGER_KEY = NAV_TXN_LEDGER
-
-
-def _page_dispatch_from_main() -> dict[str, str]:
-    source = inspect.getsource(erp.main)
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Assign):
-            continue
-        for target in node.targets:
-            if isinstance(target, ast.Name) and target.id == "_PAGE_DISPATCH":
-                if not isinstance(node.value, ast.Dict):
-                    continue
-                out: dict[str, str] = {}
-                for k, v in zip(node.value.keys, node.value.values):
-                    key = None
-                    if isinstance(k, ast.Constant):
-                        key = k.value
-                    elif isinstance(k, ast.Name):
-                        key = getattr(erp, k.id, k.id)
-                    if key is None or not isinstance(v, ast.Name):
-                        continue
-                    out[key] = v.id
-                return out
-    raise AssertionError("Could not find _PAGE_DISPATCH in main()")
 
 
 def test_sidebar_contains_transaction_ledger_after_new_transaction():
@@ -46,8 +23,8 @@ def test_sidebar_contains_transaction_ledger_after_new_transaction():
 
 
 def test_transaction_ledger_route_dispatches_to_wrapper():
-    main_src = inspect.getsource(erp.main)
-    assert "NAV_TXN_LEDGER:        render_transaction_ledger_page" in main_src
+    dispatch = page_dispatch_from_main()
+    assert dispatch[_TXN_LEDGER_KEY] == "render_transaction_ledger_page"
     assert erp._TXN_LEDGER_PAGE_KEY == _TXN_LEDGER_KEY
     assert _TXN_LEDGER_KEY in erp._NAV_DIRECT_PAGES
 
@@ -81,9 +58,10 @@ def test_executive_legacy_path_still_renders_ledger():
 
 
 def test_no_duplicate_page_dispatch_keys():
-    main_src = inspect.getsource(erp.main)
-    assert main_src.count("render_transaction_ledger_page") == 1
-    assert main_src.count("NAV_TXN_LEDGER:") == 1
+    spec = dispatch_render_spec()
+    ledger_handlers = [h for h in spec.values() if h == "render_transaction_ledger_page"]
+    assert len(ledger_handlers) == 1
+    assert spec[_TXN_LEDGER_KEY] == "render_transaction_ledger_page"
 
 
 def test_mobile_hubs_include_transaction_ledger_in_reports_only():

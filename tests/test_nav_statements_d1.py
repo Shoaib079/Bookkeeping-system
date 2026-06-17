@@ -13,6 +13,7 @@ from registry.locales.transactional import TRANSACTIONAL_EN, TRANSACTIONAL_TR
 
 
 from registry.nav_keys import NAV_BALANCE_SHEET, NAV_CASH_FLOW, NAV_PROFIT_LOSS, NAV_REPORTS
+from tests.nav_ux_02_contract import page_dispatch_from_main
 
 _STATEMENT_KEYS = (
     NAV_PROFIT_LOSS,
@@ -57,42 +58,14 @@ def _exec_picker_ids_from_source() -> set[str]:
     raise AssertionError("Could not find _mgmt_report_select('rpt_exec_sel', ...) in render_reports")
 
 
-def _page_dispatch_from_main() -> dict[str, str]:
-    """Parse _PAGE_DISPATCH inside main() — keys and handler names."""
-    source = inspect.getsource(erp.main)
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Assign):
-            continue
-        for target in node.targets:
-            if isinstance(target, ast.Name) and target.id == "_PAGE_DISPATCH":
-                if not isinstance(node.value, ast.Dict):
-                    continue
-                out: dict[str, str] = {}
-                for k, v in zip(node.value.keys, node.value.values):
-                    key = None
-                    if isinstance(k, ast.Constant):
-                        key = k.value
-                    elif isinstance(k, ast.Name):
-                        key = getattr(erp, k.id, k.id)
-                    if key is None:
-                        continue
-                    if isinstance(v, ast.Name):
-                        out[key] = v.id
-                    elif isinstance(v, ast.Attribute):
-                        out[key] = v.attr
-                return out
-    raise AssertionError("Could not find _PAGE_DISPATCH in main()")
-
-
 def test_statement_routes_exist_in_page_dispatch():
-    dispatch = _page_dispatch_from_main()
+    dispatch = page_dispatch_from_main()
     for key in _STATEMENT_KEYS:
         assert key in dispatch
 
 
 def test_statement_pages_dispatch_to_wrappers():
-    dispatch = _page_dispatch_from_main()
+    dispatch = page_dispatch_from_main()
     assert dispatch[NAV_PROFIT_LOSS] == "render_profit_loss_page"
     assert dispatch[NAV_BALANCE_SHEET] == "render_balance_sheet_page"
     assert dispatch[NAV_CASH_FLOW] == "render_cash_flow_page"

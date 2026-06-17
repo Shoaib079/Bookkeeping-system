@@ -89,9 +89,12 @@ def test_permission_gates(ui_src: str):
 
 
 def test_app_dispatches_to_ui_renderer(app_src: str):
+    from registry.nav_keys import NAV_STAFF_EXPENSE_CAPTURE
+    from registry.navigation import dispatch_render_spec
+
+    assert dispatch_render_spec()[NAV_STAFF_EXPENSE_CAPTURE] == "render_staff_expense_capture"
     assert "render_staff_expense_capture" in app_src
-    assert "NAV_STAFF_EXPENSE_CAPTURE:" in app_src
-    assert "render_staff_expense_capture" in app_src.split("NAV_STAFF_EXPENSE_CAPTURE:")[1][:100]
+    assert "NAV_STAFF_EXPENSE_CAPTURE" in app_src
 
 
 def test_nav_wired_under_transactions(app_src: str):

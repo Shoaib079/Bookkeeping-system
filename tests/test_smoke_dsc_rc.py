@@ -22,6 +22,7 @@ from registry.nav_keys import (
 )
 from services import daily_sales_close as dsc
 from services import recipe_costing as rc
+from tests.nav_ux_02_contract import page_dispatch_from_main
 
 _DSC_RC_PAGES = (
     NAV_EXTERNAL_SALES_VERIFICATION,
@@ -40,32 +41,6 @@ _DSC_RC_HANDLERS = {
 }
 
 _VALID_DSC_SOURCE_TYPES = (None, "POS", "ERP", "MANUAL")
-
-
-def _page_dispatch_from_main() -> dict[str, str]:
-    """Parse _PAGE_DISPATCH inside main() — keys and handler names."""
-    source = inspect.getsource(erp.main)
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Assign):
-            continue
-        for target in node.targets:
-            if isinstance(target, ast.Name) and target.id == "_PAGE_DISPATCH":
-                out: dict[str, str] = {}
-                for k, v in zip(node.value.keys, node.value.values):
-                    key = None
-                    if isinstance(k, ast.Constant):
-                        key = k.value
-                    elif isinstance(k, ast.Name):
-                        key = getattr(erp, k.id, k.id)
-                    if key is None:
-                        continue
-                    if isinstance(v, ast.Name):
-                        out[key] = v.id
-                    elif isinstance(v, ast.Attribute):
-                        out[key] = v.attr
-                return out
-    raise AssertionError("Could not find _PAGE_DISPATCH in main()")
 
 
 def _accordion_pages(group_key: str) -> list[str]:
@@ -108,12 +83,12 @@ class TestDscRcNavSmoke:
             assert key
 
     def test_dsc_rc_pages_in_page_dispatch(self):
-        dispatch = _page_dispatch_from_main()
+        dispatch = page_dispatch_from_main()
         missing = [key for key in _DSC_RC_PAGES if key not in dispatch]
         assert missing == []
 
     def test_dsc_rc_dispatch_handlers(self):
-        dispatch = _page_dispatch_from_main()
+        dispatch = page_dispatch_from_main()
         for key, handler in _DSC_RC_HANDLERS.items():
             assert dispatch[key] == handler
 

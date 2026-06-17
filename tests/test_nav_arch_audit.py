@@ -73,7 +73,7 @@ def test_inventory_mechanisms_with_line_numbers(doc_text):
     assert "_mobile_bottom_nav" in low
     assert "registry/nav_keys.py" in low
     # Live line anchors must match current app.py (S1 refresh).
-    assert str(_app_line("_PAGE_DISPATCH = {")) in doc_text
+    assert str(_app_line("_PAGE_DISPATCH = build_page_dispatch(")) in doc_text
     assert str(_app_line("def _render_navigation_tree(")) in doc_text
     assert str(_app_line("_NAV_ACCORDION = [")) in doc_text
     assert str(_app_line("_MOBILE_BOTTOM_NAV = (")) in doc_text
@@ -112,6 +112,12 @@ def test_single_source_recommendation(doc_text):
     assert "react_route" in low
 
 
+def test_s2_registry_exists():
+    """NAV-ARCH-S2: registry/navigation.py is the dispatch SSOT."""
+    root = Path(__file__).resolve().parents[1]
+    assert (root / "registry" / "navigation.py").exists()
+
+
 def test_avoid_duplicate_fixes_link(doc_text):
     low = doc_text.lower()
     assert "nav-ux-02" in low
@@ -140,16 +146,6 @@ def test_s1_completion_recorded(doc_text):
     low = doc_text.lower()
     assert "nav-arch-s1" in low
     assert "complete" in low or "guardrails" in low
-
-
-def test_no_registry_navigation_py_yet(doc_text):
-    """S1 must not introduce registry/navigation.py."""
-    assert not (Path(__file__).resolve().parents[1] / "registry" / "navigation.py").exists()
-    low = doc_text.lower()
-    assert "no registry/navigation.py yet" in low or "not yet" in low
-
-
-# ── NAV-ARCH-S1 live parity guardrails ────────────────────────────────────────
 
 
 def test_dispatch_keys_unique():
@@ -259,10 +255,12 @@ def test_no_duplicate_nav_display_labels_within_dispatch():
 
 
 def test_no_show_calendar_or_hybrid_nav_registry():
-    """NAV-ARCH-S1: no accidental registry/navigation.py or calendar hybrid in nav."""
+    """NAV-ARCH: no calendar hybrid in nav render tree."""
     root = Path(__file__).resolve().parents[1]
-    assert not (root / "registry" / "navigation.py").exists()
+    assert (root / "registry" / "navigation.py").exists()
     nav_src = inspect.getsource(erp._render_navigation_tree)
     for banned in ("show_calendar", "reconcile_text_and_calendar"):
         assert banned not in nav_src
 
+
+# ── NAV-ARCH-S1 live parity guardrails ────────────────────────────────────────

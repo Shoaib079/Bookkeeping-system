@@ -175,6 +175,7 @@ from registry.locales.i18n_maps import (
     TXN_TYPE_I18N,
 )
 from registry.i18n import nav_display, normalize_locale, page_title, t
+from registry.navigation import NavPageDef, build_page_dispatch
 
 # Company roles (message keys) — kept in app.py to avoid i18n_maps import-order issues.
 _COMPANY_ROLE_I18N: dict[str, str] = {
@@ -26183,6 +26184,17 @@ def _run_schema_startup(session) -> None:
     )
 
 
+def _resolve_nav_dispatch_handler(page: NavPageDef):
+    """NAV-ARCH-S2 — resolve registry render_fn to a dispatch callable."""
+    fn = globals()[page.render_fn]
+    if page.session_arg:
+        return fn
+    return lambda _session: fn()
+
+
+_PAGE_DISPATCH = build_page_dispatch(_resolve_nav_dispatch_handler)
+
+
 def main():
     # Always use the project folder for DB, uploads, and backups — not the shell cwd.
     os.chdir(PROJECT_ROOT)
@@ -26449,52 +26461,7 @@ def main():
         if _pg:
             st.session_state["sidebar_group"] = _pg
 
-    # ── Page dispatch ─────────────────────────────────────────────────────────
-    _PAGE_DISPATCH = {
-        NAV_HOME:              render_dashboard,
-        NAV_NEW_TRANSACTION:   render_add_transaction,
-        NAV_TXN_LEDGER:        render_transaction_ledger_page,
-        NAV_SALES:             render_sales,
-        NAV_EXPENSES:          render_expenses,
-        NAV_STAFF_EXPENSE_CAPTURE: render_staff_expense_capture,
-        NAV_RECURRING_EXPENSES: render_recurring_expenses,
-        NAV_PURCHASES:         render_purchases,
-        NAV_CASH_RECONCILIATION: render_cash_reconciliation,
-        NAV_EXTERNAL_SALES_VERIFICATION: render_external_sales_verification,
-        NAV_RC_INGREDIENTS: render_recipe_ingredients,
-        NAV_RC_RECIPES: render_recipe_recipes,
-        NAV_RC_COST_BREAKDOWN: render_recipe_cost_breakdown,
-        NAV_RC_MENU_ITEMS: render_recipe_menu_items,
-        NAV_END_OF_DAY_CLOSE:  render_end_of_day_close,
-        NAV_CUSTOMERS:         render_customers,
-        NAV_VENDORS:           render_vendors,
-        NAV_RECEIVABLES:       render_receivables,
-        NAV_PAYABLES:          render_payables,
-        NAV_INVENTORY:         render_inventory,
-        NAV_BANKING:           render_banking,
-        NAV_REPORTS:           render_reports,
-        NAV_PROFIT_LOSS:       render_profit_loss_page,
-        NAV_BALANCE_SHEET:     render_balance_sheet_page,
-        NAV_CASH_FLOW:         render_cash_flow_page,
-        NAV_GENERAL_LEDGER:    render_general_ledger,
-        NAV_TRIAL_BALANCE:     render_trial_balance,
-        NAV_JOURNAL_ENTRIES:   render_journal_entries,
-        NAV_FISCAL_PERIODS:    render_fiscal_periods,
-        NAV_YEAR_END_CLOSE:    render_year_end_close,
-        NAV_BUDGET:            render_budget,
-        NAV_CHART_OF_ACCOUNTS: render_chart_of_accounts,
-        NAV_RECON_HEALTH:      render_reconciliation_health,
-        NAV_PARTNER_ACCOUNTS:  render_partner_accounts,
-        NAV_WORKERS:           render_workers,
-        NAV_COMPANY_SETTINGS:  render_company_settings,
-        NAV_MEMBERS:           render_user_management,
-        NAV_PERMISSIONS:       render_permissions_management,
-        NAV_AUDIT_LOG:         render_audit_log,
-        NAV_BACKUP_RESTORE:    lambda s: render_backup_restore(),
-        NAV_OPENING_BALANCES:  render_opening_balances,
-        NAV_MY_ACCOUNT:        render_my_account,
-    }
-
+    # ── Page dispatch (NAV-ARCH-S2: derived from registry.navigation) ───────
     with get_session() as session:
         _PAGE_DISPATCH.get(selection, render_dashboard)(session)
 
