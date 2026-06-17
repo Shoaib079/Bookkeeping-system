@@ -69,3 +69,20 @@ export type CreateSaleResponse = {
   message: string;
   status: string;
 };
+
+export type CreateExpenseRequest = {
+  date: string;
+  amount: number;
+  currency: string;
+  payment_method: "Cash";
+  notes?: string;
+  category_name: string;
+  subcategory_name?: string;
+};
+
+export type CreateExpenseResponse = {
+  expense_id: number;
+  journal_entry_id: number | null;
+  message: string;
+  status: string;
+};

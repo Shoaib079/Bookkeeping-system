@@ -5,3 +5,11 @@ export function reactPagesEnabled(): boolean {
 export function reactWriteSalesEnabled(): boolean {
   return import.meta.env.VITE_ERP_REACT_WRITE_SALES === "1";
 }
+
+export function reactWriteExpensesEnabled(): boolean {
+  return import.meta.env.VITE_ERP_REACT_WRITE_EXPENSES === "1";
+}
+
+export function reactWriteEnabled(): boolean {
+  return reactWriteSalesEnabled() || reactWriteExpensesEnabled();
+}

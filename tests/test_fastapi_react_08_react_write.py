@@ -67,12 +67,12 @@ def test_feature_flags_documented(audit_text):
     assert contract.WRITE_SALES_FLAG_ENV in flags_src
 
 
-def test_app_router_wires_write_page_behind_dual_flags():
+def test_app_router_wires_write_page_behind_write_flags():
     router_src = (ROOT / "frontend/src/routes/AppRouter.tsx").read_text(
         encoding="utf-8"
     )
     assert "NewTransactionPage" in router_src
-    assert "reactWriteSalesEnabled" in router_src
+    assert "reactWriteEnabled" in router_src or "reactWriteSalesEnabled" in router_src
     assert "reactPagesEnabled" in router_src
 
 
@@ -135,6 +135,6 @@ def test_roadmap_lists_fastapi_react_08_complete():
     assert "fastapi-react-08-react-write" in roadmap
 
 
-@pytest.mark.parametrize("item", contract.DEFERRED_ITEMS)
+@pytest.mark.parametrize("item", contract.FR08_DEFERRED_ITEMS)
 def test_audit_documents_deferred_items(audit_text, item):
     assert item in audit_text

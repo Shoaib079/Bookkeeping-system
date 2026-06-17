@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import {
   reactPagesEnabled,
-  reactWriteSalesEnabled,
+  reactWriteEnabled,
 } from "../config/featureFlags";
 import { AppShell } from "../layouts/AppShell";
 import { routeSpecs, type RouteSpec } from "../lib/routes";
@@ -25,7 +25,7 @@ function RoutePage({ route }: { route: RouteSpec }) {
   if (!reactPagesEnabled()) {
     return <PlaceholderPage />;
   }
-  if (route.path in WRITE_PAGES && reactWriteSalesEnabled()) {
+  if (route.path in WRITE_PAGES && reactWriteEnabled()) {
     const Page = WRITE_PAGES[route.path];
     return <Page />;
   }

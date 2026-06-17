@@ -14,7 +14,9 @@ BOUNDARY_CONTRACT: Final[str] = "registry/pg_boundary_contract.py"
 
 READ_PAGES_FLAG_ENV: Final[str] = "VITE_ERP_REACT_PAGES"
 WRITE_SALES_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_SALES"
+WRITE_EXPENSES_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_EXPENSES"
 API_WRITE_SALES_ENV: Final[str] = "ERP_API_WRITE_SALES"
+API_WRITE_EXPENSES_ENV: Final[str] = "ERP_API_WRITE_EXPENSES"
 
 # (react_path, page_component, page_key)
 WRITE_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
@@ -25,8 +27,13 @@ WRITE_API_PATHS: tuple[str, ...] = (
     "/api/v1/sales",
 )
 
+EXPENSE_WRITE_API_PATHS: tuple[str, ...] = (
+    "/api/v1/expenses",
+)
+
 WRITE_CLIENT_MODULE: Final[str] = "frontend/src/lib/api/writeClient.ts"
 P2_SALES_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_sales_write.py"
+P2_EXPENSE_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_expense_write.py"
 
 REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/config/featureFlags.ts",
@@ -34,8 +41,9 @@ REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/pages/NewTransactionPage.tsx",
 )
 
-# Cash sale only in FR-08 — no card/credit forms in SPA.
-ALLOWED_PAYMENT_METHODS: tuple[str, ...] = ("Cash",)
+# Cash sale (FR-08) and cash expense (FR-09) — card/credit/bank deferred.
+ALLOWED_SALE_PAYMENT_METHODS: tuple[str, ...] = ("Cash",)
+ALLOWED_EXPENSE_PAYMENT_METHODS: tuple[str, ...] = ("Cash",)
 
 FORBIDDEN_FRONTEND_PATTERNS: tuple[str, ...] = (
     "create_journal_entry",
@@ -50,10 +58,19 @@ FORBIDDEN_FRONTEND_PATTERNS: tuple[str, ...] = (
 # apiPost allowed only in WRITE_CLIENT_MODULE (enforced by tests).
 WRITE_METHOD_NAME: Final[str] = "apiPost"
 
-DEFERRED_ITEMS: tuple[str, ...] = (
+# Frozen for FR-08 audit tests (do not mutate).
+FR08_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-09",
     "card sale form",
     "credit sale form",
     "expense write page",
+    "production COMMIT_MODE_* flip",
+)
+
+DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-10",
+    "card sale form",
+    "credit sale form",
+    "bank expense payment",
     "production COMMIT_MODE_* flip",
 )

@@ -237,3 +237,22 @@ a {
 .erp-write-result {
   margin-top: 1rem;
 }
+
+.erp-write-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.erp-write-tabs__btn {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--erp-border, #ddd);
+  border-radius: var(--erp-radius-sm, 4px);
+  background: var(--erp-surface, #fff);
+  cursor: pointer;
+}
+
+.erp-write-tabs__btn.active {
+  font-weight: 600;
+  background: var(--erp-surface-muted, #fafafa);
+}

@@ -80,7 +80,7 @@ Desktop shell ledger link corrected to `/books/general-ledger` (was stale `/ledg
 | **chart-of-accounts picker** | Ledger uses query `account_id` until COA read API |
 | **TD-PS-01** | PG boundary commit flip — still `internal` |
 | **FASTAPI-REACT-07** | PG boundary matrix (completed in FR-07) |
-| **FASTAPI-REACT-09** | Write pages + additional read coverage |
+| **FASTAPI-REACT-10** | Card/credit sale + bank expense |
 
 ---
 
