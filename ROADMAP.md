@@ -1273,13 +1273,13 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 
 ## MONO-THEME-01 — Option A+ Unified Mono ERP Theme
 
-**Status:** 🟡 **In progress** — S1 audit ✅ · S2 shared grammar tokens ✅ · S3 nav active ✅ · S4 desktop components 📋 · S5 mobile components 📋 · S6 tables/statuses 📋 · S7 React contract 📋  
+**Status:** 🟡 **In progress** — S1 audit ✅ · S2 shared grammar tokens ✅ · S3 nav active ✅ · S4 desktop components ✅ · S5 mobile components 📋 · S6 tables/statuses 📋 · S7 React contract 📋  
 **Priority:** High — after UI-SYSTEM-02 token foundation; before React DS-6 build  
 **Depends on:** UI-SYSTEM-02-S2 (`ui/design_tokens.py`) · MOBILE-UX-02 theme audits · UI-SYSTEM-02-S5 React contract
 
 **User-approved direction (Option A+ Final Blend):** accounting-first shadcn-style spine · mono/neutral by default · one blue accent · dense accounting tables · rich dashboard only where meaningful · desktop and mobile feel like one ERP · no rainbow UI · color only when it carries meaning.
 
-**Audit:** [MONO_THEME_01_AUDIT.md](./docs/MONO_THEME_01_AUDIT.md) · **Tests:** `tests/test_mono_theme_01_audit.py`, `tests/test_mono_theme_01_s2_shared_grammar_tokens.py`, `tests/test_mono_theme_01_s3_nav_active_grammar.py`
+**Audit:** [MONO_THEME_01_AUDIT.md](./docs/MONO_THEME_01_AUDIT.md) · **Tests:** `tests/test_mono_theme_01_audit.py`, `tests/test_mono_theme_01_s2_shared_grammar_tokens.py`, `tests/test_mono_theme_01_s3_nav_active_grammar.py`, `tests/test_mono_theme_01_s4_desktop_card_grammar.py`
 
 **Core finding:** Token foundation already matches Option A+. Problem is **duplicated component grammar** — desktop and mobile CSS style cards/nav/chips separately despite shared tokens.
 
@@ -1290,12 +1290,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **MONO-THEME-01-S1** | Audit + design spec (this doc) | ✅ **Complete** |
 | **MONO-THEME-01-S2** | Shared component-grammar tokens (`--erp-nav-*`, `--erp-card-*`, `--erp-chip-*`, `--erp-table-*`) | ✅ **Complete** |
 | **MONO-THEME-01-S3** | Sidebar + mobile nav active grammar | ✅ **Complete** |
-| **MONO-THEME-01-S4** | Desktop cards, dashboard, forms, buttons | 📋 Planned |
+| **MONO-THEME-01-S4** | Desktop cards, dashboard, forms, buttons | ✅ **Complete** |
 | **MONO-THEME-01-S5** | Mobile shell, cards, forms, lists | 📋 Planned |
 | **MONO-THEME-01-S6** | Reports, tables, banking statuses | 📋 Planned |
 | **MONO-THEME-01-S7** | Cleanup + React contract update | 📋 Planned |
 
-**Next slice:** **MONO-THEME-01-S4** — desktop cards, dashboard, forms, buttons.
+**Next slice:** **MONO-THEME-01-S5** — mobile shell, cards, forms, lists.
 
 ---
 
@@ -3386,6 +3386,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **MONO-THEME-01-S4 (closure)** — Desktop card grammar: KPI/dashboard/banner/activity cards + form containers route through `--erp-card-*` tokens (`theme.css`, `widgets.css`); `tests/test_mono_theme_01_s4_desktop_card_grammar.py`. Tag: `mono-theme-01-s4-desktop-card-grammar`. Next: **MONO-THEME-01-S5** (mobile card parity). |
 | 2026-06-05 | **MONO-THEME-01-S3 (closure)** — Nav active grammar: desktop sidebar + mobile bottom-nav/hub route through `--erp-nav-*` tokens (`theme.css`, `mobile_shell.css`, `icons.css`); `tests/test_mono_theme_01_s3_nav_active_grammar.py`. Tag: `mono-theme-01-s3-nav-active-grammar`. Next: **MONO-THEME-01-S4** (desktop cards/forms). |
 | 2026-06-05 | **MONO-THEME-01-S2 (closure)** — Shared component grammar tokens: `COMPONENT_GRAMMAR_TOKENS` in `ui/design_tokens.py` mirrored in `ui/theme.css` (`--erp-nav-*`, `--erp-card-*`, `--erp-chip-*` ext, `--erp-table-*`); `tests/test_mono_theme_01_s2_shared_grammar_tokens.py`. Token definitions only; no component migration. Tag: `mono-theme-01-s2-shared-grammar-tokens`. Next: **MONO-THEME-01-S3** (sidebar + mobile nav active). |
 | 2026-06-17 | **MONO-THEME-01-S1 (closure)** — Option A+ unified mono theme audit: `docs/MONO_THEME_01_AUDIT.md` + `tests/test_mono_theme_01_audit.py`. Verdict PROCEED (revise-light): shared grammar tokens on existing foundation; no new colors. Tag: `mono-theme-01-s1-audit-design-spec`. Next: **MONO-THEME-01-S2** (shared grammar tokens). |

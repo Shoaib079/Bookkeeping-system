@@ -652,11 +652,12 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
   }
 }
 
-/* ── Metrics (st.metric) — full values, no ellipsis clipping ───────────── */
+/* ── Metrics (st.metric) — MONO-THEME-01-S4 card grammar ─────────────── */
 [data-testid="stMain"] [data-testid="stMetric"] {
-  background: var(--theme-card) !important;
-  border: 1px solid var(--theme-border) !important;
-  border-radius: 10px !important;
+  background: var(--erp-card-bg) !important;
+  border: 1px solid var(--erp-card-border) !important;
+  border-radius: var(--erp-card-radius) !important;
+  box-shadow: var(--erp-card-shadow) !important;
   padding: 12px 14px !important;
   min-width: 0 !important;
   overflow: visible !important;
@@ -697,11 +698,12 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
   color: var(--theme-muted) !important;
 }
 
-/* ── Bordered cards / containers ───────────────────────────────────────── */
+/* ── Bordered cards / containers — MONO-THEME-01-S4 card grammar ─────── */
 [data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] {
-  background-color: var(--theme-card) !important;
-  border-color: var(--theme-border) !important;
-  border-radius: 10px !important;
+  background-color: var(--erp-card-bg) !important;
+  border-color: var(--erp-card-border) !important;
+  border-radius: var(--erp-card-radius) !important;
+  box-shadow: var(--erp-card-shadow) !important;
   padding: 16px 18px !important;
   margin-bottom: 18px !important;
   gap: 12px !important;
@@ -719,9 +721,9 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
 [data-testid="stMain"] [data-testid="stPlotlyChart"] {
   margin-top: 8px !important;
   margin-bottom: 16px !important;
-  background: var(--theme-card) !important;
-  border: 1px solid var(--theme-border) !important;
-  border-radius: 8px !important;
+  background: var(--erp-card-bg) !important;
+  border: 1px solid var(--erp-card-border) !important;
+  border-radius: var(--erp-radius-md) !important;
 }
 
 [data-testid="stMain"] [data-testid="stVegaLiteChart"] rect.background,
@@ -729,12 +731,12 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
   fill: transparent !important;
 }
 
-/* ── Alerts / status messages — mono card (same in light and dark) ─────── */
+/* ── Alerts / status messages — MONO-THEME-01-S4 card grammar ──────── */
 [data-testid="stMain"] [data-testid="stAlert"] {
-  background-color: var(--theme-card) !important;
+  background-color: var(--erp-card-bg) !important;
   color: var(--theme-text) !important;
-  border: 1px solid var(--theme-border) !important;
-  border-radius: 8px !important;
+  border: 1px solid var(--erp-card-border) !important;
+  border-radius: var(--erp-radius-md) !important;
 }
 
 [data-testid="stMain"] [data-testid="stAlert"] [data-testid="stMarkdownContainer"],
@@ -745,9 +747,9 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
 
 /* ── Tables (stTable — display tables use readable HTML, not Glide) ─────── */
 [data-testid="stMain"] [data-testid="stTable"] {
-  background: var(--theme-card) !important;
-  border: 1px solid var(--theme-border) !important;
-  border-radius: 8px !important;
+  background: var(--erp-card-bg) !important;
+  border: 1px solid var(--erp-card-border) !important;
+  border-radius: var(--erp-radius-md) !important;
 }
 
 [data-testid="stMain"] [data-testid="stTable"] table {
@@ -763,11 +765,12 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
   color: var(--theme-text) !important;
 }
 
-/* ── Expanders ─────────────────────────────────────────────────────────── */
+/* ── Expanders — MONO-THEME-01-S4 card grammar ─────────────────────── */
 [data-testid="stMain"] [data-testid="stExpander"] {
-  background-color: var(--theme-card) !important;
-  border: 1px solid var(--theme-border) !important;
-  border-radius: 10px !important;
+  background-color: var(--erp-card-bg) !important;
+  border: 1px solid var(--erp-card-border) !important;
+  border-radius: var(--erp-card-radius) !important;
+  box-shadow: var(--erp-card-shadow) !important;
 }
 
 [data-testid="stMain"] [data-testid="stExpander"] summary {

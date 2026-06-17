@@ -386,11 +386,12 @@
   white-space: nowrap;
 }
 
-/* Page card */
+/* Page card — MONO-THEME-01-S4 shared card grammar */
 .card {
-  background: var(--theme-card);
-  border: 1px solid var(--theme-border);
-  border-radius: 10px;
+  background: var(--erp-card-bg);
+  border: 1px solid var(--erp-card-border);
+  border-radius: var(--erp-card-radius);
+  box-shadow: var(--erp-card-shadow);
   padding: 12px;
 }
 
@@ -404,7 +405,7 @@
   font-size: 15px;
   font-weight: 800;
   color: var(--theme-text);
-  background: var(--theme-card);
+  background: var(--erp-card-bg);
   border: 1.5px solid var(--theme-info);
 }
 .txn-type-badge.sale { border-color: var(--theme-success); }
@@ -421,7 +422,7 @@
   font-size: 12px;
   line-height: 1.6;
   background: color-mix(in srgb, var(--theme-info) 10%, var(--theme-card) 90%);
-  border: 1.5px solid var(--theme-border);
+  border: 1.5px solid var(--erp-card-border);
 }
 .txn-tip-box.sale {
   background: color-mix(in srgb, var(--theme-success) 12%, var(--theme-card) 88%);
@@ -460,11 +461,11 @@
 .txn-tip-box.bank .txn-tip-title { color: var(--theme-teal); }
 
 .txn-details-icon {
-  border-radius: 10px;
+  border-radius: var(--erp-card-radius);
   padding: 8px 12px;
   font-size: 20px;
-  background: var(--theme-card);
-  border: 1px solid var(--theme-border);
+  background: var(--erp-card-bg);
+  border: 1px solid var(--erp-card-border);
 }
 .txn-details-icon.sale { border-color: var(--theme-success); }
 .txn-details-icon.expense { border-color: var(--theme-danger); }
@@ -495,9 +496,9 @@
   margin: 0 0 1.25rem 0;
   padding: 0.75rem 1rem;
   background: color-mix(in srgb, var(--theme-info) 5%, var(--theme-card) 95%);
-  border: 1px solid var(--theme-border);
+  border: 1px solid var(--erp-card-border);
   border-left: 4px solid var(--theme-info);
-  border-radius: 8px;
+  border-radius: var(--erp-card-radius);
 }
 .erp-tab-intro--gap-only {
   padding: 0;
@@ -529,7 +530,7 @@
   margin: 14px 0 6px 2px;
 }
 
-/* KPI grid — shared card language (dashboard, reports, recon, banking) */
+/* KPI grid — MONO-THEME-01-S4 shared card grammar (dashboard, reports, recon, banking) */
 .erp-kpi-section {
   width: 100%;
   margin: 12px 0 20px;
@@ -552,9 +553,10 @@
   .kpi-grid { grid-template-columns: 1fr; gap: 12px; }
 }
 .kpi-card {
-  background: var(--theme-card);
-  border: 1px solid var(--theme-border);
-  border-radius: 10px;
+  background: var(--erp-card-bg);
+  border: 1px solid var(--erp-card-border);
+  border-radius: var(--erp-card-radius);
+  box-shadow: var(--erp-card-shadow);
   padding: 14px 16px;
   min-height: 76px;
   box-sizing: border-box;
@@ -624,29 +626,30 @@
 .banner {
   padding: 18px 24px;
   color: var(--theme-text);
-  border-radius: 10px;
+  border-radius: var(--erp-card-radius);
   margin-bottom: 18px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--theme-card);
-  border: 1px solid var(--theme-border);
+  background: var(--erp-card-bg);
+  border: 1px solid var(--erp-card-border);
   border-left: 4px solid var(--theme-info);
 }
 .banner.banner-info,
 .banner.banner-primary {
-  background: var(--theme-card);
-  border: 1px solid var(--theme-border);
+  background: var(--erp-card-bg);
+  border: 1px solid var(--erp-card-border);
   border-left: 4px solid var(--theme-info);
   color: var(--theme-text);
 }
 
-/* Report page banner */
+/* Report page banner — MONO-THEME-01-S4 */
 .erp-page-banner {
-  background: var(--theme-card);
-  border: 1px solid var(--theme-border);
+  background: var(--erp-card-bg);
+  border: 1px solid var(--erp-card-border);
   border-left: 4px solid var(--theme-info);
-  border-radius: 10px;
+  border-radius: var(--erp-card-radius);
+  box-shadow: var(--erp-card-shadow);
   padding: 18px 24px;
   margin-bottom: 18px;
   display: flex;
@@ -715,10 +718,10 @@
 .erp-aging-bucket {
   flex: 1;
   min-width: 100px;
-  background: color-mix(in srgb, var(--theme-border) 12%, var(--theme-card) 88%);
-  border: 1px solid var(--theme-border);
+  background: var(--erp-card-muted-bg);
+  border: 1px solid var(--erp-card-border);
   border-left: 3px solid var(--theme-info);
-  border-radius: 0 8px 8px 0;
+  border-radius: 0 var(--erp-card-radius) var(--erp-card-radius) 0;
   padding: 8px 10px;
 }
 .erp-aging-bucket-label {
@@ -1569,7 +1572,7 @@ section[data-testid="stSidebarContent"] {
   .erp-hdr-logo { width: 34px; height: 34px; font-size: 15px; }
 }
 
-/* DASHBOARD-01 D1 — flat welcome card (no gradient) */
+/* DASHBOARD-01 D1 — flat welcome card (MONO-THEME-01-S4 card grammar) */
 .erp-dash-welcome-card {
   padding: 20px 24px;
   margin-bottom: 14px;
@@ -1577,10 +1580,11 @@ section[data-testid="stSidebarContent"] {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  background: var(--theme-card);
-  border: 1px solid var(--theme-border);
+  background: var(--erp-card-bg);
+  border: 1px solid var(--erp-card-border);
   border-left: 4px solid var(--theme-info);
-  border-radius: 10px;
+  border-radius: var(--erp-card-radius);
+  box-shadow: var(--erp-card-shadow);
   color: var(--theme-text);
 }
 .erp-dash-welcome-hi {
@@ -1631,10 +1635,11 @@ section[data-testid="stSidebarContent"] {
   align-items: center;
   padding: 10px 16px;
   margin-bottom: 14px;
-  background: var(--theme-card);
-  border: 1px solid var(--theme-border);
+  background: var(--erp-card-bg);
+  border: 1px solid var(--erp-card-border);
   border-left: 3px solid var(--theme-danger);
-  border-radius: 10px;
+  border-radius: var(--erp-card-radius);
+  box-shadow: var(--erp-card-shadow);
 }
 .erp-dash-alert-item { display: inline-flex; align-items: center; gap: 5px; }
 .erp-dash-alert-count {
@@ -1713,10 +1718,10 @@ section[data-testid="stSidebarContent"] {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--theme-border);
+  border-radius: var(--erp-radius-md);
+  border: 1px solid var(--erp-card-border);
   margin-bottom: 6px;
-  background: var(--theme-card);
+  background: var(--erp-card-bg);
 }
 .erp-dash-activity-icon {
   width: 34px;

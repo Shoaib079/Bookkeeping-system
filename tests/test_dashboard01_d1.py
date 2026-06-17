@@ -29,8 +29,8 @@ def test_dashboard_welcome_uses_flat_card_class():
     theme = _read_css("theme.css")
     assert ".erp-dash-welcome-card" in theme
     assert "linear-gradient" not in theme.split(".erp-dash-welcome-card")[1].split("/*")[0]
-    assert "var(--theme-card)" in theme.split(".erp-dash-welcome-card")[1].split(".erp-dash-welcome-hi")[0]
-    assert "var(--theme-border)" in theme.split(".erp-dash-welcome-card")[1].split(".erp-dash-welcome-hi")[0]
+    assert "var(--erp-card-bg)" in theme.split(".erp-dash-welcome-card")[1].split(".erp-dash-welcome-hi")[0]
+    assert "var(--erp-card-border)" in theme.split(".erp-dash-welcome-card")[1].split(".erp-dash-welcome-hi")[0]
 
 
 def test_dashboard_no_inline_styles_d2():

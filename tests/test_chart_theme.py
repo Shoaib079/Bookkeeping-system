@@ -122,7 +122,7 @@ def test_widgets_chart_container_uses_theme_card():
     )
     block = widgets.split("/* CHART-01", 1)[1].split("/* ── Alerts", 1)[0]
     assert "stVegaLiteChart" in block
-    assert "var(--theme-card)" in block
-    assert "var(--theme-border)" in block
+    assert "var(--erp-card-bg)" in block
+    assert "var(--erp-card-border)" in block
     assert "rect.background" in block
     assert "transparent" in block
