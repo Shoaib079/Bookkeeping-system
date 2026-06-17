@@ -26,6 +26,55 @@ export type ProfitLossResponse = {
   is_profit: boolean;
 };
 
+export type BalanceSheetResponse = {
+  as_of: string;
+  total_assets: number;
+  total_liabilities: number;
+  total_equity: number;
+  net_income: number;
+  base_equity: number;
+  balanced: boolean;
+  imbalance: number;
+};
+
+export type ReceivableRow = {
+  id: number;
+  invoice_number: string;
+  customer_name: string;
+  date: string;
+  due_date: string | null;
+  amount: number;
+  paid_amount: number;
+  balance: number;
+  status: string;
+};
+
+export type ReceivablesPageResponse = {
+  rows: ReceivableRow[];
+  outstanding: number;
+  overdue: number;
+  open_count: number;
+  showing_count: number;
+};
+
+export type PayableRow = {
+  id: number;
+  date: string;
+  vendor_name: string;
+  due_date: string;
+  invoice_amount: number;
+  paid_amount: number;
+  balance: number;
+  status: string;
+};
+
+export type PayablesPageResponse = {
+  rows: PayableRow[];
+  total_outstanding: number;
+  overdue: number;
+  showing_count: number;
+};
+
 export type LedgerRow = {
   date: string;
   reference: string;

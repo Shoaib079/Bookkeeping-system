@@ -19,6 +19,9 @@ VITE_FEATURE_FLAG_ENV: Final[str] = "VITE_ERP_REACT_PAGES"
 REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/", "HomePage", "home"),
     ("/books/general-ledger", "LedgerPage", "ledger"),
+    ("/reports/balance-sheet", "BalanceSheetPage", "balance_sheet"),
+    ("/receivables", "ReceivablesPage", "receivables"),
+    ("/payables", "PayablesPage", "payables"),
 )
 
 HOME_READ_API_PATHS: tuple[str, ...] = (
@@ -31,12 +34,27 @@ LEDGER_READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/ledger",
 )
 
+BALANCE_SHEET_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/reports/balance-sheet",
+)
+
+RECEIVABLES_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/receivables",
+)
+
+PAYABLES_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/payables",
+)
+
 REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/config/featureFlags.ts",
     "frontend/src/lib/api/session.ts",
     "frontend/src/lib/api/types.ts",
     "frontend/src/pages/HomePage.tsx",
     "frontend/src/pages/LedgerPage.tsx",
+    "frontend/src/pages/BalanceSheetPage.tsx",
+    "frontend/src/pages/ReceivablesPage.tsx",
+    "frontend/src/pages/PayablesPage.tsx",
     "frontend/src/components/ReadApiSetup.tsx",
 )
 
@@ -49,8 +67,21 @@ FORBIDDEN_FRONTEND_PATTERNS: tuple[str, ...] = (
     "apiDelete",
 )
 
-DEFERRED_ITEMS: tuple[str, ...] = (
+# Frozen for FR-06 audit tests (do not mutate).
+FR06_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("/", "HomePage", "home"),
+    ("/books/general-ledger", "LedgerPage", "ledger"),
+)
+
+FR06_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-17",
     "TD-PS-01",
+    "chart-of-accounts picker",
+)
+
+DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-18",
+    "partner statement page",
+    "banking readiness page",
     "chart-of-accounts picker",
 )

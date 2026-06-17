@@ -49,7 +49,7 @@ def test_required_frontend_files_exist(rel_path):
     assert (ROOT / rel_path).is_file(), rel_path
 
 
-@pytest.mark.parametrize("path,component,_key", contract.REAL_PAGE_ROUTES)
+@pytest.mark.parametrize("path,component,_key", contract.FR06_REAL_PAGE_ROUTES)
 def test_real_page_routes_documented_in_audit(audit_text, path, component, _key):
     assert path in audit_text
     assert component in audit_text
@@ -132,6 +132,6 @@ def test_roadmap_lists_fastapi_react_06_complete():
     assert "fastapi-react-06-react-pages" in roadmap
 
 
-@pytest.mark.parametrize("item", contract.DEFERRED_ITEMS)
+@pytest.mark.parametrize("item", contract.FR06_DEFERRED_ITEMS)
 def test_audit_documents_deferred_items(audit_text, item):
     assert item in audit_text

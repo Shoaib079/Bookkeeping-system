@@ -268,8 +268,17 @@ FR15_DEFERRED_ITEMS: tuple[str, ...] = (
     "production COMMIT_MODE_* flip",
 )
 
-DEFERRED_ITEMS: tuple[str, ...] = (
+# Frozen for FR-16 audit tests (do not mutate).
+FR16_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-17",
+    "full match-type payload forms",
+    "statement row picker",
+    "fiscal period picker",
+    "production COMMIT_MODE_* flip",
+)
+
+DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-18",
     "full match-type payload forms",
     "statement row picker",
     "fiscal period picker",
