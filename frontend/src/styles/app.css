@@ -66,3 +66,133 @@ a {
 .erp-placeholder {
   max-width: 48rem;
 }
+
+.erp-page-header {
+  margin-bottom: 1.25rem;
+}
+
+.erp-page-header__meta {
+  color: var(--erp-fg-muted, #666);
+  margin: 0.25rem 0 0;
+}
+
+.erp-home-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+}
+
+.erp-card {
+  background: var(--erp-surface, #fff);
+  border: 1px solid var(--erp-border, #ddd);
+  border-radius: var(--erp-radius-md, 8px);
+  padding: 1rem;
+}
+
+.erp-kpi {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0.25rem 0 0;
+}
+
+.erp-kpi--positive {
+  color: var(--erp-status-success, #0a7);
+}
+
+.erp-kpi--negative {
+  color: var(--erp-status-danger, #c33);
+}
+
+.erp-muted {
+  color: var(--erp-fg-muted, #666);
+  font-size: 0.875rem;
+}
+
+.erp-error {
+  color: var(--erp-status-danger, #c33);
+}
+
+.erp-read-api-setup {
+  border: 1px dashed var(--erp-border, #ddd);
+  border-radius: var(--erp-radius-md, 8px);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: var(--erp-surface-muted, #fafafa);
+}
+
+.erp-read-api-setup__form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 28rem;
+}
+
+.erp-read-api-setup__form label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.erp-read-api-setup__form input {
+  padding: 0.5rem;
+  border: 1px solid var(--erp-border, #ddd);
+  border-radius: var(--erp-radius-sm, 4px);
+}
+
+.erp-read-api-setup__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.erp-read-api-setup__saved {
+  color: var(--erp-status-success, #0a7);
+  font-size: 0.875rem;
+}
+
+.erp-ledger-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
+.erp-ledger-filters label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.erp-ledger-filters input {
+  padding: 0.5rem;
+  border: 1px solid var(--erp-border, #ddd);
+  border-radius: var(--erp-radius-sm, 4px);
+}
+
+.erp-ledger-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.erp-table-wrap {
+  overflow-x: auto;
+}
+
+.erp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.erp-table th,
+.erp-table td {
+  border-bottom: 1px solid var(--erp-border, #ddd);
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.erp-table th {
+  background: var(--erp-surface-muted, #fafafa);
+}

@@ -1403,11 +1403,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-03** | Recon `_app()` removal + boundary readiness | ✅ **Complete** |
 | **FASTAPI-REACT-04** | Read API stabilization + TD-PS-01 characterization | ✅ **Complete** |
 | **FASTAPI-REACT-05** | React bootstrap (ThemeProvider + router shell) | ✅ **Complete** |
-| **FASTAPI-REACT-06+** | First React pages, PG boundary flip | 📋 Planned |
+| **FASTAPI-REACT-06** | First React pages (Home + Ledger read-only) | ✅ **Complete** |
+| **FASTAPI-REACT-07+** | Additional React pages, PG boundary flip | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_05_REACT_BOOTSTRAP_AUDIT.md](./docs/FASTAPI_REACT_05_REACT_BOOTSTRAP_AUDIT.md) · **Tests:** `tests/test_fastapi_react_05_react_bootstrap.py` · **Tag:** `fastapi-react-05-react-bootstrap`
+**Audit:** [FASTAPI_REACT_06_REACT_PAGES_AUDIT.md](./docs/FASTAPI_REACT_06_REACT_PAGES_AUDIT.md) · **Tests:** `tests/test_fastapi_react_06_react_pages.py` · **Tag:** `fastapi-react-06-react-pages`
 
-**Next slice:** **FASTAPI-REACT-06** — first React pages (Home + Ledger read-only); see FR-05 audit §8.
+**Next slice:** **FASTAPI-REACT-07** — expand React coverage or TD-PS-01 PG boundary matrix; see FR-06 audit §9.
 
 ---
 
@@ -3498,6 +3499,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-06 (closure)** — First React pages: `HomePage` (P&L MTD) + `LedgerPage` (GL read-only) wired to P1 read API behind `VITE_ERP_REACT_PAGES=1`; `registry/react_pages_contract.py` + `docs/FASTAPI_REACT_06_REACT_PAGES_AUDIT.md` + `tests/test_fastapi_react_06_react_pages.py`. Streamlit primary unchanged. Tag: `fastapi-react-06-react-pages`. Next: **FASTAPI-REACT-07**. |
 | 2026-06-05 | **FASTAPI-REACT-05 (closure)** — React bootstrap: `frontend/` Vite+React shell, `ThemeProvider` from `react_token_bundle()`, NAV-ARCH-S4 router (42 placeholder routes), `scripts/export_react_bootstrap_assets.py`; `docs/FASTAPI_REACT_05_REACT_BOOTSTRAP_AUDIT.md` + `tests/test_fastapi_react_05_react_bootstrap.py`. Streamlit primary unchanged. Tag: `fastapi-react-05-react-bootstrap`. Next: **FASTAPI-REACT-06**. |
 | 2026-06-05 | **FASTAPI-REACT-04 (closure)** — Read API stabilization + TD-PS-01 characterization inventory: frozen read paths/error contract, commit-family dual-run test map; `registry/api_read_contract.py` + `registry/commit_boundary_contract.py` + `docs/FASTAPI_REACT_04_READ_API_BOUNDARY_AUDIT.md` + `tests/test_fastapi_react_04_read_api_boundary.py`. Default `internal` unchanged. Tag: `fastapi-react-04-read-api-boundary-commit`. Next: **FASTAPI-REACT-05**. |
 | 2026-06-05 | **FASTAPI-REACT-03 (closure)** — Reconciliation `_app()` removal: `match_post.py` + `company_card.py` call `services.posting` / `read_balances` / `banking_balance` directly; TD-PS-01 boundary readiness documented (default `internal` unchanged). `docs/FASTAPI_REACT_03_RECON_BOUNDARY_AUDIT.md` + `tests/test_fastapi_react_03_recon_boundary.py`. Tag: `fastapi-react-03-recon-boundary-commit`. Next: **FASTAPI-REACT-04**. |

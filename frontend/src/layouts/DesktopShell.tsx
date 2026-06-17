@@ -2,7 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 
 const PRIMARY_LINKS = [
   { label: "Home", to: "/" },
-  { label: "Ledger", to: "/ledger" },
+  { label: "Ledger", to: "/books/general-ledger" },
   { label: "Banking", to: "/banking" },
   { label: "Reports", to: "/reports" },
 ];
