@@ -187,11 +187,17 @@ def compute_cc_payable_recon_health(
 
     Read-only health check for Recon Health page. Does not modify data.
     """
-    app = _app()
+    from services import posting as posting_svc
+    from services.read_balances import calculate_account_balance
+
     enabled = company_card_enabled(session, company_id)
-    gl_acct = app.get_account_by_name(session, "Credit Card Payable")
+    gl_acct = posting_svc.get_account_by_name(
+        session, "Credit Card Payable", company_id=company_id
+    )
     gl_balance = (
-        round(app.calculate_account_balance(session, gl_acct), 2) if gl_acct else 0.0
+        round(calculate_account_balance(session, gl_acct, company_id=company_id), 2)
+        if gl_acct
+        else 0.0
     )
 
     cards = get_company_credit_card_accounts(session, company_id)
@@ -230,12 +236,6 @@ def compute_cc_payable_recon_health(
         "tolerance": tolerance,
         "cards": card_rows,
     }
-
-
-def _app():
-    import app as app_module
-
-    return app_module
 
 
 def _row_context(session, row_id: int, company_id: int) -> tuple[BankStatementRow, BankStatementImport]:
@@ -362,7 +362,6 @@ def void_credit_card_bill_payment(
     """Atomically void/unpost a posted credit card bill payment statement row."""
     from reconciliation.match_post import MatchPostError
 
-    app = _app()
     row = session.get(BankStatementRow, row_id)
     if not row:
         raise MatchPostError("Statement row not found")

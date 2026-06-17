@@ -507,6 +507,13 @@ def _get_worker_advance_balance(session, worker_id: int, *, company_id: int | No
     return money_to_float(bal)
 
 
+def get_worker_advance_balance(
+    session, worker_id: int, *, company_id: int | None = None
+) -> float:
+    """Outstanding advance balance for a worker (explicit company scope when provided)."""
+    return _get_worker_advance_balance(session, worker_id, company_id=company_id)
+
+
 def entry_date_posting_blocked(
     session,
     entry_date,

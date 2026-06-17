@@ -29,7 +29,9 @@ from services.posting import (
     _kernel_persist,
     create_journal_entry as _posting_create_journal_entry,
     get_account_by_name as _posting_get_account_by_name,
+    get_worker_advance_balance as _posting_get_worker_advance_balance,
 )
+from services.banking_balance import apply_account_balance_delta
 
 _PARTNER_REF_TYPES = {
     "CapitalContribution": "PartnerCapital",
@@ -45,12 +47,6 @@ _DEPOSIT_PARTNER_TYPES = ("CapitalContribution", "Repayment")
 
 class MatchPostError(Exception):
     """Raised when match/post cannot proceed."""
-
-
-def _app():
-    import app as app_module
-
-    return app_module
 
 
 def _get_account_by_name(session, name, currency=None, *, company_id: int):
@@ -127,8 +123,6 @@ def _create_bank_txn(
     )
     session.add(btxn)
     session.flush()
-    from reconciliation.company_card import apply_account_balance_delta
-
     apply_account_balance_delta(ba, txn_type, amt)
     session.add(ba)
     return btxn
@@ -547,7 +541,6 @@ def post_worker_statement_match(
     pay_period: str | None = None,
 ) -> dict[str, Any]:
     """Post a bank withdrawal as worker salary or advance."""
-    app = _app()
     row, imp = _row_context(session, row_id, company_id)
     if not (row.debit_amount and not row.credit_amount):
         raise MatchPostError("Worker payroll requires a bank withdrawal line.")
@@ -595,7 +588,9 @@ def post_worker_statement_match(
                 f"(gross − deductions − advance recovery = {net_paid:,.2f})."
             )
         if advance_recovery > 0:
-            adv_bal = app.get_worker_advance_balance(session, worker_id)
+            adv_bal = _posting_get_worker_advance_balance(
+                session, worker_id, company_id=company_id
+            )
             if advance_recovery > adv_bal + 0.01:
                 raise MatchPostError(
                     f"Advance recovery {advance_recovery:,.2f} exceeds outstanding "

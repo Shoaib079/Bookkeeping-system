@@ -1400,11 +1400,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-00** | Baseline audit — FastAPI partial, React not started, contracts inventory | ✅ **Complete** |
 | **FASTAPI-REACT-01** | PS-P7 posting boundary hardening | ✅ **Complete** |
 | **FASTAPI-REACT-02** | API write hardening / explicit `company_id` | ✅ **Complete** |
-| **FASTAPI-REACT-03+** | Recon `_app()` removal, commit rollout, React bootstrap (see audits) | 📋 Planned |
+| **FASTAPI-REACT-03** | Recon `_app()` removal + boundary readiness | ✅ **Complete** |
+| **FASTAPI-REACT-04+** | Read API stabilization, commit rollout, React bootstrap | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_02_API_WRITE_HARDENING_AUDIT.md](./docs/FASTAPI_REACT_02_API_WRITE_HARDENING_AUDIT.md) · **Tests:** `tests/test_fastapi_react_02_api_write_hardening.py` · **Tag:** `fastapi-react-02-api-write-hardening`
+**Audit:** [FASTAPI_REACT_03_RECON_BOUNDARY_AUDIT.md](./docs/FASTAPI_REACT_03_RECON_BOUNDARY_AUDIT.md) · **Tests:** `tests/test_fastapi_react_03_recon_boundary.py` · **Tag:** `fastapi-react-03-recon-boundary-commit`
 
-**Next slice:** **FASTAPI-REACT-03** — reconciliation `_app()` removal + TD-PS-01 boundary commit rollout (see FR-02 audit §9).
+**Next slice:** **FASTAPI-REACT-04** — read API stabilization + TD-PS-01 boundary commit rollout (see FR-03 audit §6).
 
 ---
 
@@ -3495,6 +3496,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-03 (closure)** — Reconciliation `_app()` removal: `match_post.py` + `company_card.py` call `services.posting` / `read_balances` / `banking_balance` directly; TD-PS-01 boundary readiness documented (default `internal` unchanged). `docs/FASTAPI_REACT_03_RECON_BOUNDARY_AUDIT.md` + `tests/test_fastapi_react_03_recon_boundary.py`. Tag: `fastapi-react-03-recon-boundary-commit`. Next: **FASTAPI-REACT-04**. |
 | 2026-06-05 | **FASTAPI-REACT-02 (closure)** — API write hardening verification: explicit `company_id` on all 13 P2 write routes closed via P2-HARDEN-01; `registry/api_write_contract.py` + `docs/FASTAPI_REACT_02_API_WRITE_HARDENING_AUDIT.md` + `tests/test_fastapi_react_02_api_write_hardening.py`. No accounting behavior change. Tag: `fastapi-react-02-api-write-hardening`. Next: **FASTAPI-REACT-03**. |
 | 2026-06-05 | **FASTAPI-REACT-01 (closure)** — PS-P7 posting boundary hardening: `services/posting_boundary.py`, additive DTO helpers, app shim dedup; `docs/FASTAPI_REACT_01_POSTING_BOUNDARY_AUDIT.md` + `tests/test_fastapi_react_01_posting_boundary.py`. No accounting behavior change. Tag: `fastapi-react-01-posting-boundary-hardening`. Next: **FASTAPI-REACT-02**. |
 | 2026-06-05 | **FASTAPI-REACT-00 (closure)** — Migration baseline audit: FastAPI partial, React not started, frozen contracts inventory, blocker matrix, FASTAPI-REACT-01+ slice plan; `docs/FASTAPI_REACT_00_AUDIT.md` + `tests/test_fastapi_react_00_audit.py`. Audit only. Next: **FASTAPI-REACT-01** (posting boundary hardening). |

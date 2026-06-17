@@ -48,7 +48,7 @@ MATCH_POST_SRC = (
 
 CHAR_MARKER = "BS-02 regression guard"
 
-# Six posting kernels use posting-service account lookup; worker keeps _app() for advance balance.
+# All posting kernels use posting-service lookups; worker advance balance uses posting service.
 _APP_POSTING_FUNCTIONS = (
     "post_deposit_clearing_match",
     "post_generic_deposit",
@@ -369,7 +369,9 @@ class TestCharacterizationContract:
         assert "def _get_account_by_name(" in MATCH_POST_SRC
         assert "_posting_get_account_by_name" in MATCH_POST_SRC
         assert "app.get_account_by_name(session" not in MATCH_POST_SRC
-        assert MATCH_POST_SRC.count("app = _app()") == 1
+        assert MATCH_POST_SRC.count("app = _app()") == 0
+        assert "def _app(" not in MATCH_POST_SRC
+        assert "_posting_get_worker_advance_balance" in MATCH_POST_SRC
         assert f"def {_WORKER_ONLY_APP_FUNCTION}" in MATCH_POST_SRC
 
     def test_resolution_branch_inventory_matches_match_post_functions(self):

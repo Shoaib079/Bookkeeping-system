@@ -123,7 +123,7 @@ Do not confuse boundary-scope extraction with kernel/commit/DTO cleanup.
 | **TD-PS-06** | Company-scoping cleanup (`calculate_account_balance*` still in app) |
 | **TD-PS-07** | Ambient company fallback in Streamlit shims |
 | **TD-PS-08** | Banking balance ownership asymmetry |
-| **TD-POSTING-06** | `reconciliation/match_post.py` lazy `_app()` imports |
+| **TD-POSTING-06** | ~~`reconciliation/match_post.py` lazy `_app()` imports~~ | ✅ Closed — FASTAPI-REACT-03 |
 
 Additional findings (still PS-P7+ scope):
 
@@ -131,9 +131,9 @@ Additional findings (still PS-P7+ scope):
 - `reconciliation/company_card.py` lazy `_app()` debt
 - Reconciliation audit policy review (`match_post` posts with no `log_audit`)
 
-### PS-P6-5 note (unchanged)
+### PS-P6-5 note (FASTAPI-REACT-03)
 
-`reconciliation/match_post.py` is orchestration, not a posting kernel. No extraction in PS-P6-5; boundary debt addressed in FASTAPI-REACT-01 scope doc only.
+`reconciliation/match_post.py` lazy `_app()` debt **closed** in FASTAPI-REACT-03 — kernels call `services.posting`, `services.read_balances`, and `services.banking_balance` directly. See [FASTAPI_REACT_03_RECON_BOUNDARY_AUDIT.md](./FASTAPI_REACT_03_RECON_BOUNDARY_AUDIT.md).
 
 ---
 
