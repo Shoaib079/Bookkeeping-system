@@ -90,6 +90,6 @@ def test_roadmap_lists_fastapi_react_24_complete():
     assert "fastapi-react-24-react-write-final-pickers" in roadmap
 
 
-@pytest.mark.parametrize("item", contract.DEFERRED_ITEMS)
+@pytest.mark.parametrize("item", contract.FR24_DEFERRED_ITEMS)
 def test_audit_documents_deferred_items(audit_text, item):
     assert item in audit_text

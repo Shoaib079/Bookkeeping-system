@@ -359,7 +359,13 @@ FR23_DEFERRED_ITEMS: tuple[str, ...] = (
     "production COMMIT_MODE_* flip",
 )
 
-DEFERRED_ITEMS: tuple[str, ...] = (
+# Frozen for FR-24 audit tests (write contract; do not mutate).
+FR24_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-25",
+    "production COMMIT_MODE_* flip",
+)
+
+DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-26",
     "production COMMIT_MODE_* flip",
 )

@@ -1418,11 +1418,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-22** | Bank/worker/partner write pickers | ✅ **Complete** |
 | **FASTAPI-REACT-23** | Reconcile/closing pickers + match-type forms | ✅ **Complete** |
 | **FASTAPI-REACT-24** | Receivable sale + allocation pickers | ✅ **Complete** |
-| **FASTAPI-REACT-25+** | React read page expansion or ops slices | 📋 Planned |
+| **FASTAPI-REACT-25** | Chart of accounts + vendors read pages | ✅ **Complete** |
+| **FASTAPI-REACT-26+** | React read page expansion or ops slices | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_24_REACT_WRITE_FINAL_PICKERS_AUDIT.md](./docs/FASTAPI_REACT_24_REACT_WRITE_FINAL_PICKERS_AUDIT.md) · **Tests:** `tests/test_fastapi_react_24_react_write_final_pickers.py` · **Tag:** `fastapi-react-24-react-write-final-pickers`
+**Audit:** [FASTAPI_REACT_25_REACT_READ_COA_VENDORS_AUDIT.md](./docs/FASTAPI_REACT_25_REACT_READ_COA_VENDORS_AUDIT.md) · **Tests:** `tests/test_fastapi_react_25_react_read_coa_vendors.py` · **Tag:** `fastapi-react-25-react-read-coa-vendors`
 
-**Next slice:** **FASTAPI-REACT-25** — React read page expansion or production `COMMIT_MODE_*` flip; see FR-24 audit §10. **Write picker track complete.**
+**Next slice:** **FASTAPI-REACT-26** — sales/expenses read pages or production `COMMIT_MODE_*` flip; see FR-25 audit §7.
 
 ---
 
