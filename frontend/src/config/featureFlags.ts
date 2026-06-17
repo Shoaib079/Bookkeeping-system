@@ -26,6 +26,10 @@ export function reactWriteBankingEnabled(): boolean {
   return import.meta.env.VITE_ERP_REACT_WRITE_BANKING === "1";
 }
 
+export function reactWritePartnerWorkerEnabled(): boolean {
+  return import.meta.env.VITE_ERP_REACT_WRITE_PARTNER_WORKER === "1";
+}
+
 export function reactWriteEnabled(): boolean {
   return (
     reactWriteSalesEnabled() ||
@@ -33,6 +37,7 @@ export function reactWriteEnabled(): boolean {
     reactWriteVoidsEnabled() ||
     reactWritePurchasesEnabled() ||
     reactWriteReceivablePaymentsEnabled() ||
-    reactWriteBankingEnabled()
+    reactWriteBankingEnabled() ||
+    reactWritePartnerWorkerEnabled()
   );
 }

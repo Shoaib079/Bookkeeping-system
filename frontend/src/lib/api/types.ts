@@ -167,3 +167,49 @@ export type CreateBankTransactionResponse = {
   message: string;
   status: string;
 };
+
+export type PartnerMovementType =
+  | "CapitalContribution"
+  | "Drawing"
+  | "Salary"
+  | "Advance"
+  | "Repayment"
+  | "AdvanceOffset";
+
+export type WorkerMovementType = "Salary" | "Advance" | "Repayment";
+
+export type CreatePartnerMovementRequest = {
+  partner_id: number;
+  movement_type: PartnerMovementType;
+  amount: number;
+  date: string;
+  bank_account_id?: number;
+  notes?: string;
+};
+
+export type CreatePartnerMovementResponse = {
+  movement_id: number;
+  journal_entry_id: number;
+  message: string;
+  status: string;
+};
+
+export type CreateWorkerPaymentRequest = {
+  worker_id: number;
+  movement_type: WorkerMovementType;
+  date: string;
+  bank_account_id: number;
+  amount?: number;
+  gross_salary?: number;
+  deductions?: number;
+  advance_recovery?: number;
+  pay_period?: string;
+  notes?: string;
+};
+
+export type CreateWorkerPaymentResponse = {
+  payment_id: number;
+  journal_entry_id: number;
+  message: string;
+  status: string;
+};

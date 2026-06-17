@@ -5,6 +5,7 @@ import {
   reactWriteEnabled,
   reactWriteBankingEnabled,
   reactWriteExpensesEnabled,
+  reactWritePartnerWorkerEnabled,
   reactWritePurchasesEnabled,
   reactWriteReceivablePaymentsEnabled,
   reactWriteSalesEnabled,
@@ -15,15 +16,27 @@ import { getReadSession } from "../lib/api/session";
 import type {
   CreateBankTransactionResponse,
   CreateExpenseResponse,
+  CreatePartnerMovementResponse,
   CreatePurchaseResponse,
   CreateReceivablePaymentResponse,
   CreateSaleResponse,
+  CreateWorkerPaymentResponse,
+  PartnerMovementType,
   VoidResponse,
   VoidTargetType,
+  WorkerMovementType,
 } from "../lib/api/types";
 import { apiPost } from "../lib/api/writeClient";
 
-type WriteTab = "sale" | "expense" | "void" | "purchase" | "receivable" | "banking";
+type WriteTab =
+  | "sale"
+  | "expense"
+  | "void"
+  | "purchase"
+  | "receivable"
+  | "banking"
+  | "partner"
+  | "worker";
 type SalePaymentMethod = "Cash" | "Card" | "Credit";
 type ExpensePaymentMethod = "Cash" | "Bank";
 type PurchasePaymentMethod = "Cash" | "Bank" | "Credit";
@@ -40,6 +53,9 @@ const PURCHASE_BANK_MSG = "No bank account selected.";
 const RECEIVABLE_BANK_MSG = "No bank account selected.";
 const BANK_TRANSFER_DEST_MSG =
   "Choose a different destination account for transfer.";
+const PARTNER_AMOUNT_MSG = "Amount must be greater than zero.";
+const PARTNER_BANK_MSG = "Bank account not found.";
+const WORKER_BANK_MSG = "Bank account not found.";
 
 function todayIso(): string {
   const now = new Date();
@@ -70,6 +86,7 @@ export function NewTransactionPage() {
   const purchasesOn = reactWritePurchasesEnabled();
   const receivableOn = reactWriteReceivablePaymentsEnabled();
   const bankingOn = reactWriteBankingEnabled();
+  const partnerWorkerOn = reactWritePartnerWorkerEnabled();
   const defaultTab: WriteTab = salesOn
     ? "sale"
     : expensesOn
@@ -80,7 +97,9 @@ export function NewTransactionPage() {
           ? "receivable"
           : bankingOn
             ? "banking"
-            : "void";
+            : partnerWorkerOn
+              ? "partner"
+              : "void";
 
   const [sessionTick, setSessionTick] = useState(0);
   const session = useMemo(() => getReadSession(), [sessionTick]);
@@ -132,6 +151,22 @@ export function NewTransactionPage() {
   const [bankingCurrency, setBankingCurrency] = useState("");
   const [bankingResult, setBankingResult] =
     useState<CreateBankTransactionResponse | null>(null);
+  const [partnerId, setPartnerId] = useState("");
+  const [partnerMovementType, setPartnerMovementType] =
+    useState<PartnerMovementType>("CapitalContribution");
+  const [partnerBankAccountId, setPartnerBankAccountId] = useState("");
+  const [partnerResult, setPartnerResult] =
+    useState<CreatePartnerMovementResponse | null>(null);
+  const [workerId, setWorkerId] = useState("");
+  const [workerMovementType, setWorkerMovementType] =
+    useState<WorkerMovementType>("Advance");
+  const [workerBankAccountId, setWorkerBankAccountId] = useState("");
+  const [workerGrossSalary, setWorkerGrossSalary] = useState("");
+  const [workerDeductions, setWorkerDeductions] = useState("");
+  const [workerAdvanceRecovery, setWorkerAdvanceRecovery] = useState("");
+  const [workerPayPeriod, setWorkerPayPeriod] = useState("");
+  const [workerResult, setWorkerResult] =
+    useState<CreateWorkerPaymentResponse | null>(null);
 
   if (!reactWriteEnabled()) {
     return (
@@ -142,7 +177,8 @@ export function NewTransactionPage() {
           <code>VITE_ERP_REACT_WRITE_EXPENSES=1</code>,{" "}
           <code>VITE_ERP_REACT_WRITE_PURCHASES=1</code>,{" "}
           <code>VITE_ERP_REACT_WRITE_RECEIVABLE_PAYMENTS=1</code>,{" "}
-          <code>VITE_ERP_REACT_WRITE_BANKING=1</code>, and/or{" "}
+          <code>VITE_ERP_REACT_WRITE_BANKING=1</code>,{" "}
+          <code>VITE_ERP_REACT_WRITE_PARTNER_WORKER=1</code>, and/or{" "}
           <code>VITE_ERP_REACT_WRITE_VOIDS=1</code>.
         </p>
       </section>
@@ -514,6 +550,164 @@ export function NewTransactionPage() {
     }
   }
 
+  async function handlePartnerSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!session) {
+      setError("Save a read API session before posting.");
+      return;
+    }
+    const parsedPartnerId = parsePositiveInt(partnerId);
+    if (parsedPartnerId === null) {
+      setError("Enter a valid partner id.");
+      return;
+    }
+    const parsedAmount = parseAmount(amount);
+    if (parsedAmount === null) {
+      setError(PARTNER_AMOUNT_MSG);
+      return;
+    }
+    let bankId: number | undefined;
+    if (partnerMovementType !== "AdvanceOffset") {
+      const parsed = parsePositiveInt(partnerBankAccountId);
+      if (parsed === null) {
+        setError(PARTNER_BANK_MSG);
+        return;
+      }
+      bankId = parsed;
+    }
+
+    setLoading(true);
+    setError(null);
+    setPartnerResult(null);
+    try {
+      const body: {
+        partner_id: number;
+        movement_type: PartnerMovementType;
+        amount: number;
+        date: string;
+        notes?: string;
+        bank_account_id?: number;
+      } = {
+        partner_id: parsedPartnerId,
+        movement_type: partnerMovementType,
+        amount: parsedAmount,
+        date,
+      };
+      const trimmedNotes = notes.trim();
+      if (trimmedNotes) {
+        body.notes = trimmedNotes;
+      }
+      if (bankId !== undefined) {
+        body.bank_account_id = bankId;
+      }
+      const response = await apiPost<CreatePartnerMovementResponse>(
+        "/api/v1/partner-movements",
+        body,
+        { session },
+      );
+      setPartnerResult(response);
+      setAmount("");
+      setNotes("");
+      setPartnerBankAccountId("");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setError(apiErr.detail ?? "Failed to save partner movement.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleWorkerSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!session) {
+      setError("Save a read API session before posting.");
+      return;
+    }
+    const parsedWorkerId = parsePositiveInt(workerId);
+    if (parsedWorkerId === null) {
+      setError("Enter a valid worker id.");
+      return;
+    }
+    const parsedBank = parsePositiveInt(workerBankAccountId);
+    if (parsedBank === null) {
+      setError(WORKER_BANK_MSG);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setWorkerResult(null);
+    try {
+      const body: {
+        worker_id: number;
+        movement_type: WorkerMovementType;
+        date: string;
+        bank_account_id: number;
+        amount?: number;
+        gross_salary?: number;
+        deductions?: number;
+        advance_recovery?: number;
+        pay_period?: string;
+        notes?: string;
+      } = {
+        worker_id: parsedWorkerId,
+        movement_type: workerMovementType,
+        date,
+        bank_account_id: parsedBank,
+      };
+      if (workerMovementType === "Salary") {
+        const gross = parseAmount(workerGrossSalary);
+        if (gross === null) {
+          setError("Enter a valid gross salary greater than zero.");
+          setLoading(false);
+          return;
+        }
+        body.gross_salary = gross;
+        const deductions = parseAmount(workerDeductions);
+        if (deductions !== null) {
+          body.deductions = deductions;
+        }
+        const recovery = parseAmount(workerAdvanceRecovery);
+        if (recovery !== null) {
+          body.advance_recovery = recovery;
+        }
+        const period = workerPayPeriod.trim();
+        if (period) {
+          body.pay_period = period;
+        }
+      } else {
+        const parsedAmount = parseAmount(amount);
+        if (parsedAmount === null) {
+          setError(PARTNER_AMOUNT_MSG);
+          setLoading(false);
+          return;
+        }
+        body.amount = parsedAmount;
+      }
+      const trimmedNotes = notes.trim();
+      if (trimmedNotes) {
+        body.notes = trimmedNotes;
+      }
+      const response = await apiPost<CreateWorkerPaymentResponse>(
+        "/api/v1/worker-payments",
+        body,
+        { session },
+      );
+      setWorkerResult(response);
+      setAmount("");
+      setNotes("");
+      setWorkerGrossSalary("");
+      setWorkerDeductions("");
+      setWorkerAdvanceRecovery("");
+      setWorkerPayPeriod("");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setError(apiErr.detail ?? "Failed to save worker payment.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleVoidSubmit(event: FormEvent) {
     event.preventDefault();
     if (!session) {
@@ -564,6 +758,8 @@ export function NewTransactionPage() {
     setPurchaseResult(null);
     setReceivableResult(null);
     setBankingResult(null);
+    setPartnerResult(null);
+    setWorkerResult(null);
   }
 
   return (
@@ -641,6 +837,28 @@ export function NewTransactionPage() {
             onClick={() => switchTab("banking")}
           >
             Banking
+          </button>
+        ) : null}
+        {partnerWorkerOn ? (
+          <button
+            type="button"
+            className={
+              tab === "partner" ? "erp-write-tabs__btn active" : "erp-write-tabs__btn"
+            }
+            onClick={() => switchTab("partner")}
+          >
+            Partner
+          </button>
+        ) : null}
+        {partnerWorkerOn ? (
+          <button
+            type="button"
+            className={
+              tab === "worker" ? "erp-write-tabs__btn active" : "erp-write-tabs__btn"
+            }
+            onClick={() => switchTab("worker")}
+          >
+            Worker
           </button>
         ) : null}
       </nav>
@@ -1084,6 +1302,193 @@ export function NewTransactionPage() {
         </form>
       ) : null}
 
+      {tab === "partner" && partnerWorkerOn ? (
+        <form className="erp-write-form" onSubmit={handlePartnerSubmit}>
+          <label>
+            Partner id
+            <input
+              type="number"
+              min={1}
+              value={partnerId}
+              onChange={(event) => setPartnerId(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Movement type
+            <select
+              value={partnerMovementType}
+              onChange={(event) =>
+                setPartnerMovementType(event.target.value as PartnerMovementType)
+              }
+            >
+              <option value="CapitalContribution">CapitalContribution</option>
+              <option value="Drawing">Drawing</option>
+              <option value="Salary">Salary</option>
+              <option value="Advance">Advance</option>
+              <option value="Repayment">Repayment</option>
+              <option value="AdvanceOffset">AdvanceOffset</option>
+            </select>
+          </label>
+          {partnerMovementType !== "AdvanceOffset" ? (
+            <label>
+              Bank account id
+              <input
+                type="number"
+                min={1}
+                value={partnerBankAccountId}
+                onChange={(event) => setPartnerBankAccountId(event.target.value)}
+                required
+              />
+            </label>
+          ) : null}
+          <label>
+            Date
+            <input
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Amount
+            <input
+              type="text"
+              inputMode="decimal"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              placeholder="0.00"
+              required
+            />
+          </label>
+          <label>
+            Notes
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              rows={3}
+            />
+          </label>
+          <button type="submit" disabled={!session || loading}>
+            {loading ? "Saving…" : `Save ${partnerMovementType}`}
+          </button>
+        </form>
+      ) : null}
+
+      {tab === "worker" && partnerWorkerOn ? (
+        <form className="erp-write-form" onSubmit={handleWorkerSubmit}>
+          <label>
+            Worker id
+            <input
+              type="number"
+              min={1}
+              value={workerId}
+              onChange={(event) => setWorkerId(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Movement type
+            <select
+              value={workerMovementType}
+              onChange={(event) =>
+                setWorkerMovementType(event.target.value as WorkerMovementType)
+              }
+            >
+              <option value="Salary">Salary</option>
+              <option value="Advance">Advance</option>
+              <option value="Repayment">Repayment</option>
+            </select>
+          </label>
+          <label>
+            Bank account id
+            <input
+              type="number"
+              min={1}
+              value={workerBankAccountId}
+              onChange={(event) => setWorkerBankAccountId(event.target.value)}
+              required
+            />
+          </label>
+          {workerMovementType === "Salary" ? (
+            <>
+              <label>
+                Gross salary
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={workerGrossSalary}
+                  onChange={(event) => setWorkerGrossSalary(event.target.value)}
+                  placeholder="0.00"
+                  required
+                />
+              </label>
+              <label>
+                Deductions (optional)
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={workerDeductions}
+                  onChange={(event) => setWorkerDeductions(event.target.value)}
+                  placeholder="0.00"
+                />
+              </label>
+              <label>
+                Advance recovery (optional)
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={workerAdvanceRecovery}
+                  onChange={(event) => setWorkerAdvanceRecovery(event.target.value)}
+                  placeholder="0.00"
+                />
+              </label>
+              <label>
+                Pay period (optional)
+                <input
+                  type="text"
+                  value={workerPayPeriod}
+                  onChange={(event) => setWorkerPayPeriod(event.target.value)}
+                />
+              </label>
+            </>
+          ) : (
+            <label>
+              Amount
+              <input
+                type="text"
+                inputMode="decimal"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+                placeholder="0.00"
+                required
+              />
+            </label>
+          )}
+          <label>
+            Date
+            <input
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Notes
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              rows={3}
+            />
+          </label>
+          <button type="submit" disabled={!session || loading}>
+            {loading ? "Saving…" : `Save ${workerMovementType}`}
+          </button>
+        </form>
+      ) : null}
+
       {tab === "void" && voidsOn ? (
         <form className="erp-write-form" onSubmit={handleVoidSubmit}>
           <label>
@@ -1184,6 +1589,20 @@ export function NewTransactionPage() {
               ? ` · paired #${bankingResult.paired_transaction_id}`
               : ""}
           </p>
+        </article>
+      ) : null}
+      {partnerResult ? (
+        <article className="erp-card erp-write-result">
+          <h2>Partner movement saved</h2>
+          <p>{partnerResult.message}</p>
+          <p className="erp-muted">Movement #{partnerResult.movement_id}</p>
+        </article>
+      ) : null}
+      {workerResult ? (
+        <article className="erp-card erp-write-result">
+          <h2>Worker payment saved</h2>
+          <p>{workerResult.message}</p>
+          <p className="erp-muted">Payment #{workerResult.payment_id}</p>
         </article>
       ) : null}
     </section>

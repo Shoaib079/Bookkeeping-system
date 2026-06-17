@@ -99,6 +99,6 @@ def test_roadmap_lists_fastapi_react_14_complete():
     assert "fastapi-react-14-react-write-banking" in roadmap
 
 
-@pytest.mark.parametrize("item", contract.DEFERRED_ITEMS)
+@pytest.mark.parametrize("item", contract.FR14_DEFERRED_ITEMS)
 def test_audit_documents_deferred_items(audit_text, item):
     assert item in audit_text
