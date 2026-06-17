@@ -59,13 +59,13 @@ def test_desktop_sidebar_primary_buttons_use_nav_grammar(theme_css, token):
 
 
 def test_desktop_nav_item_active_uses_nav_grammar(theme_css):
-    anchor = "background-color: var(--erp-nav-active-bg) !important;\n  border-left: 3px solid var(--erp-nav-active-bar)"
-    assert anchor in theme_css
-    idx = theme_css.index(anchor)
-    block = theme_css[max(0, idx - 400) : idx + 200]
+    idx = theme_css.index("MONO-THEME-02-S1 — active child")
+    block = theme_css[idx : idx + 900]
     assert "nav-item-active-mark" in block
     for token in ACTIVE_NAV_KEYS:
         assert f"var({token})" in block, f"nav-item-active missing {token}"
+    assert "border: none !important" in block
+    assert "border-left: 3px solid var(--erp-nav-active-bar)" in block
     assert "color-mix(in srgb, var(--theme-info)" not in block
 
 

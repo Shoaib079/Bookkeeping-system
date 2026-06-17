@@ -81,8 +81,13 @@ def test_render_tree_uses_sidebar_layout():
 def test_section_header_css_uses_design_tokens():
     css = THEME_CSS.read_text(encoding="utf-8")
     assert ".erp-nav-section-hdr" in css
-    assert "var(--erp-font-caption)" in css.split(".erp-nav-section-hdr")[1][:400]
-    assert "var(--erp-space-4)" in css.split(".erp-nav-section-hdr")[1][:400]
+    block = css.split(".erp-nav-section-hdr")[1][:400]
+    assert "var(--erp-font-caption)" in block
+    assert "var(--erp-nav-section-fg)" in block
+    # MONO-THEME-02-S1 — tighter section rhythm (space-5 top, space-2 bottom)
+    assert "var(--erp-space-5)" in block
+    assert "var(--erp-space-2)" in block
+    assert "letter-spacing: 0.08em !important" in block
 
 
 def test_accordion_chevron_css_not_inline_text():

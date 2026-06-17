@@ -1421,18 +1421,23 @@ section[data-testid="stSidebarContent"] {
 [data-testid="stSidebar"] [data-testid="stMarkdown"] p {
   color: var(--theme-text) !important;
 }
-/* Sidebar nav buttons (widgets.css button rules are scoped to stMain only) */
+/* Sidebar nav buttons — MONO-THEME-02-S1 quiet row grammar (widgets.css scoped to stMain) */
 [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="secondary"],
 [data-testid="stSidebar"] [data-testid="stButton"] button[kind="secondary"] {
   background-color: transparent !important;
   color: var(--theme-text) !important;
-  border-color: var(--theme-border) !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-weight: 500 !important;
+  padding-top: var(--erp-space-2) !important;
+  padding-bottom: var(--erp-space-2) !important;
 }
 [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="secondary"] p,
 [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="secondary"] span,
 [data-testid="stSidebar"] [data-testid="stButton"] button[kind="secondary"] p,
 [data-testid="stSidebar"] [data-testid="stButton"] button[kind="secondary"] span {
   color: var(--theme-text) !important;
+  font-weight: 500 !important;
 }
 [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="primary"],
 [data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"],
@@ -1440,9 +1445,13 @@ section[data-testid="stSidebarContent"] {
 [data-testid="stSidebar"] [data-testid="baseButton-primary"] button {
   background-color: var(--erp-nav-active-bg) !important;
   color: var(--erp-nav-active-fg) !important;
-  border: 1px solid color-mix(in srgb, var(--erp-nav-active-bar) 20%, var(--theme-border) 80%) !important;
+  border: none !important;
   border-left: 3px solid var(--erp-nav-active-bar) !important;
-  font-weight: 700 !important;
+  border-radius: 0 var(--erp-radius-sm) var(--erp-radius-sm) 0 !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+  padding-top: var(--erp-space-2) !important;
+  padding-bottom: var(--erp-space-2) !important;
 }
 [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="primary"] p,
 [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="primary"] span,
@@ -1453,12 +1462,13 @@ section[data-testid="stSidebarContent"] {
 [data-testid="stSidebar"] [data-testid="baseButton-primary"] button p,
 [data-testid="stSidebar"] [data-testid="baseButton-primary"] button span {
   color: var(--erp-nav-active-fg) !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
 }
 [data-testid="stSidebar"] [data-testid="stButton"] > button[kind="secondary"]:hover,
 [data-testid="stSidebar"] [data-testid="stButton"] button[kind="secondary"]:hover {
   background-color: var(--erp-nav-hover-bg) !important;
-  border-color: var(--theme-border) !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* Sidebar form fields — single border (match main) */
@@ -2041,15 +2051,15 @@ section[data-testid="stSidebarContent"] {
   border-color: var(--theme-card) !important;
 }
 
-/* Sidebar nav hierarchy — MONO-THEME-01-S3 shared nav grammar tokens */
+/* Sidebar nav hierarchy — MONO-THEME-01-S3 + MONO-THEME-02-S1 spacing polish */
 [data-testid="stSidebar"] .erp-nav-section-hdr {
   display: block !important;
   font-size: var(--erp-font-caption) !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.06em !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
   color: var(--erp-nav-section-fg) !important;
-  margin: var(--erp-space-4) var(--erp-space-2) var(--erp-space-2) !important;
+  margin: var(--erp-space-5) var(--erp-space-2) var(--erp-space-2) !important;
   padding: 0 !important;
   line-height: var(--erp-line-tight) !important;
 }
@@ -2057,7 +2067,7 @@ section[data-testid="stSidebarContent"] {
   display: block !important;
   height: 0 !important;
   border-top: 1px solid var(--theme-border) !important;
-  margin: var(--erp-space-3) var(--erp-space-2) var(--erp-space-1) !important;
+  margin: var(--erp-space-4) var(--erp-space-2) var(--erp-space-1) !important;
   padding: 0 !important;
 }
 /* Accordion child items — marker is the immediate sibling before each nav button */
@@ -2073,6 +2083,8 @@ section[data-testid="stSidebarContent"] {
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div [data-testid="baseButton-primary"] > button,
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div [data-testid="baseButton-primary"] button {
   padding-left: var(--erp-space-5) !important;
+  padding-top: var(--erp-space-2) !important;
+  padding-bottom: var(--erp-space-2) !important;
   font-size: 0.875rem !important;
   border-radius: 0 var(--erp-radius-sm) var(--erp-radius-sm) 0 !important;
   border-top: none !important;
@@ -2080,32 +2092,39 @@ section[data-testid="stSidebarContent"] {
   border-bottom: none !important;
 }
 [data-testid="stSidebar"] div:has(.nav-item-mark) + div [data-testid="stButton"] > button {
-  border-left: 2px solid var(--theme-border) !important;
-  font-weight: 400 !important;
+  border-left: 3px solid transparent !important;
+  font-weight: 500 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
 }
 [data-testid="stSidebar"] div:has(.nav-item-mark) + div [data-testid="stButton"] > button:hover {
   background-color: var(--erp-nav-hover-bg) !important;
+  border: none !important;
+  border-left: 3px solid transparent !important;
 }
+/* MONO-THEME-02-S1 — active child: tint + accent bar only (no filled button box) */
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div [data-testid="stButton"] > button,
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div [data-testid="baseButton-primary"] > button,
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div [data-testid="baseButton-primary"] button {
   background-color: var(--erp-nav-active-bg) !important;
+  border: none !important;
   border-left: 3px solid var(--erp-nav-active-bar) !important;
   color: var(--erp-nav-active-fg) !important;
-  font-weight: 700 !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
 }
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div [data-testid="stButton"] > button p,
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div [data-testid="stButton"] > button span,
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div [data-testid="baseButton-primary"] button p,
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div [data-testid="baseButton-primary"] button span {
   color: var(--erp-nav-active-fg) !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
 }
 [data-testid="stSidebar"] div:has(> [data-testid="stMarkdown"] .nav-grp-hdr-mark:not(.nav-grp-active)) + div [data-testid="stButton"] > button,
 [data-testid="stSidebar"] .nav-grp-hdr-mark:not(.nav-grp-active) + div [data-testid="stButton"] > button {
   font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.06em !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
   color: var(--erp-nav-section-fg) !important;
   padding-left: var(--erp-space-1) !important;
@@ -2143,24 +2162,25 @@ section[data-testid="stSidebarContent"] {
 [data-testid="stSidebar"] .nav-grp-hdr-mark:not(.nav-grp-active) + div [data-testid="stButton"] > button p,
 [data-testid="stSidebar"] .nav-grp-hdr-mark:not(.nav-grp-active) + div [data-testid="stButton"] > button span {
   font-size: 0.75rem !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.06em !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
   color: var(--erp-nav-section-fg) !important;
 }
 
-/* Active folder header — e.g. Books lit when Account list is open */
+/* Active folder header — accent bar row, not a filled button (MONO-THEME-02-S1) */
 [data-testid="stSidebar"] div:has(> [data-testid="stMarkdown"] .nav-grp-hdr-mark.nav-grp-active) + div [data-testid="stButton"] > button,
 [data-testid="stSidebar"] .nav-grp-hdr-mark.nav-grp-active + div [data-testid="stButton"] > button {
   background-color: var(--erp-nav-active-bg) !important;
   color: var(--erp-nav-active-fg) !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   font-size: 0.875rem !important;
   letter-spacing: 0.01em !important;
   text-transform: none !important;
-  border: 1px solid color-mix(in srgb, var(--erp-nav-active-bar) 35%, var(--theme-border) 65%) !important;
+  border: none !important;
   border-left: 3px solid var(--erp-nav-active-bar) !important;
-  border-radius: var(--erp-radius-md) !important;
+  border-radius: 0 var(--erp-radius-sm) var(--erp-radius-sm) 0 !important;
+  box-shadow: none !important;
   padding-right: calc(var(--erp-space-4) + 10px) !important;
   position: relative !important;
 }
@@ -2169,7 +2189,7 @@ section[data-testid="stSidebarContent"] {
 [data-testid="stSidebar"] .nav-grp-hdr-mark.nav-grp-active + div [data-testid="stButton"] > button p,
 [data-testid="stSidebar"] .nav-grp-hdr-mark.nav-grp-active + div [data-testid="stButton"] > button span {
   color: var(--erp-nav-active-fg) !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   text-transform: none !important;
   letter-spacing: 0.01em !important;
   font-size: 0.875rem !important;
@@ -2186,7 +2206,8 @@ section[data-testid="stSidebarContent"] {
   background: color-mix(in srgb, var(--theme-info) 4%, var(--theme-card) 96%) !important;
   border-radius: 0 var(--erp-radius-md) var(--erp-radius-md) 0 !important;
 }
-/* Open folder header — slightly brighter so the folder name stays readable */
+/* MONO-THEME-02-S1 — open folder header stays flat (no button shadow) */
 [data-testid="stSidebar"] .nav-grp-hdr-mark.nav-grp-open + div [data-testid="stButton"] > button {
-  box-shadow: 0 1px 4px var(--theme-shadow) !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
 }
