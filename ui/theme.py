@@ -53,6 +53,7 @@ LIGHT_ROOT_VARS: dict[str, str] = build_light_root_vars()
 DARK_ROOT_VARS: dict[str, str] = build_dark_root_vars()
 
 ROLE_CSS_VARS: dict[str, str] = {
+    # UI-SYSTEM-02-S5: deprecated for new UI — see react_design_contract.DEPRECATED_REACT_TOKEN_KEYS
     "owner": "--role-owner",
     "manager": "--role-manager",
     "cashier": "--role-cashier",

@@ -281,9 +281,9 @@ Home, New Transaction, Transaction Ledger          [direct — matches registry 
 | **UI-SYSTEM-02-S2 — Design token registry** | Centralize colour/spacing/radius/shadow/typography; deprecate stale role hues; resolve UI-02-C1 `--hdr-h` | ✅ **Complete** |
 | **UI-SYSTEM-02-S3 — Sidebar modernization** | Visual grouping/spacing/icons only; derive presentation from registry; no route moves | ✅ **Complete** |
 | **UI-SYSTEM-02-S4 — Unified shell/component pass** | Dead report-filters CSS; expense-bar inline width; KPI grid single owner; mob-space → erp-space aliases | ✅ **Complete** |
-| **UI-SYSTEM-02-S5 — Theme governance / React design contract** | `docs/UI_SYSTEM_02_REACT_DESIGN_CONTRACT.md`; component prop map; retire Streamlit selector list | 📋 Planned |
+| **UI-SYSTEM-02-S5 — Theme governance / React design contract** | `docs/UI_SYSTEM_02_REACT_DESIGN_CONTRACT.md`; component prop map; retire Streamlit selector list | ✅ **Complete** |
 
-**Recommended next slice:** **UI-SYSTEM-02-S5** (theme governance / React design contract).
+**Recommended next slice:** UI-SYSTEM-02 epic **complete** — DS-6 React implementation or next ROADMAP priority.
 
 ---
 
@@ -293,6 +293,7 @@ Home, New Transaction, Transaction Ledger          [direct — matches registry 
 |-------|-------------|
 | Audit doc contract | `tests/test_ui_system_02_audit.py` |
 | S4 shell/component pass | `tests/test_ui_system_02_s4_shell_component_pass.py` |
+| S5 React design contract | `tests/test_ui_system_02_s5_react_design_contract.py` |
 | Theme authority | `tests/test_theme_authority01.py` |
 | UI-1 design language | `tests/test_ui1_design_language.py` |
 | Mobile layout keys | `tests/test_mobile_layout_contract.py` |
@@ -308,4 +309,4 @@ Home, New Transaction, Transaction Ledger          [direct — matches registry 
 
 ---
 
-*Audit dated 2026-06-05. Post NAV-ARCH S0–S4; S4 shell/component pass shipped; next S5 React design contract.*
+*Audit dated 2026-06-05. UI-SYSTEM-02 epic S1–S5 complete; React design contract frozen.*
