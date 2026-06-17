@@ -134,6 +134,7 @@ from registry.banking_config import (
     banking_show_confidence_chips,
     banking_sort_queue_rows,
     banking_workflow_mode,
+    BANKING_WORKFLOW_MODE_DEFAULT,
 )
 from registry.service import get_module_state
 from registry.setup01_wizard import (
@@ -293,6 +294,12 @@ from ui.banking import (
     banking_section_select as _banking_section_select,
     banking_show_manual_advanced_panel as _banking_show_manual_advanced_panel,
     banking_workflow_default_section as _banking_workflow_default_section,
+    at_apply_add_transaction_landing as _at_apply_add_transaction_landing,
+    at_mobile_type_picker_split as _at_mobile_type_picker_split,
+    at_primary_type_indices as _at_primary_type_indices,
+    at_render_manual_bank_advanced_gate as _at_render_manual_bank_advanced_gate,
+    at_render_statement_workflow_callout as _at_render_statement_workflow_callout,
+    at_show_manual_bank_advanced as _at_show_manual_bank_advanced,
     render_banking_match_suggestion_chip as _render_banking_match_suggestion_chip,
     render_banking_match_queue_list as _render_banking_match_queue_list,
     render_banking_recon_cockpit as _render_banking_recon_cockpit,
@@ -12271,33 +12278,46 @@ def _mob_at_c_apply_type(idx: int) -> None:
 
 def _mob_at_render_txn_type_picker_sheet() -> bool:
     """Concept C — bottom sheet to pick transaction type."""
+    workflow_mode = st.session_state.get("at_workflow_mode", BANKING_WORKFLOW_MODE_DEFAULT)
+    primary_rows, advanced_rows = _at_mobile_type_picker_split(
+        workflow_mode, _MOB_AT_C_TYPE_ROWS
+    )
+
+    def _render_type_row(row_idx: int, label: str, key: str) -> bool:
+        colour = _MOB_AT_C_TYPE_COLOUR.get(key, "#94a3b8")
+        is_active = key == _mob_at_c_current_type_key()
+        dc, bc = st.columns([0.06, 1], gap="small")
+        with dc:
+            st.markdown(
+                f'<div class="erp-mob-at-cat-dot" style="background:{colour}"></div>',
+                unsafe_allow_html=True,
+            )
+        with bc:
+            if st.button(
+                label,
+                key=f"mob_at_pick_type_{key}",
+                use_container_width=True,
+                type="primary" if is_active else "secondary",
+            ):
+                _mob_at_c_apply_type(row_idx)
+                _mob_at_close_picker()
+                return True
+        return False
+
     with st.container(border=False, key="erp_mob_at_picker_sheet"):
         st.markdown('<div class="erp-mob-at-picker-grab"></div>', unsafe_allow_html=True)
         if _mob_at_render_picker_hdr(_tf("txn.mob.pick_type", "Transaction Type")):
             return True
 
-        current_key = _mob_at_c_current_type_key()
         with st.container(border=False, key="mob_at_picker_grid"):
-            for row_idx, label, key in _MOB_AT_C_TYPE_ROWS:
-                colour = _MOB_AT_C_TYPE_COLOUR.get(key, "#94a3b8")
-                is_active = key == current_key
-                # st.button does not render HTML — use markdown dot + plain text button
-                dc, bc = st.columns([0.06, 1], gap="small")
-                with dc:
-                    st.markdown(
-                        f'<div class="erp-mob-at-cat-dot" style="background:{colour}"></div>',
-                        unsafe_allow_html=True,
-                    )
-                with bc:
-                    if st.button(
-                        label,
-                        key=f"mob_at_pick_type_{key}",
-                        use_container_width=True,
-                        type="primary" if is_active else "secondary",
-                    ):
-                        _mob_at_c_apply_type(row_idx)
-                        _mob_at_close_picker()
-                        return True
+            for row_idx, label, key in primary_rows:
+                if _render_type_row(row_idx, label, key):
+                    return True
+            if advanced_rows:
+                with st.expander(_t("bank.advanced.section"), expanded=False):
+                    for row_idx, label, key in advanced_rows:
+                        if _render_type_row(row_idx, label, key):
+                            return True
     return False
 
 
@@ -13603,6 +13623,15 @@ def _render_add_transaction_mobile(
                 unsafe_allow_html=True,
             )
 
+    workflow_mode = st.session_state.get("at_workflow_mode", BANKING_WORKFLOW_MODE_DEFAULT)
+    _at_render_statement_workflow_callout(
+        workflow_mode=workflow_mode,
+        show_import_link=(
+            _banking_reconciliation_on(session)
+            and _can("view_bank_statement_import")
+        ),
+    )
+
     today_sales, today_expenses, today_net = _mob_at_today_metrics(session, today)
     _fmt = lambda v: f"{currency_default} {v:,.2f}"
     _net_variant = "success" if today_net >= 0 else "danger"
@@ -13860,6 +13889,9 @@ def render_add_transaction(session):
 
     # ── Session state ─────────────────────────────────────────────────────────
     _cache_user_date_format(session)
+    workflow_mode = _banking_workflow_mode(session)
+    st.session_state["at_workflow_mode"] = workflow_mode
+    _at_apply_add_transaction_landing(workflow_mode)
     _is_mobile_at = _sync_mobile_ui_flag_from_cookie()
     if "at_type_idx" not in st.session_state:
         st.session_state["at_type_idx"] = 0
@@ -13917,6 +13949,13 @@ def render_add_transaction(session):
             # ── Page header (same pattern as Sales / Expenses — not deferred to 16C) ─
             _st_page_title(i18n_key="txn.add_title")
             st.caption(_t("txn.add_caption"))
+            _at_render_statement_workflow_callout(
+                workflow_mode=workflow_mode,
+                show_import_link=(
+                    _banking_reconciliation_on(session)
+                    and _can("view_bank_statement_import")
+                ),
+            )
             _pending_att = st.session_state.get("at_pending_attachment")
             if _pending_att:
                 st.info(_t("txn.pending_attachment_hint", filename=_pending_att.get("name", "")))
@@ -13973,7 +14012,8 @@ def render_add_transaction(session):
                     unsafe_allow_html=True,
                 )
                 tc1, tc2 = st.columns(2, gap="small")
-                for _i, (_tname, _ticon, _tcolor, _tbg, _tborder) in enumerate(_TYPES):
+                for _i in _at_primary_type_indices(workflow_mode, total_types=len(_TYPES)):
+                    _tname, _ticon, _tcolor, _tbg, _tborder = _TYPES[_i]
                     _is_active = st.session_state["at_type_idx"] == _i
                     _short     = _t(_TYPE_KEY_MAP.get(_tname, "txn.type_short.sale"))
                     _col       = tc1 if _i % 2 == 0 else tc2
@@ -13989,6 +14029,9 @@ def render_add_transaction(session):
                         _coerce_at_payment_method(session, _tname)
                         _at_sync_desktop_type_to_mobile_tabs()
                         st.rerun()
+
+                if _at_show_manual_bank_advanced(workflow_mode, st.session_state["at_type_idx"]):
+                    _at_render_manual_bank_advanced_gate()
     
                 # ── TIP BOX (type-specific) ────────────────────────────────────────────
                 _tip_text = _t(_TIP_KEY_MAP.get(txn_type, "txn.tip.default"))
@@ -24566,6 +24609,7 @@ def _render_banking_page_settings(session, cid: int):
             )
             session.commit()
             st.session_state.pop("banking_landing_applied", None)
+            st.session_state.pop("at_workflow_landing_applied", None)
             st.success(_t("common.settings_saved"))
             st.rerun()
 
@@ -24758,6 +24802,7 @@ def _render_banking_page_settings(session, cid: int):
             )
             session.commit()
             st.session_state.pop("banking_landing_applied", None)
+            st.session_state.pop("at_workflow_landing_applied", None)
             st.success(_t("common.settings_saved"))
             st.rerun()
 
@@ -24847,6 +24892,7 @@ def _render_banking_page_settings(session, cid: int):
                     )
                 session.commit()
                 st.session_state.pop("banking_landing_applied", None)
+                st.session_state.pop("at_workflow_landing_applied", None)
                 st.session_state.pop("bsi_import_tab_applied", None)
                 st.success(_t("common.settings_saved"))
                 st.rerun()

@@ -216,6 +216,105 @@ def banking_render_manual_advanced_gate(workflow_mode: str) -> None:
             st.rerun()
 
 
+AT_BANK_TXN_TYPE_IDX = 5
+
+
+def at_primary_type_indices(workflow_mode: str, *, total_types: int = 6) -> list[int]:
+    """Desktop/mobile primary type chip order — visibility/routing only (BANKING-UX-04-S3)."""
+    mode = banking_normalize_workflow_mode(workflow_mode)
+    all_idx = list(range(total_types))
+    if mode == "statement_first":
+        return [i for i in all_idx if i != AT_BANK_TXN_TYPE_IDX]
+    if mode == "manual_first":
+        return [AT_BANK_TXN_TYPE_IDX] + [i for i in all_idx if i != AT_BANK_TXN_TYPE_IDX]
+    return all_idx
+
+
+def at_mobile_type_picker_split(
+    workflow_mode: str,
+    rows: list[tuple[int, str, str]],
+) -> tuple[list[tuple[int, str, str]], list[tuple[int, str, str]]]:
+    """Split mobile type picker rows into primary vs Advanced (statement-first bank type)."""
+    mode = banking_normalize_workflow_mode(workflow_mode)
+    bank_rows = [r for r in rows if r[0] == AT_BANK_TXN_TYPE_IDX]
+    other_rows = [r for r in rows if r[0] != AT_BANK_TXN_TYPE_IDX]
+    if mode == "statement_first":
+        return other_rows, bank_rows
+    if mode == "manual_first":
+        return bank_rows + other_rows, []
+    return rows, []
+
+
+def at_show_statement_callout(workflow_mode: str) -> bool:
+    mode = banking_normalize_workflow_mode(workflow_mode)
+    return mode in ("statement_first", "manual_first")
+
+
+def at_show_manual_bank_advanced(workflow_mode: str, current_type_idx: int) -> bool:
+    return (
+        banking_normalize_workflow_mode(workflow_mode) == "statement_first"
+        and current_type_idx != AT_BANK_TXN_TYPE_IDX
+    )
+
+
+def at_apply_add_transaction_landing(workflow_mode: str) -> None:
+    """One-shot default type for manual-first (UI landing only)."""
+    if st.session_state.get("at_workflow_landing_applied"):
+        return
+    if banking_normalize_workflow_mode(workflow_mode) == "manual_first":
+        st.session_state["at_type_idx"] = AT_BANK_TXN_TYPE_IDX
+        st.session_state["mob_at_tab"] = 3
+        st.session_state["mob_at_more_idx"] = AT_BANK_TXN_TYPE_IDX
+    st.session_state["at_workflow_landing_applied"] = True
+
+
+def at_navigate_banking_statement_import() -> None:
+    st.session_state["nav_selection"] = NAV_BANKING
+    st.session_state["banking_section"] = "import"
+    st.session_state.pop("banking_landing_applied", None)
+    st.rerun()
+
+
+def at_render_statement_workflow_callout(
+    *,
+    workflow_mode: str,
+    show_import_link: bool,
+) -> None:
+    """Statement-first / manual-first callout on Add Transaction — presentation only."""
+    erp = _erp()
+    mode = banking_normalize_workflow_mode(workflow_mode)
+    if not at_show_statement_callout(mode):
+        return
+    if mode == "statement_first":
+        st.info(erp._t("txn.bank_workflow.statement_callout"))
+    else:
+        st.caption(erp._t("txn.bank_workflow.statement_alt"))
+    if show_import_link:
+        if st.button(
+            erp._t("txn.bank_workflow.open_statement_import"),
+            key="at_open_statement_import",
+            use_container_width=True,
+            type="secondary",
+        ):
+            at_navigate_banking_statement_import()
+
+
+def at_render_manual_bank_advanced_gate() -> None:
+    """Statement-first: manual bank transaction type under Advanced."""
+    erp = _erp()
+    with st.expander(erp._t("bank.advanced.section"), expanded=False):
+        st.caption(erp._t("txn.bank_workflow.manual_advanced_caption"))
+        if st.button(
+            erp._t("txn.bank_workflow.open_manual_bank"),
+            key="at_adv_open_manual_bank",
+            use_container_width=True,
+        ):
+            st.session_state["at_type_idx"] = AT_BANK_TXN_TYPE_IDX
+            st.session_state["mob_at_tab"] = 3
+            st.session_state["mob_at_more_idx"] = AT_BANK_TXN_TYPE_IDX
+            st.rerun()
+
+
 def banking_match_kind_confidence(
     detected_kind: str,
     description: str,
