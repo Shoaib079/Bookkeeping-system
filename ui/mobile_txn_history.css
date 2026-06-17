@@ -256,12 +256,12 @@ html.erp-mobile [data-testid="stMain"]:has(.erp-txh-mobile-host) [class*="st-key
     margin: 4px 0 8px !important;
   }
 
-  /* Ledger card — content block + dedicated action row */
+  /* Ledger card — MONO-THEME-01-S6 table-row grammar on mobile */
   [data-testid="stMain"]:has(.erp-txh-mobile-host) [class*="st-key-txh_row_"] {
     margin: 0 0 12px !important;
     border-radius: var(--txh-row-radius) !important;
-    border: 1px solid var(--theme-border) !important;
-    background: var(--theme-card) !important;
+    border: 1px solid var(--erp-table-border) !important;
+    background: var(--erp-card-bg) !important;
     box-shadow: 0 2px 6px color-mix(in srgb, var(--theme-shadow) 45%, transparent) !important;
     overflow: hidden !important;
   }
@@ -288,9 +288,9 @@ html.erp-mobile [data-testid="stMain"]:has(.erp-txh-mobile-host) [class*="st-key
   }
 
   [data-testid="stMain"]:has(.erp-txh-mobile-host) [class*="st-key-txh_row_"] [data-testid="stVerticalBlockBorderWrapper"] {
-    border-radius: 10px !important;
+    border-radius: var(--erp-radius-md) !important;
     margin: 0 0 12px !important;
-    border-color: var(--theme-border) !important;
+    border-color: var(--erp-table-border) !important;
   }
 
   /* TXH-DETAIL-01 — mobile expand panel: JE grid column squeeze */

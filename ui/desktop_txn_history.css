@@ -1,4 +1,4 @@
-/* Transaction Ledger — desktop table layout only (erp-txh-desktop-host) */
+/* Transaction Ledger — desktop table layout (MONO-THEME-01-S6 table grammar) */
 
 [data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-shell {
   margin: 8px 0 12px;
@@ -11,10 +11,10 @@
   gap: 0;
   padding: 8px 10px;
   margin: 0;
-  border-radius: 8px 8px 0 0;
-  border: 1px solid var(--theme-border);
-  border-bottom: 2px solid color-mix(in srgb, var(--theme-border) 70%, var(--theme-muted) 30%);
-  background: color-mix(in srgb, var(--theme-bg) 55%, var(--theme-card) 45%);
+  border-radius: var(--erp-radius-md) var(--erp-radius-md) 0 0;
+  border: 1px solid var(--erp-table-border);
+  border-bottom: 2px solid var(--erp-table-border);
+  background: var(--erp-table-header-bg);
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -34,11 +34,11 @@
 [data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"] {
   margin: 0 !important;
   padding: 0 !important;
-  border-bottom: 1px solid color-mix(in srgb, var(--theme-border) 80%, transparent);
+  border-bottom: 1px solid var(--erp-table-border);
 }
 
 [data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"]:hover {
-  background: color-mix(in srgb, var(--theme-info) 4%, var(--theme-card) 96%);
+  background: var(--erp-table-row-hover-bg);
 }
 
 [data-testid="stMain"]:has(.erp-txh-desktop-host) [class*="st-key-txh_dt_row_"] [data-testid="stHorizontalBlock"] {
@@ -193,9 +193,9 @@
 }
 
 [data-testid="stMain"]:has(.erp-txh-desktop-host) .erp-txh-dt-wrap {
-  border: 1px solid var(--theme-border);
+  border: 1px solid var(--erp-table-border);
   border-top: none;
-  border-radius: 0 0 8px 8px;
+  border-radius: 0 0 var(--erp-radius-md) var(--erp-radius-md);
   overflow: hidden;
   margin-bottom: 0;
 }
@@ -211,9 +211,9 @@
 }
 
 .erp-txh-je-grid {
-  background: color-mix(in srgb, var(--theme-bg) 40%, var(--theme-card) 60%);
-  border: 1px solid var(--theme-border);
-  border-radius: 8px;
+  background: var(--erp-table-header-bg);
+  border: 1px solid var(--erp-table-border);
+  border-radius: var(--erp-radius-md);
   padding: 8px 12px;
   margin: 0 0 10px;
 }

@@ -194,14 +194,14 @@
   text-align: center;
 }
 
-/* Status pills — shared with transaction ledger */
+/* Status pills — MONO-THEME-01-S6 shared chip extension grammar */
 .erp-mob-status-pill,
 .erp-txh-pill {
   display: inline-block;
   font-size: 10px;
   font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 99px;
+  padding: var(--erp-chip-padding-y) var(--erp-chip-padding-x);
+  border-radius: var(--erp-chip-radius);
   white-space: nowrap;
 }
 

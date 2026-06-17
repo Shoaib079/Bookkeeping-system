@@ -1,4 +1,4 @@
-/* Banking — chip section selector layout (BANKING-DESKTOP-01 B1)
+/* Banking — chip section selector layout (MONO-THEME-01-S6 chip geometry)
  * Chip host: erp-bank-sel-chip-host (bank_sec_sel_*)
  * Active/idle chip colours: widgets.css UI-1 block
  */
@@ -25,6 +25,7 @@
   font-size: 11px !important;
   font-weight: 600 !important;
   line-height: 1.2 !important;
-  border-radius: 8px !important;
+  border-radius: var(--erp-radius-md) !important;
+  padding: var(--erp-chip-padding-y) var(--erp-chip-padding-x) !important;
   white-space: normal !important;
 }

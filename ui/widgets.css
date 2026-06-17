@@ -439,10 +439,14 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
 [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[kind="primary"],
 [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[data-testid="stBaseButton-primary"],
 [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[kind="primary"],
-[data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[data-testid="stBaseButton-primary"] {
+[data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[data-testid="stBaseButton-primary"],
+[data-testid="stMain"] [class*="st-key-bank_sec_sel_"] button[kind="primary"],
+[data-testid="stMain"] [class*="st-key-bank_sec_sel_"] button[data-testid="stBaseButton-primary"] {
   background: var(--erp-chip-active-bg) !important;
   color: var(--erp-chip-active-fg) !important;
   border: 1px solid var(--erp-chip-active-border) !important;
+  border-radius: var(--erp-radius-md) !important;
+  padding: var(--erp-chip-padding-y) var(--erp-chip-padding-x) !important;
 }
 
 [data-testid="stMain"] [class*="st-key-mob_at_"]:not([class*="st-key-mob_at_save"]):not([class*="st-key-mob_at_amount_row"]) button[kind="primary"] p,
@@ -488,10 +492,14 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
 [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[kind="secondary"],
 [data-testid="stMain"] [class*="st-key-mob_rpt_sel_"] button[data-testid="stBaseButton-secondary"],
 [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[kind="secondary"],
-[data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[data-testid="stBaseButton-secondary"] {
+[data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] button[data-testid="stBaseButton-secondary"],
+[data-testid="stMain"] [class*="st-key-bank_sec_sel_"] button[kind="secondary"],
+[data-testid="stMain"] [class*="st-key-bank_sec_sel_"] button[data-testid="stBaseButton-secondary"] {
   background: var(--erp-chip-idle-bg) !important;
   color: var(--erp-chip-idle-fg) !important;
   border: 1px solid var(--erp-chip-idle-border) !important;
+  border-radius: var(--erp-radius-md) !important;
+  padding: var(--erp-chip-padding-y) var(--erp-chip-padding-x) !important;
 }
 
 /* UI-1 — Global secondary + form submit (secondaryFormSubmit is default for st.form_submit_button) */
@@ -745,10 +753,10 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
   color: var(--theme-text) !important;
 }
 
-/* ── Tables (stTable — display tables use readable HTML, not Glide) ─────── */
+/* ── Tables (stTable) — MONO-THEME-01-S6 shared table grammar ─────────── */
 [data-testid="stMain"] [data-testid="stTable"] {
   background: var(--erp-card-bg) !important;
-  border: 1px solid var(--erp-card-border) !important;
+  border: 1px solid var(--erp-table-border) !important;
   border-radius: var(--erp-radius-md) !important;
 }
 
@@ -757,8 +765,9 @@ div[data-baseweb="menu"] li[aria-disabled="true"] {
 }
 
 [data-testid="stMain"] [data-testid="stTable"] th {
-  background: color-mix(in srgb, var(--theme-border) 35%, var(--theme-card) 65%) !important;
+  background: var(--erp-table-header-bg) !important;
   color: var(--theme-muted) !important;
+  border-bottom: 1px solid var(--erp-table-border) !important;
 }
 
 [data-testid="stMain"] [data-testid="stTable"] td {

@@ -171,10 +171,10 @@
   margin: 24px 0 12px;
 }
 
-/* Token-themed data table (replaces Glide grid where contrast is weak) */
+/* Token-themed data table — MONO-THEME-01-S6 shared table grammar */
 .erp-data-table-wrap {
-  border: 1px solid var(--theme-border);
-  border-radius: 8px;
+  border: 1px solid var(--erp-table-border);
+  border-radius: var(--erp-radius-md);
   overflow: hidden;
   margin: 12px 0 20px;
 }
@@ -182,10 +182,10 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
-  background: var(--theme-card);
+  background: var(--erp-card-bg);
 }
 .erp-data-table th {
-  background: color-mix(in srgb, var(--theme-border) 35%, var(--theme-card) 65%);
+  background: var(--erp-table-header-bg);
   color: var(--theme-muted);
   font-size: 10px;
   font-weight: 700;
@@ -193,12 +193,12 @@
   letter-spacing: 0.05em;
   text-align: left;
   padding: 10px 12px;
-  border-bottom: 1px solid var(--theme-border);
+  border-bottom: 1px solid var(--erp-table-border);
 }
 .erp-data-table td {
   color: var(--theme-text);
   padding: 10px 12px;
-  border-bottom: 1px solid var(--theme-border);
+  border-bottom: 1px solid var(--erp-table-border);
   vertical-align: top;
   word-break: break-word;
 }
@@ -211,10 +211,10 @@
   white-space: nowrap;
 }
 
-/* ── Financial statement tables (BS, P&L, TB, GL, COA) ───────────────── */
+/* ── Financial statement tables (BS, P&L, TB, GL, COA) — MONO-THEME-01-S6 ─ */
 .erp-fin-table-wrap {
-  border: 1px solid var(--theme-border);
-  border-radius: 8px;
+  border: 1px solid var(--erp-table-border);
+  border-radius: var(--erp-radius-md);
   overflow-x: auto;
   margin: 4px 0 8px;
   -webkit-overflow-scrolling: touch;
@@ -225,11 +225,11 @@
   border-collapse: collapse;
   font-size: 13px;
   line-height: 1.45;
-  background: var(--theme-card);
+  background: var(--erp-card-bg);
   table-layout: auto;
 }
 .erp-fin-table thead th {
-  background: color-mix(in srgb, var(--theme-border) 35%, var(--theme-card) 65%);
+  background: var(--erp-table-header-bg);
   color: var(--theme-caption);
   font-size: 10px;
   font-weight: 700;
@@ -237,31 +237,31 @@
   letter-spacing: 0.05em;
   text-align: left;
   padding: 11px 12px;
-  border-bottom: 1px solid var(--theme-border);
+  border-bottom: 1px solid var(--erp-table-border);
   white-space: nowrap;
 }
 .erp-fin-table thead th.erp-fin-amount {
   text-align: right;
 }
 .erp-fin-table tbody tr.erp-fin-row {
-  border-bottom: 1px solid var(--theme-border);
+  border-bottom: 1px solid var(--erp-table-border);
 }
 .erp-fin-table tbody tr.erp-fin-row:last-child {
   border-bottom: none;
 }
 .erp-fin-table tbody tr.erp-fin-row:nth-child(even) {
-  background: color-mix(in srgb, var(--theme-card) 96%, var(--theme-bg) 4%);
+  background: color-mix(in srgb, var(--erp-card-bg) 96%, var(--theme-bg) 4%);
 }
 .erp-fin-table tbody tr.erp-fin-row:hover {
-  background: color-mix(in srgb, var(--theme-card) 90%, var(--theme-bg) 10%);
+  background: var(--erp-table-row-hover-bg);
 }
 .erp-fin-table tbody tr.erp-fin-row-total {
-  background: color-mix(in srgb, var(--theme-border) 22%, var(--theme-card) 78%) !important;
+  background: var(--erp-table-total-bg) !important;
   font-weight: 700;
 }
 .erp-fin-table tbody tr.erp-fin-row-total td {
   color: var(--theme-text);
-  border-top: 2px solid var(--theme-border);
+  border-top: 2px solid var(--erp-table-border);
   padding-top: 12px;
   padding-bottom: 12px;
 }
@@ -797,8 +797,8 @@
   color: var(--theme-text);
   font-size: 9px;
   font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 99px;
+  padding: var(--erp-chip-padding-y) var(--erp-chip-padding-x);
+  border-radius: var(--erp-chip-radius);
 }
 .erp-status-dot-success {
   width: 8px;

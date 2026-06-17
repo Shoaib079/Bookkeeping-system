@@ -57,7 +57,7 @@ def test_banking_css_registered_in_theme_loader():
 
 def test_banking_chip_layout_in_banking_css():
     css = _read("banking.css")
-    assert "BANKING-DESKTOP-01" in css
+    assert "MONO-THEME-01-S6" in css or "BANKING-DESKTOP-01" in css
     assert "erp-bank-sel-chip-host" in css
     assert "st-key-bank_sec_sel_" in css
     assert "grid-template-columns: repeat(2" in css
