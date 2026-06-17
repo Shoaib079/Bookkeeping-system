@@ -69,11 +69,11 @@ def test_mob_at_chips_alias_erp_tokens():
     assert "--mob-at-chip-active-bg: var(--erp-chip-active-bg)" in css
 
 
-def test_sidebar_primary_uses_chip_tokens():
+def test_sidebar_primary_uses_nav_grammar_tokens():
     theme = _read("ui", "theme.css")
-    assert "var(--erp-chip-active-bg)" in theme
     sidebar_block = theme.split("Sidebar nav buttons")[1].split("Sidebar form")[0]
-    assert "--erp-chip-active-bg" in sidebar_block
+    assert "var(--erp-nav-active-bg)" in sidebar_block
+    assert "var(--erp-nav-active-fg)" in sidebar_block
 
 
 def test_section_accent_policy_documented():

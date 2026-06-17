@@ -70,14 +70,14 @@ def test_bottom_nav_renders_svg_overlay_not_emoji_label():
 def test_shell_css_owns_icon_overlay_and_active_state():
     assert ".erp-mob-bar-ico" in SHELL
     assert "pointer-events: none" in SHELL.split("erp-mob-bar-ico", 1)[1][:1200]
-    # Active tab: icon follows label into theme-info via :has(primary button).
+    # Active tab: icon follows label via shared nav grammar token.
     active = re.search(
         r':has\(button\[kind="primary"\].*?\)\s*\.erp-mob-bar-ico\s*\{([^}]*)\}',
         SHELL,
         flags=re.S,
     )
     assert active, "active-state icon rule missing from mobile_shell.css"
-    assert "var(--theme-info)" in active.group(1)
+    assert "var(--erp-nav-active-fg)" in active.group(1)
 
 
 def test_fab_unchanged():

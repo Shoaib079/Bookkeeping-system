@@ -436,12 +436,15 @@ html.erp-mobile {
   }
 
   [data-testid="stMain"] [class*="st-key-mob_bar_"] button[kind="primary"]:not([class*="mob_bar_new"]) {
-    color: var(--theme-info) !important;
+    color: var(--erp-nav-active-fg) !important;
+    background: var(--erp-nav-active-bg) !important;
+    border-radius: var(--erp-radius-md) !important;
+    border-top: 3px solid var(--erp-nav-active-bar) !important;
   }
 
   [data-testid="stMain"] [class*="st-key-mob_bar_"] button[kind="primary"]:not([class*="mob_bar_new"]) p,
   [data-testid="stMain"] [class*="st-key-mob_bar_"] button[kind="primary"]:not([class*="mob_bar_new"]) span {
-    color: var(--theme-info) !important;
+    color: var(--erp-nav-active-fg) !important;
   }
 
   /* MOBILE-NAV-ICON-01 — SVG icon overlay on bottom-nav tiles.
@@ -481,11 +484,11 @@ html.erp-mobile {
     height: 18px !important;
   }
 
-  /* Active tab — icon follows the label into theme-info */
+  /* MONO-THEME-01-S3 — active tab icon follows shared nav grammar */
   [data-testid="stMain"] [class*="st-key-erp_mob_bottom_bar"]
     [data-testid="stColumn"]:has(button[kind="primary"]:not([class*="mob_bar_new"]))
     .erp-mob-bar-ico {
-    color: var(--theme-info) !important;
+    color: var(--erp-nav-active-fg) !important;
   }
 
   [data-testid="stMain"] [class*="st-key-erp_mob_hub_sheet"] {
@@ -651,7 +654,7 @@ html.erp-mobile {
   }
 
   [data-testid="stMain"] [class*="st-key-mob_hub_row_"]:has(button[kind="primary"]) .erp-nav-icon {
-    color: var(--erp-primary-fill, var(--theme-info)) !important;
+    color: var(--erp-nav-active-fg) !important;
   }
 
   [data-testid="stMain"] [class*="st-key-mob_hub_row_"] button {
@@ -689,15 +692,16 @@ html.erp-mobile {
   }
 
   [data-testid="stMain"] [class*="st-key-mob_hub_"] button[kind="primary"] {
-    background: var(--erp-primary-fill) !important;
-    color: var(--erp-on-primary, #fff) !important;
-    border-color: var(--erp-primary-fill) !important;
+    background: var(--erp-nav-active-bg) !important;
+    color: var(--erp-nav-active-fg) !important;
+    border-color: color-mix(in srgb, var(--erp-nav-active-bar) 25%, var(--theme-border) 75%) !important;
+    border-left: 3px solid var(--erp-nav-active-bar) !important;
     font-weight: 700 !important;
   }
 
   [data-testid="stMain"] [class*="st-key-mob_hub_"] button[kind="primary"] p,
   [data-testid="stMain"] [class*="st-key-mob_hub_"] button[kind="primary"] span {
-    color: var(--erp-on-primary, #fff) !important;
+    color: var(--erp-nav-active-fg) !important;
   }
 
   [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-hub-host) hr {

@@ -50,10 +50,10 @@
 
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div:has([class*="st-key-nav_icon_"]) .erp-nav-icon,
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div + div [class*="st-key-nav_icon_"] .erp-nav-icon {
-  color: var(--erp-primary-fill, var(--theme-info));
+  color: var(--erp-nav-active-fg);
 }
 
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div + div [data-testid="baseButton-primary"] ~ *,
 [data-testid="stSidebar"] [data-testid="baseButton-primary"]:has(+ *) .erp-nav-icon {
-  color: var(--erp-on-primary, #fff);
+  color: var(--erp-nav-active-fg);
 }

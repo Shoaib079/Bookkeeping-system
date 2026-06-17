@@ -103,10 +103,10 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 
 | ID | Item | Priority | Status | When / trigger |
 |----|------|----------|--------|----------------|
-| **TD-MONO-THEME-01-01** | **Duplicated component grammar** — desktop (`theme.css`/`widgets.css`) and mobile (`mobile_*.css`) define card/nav-active/chip styling separately despite shared color tokens | High | **In progress** — S2 shared tokens defined; S3–S6 migrate selectors to `--erp-nav-*` / `--erp-card-*` / `--erp-chip-*` / `--erp-table-*` | MONO-THEME-01-S3–S6 |
+| **TD-MONO-THEME-01-01** | **Duplicated component grammar** — desktop (`theme.css`/`widgets.css`) and mobile (`mobile_*.css`) define card/nav-active/chip styling separately despite shared color tokens | High | **In progress** — S3 nav active migrated; S4–S6 cards/chips/tables | MONO-THEME-01-S4–S6 |
 | **TD-MONO-THEME-01-02** | **Role hue references remain** — `DEPRECATED_ROLE_TOKEN_KEYS` still referenced in `auth.css` etc. | Low | Open | MONO-THEME-01-S7 cleanup |
 
-**Audit:** [MONO_THEME_01_AUDIT.md](./MONO_THEME_01_AUDIT.md) · **Tests:** `tests/test_mono_theme_01_audit.py`, `tests/test_mono_theme_01_s2_shared_grammar_tokens.py`
+**Audit:** [MONO_THEME_01_AUDIT.md](./MONO_THEME_01_AUDIT.md) · **Tests:** `tests/test_mono_theme_01_audit.py`, `tests/test_mono_theme_01_s2_shared_grammar_tokens.py`, `tests/test_mono_theme_01_s3_nav_active_grammar.py`
 
 ---
 

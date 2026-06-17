@@ -118,7 +118,7 @@ OPTION A+: same density, tabular-nums, right-aligned money, hairline --theme-bor
 
 - **MONO-THEME-01-S1 — audit + design spec (this doc):** ✅ **Complete** — `docs/MONO_THEME_01_AUDIT.md` + `tests/test_mono_theme_01_audit.py`. Tag: `mono-theme-01-s1-audit-design-spec`.
 - **MONO-THEME-01-S2 — token refinements:** ✅ **Complete** — shared component-grammar tokens in `ui/design_tokens.py` (`COMPONENT_GRAMMAR_TOKENS`) mirrored in `ui/theme.css` `:root` (`--erp-nav-*`, `--erp-card-*`, `--erp-chip-*` extensions, `--erp-table-*`); `tests/test_mono_theme_01_s2_shared_grammar_tokens.py`. Tag: `mono-theme-01-s2-shared-grammar-tokens`. Token definitions only — no component migration yet.
-- **MONO-THEME-01-S3 — sidebar/nav active states:** apply shared tokens to desktop sidebar (SIDEBAR-THEME-01-S2) + **mobile bottom-nav active slot** (parity).
+- **MONO-THEME-01-S3 — sidebar/nav active states:** ✅ **Complete** — desktop sidebar (`theme.css` + `icons.css`) and mobile bottom-nav/hub (`mobile_shell.css`) route active/hover/section styling through `--erp-nav-*` grammar tokens; `tests/test_mono_theme_01_s3_nav_active_grammar.py`. Tag: `mono-theme-01-s3-nav-active-grammar`. No nav-structure or Python changes.
 - **MONO-THEME-01-S4 — desktop cards / dashboard / forms:** unify card/KPI/button/form grammar to the shared tokens.
 - **MONO-THEME-01-S5 — mobile shell / cards / nav:** mirror S4 grammar in `mobile_*.css` so cards/chips/active match desktop.
 - **MONO-THEME-01-S6 — reports / tables / banking statuses:** standardize chip/row grammar (semantics unchanged) across desktop + mobile.
