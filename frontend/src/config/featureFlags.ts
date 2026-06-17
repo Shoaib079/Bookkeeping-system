@@ -18,11 +18,16 @@ export function reactWritePurchasesEnabled(): boolean {
   return import.meta.env.VITE_ERP_REACT_WRITE_PURCHASES === "1";
 }
 
+export function reactWriteReceivablePaymentsEnabled(): boolean {
+  return import.meta.env.VITE_ERP_REACT_WRITE_RECEIVABLE_PAYMENTS === "1";
+}
+
 export function reactWriteEnabled(): boolean {
   return (
     reactWriteSalesEnabled() ||
     reactWriteExpensesEnabled() ||
     reactWriteVoidsEnabled() ||
-    reactWritePurchasesEnabled()
+    reactWritePurchasesEnabled() ||
+    reactWriteReceivablePaymentsEnabled()
   );
 }

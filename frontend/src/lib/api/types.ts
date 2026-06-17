@@ -130,3 +130,22 @@ export type CreatePurchaseResponse = {
   message: string;
   status: string;
 };
+
+export type CreateReceivablePaymentRequest = {
+  date: string;
+  amount: number;
+  currency: string;
+  payment_method: "Cash" | "Bank";
+  sale_id: number;
+  notes?: string;
+  customer_name?: string;
+  bank_account_id?: number;
+};
+
+export type CreateReceivablePaymentResponse = {
+  payment_id: number;
+  journal_entry_id: number;
+  sale_id: number;
+  message: string;
+  status: string;
+};

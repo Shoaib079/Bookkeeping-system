@@ -5,6 +5,7 @@ import {
   reactWriteEnabled,
   reactWriteExpensesEnabled,
   reactWritePurchasesEnabled,
+  reactWriteReceivablePaymentsEnabled,
   reactWriteSalesEnabled,
   reactWriteVoidsEnabled,
 } from "../config/featureFlags";
@@ -13,16 +14,18 @@ import { getReadSession } from "../lib/api/session";
 import type {
   CreateExpenseResponse,
   CreatePurchaseResponse,
+  CreateReceivablePaymentResponse,
   CreateSaleResponse,
   VoidResponse,
   VoidTargetType,
 } from "../lib/api/types";
 import { apiPost } from "../lib/api/writeClient";
 
-type WriteTab = "sale" | "expense" | "void" | "purchase";
+type WriteTab = "sale" | "expense" | "void" | "purchase" | "receivable";
 type SalePaymentMethod = "Cash" | "Card" | "Credit";
 type ExpensePaymentMethod = "Cash" | "Bank";
 type PurchasePaymentMethod = "Cash" | "Bank" | "Credit";
+type ReceivablePaymentMethod = "Cash" | "Bank";
 
 const CREDIT_CUSTOMER_MSG =
   "Enter a customer name for on-account (credit) sales.";
@@ -31,6 +34,7 @@ const VOID_REASON_MSG = "Void reason is required.";
 const VENDOR_REQUIRED_MSG = "Select a vendor before saving a purchase.";
 const CATEGORY_REQUIRED_MSG = "Select a category before saving";
 const PURCHASE_BANK_MSG = "No bank account selected.";
+const RECEIVABLE_BANK_MSG = "No bank account selected.";
 
 function todayIso(): string {
   const now = new Date();
@@ -59,13 +63,16 @@ export function NewTransactionPage() {
   const expensesOn = reactWriteExpensesEnabled();
   const voidsOn = reactWriteVoidsEnabled();
   const purchasesOn = reactWritePurchasesEnabled();
+  const receivableOn = reactWriteReceivablePaymentsEnabled();
   const defaultTab: WriteTab = salesOn
     ? "sale"
     : expensesOn
       ? "expense"
       : purchasesOn
         ? "purchase"
-        : "void";
+        : receivableOn
+          ? "receivable"
+          : "void";
 
   const [sessionTick, setSessionTick] = useState(0);
   const session = useMemo(() => getReadSession(), [sessionTick]);
@@ -103,6 +110,13 @@ export function NewTransactionPage() {
   const [purchaseResult, setPurchaseResult] = useState<CreatePurchaseResponse | null>(
     null,
   );
+  const [receivablePaymentMethod, setReceivablePaymentMethod] =
+    useState<ReceivablePaymentMethod>("Cash");
+  const [receivableSaleId, setReceivableSaleId] = useState("");
+  const [receivableCustomerName, setReceivableCustomerName] = useState("");
+  const [receivableBankAccountId, setReceivableBankAccountId] = useState("");
+  const [receivableResult, setReceivableResult] =
+    useState<CreateReceivablePaymentResponse | null>(null);
 
   if (!reactWriteEnabled()) {
     return (
@@ -111,7 +125,8 @@ export function NewTransactionPage() {
         <p>
           Write UI disabled. Set <code>VITE_ERP_REACT_WRITE_SALES=1</code>,{" "}
           <code>VITE_ERP_REACT_WRITE_EXPENSES=1</code>,{" "}
-          <code>VITE_ERP_REACT_WRITE_PURCHASES=1</code>, and/or{" "}
+          <code>VITE_ERP_REACT_WRITE_PURCHASES=1</code>,{" "}
+          <code>VITE_ERP_REACT_WRITE_RECEIVABLE_PAYMENTS=1</code>, and/or{" "}
           <code>VITE_ERP_REACT_WRITE_VOIDS=1</code>.
         </p>
       </section>
@@ -339,6 +354,77 @@ export function NewTransactionPage() {
     }
   }
 
+  async function handleReceivableSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!session) {
+      setError("Save a read API session before posting.");
+      return;
+    }
+    const parsedAmount = parseAmount(amount);
+    if (parsedAmount === null) {
+      setError("Enter a valid amount greater than zero.");
+      return;
+    }
+    const saleId = parsePositiveInt(receivableSaleId);
+    if (saleId === null) {
+      setError("Enter a valid credit sale id.");
+      return;
+    }
+    let bankId: number | undefined;
+    if (receivablePaymentMethod === "Bank") {
+      const parsed = parsePositiveInt(receivableBankAccountId);
+      if (parsed === null) {
+        setError(RECEIVABLE_BANK_MSG);
+        return;
+      }
+      bankId = parsed;
+    }
+
+    setLoading(true);
+    setError(null);
+    setReceivableResult(null);
+    try {
+      const body: {
+        date: string;
+        amount: number;
+        currency: string;
+        payment_method: ReceivablePaymentMethod;
+        sale_id: number;
+        notes: string;
+        customer_name?: string;
+        bank_account_id?: number;
+      } = {
+        date,
+        amount: parsedAmount,
+        currency,
+        payment_method: receivablePaymentMethod,
+        sale_id: saleId,
+        notes: notes.trim(),
+      };
+      const customer = receivableCustomerName.trim();
+      if (customer) {
+        body.customer_name = customer;
+      }
+      if (receivablePaymentMethod === "Bank" && bankId !== undefined) {
+        body.bank_account_id = bankId;
+      }
+      const response = await apiPost<CreateReceivablePaymentResponse>(
+        "/api/v1/receivable-payments",
+        body,
+        { session },
+      );
+      setReceivableResult(response);
+      setAmount("");
+      setNotes("");
+      setReceivableBankAccountId("");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setError(apiErr.detail ?? "Failed to record receivable payment.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleVoidSubmit(event: FormEvent) {
     event.preventDefault();
     if (!session) {
@@ -387,6 +473,7 @@ export function NewTransactionPage() {
     setExpenseResult(null);
     setVoidResult(null);
     setPurchaseResult(null);
+    setReceivableResult(null);
   }
 
   return (
@@ -442,6 +529,17 @@ export function NewTransactionPage() {
             onClick={() => switchTab("purchase")}
           >
             Purchase
+          </button>
+        ) : null}
+        {receivableOn ? (
+          <button
+            type="button"
+            className={
+              tab === "receivable" ? "erp-write-tabs__btn active" : "erp-write-tabs__btn"
+            }
+            onClick={() => switchTab("receivable")}
+          >
+            Receivable
           </button>
         ) : null}
       </nav>
@@ -712,6 +810,98 @@ export function NewTransactionPage() {
         </form>
       ) : null}
 
+      {tab === "receivable" && receivableOn ? (
+        <form className="erp-write-form" onSubmit={handleReceivableSubmit}>
+          <label>
+            Payment method
+            <select
+              value={receivablePaymentMethod}
+              onChange={(event) =>
+                setReceivablePaymentMethod(
+                  event.target.value as ReceivablePaymentMethod,
+                )
+              }
+            >
+              <option value="Cash">Cash</option>
+              <option value="Bank">Bank</option>
+            </select>
+          </label>
+          {receivablePaymentMethod === "Bank" ? (
+            <label>
+              Bank account id
+              <input
+                type="number"
+                min={1}
+                value={receivableBankAccountId}
+                onChange={(event) => setReceivableBankAccountId(event.target.value)}
+                required
+              />
+            </label>
+          ) : null}
+          <label>
+            Credit sale id
+            <input
+              type="number"
+              min={1}
+              value={receivableSaleId}
+              onChange={(event) => setReceivableSaleId(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Customer name (optional)
+            <input
+              type="text"
+              value={receivableCustomerName}
+              onChange={(event) => setReceivableCustomerName(event.target.value)}
+            />
+          </label>
+          <label>
+            Date
+            <input
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Amount
+            <input
+              type="text"
+              inputMode="decimal"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              placeholder="0.00"
+              required
+            />
+          </label>
+          <label>
+            Currency
+            <input
+              type="text"
+              value={currency}
+              onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+              maxLength={3}
+              required
+            />
+          </label>
+          <label>
+            Notes
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              rows={3}
+            />
+          </label>
+          <button type="submit" disabled={!session || loading}>
+            {loading
+              ? "Saving…"
+              : `Record ${receivablePaymentMethod.toLowerCase()} payment`}
+          </button>
+        </form>
+      ) : null}
+
       {tab === "void" && voidsOn ? (
         <form className="erp-write-form" onSubmit={handleVoidSubmit}>
           <label>
@@ -790,6 +980,15 @@ export function NewTransactionPage() {
           <p className="erp-muted">
             Purchase #{purchaseResult.purchase_id}
             {purchaseResult.payable_id ? ` · payable #${purchaseResult.payable_id}` : ""}
+          </p>
+        </article>
+      ) : null}
+      {receivableResult ? (
+        <article className="erp-card erp-write-result">
+          <h2>Payment recorded</h2>
+          <p>{receivableResult.message}</p>
+          <p className="erp-muted">
+            Sale #{receivableResult.sale_id} · payment #{receivableResult.payment_id}
           </p>
         </article>
       ) : null}
