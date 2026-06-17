@@ -425,6 +425,14 @@ from models import (
 
 from services import posting as posting_service
 from services import commit_modes as _commit_modes
+from services.posting_boundary import (
+    posting_boundary_scope,
+    recon_boundary_scope,
+    void_boundary_scope,
+)
+# Back-compat aliases for characterization tests (FASTAPI-REACT-01; same objects).
+_recon_boundary_scope = recon_boundary_scope
+_void_boundary_scope = void_boundary_scope
 from services.unit_of_work import boundary_commit_scope, boundary_depth
 from services import user_access as _user_access_svc
 from services.context import RequestContext, build_request_context
@@ -1648,22 +1656,6 @@ def log_audit(session, action, entity_type, entity_id, description):
     )
 
 
-def _recon_boundary_scope(session):
-    """One boundary commit for reconciliation poster + audit (FASTAPI-P0.5d-S7)."""
-    family = _commit_modes.RECONCILIATION_FAMILY
-    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
-        return boundary_commit_scope(session, family)
-    return nullcontext()
-
-
-def _void_boundary_scope(session):
-    """One boundary commit for void cascade + audit (FASTAPI-P0.5d-S8)."""
-    family = _commit_modes.VOID_CASCADE_FAMILY
-    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
-        return boundary_commit_scope(session, family)
-    return nullcontext()
-
-
 def _entry_date_posting_blocked(
     session, entry_date, *, reference_type: str = "Expense"
 ) -> str | None:
@@ -1695,7 +1687,9 @@ def create_journal_entry(session, entry_date, description, reference_type, refer
     return posting_service.create_journal_entry(
         session, entry_date, description, reference_type, reference_id, lines,
         currency=currency, fx_rate=fx_rate,
-        company_id=company_id or _current_company_id(),
+        company_id=posting_service.resolve_company_id_for_posting(
+            company_id, _current_company_id()
+        ),
     )
 
 
@@ -2110,7 +2104,7 @@ def void_sale(session, sale_id, void_reason):
             )
         return ok
 
-    with _void_boundary_scope(session):
+    with void_boundary_scope(session):
         return _run()
 
 
@@ -2128,7 +2122,7 @@ def void_expense(session, expense_id, void_reason):
             )
         return ok
 
-    with _void_boundary_scope(session):
+    with void_boundary_scope(session):
         return _run()
 
 
@@ -2146,7 +2140,7 @@ def void_purchase(session, purchase_id, void_reason):
             )
         return ok
 
-    with _void_boundary_scope(session):
+    with void_boundary_scope(session):
         return _run()
 
 
@@ -2240,7 +2234,7 @@ def void_payable(session, payable_id, void_reason):
             )
         return ok
 
-    with _void_boundary_scope(session):
+    with void_boundary_scope(session):
         return _run()
 
 
@@ -2258,7 +2252,7 @@ def void_bank_transaction(session, txn_id, void_reason):
             )
         return ok
 
-    with _void_boundary_scope(session):
+    with void_boundary_scope(session):
         return _run()
 
 
@@ -2274,7 +2268,7 @@ def void_inventory_transaction(session, txn_id, void_reason):
             )
         return ok
 
-    with _void_boundary_scope(session):
+    with void_boundary_scope(session):
         return _run()
 
 
@@ -4822,37 +4816,24 @@ def post_receivable_payment(session, sale_id, payment_amount, payment_date,
                             payment_method="Cash", currency=None, payment_fx_rate: float = 1.0):
     """PS-P5-1 compatibility shim — kernel lives in services/posting.py."""
     family = _commit_modes.POST_RECEIVABLE_PAYMENT_FAMILY
-    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
-        with boundary_commit_scope(session, family):
-            return posting_service.post_receivable_payment(
-                session, sale_id, payment_amount, payment_date,
-                payment_method=payment_method, currency=currency,
-                payment_fx_rate=payment_fx_rate,
-                company_id=_current_company_id(),
-            )
-    return posting_service.post_receivable_payment(
-        session, sale_id, payment_amount, payment_date,
-        payment_method=payment_method, currency=currency,
-        payment_fx_rate=payment_fx_rate,
-        company_id=_current_company_id(),
-    )
+    with posting_boundary_scope(session, family):
+        return posting_service.post_receivable_payment(
+            session, sale_id, payment_amount, payment_date,
+            payment_method=payment_method, currency=currency,
+            payment_fx_rate=payment_fx_rate,
+            company_id=_current_company_id(),
+        )
 
 
 def post_cash_sale(session, sale_id, amount, sale_date, currency=None, fx_rate=1.0):
     """PS-P2a compatibility shim — kernel lives in services/posting.py."""
     family = _commit_modes.POST_CASH_SALE_FAMILY
-    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
-        with boundary_commit_scope(session, family):
-            return posting_service.post_cash_sale(
-                session, sale_id, amount, sale_date,
-                currency=currency, fx_rate=fx_rate,
-                company_id=_current_company_id(),
-            )
-    return posting_service.post_cash_sale(
-        session, sale_id, amount, sale_date,
-        currency=currency, fx_rate=fx_rate,
-        company_id=_current_company_id(),
-    )
+    with posting_boundary_scope(session, family):
+        return posting_service.post_cash_sale(
+            session, sale_id, amount, sale_date,
+            currency=currency, fx_rate=fx_rate,
+            company_id=_current_company_id(),
+        )
 
 
 def _card_settlement_on(session) -> bool:
@@ -5688,42 +5669,27 @@ def post_purchase(session, purchase_id, amount, purchase_date, purchase_type="Cr
                   credit_card_account_id=None):
     """PS-P2c-3 compatibility shim — kernel lives in services/posting.py."""
     family = _commit_modes.POST_PURCHASE_FAMILY
-    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
-        with boundary_commit_scope(session, family):
-            return posting_service.post_purchase(
-                session, purchase_id, amount, purchase_date,
-                purchase_type=purchase_type, gl_debit=gl_debit,
-                currency=currency, fx_rate=fx_rate,
-                credit_card_account_id=credit_card_account_id,
-                company_id=_current_company_id(),
-            )
-    return posting_service.post_purchase(
-        session, purchase_id, amount, purchase_date,
-        purchase_type=purchase_type, gl_debit=gl_debit,
-        currency=currency, fx_rate=fx_rate,
-        credit_card_account_id=credit_card_account_id,
-        company_id=_current_company_id(),
-    )
+    with posting_boundary_scope(session, family):
+        return posting_service.post_purchase(
+            session, purchase_id, amount, purchase_date,
+            purchase_type=purchase_type, gl_debit=gl_debit,
+            currency=currency, fx_rate=fx_rate,
+            credit_card_account_id=credit_card_account_id,
+            company_id=_current_company_id(),
+        )
 
 
 def post_expense(session, expense_id, amount, expense_date, category, payment_method="Cash", currency=None,
                  credit_card_account_id=None):
     """PS-P2c-2 compatibility shim — kernel lives in services/posting.py."""
     family = _commit_modes.POST_EXPENSE_FAMILY
-    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
-        with boundary_commit_scope(session, family):
-            return posting_service.post_expense(
-                session, expense_id, amount, expense_date, category,
-                payment_method=payment_method, currency=currency,
-                credit_card_account_id=credit_card_account_id,
-                company_id=_current_company_id(),
-            )
-    return posting_service.post_expense(
-        session, expense_id, amount, expense_date, category,
-        payment_method=payment_method, currency=currency,
-        credit_card_account_id=credit_card_account_id,
-        company_id=_current_company_id(),
-    )
+    with posting_boundary_scope(session, family):
+        return posting_service.post_expense(
+            session, expense_id, amount, expense_date, category,
+            payment_method=payment_method, currency=currency,
+            credit_card_account_id=credit_card_account_id,
+            company_id=_current_company_id(),
+        )
 
 
 def post_salary(session, salary_id, amount, salary_date, currency=None):
@@ -5757,20 +5723,13 @@ def post_payable_payment(session, payable_id, amount, date, payment_method="Cash
                          credit_card_account_id=None):
     """PS-P2c-2 compatibility shim — kernel lives in services/posting.py."""
     family = _commit_modes.POST_PAYABLE_PAYMENT_FAMILY
-    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
-        with boundary_commit_scope(session, family):
-            return posting_service.post_payable_payment(
-                session, payable_id, amount, date,
-                payment_method=payment_method, currency=currency,
-                credit_card_account_id=credit_card_account_id,
-                company_id=_current_company_id(),
-            )
-    return posting_service.post_payable_payment(
-        session, payable_id, amount, date,
-        payment_method=payment_method, currency=currency,
-        credit_card_account_id=credit_card_account_id,
-        company_id=_current_company_id(),
-    )
+    with posting_boundary_scope(session, family):
+        return posting_service.post_payable_payment(
+            session, payable_id, amount, date,
+            payment_method=payment_method, currency=currency,
+            credit_card_account_id=credit_card_account_id,
+            company_id=_current_company_id(),
+        )
 
 
 def payable_payment_already_posted(session, payable_id):
@@ -5793,35 +5752,23 @@ def post_bank_transfer(session, txn_id, amount, txn_date, src_name, dest_name):
 def post_capital_contribution(session, btxn_id, amount, date, gl_name, currency=None, notes=""):
     """PS-P5-3 compatibility shim — kernel lives in services/posting.py."""
     family = _commit_modes.POST_EQUITY_MOVEMENT_FAMILY
-    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
-        with boundary_commit_scope(session, family):
-            return posting_service.post_capital_contribution(
-                session, btxn_id, amount, date, gl_name,
-                currency=currency, notes=notes,
-                company_id=_current_company_id(),
-            )
-    return posting_service.post_capital_contribution(
-        session, btxn_id, amount, date, gl_name,
-        currency=currency, notes=notes,
-        company_id=_current_company_id(),
-    )
+    with posting_boundary_scope(session, family):
+        return posting_service.post_capital_contribution(
+            session, btxn_id, amount, date, gl_name,
+            currency=currency, notes=notes,
+            company_id=_current_company_id(),
+        )
 
 
 def post_owner_drawing(session, btxn_id, amount, date, gl_name, currency=None, notes=""):
     """PS-P5-3 compatibility shim — kernel lives in services/posting.py."""
     family = _commit_modes.POST_EQUITY_MOVEMENT_FAMILY
-    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
-        with boundary_commit_scope(session, family):
-            return posting_service.post_owner_drawing(
-                session, btxn_id, amount, date, gl_name,
-                currency=currency, notes=notes,
-                company_id=_current_company_id(),
-            )
-    return posting_service.post_owner_drawing(
-        session, btxn_id, amount, date, gl_name,
-        currency=currency, notes=notes,
-        company_id=_current_company_id(),
-    )
+    with posting_boundary_scope(session, family):
+        return posting_service.post_owner_drawing(
+            session, btxn_id, amount, date, gl_name,
+            currency=currency, notes=notes,
+            company_id=_current_company_id(),
+        )
 
 
 def void_equity_movement(session, ref_type, btxn_id, void_reason):
@@ -5836,7 +5783,7 @@ def void_equity_movement(session, ref_type, btxn_id, void_reason):
             f"Voided {ref_type} #{btxn_id}: {void_reason}",
         )
 
-    with _void_boundary_scope(session):
+    with void_boundary_scope(session):
         _run()
 
 
@@ -6106,7 +6053,7 @@ def void_reconciliation(session, reconciliation_id: int, owner_id: int,
             )
         return err
 
-    with _void_boundary_scope(session):
+    with void_boundary_scope(session):
         return _run()
 
 
@@ -6300,7 +6247,7 @@ def void_eod_close(session, close_id: int, owner_id: int, reason: str) -> str:
             )
         return err
 
-    with _void_boundary_scope(session):
+    with void_boundary_scope(session):
         return _run()
 
 
@@ -6406,10 +6353,8 @@ def post_partner_movement(session, partner_id: int, movement_type: str, amount: 
             )
         return movement_id, err
 
-    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
-        with boundary_commit_scope(session, family):
-            return _run()
-    return _run()
+    with posting_boundary_scope(session, family):
+        return _run()
 
 
 def void_partner_movement(session, movement_id: int, voider_id: int, reason: str) -> str:
@@ -6436,7 +6381,7 @@ def void_partner_movement(session, movement_id: int, voider_id: int, reason: str
             )
         return err
 
-    with _void_boundary_scope(session):
+    with void_boundary_scope(session):
         return _run()
 
 
@@ -7313,10 +7258,8 @@ def post_worker_movement(
             )
         return movement_id, err
 
-    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
-        with boundary_commit_scope(session, family):
-            return _run()
-    return _run()
+    with posting_boundary_scope(session, family):
+        return _run()
 
 
 def void_worker_movement(session, movement_id: int, voider_id: int, reason: str) -> str:
@@ -7343,7 +7286,7 @@ def void_worker_movement(session, movement_id: int, voider_id: int, reason: str)
             )
         return err
 
-    with _void_boundary_scope(session):
+    with void_boundary_scope(session):
         return _run()
 
 
@@ -7389,10 +7332,8 @@ def allocate_profit_to_partners(session, period_id: int, allocated_by_id: int,
             )
         return alloc_id, err
 
-    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
-        with boundary_commit_scope(session, family):
-            return _run()
-    return _run()
+    with posting_boundary_scope(session, family):
+        return _run()
 
 
 def void_profit_allocation(session, allocation_id: int, voider_id: int, reason: str) -> str:
@@ -7418,7 +7359,7 @@ def void_profit_allocation(session, allocation_id: int, voider_id: int, reason: 
             )
         return err
 
-    with _void_boundary_scope(session):
+    with void_boundary_scope(session):
         return _run()
 
 
@@ -7476,10 +7417,8 @@ def perform_year_end_close(
             )
         return yec_id, warnings, err
 
-    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
-        with boundary_commit_scope(session, family):
-            return _run()
-    return _run()
+    with posting_boundary_scope(session, family):
+        return _run()
 
 
 def void_year_end_close(
@@ -7878,10 +7817,8 @@ def close_fiscal_period(session, period_id):
         )
         return je
 
-    if _commit_modes.is_boundary_mode(family) and boundary_depth() == 0:
-        with boundary_commit_scope(session, family):
-            return _run()
-    return _run()
+    with posting_boundary_scope(session, family):
+        return _run()
 
 
 def render_year_end_close(session):
@@ -16960,7 +16897,7 @@ def _bsi_execute_bank_fee_batch_post(
             )
             continue
         try:
-            with _recon_boundary_scope(session):
+            with recon_boundary_scope(session):
                 result = post_bank_charge_outflow(
                     session,
                     row_id=row_id,
@@ -17271,7 +17208,7 @@ def _render_bsi_deposit_clearing(session, sel_row, cid: int) -> None:
     ):
         uid = (_current_user() or {}).get("id")
         try:
-            with _recon_boundary_scope(session):
+            with recon_boundary_scope(session):
                 post_deposit_clearing_match(
                     session,
                     row_id=sel_row.id,
@@ -17328,7 +17265,7 @@ def _render_bsi_other_deposit(session, sel_row, cid: int) -> None:
     ):
         uid = (_current_user() or {}).get("id")
         try:
-            with _recon_boundary_scope(session):
+            with recon_boundary_scope(session):
                 post_generic_deposit(
                     session,
                     row_id=sel_row.id,
@@ -17480,7 +17417,7 @@ def _render_bsi_vendor_payment(session, sel_row, cid: int) -> None:
     ):
         uid = (_current_user() or {}).get("id")
         try:
-            with _recon_boundary_scope(session):
+            with recon_boundary_scope(session):
                 post_vendor_outflow(
                     session,
                     row_id=sel_row.id,
@@ -17588,7 +17525,7 @@ def _render_bsi_worker_payroll(session, sel_row, cid: int) -> None:
                 if not gross or gross <= 0:
                     st.error(_t("form.amount_positive"))
                 else:
-                    with _recon_boundary_scope(session):
+                    with recon_boundary_scope(session):
                         post_worker_statement_match(
                             session,
                             row_id=sel_row.id,
@@ -17616,7 +17553,7 @@ def _render_bsi_worker_payroll(session, sel_row, cid: int) -> None:
                     )
                     st.rerun()
             else:
-                with _recon_boundary_scope(session):
+                with recon_boundary_scope(session):
                     post_worker_statement_match(
                         session,
                         row_id=sel_row.id,
@@ -17671,7 +17608,7 @@ def _render_bsi_bank_fee(session, sel_row, cid: int) -> None:
     ):
         uid = (_current_user() or {}).get("id")
         try:
-            with _recon_boundary_scope(session):
+            with recon_boundary_scope(session):
                 post_bank_charge_outflow(
                     session,
                     row_id=sel_row.id,
@@ -17753,7 +17690,7 @@ def _render_bsi_partner_owner_loan_match(
             ):
                 uid = (_current_user() or {}).get("id")
                 try:
-                    with _recon_boundary_scope(session):
+                    with recon_boundary_scope(session):
                         post_partner_statement_match(
                             session,
                             row_id=sel_row.id,
@@ -17812,7 +17749,7 @@ def _render_bsi_partner_owner_loan_match(
         ):
             uid = (_current_user() or {}).get("id")
             try:
-                with _recon_boundary_scope(session):
+                with recon_boundary_scope(session):
                     post_equity_statement_match(
                         session,
                         row_id=sel_row.id,
@@ -17853,7 +17790,7 @@ def _render_bsi_partner_owner_loan_match(
     ):
         uid = (_current_user() or {}).get("id")
         try:
-            with _recon_boundary_scope(session):
+            with recon_boundary_scope(session):
                 post_equity_statement_match(
                     session,
                     row_id=sel_row.id,
@@ -18451,7 +18388,7 @@ def render_bank_statement_import(session, *, embedded: bool = False):
                     else:
                         try:
                             _u = _current_user()
-                            with _void_boundary_scope(session):
+                            with void_boundary_scope(session):
                                 void_credit_card_bill_payment(
                                     session,
                                     void_row_id,

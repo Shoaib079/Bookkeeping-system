@@ -282,7 +282,7 @@ docker-compose down
 | **RECIPE-COSTING-01** | ✅ **RC-P1–P2A complete** · 📋 **RC-P2B–P3 pending** · 🔮 **RC-AI-01 optional (future)** — ingredient/recipe costing + menu profitability basics; see [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-RC-*) |
 | **USER-ACCESS-01** | ✅ **UA-P1 complete** · 📋 **UA-P1b pending** — permission override service + effective resolver; see [docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-UA-*) |
 | **STAFF-CAPTURE-01** | ✅ **SC-P1 complete** · ✅ **SC-P1b complete** · 📋 **SC-P2 pending** · 📋 **SC-P3 pending** — expense draft service + thin Streamlit UI (submit · receipts · inbox); see [docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md](./docs/USER_ACCESS_STAFF_CAPTURE_SPEC.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) (TD-SC-*) |
-| **POSTING-SERVICE-01** | ✅ **Complete** — PS-P0–P6-5; `services/posting.py` + app shims; **PS-P7 hardening deferred, not a blocker** · [POSTING_SERVICE_01_STATUS](./docs/POSTING_SERVICE_01_STATUS.md) |
+| **POSTING-SERVICE-01** | ✅ **Complete** — PS-P0–P6-5 + **FASTAPI-REACT-01** (PS-P7 boundary); TD-PS-01/03 deferred, **not a blocker** · [POSTING_SERVICE_01_STATUS](./docs/POSTING_SERVICE_01_STATUS.md) |
 | **REPORTS-SERVICE-01** | 🟡 **Partial** — query/read layer in `services/read_*`; Streamlit presentation (`render_*`, trial balance loop) remains in `app.py` until React |
 | **BANKING-SERVICE-01** | 🟡 **Partial** — `write_banking` + `write_reconciliation` + `read_reconciliation` shipped; **BS-02 ✅** · **BS-04 ✅** · `match_post` / `company_card` `_app()` coupling remains · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) |
 | **FastAPI foundation** | 🟡 **Partial (strong)** — P0/P1/P2 routes + 38+ `test_fastapi_*` files; writes feature-flagged; Streamlit primary; **not production-complete** |
@@ -354,7 +354,7 @@ docker-compose down
 
 | Task | Status |
 |------|--------|
-| **POSTING-SERVICE-01** | ✅ Complete — kernel in `services/posting.py`; app shims; PS-P7 deferred, not blocker |
+| **POSTING-SERVICE-01** | ✅ Complete — kernel in `services/posting.py`; app shims; FASTAPI-REACT-01 boundary hardening complete |
 | **REPORTS-SERVICE-01** | 🟡 Partial — `services/read_*` computes; Streamlit `render_*` until React |
 | **BANKING-SERVICE-01** | 🟡 Partial — `write_banking` + `write_reconciliation`; **BS-03 ✅** · **BS-04 ✅**; `match_post`/`company_card` other `_app()` debt |
 | **AUTH-SESSION-02** | 🟡 Partial — IMPL-1/2/3 ✅; remember-device/revocation open |
@@ -1398,10 +1398,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | Slice | Scope | Status |
 |-------|--------|--------|
 | **FASTAPI-REACT-00** | Baseline audit — FastAPI partial, React not started, contracts inventory | ✅ **Complete** |
-| **FASTAPI-REACT-01** | PS-P7 posting boundary hardening | 📋 Planned |
+| **FASTAPI-REACT-01** | PS-P7 posting boundary hardening | ✅ **Complete** |
 | **FASTAPI-REACT-02+** | Auth spine, API hardening, React bootstrap (see audit §6) | 📋 Planned |
 
-**Next slice:** **FASTAPI-REACT-01** — posting boundary hardening (when approved).
+**Audit:** [FASTAPI_REACT_01_POSTING_BOUNDARY_AUDIT.md](./docs/FASTAPI_REACT_01_POSTING_BOUNDARY_AUDIT.md) · **Tests:** `tests/test_fastapi_react_01_posting_boundary.py` · **Tag:** `fastapi-react-01-posting-boundary-hardening`
+
+**Next slice:** **FASTAPI-REACT-02** — API write hardening / explicit `company_id` (see FASTAPI-REACT-01 audit §7).
 
 ---
 
@@ -3156,7 +3158,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § FUTURE-MIGRATION-AUDIT-01](./do
 #### POSTING-SERVICE-01 — Keystone migration task
 
 **Priority:** Critical (migration prep) — **complete**  
-**Status:** ✅ **Complete** (PS-P0 through PS-P6-5; PS-P7 hardening deferred). Source of truth: [POSTING_SERVICE_01_STATUS.md](./docs/POSTING_SERVICE_01_STATUS.md).
+**Status:** ✅ **Complete** (PS-P0 through PS-P6-5; FASTAPI-REACT-01 boundary hardening). Source of truth: [POSTING_SERVICE_01_STATUS.md](./docs/POSTING_SERVICE_01_STATUS.md).
 
 Extract the accounting posting engine from `app.py` into a reusable service (`services/posting.py`):
 
@@ -3166,7 +3168,7 @@ Extract the accounting posting engine from `app.py` into a reusable service (`se
 - Convenience wrappers (`post_cash_sale`, `post_purchase`, `post_expense`, …) — **shipped**
 - Streamlit and FastAPI both call the same module; Staff Capture `post_fn` wires here (TD-SC-01) — **shipped**
 
-**Deferred:** PS-P7 — commit ownership (TD-PS-01), DTO cleanup (TD-PS-03), reconciliation `_app()` imports (TD-POSTING-06).
+**Deferred (post-boundary):** TD-PS-01 commit ownership, TD-PS-03 DTO route adapters, TD-POSTING-06 reconciliation `_app()` imports — see [FASTAPI_REACT_01_POSTING_BOUNDARY_AUDIT.md](./docs/FASTAPI_REACT_01_POSTING_BOUNDARY_AUDIT.md).
 
 **Gate:** Contract tests against existing posting tests; zero GL behaviour change — **met** (`tests/test_posting_service01_*.py`).
 
@@ -3492,6 +3494,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-01 (closure)** — PS-P7 posting boundary hardening: `services/posting_boundary.py`, additive DTO helpers, app shim dedup; `docs/FASTAPI_REACT_01_POSTING_BOUNDARY_AUDIT.md` + `tests/test_fastapi_react_01_posting_boundary.py`. No accounting behavior change. Tag: `fastapi-react-01-posting-boundary-hardening`. Next: **FASTAPI-REACT-02**. |
 | 2026-06-05 | **FASTAPI-REACT-00 (closure)** — Migration baseline audit: FastAPI partial, React not started, frozen contracts inventory, blocker matrix, FASTAPI-REACT-01+ slice plan; `docs/FASTAPI_REACT_00_AUDIT.md` + `tests/test_fastapi_react_00_audit.py`. Audit only. Next: **FASTAPI-REACT-01** (posting boundary hardening). |
 | 2026-06-05 | **MONO-THEME-02 (epic closure)** — S0–S5 complete; epic matrix `tests/test_mono_theme_02_epic_matrix.py`; implementation audit updated. Tags: `mono-theme-02-s0` through `mono-theme-02-s5`. |
 | 2026-06-05 | **MONO-THEME-02-S5 (closure)** — Mobile parity: removed widgets mob_bar/hub override drift, mobile KPI chips + tables use `--erp-card-*`/`--erp-table-*`, hub sheet card radius; `tests/test_mono_theme_02_s5_mobile_parity.py`. Tag: `mono-theme-02-s5-mobile-parity`. **MONO-THEME-02 epic complete.** |

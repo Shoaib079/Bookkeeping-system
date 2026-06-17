@@ -705,6 +705,43 @@ def create_journal_entry(
     return entry
 
 
+def resolve_company_id_for_posting(
+    company_id: int | None,
+    ambient_company_id: int | None,
+) -> int | None:
+    """Explicit ``company_id`` wins; else ambient caller context (TD-PS-07 API gap)."""
+    return company_id if company_id is not None else ambient_company_id
+
+
+def create_journal_entry_result(
+    session,
+    entry_date,
+    description,
+    reference_type,
+    reference_id,
+    lines,
+    currency: str = None,
+    fx_rate: float = 1.0,
+    *,
+    company_id: int | None = None,
+    commit_family: str | None = None,
+) -> PostingResult:
+    """Additive DTO wrapper — ``create_journal_entry`` ORM return path unchanged."""
+    entry = create_journal_entry(
+        session,
+        entry_date,
+        description,
+        reference_type,
+        reference_id,
+        lines,
+        currency=currency,
+        fx_rate=fx_rate,
+        company_id=company_id,
+        commit_family=commit_family,
+    )
+    return posting_result_from_entry(session, entry, currency=currency)
+
+
 def get_account_by_name(session, name, currency=None, *, company_id: int | None = None):
     """Get a GL account by name, optionally filtered by currency (Step 3.1).
 

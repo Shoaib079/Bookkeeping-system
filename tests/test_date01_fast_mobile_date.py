@@ -179,7 +179,10 @@ def test_entry_date_posting_blocked_matches_journal_guard(db):
     assert "posting_service.entry_date_posting_blocked(" in guard_src
     assert "company_id=_current_company_id()" in guard_src
     assert "posting_service.create_journal_entry(" in je_src
-    assert "company_id=company_id or _current_company_id()" in je_src
+    assert (
+        "company_id=company_id or _current_company_id()" in je_src
+        or "resolve_company_id_for_posting" in je_src
+    )
     posting_src = (Path(__file__).resolve().parents[1] / "services" / "posting.py").read_text(
         encoding="utf-8"
     )
