@@ -99,6 +99,6 @@ def test_roadmap_lists_fastapi_react_11_complete():
     assert "fastapi-react-11-react-write-void" in roadmap
 
 
-@pytest.mark.parametrize("item", contract.DEFERRED_ITEMS)
+@pytest.mark.parametrize("item", contract.FR11_DEFERRED_ITEMS)
 def test_audit_documents_deferred_items(audit_text, item):
     assert item in audit_text

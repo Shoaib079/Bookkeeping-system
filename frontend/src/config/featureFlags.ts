@@ -14,10 +14,15 @@ export function reactWriteVoidsEnabled(): boolean {
   return import.meta.env.VITE_ERP_REACT_WRITE_VOIDS === "1";
 }
 
+export function reactWritePurchasesEnabled(): boolean {
+  return import.meta.env.VITE_ERP_REACT_WRITE_PURCHASES === "1";
+}
+
 export function reactWriteEnabled(): boolean {
   return (
     reactWriteSalesEnabled() ||
     reactWriteExpensesEnabled() ||
-    reactWriteVoidsEnabled()
+    reactWriteVoidsEnabled() ||
+    reactWritePurchasesEnabled()
   );
 }

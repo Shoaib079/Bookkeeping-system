@@ -16,9 +16,11 @@ READ_PAGES_FLAG_ENV: Final[str] = "VITE_ERP_REACT_PAGES"
 WRITE_SALES_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_SALES"
 WRITE_EXPENSES_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_EXPENSES"
 WRITE_VOIDS_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_VOIDS"
+WRITE_PURCHASES_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_PURCHASES"
 API_WRITE_SALES_ENV: Final[str] = "ERP_API_WRITE_SALES"
 API_WRITE_EXPENSES_ENV: Final[str] = "ERP_API_WRITE_EXPENSES"
 API_WRITE_VOIDS_ENV: Final[str] = "ERP_API_WRITE_VOIDS"
+API_WRITE_PURCHASES_ENV: Final[str] = "ERP_API_WRITE_PURCHASES"
 
 # (react_path, page_component, page_key)
 WRITE_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
@@ -37,6 +39,10 @@ VOID_WRITE_API_PATHS: tuple[str, ...] = (
     "/api/v1/voids",
 )
 
+PURCHASE_WRITE_API_PATHS: tuple[str, ...] = (
+    "/api/v1/purchases",
+)
+
 VOID_TARGET_TYPES: tuple[str, ...] = (
     "Sale",
     "ExpenseRecord",
@@ -49,6 +55,7 @@ WRITE_CLIENT_MODULE: Final[str] = "frontend/src/lib/api/writeClient.ts"
 P2_SALES_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_sales_write.py"
 P2_EXPENSE_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_expense_write.py"
 P2_VOID_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_void_write.py"
+P2_PURCHASE_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_purchase_write.py"
 
 REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/config/featureFlags.ts",
@@ -59,6 +66,7 @@ REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
 # FR-08 cash only; FR-09 cash expense; FR-10 adds Card/Credit + Bank.
 ALLOWED_SALE_PAYMENT_METHODS: tuple[str, ...] = ("Cash", "Card", "Credit")
 ALLOWED_EXPENSE_PAYMENT_METHODS: tuple[str, ...] = ("Cash", "Bank")
+ALLOWED_PURCHASE_PAYMENT_METHODS: tuple[str, ...] = ("Cash", "Bank", "Credit")
 
 SALE_PAYMENT_OPTIONAL_FIELDS: tuple[str, ...] = (
     "customer_name",
@@ -66,6 +74,13 @@ SALE_PAYMENT_OPTIONAL_FIELDS: tuple[str, ...] = (
 )
 
 EXPENSE_PAYMENT_OPTIONAL_FIELDS: tuple[str, ...] = (
+    "bank_account_id",
+)
+
+PURCHASE_PAYMENT_OPTIONAL_FIELDS: tuple[str, ...] = (
+    "vendor_name",
+    "category_name",
+    "subcategory_name",
     "bank_account_id",
 )
 
@@ -108,9 +123,18 @@ FR10_DEFERRED_ITEMS: tuple[str, ...] = (
     "production COMMIT_MODE_* flip",
 )
 
-DEFERRED_ITEMS: tuple[str, ...] = (
+# Frozen for FR-11 audit tests (do not mutate).
+FR11_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-12",
     "purchase write page",
     "receivable payment write",
+    "production COMMIT_MODE_* flip",
+)
+
+DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-13",
+    "receivable payment write",
+    "bank account picker",
+    "vendor picker",
     "production COMMIT_MODE_* flip",
 )

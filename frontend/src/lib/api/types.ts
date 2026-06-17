@@ -110,3 +110,23 @@ export type VoidResponse = {
   message: string;
   status: string;
 };
+
+export type CreatePurchaseRequest = {
+  date: string;
+  amount: number;
+  currency: string;
+  payment_method: "Cash" | "Bank" | "Credit";
+  notes?: string;
+  vendor_name: string;
+  category_name: string;
+  subcategory_name?: string;
+  bank_account_id?: number;
+};
+
+export type CreatePurchaseResponse = {
+  purchase_id: number;
+  payable_id: number | null;
+  journal_entry_id: number | null;
+  message: string;
+  status: string;
+};

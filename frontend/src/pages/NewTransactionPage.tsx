@@ -4,6 +4,7 @@ import { ReadApiSetup } from "../components/ReadApiSetup";
 import {
   reactWriteEnabled,
   reactWriteExpensesEnabled,
+  reactWritePurchasesEnabled,
   reactWriteSalesEnabled,
   reactWriteVoidsEnabled,
 } from "../config/featureFlags";
@@ -11,20 +12,25 @@ import type { ApiError } from "../lib/api/client";
 import { getReadSession } from "../lib/api/session";
 import type {
   CreateExpenseResponse,
+  CreatePurchaseResponse,
   CreateSaleResponse,
   VoidResponse,
   VoidTargetType,
 } from "../lib/api/types";
 import { apiPost } from "../lib/api/writeClient";
 
-type WriteTab = "sale" | "expense" | "void";
+type WriteTab = "sale" | "expense" | "void" | "purchase";
 type SalePaymentMethod = "Cash" | "Card" | "Credit";
 type ExpensePaymentMethod = "Cash" | "Bank";
+type PurchasePaymentMethod = "Cash" | "Bank" | "Credit";
 
 const CREDIT_CUSTOMER_MSG =
   "Enter a customer name for on-account (credit) sales.";
 
 const VOID_REASON_MSG = "Void reason is required.";
+const VENDOR_REQUIRED_MSG = "Select a vendor before saving a purchase.";
+const CATEGORY_REQUIRED_MSG = "Select a category before saving";
+const PURCHASE_BANK_MSG = "No bank account selected.";
 
 function todayIso(): string {
   const now = new Date();
@@ -52,7 +58,14 @@ export function NewTransactionPage() {
   const salesOn = reactWriteSalesEnabled();
   const expensesOn = reactWriteExpensesEnabled();
   const voidsOn = reactWriteVoidsEnabled();
-  const defaultTab: WriteTab = salesOn ? "sale" : expensesOn ? "expense" : "void";
+  const purchasesOn = reactWritePurchasesEnabled();
+  const defaultTab: WriteTab = salesOn
+    ? "sale"
+    : expensesOn
+      ? "expense"
+      : purchasesOn
+        ? "purchase"
+        : "void";
 
   const [sessionTick, setSessionTick] = useState(0);
   const session = useMemo(() => getReadSession(), [sessionTick]);
@@ -80,6 +93,16 @@ export function NewTransactionPage() {
   const [voidTargetId, setVoidTargetId] = useState("");
   const [voidReason, setVoidReason] = useState("");
   const [voidResult, setVoidResult] = useState<VoidResponse | null>(null);
+  const [purchasePaymentMethod, setPurchasePaymentMethod] =
+    useState<PurchasePaymentMethod>("Cash");
+  const [vendorName, setVendorName] = useState("Acme Supplies");
+  const [purchaseCategoryName, setPurchaseCategoryName] = useState("Inventory");
+  const [purchaseSubcategoryName, setPurchaseSubcategoryName] =
+    useState("General Stock");
+  const [purchaseBankAccountId, setPurchaseBankAccountId] = useState("");
+  const [purchaseResult, setPurchaseResult] = useState<CreatePurchaseResponse | null>(
+    null,
+  );
 
   if (!reactWriteEnabled()) {
     return (
@@ -87,7 +110,8 @@ export function NewTransactionPage() {
         <h1>New Transaction</h1>
         <p>
           Write UI disabled. Set <code>VITE_ERP_REACT_WRITE_SALES=1</code>,{" "}
-          <code>VITE_ERP_REACT_WRITE_EXPENSES=1</code>, and/or{" "}
+          <code>VITE_ERP_REACT_WRITE_EXPENSES=1</code>,{" "}
+          <code>VITE_ERP_REACT_WRITE_PURCHASES=1</code>, and/or{" "}
           <code>VITE_ERP_REACT_WRITE_VOIDS=1</code>.
         </p>
       </section>
@@ -237,6 +261,84 @@ export function NewTransactionPage() {
     }
   }
 
+  async function handlePurchaseSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!session) {
+      setError("Save a read API session before posting.");
+      return;
+    }
+    const parsedAmount = parseAmount(amount);
+    if (parsedAmount === null) {
+      setError("Enter a valid amount greater than zero.");
+      return;
+    }
+    const vendor = vendorName.trim();
+    if (!vendor) {
+      setError(VENDOR_REQUIRED_MSG);
+      return;
+    }
+    const category = purchaseCategoryName.trim();
+    if (!category) {
+      setError(CATEGORY_REQUIRED_MSG);
+      return;
+    }
+    let bankId: number | undefined;
+    if (purchasePaymentMethod === "Bank") {
+      const parsed = parsePositiveInt(purchaseBankAccountId);
+      if (parsed === null) {
+        setError(PURCHASE_BANK_MSG);
+        return;
+      }
+      bankId = parsed;
+    }
+
+    setLoading(true);
+    setError(null);
+    setPurchaseResult(null);
+    try {
+      const body: {
+        date: string;
+        amount: number;
+        currency: string;
+        payment_method: PurchasePaymentMethod;
+        notes: string;
+        vendor_name: string;
+        category_name: string;
+        subcategory_name?: string;
+        bank_account_id?: number;
+      } = {
+        date,
+        amount: parsedAmount,
+        currency,
+        payment_method: purchasePaymentMethod,
+        notes: notes.trim(),
+        vendor_name: vendor,
+        category_name: category,
+      };
+      const sub = purchaseSubcategoryName.trim();
+      if (sub) {
+        body.subcategory_name = sub;
+      }
+      if (purchasePaymentMethod === "Bank" && bankId !== undefined) {
+        body.bank_account_id = bankId;
+      }
+      const response = await apiPost<CreatePurchaseResponse>(
+        "/api/v1/purchases",
+        body,
+        { session },
+      );
+      setPurchaseResult(response);
+      setAmount("");
+      setNotes("");
+      setPurchaseBankAccountId("");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setError(apiErr.detail ?? "Failed to save purchase.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleVoidSubmit(event: FormEvent) {
     event.preventDefault();
     if (!session) {
@@ -284,6 +386,7 @@ export function NewTransactionPage() {
     setSaleResult(null);
     setExpenseResult(null);
     setVoidResult(null);
+    setPurchaseResult(null);
   }
 
   return (
@@ -328,6 +431,17 @@ export function NewTransactionPage() {
             onClick={() => switchTab("void")}
           >
             Void
+          </button>
+        ) : null}
+        {purchasesOn ? (
+          <button
+            type="button"
+            className={
+              tab === "purchase" ? "erp-write-tabs__btn active" : "erp-write-tabs__btn"
+            }
+            onClick={() => switchTab("purchase")}
+          >
+            Purchase
           </button>
         ) : null}
       </nav>
@@ -501,6 +615,103 @@ export function NewTransactionPage() {
         </form>
       ) : null}
 
+      {tab === "purchase" && purchasesOn ? (
+        <form className="erp-write-form" onSubmit={handlePurchaseSubmit}>
+          <label>
+            Payment method
+            <select
+              value={purchasePaymentMethod}
+              onChange={(event) =>
+                setPurchasePaymentMethod(event.target.value as PurchasePaymentMethod)
+              }
+            >
+              <option value="Cash">Cash</option>
+              <option value="Bank">Bank</option>
+              <option value="Credit">Credit</option>
+            </select>
+          </label>
+          {purchasePaymentMethod === "Bank" ? (
+            <label>
+              Bank account id
+              <input
+                type="number"
+                min={1}
+                value={purchaseBankAccountId}
+                onChange={(event) => setPurchaseBankAccountId(event.target.value)}
+                required
+              />
+            </label>
+          ) : null}
+          <label>
+            Vendor name
+            <input
+              type="text"
+              value={vendorName}
+              onChange={(event) => setVendorName(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Date
+            <input
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Amount
+            <input
+              type="text"
+              inputMode="decimal"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              placeholder="0.00"
+              required
+            />
+          </label>
+          <label>
+            Currency
+            <input
+              type="text"
+              value={currency}
+              onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+              maxLength={3}
+              required
+            />
+          </label>
+          <label>
+            Category
+            <input
+              type="text"
+              value={purchaseCategoryName}
+              onChange={(event) => setPurchaseCategoryName(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Subcategory
+            <input
+              type="text"
+              value={purchaseSubcategoryName}
+              onChange={(event) => setPurchaseSubcategoryName(event.target.value)}
+            />
+          </label>
+          <label>
+            Notes
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              rows={3}
+            />
+          </label>
+          <button type="submit" disabled={!session || loading}>
+            {loading ? "Saving…" : `Save ${purchasePaymentMethod.toLowerCase()} purchase`}
+          </button>
+        </form>
+      ) : null}
+
       {tab === "void" && voidsOn ? (
         <form className="erp-write-form" onSubmit={handleVoidSubmit}>
           <label>
@@ -569,6 +780,16 @@ export function NewTransactionPage() {
             {voidResult.reversal_journal_entry_id
               ? ` · reversal JE #${voidResult.reversal_journal_entry_id}`
               : ""}
+          </p>
+        </article>
+      ) : null}
+      {purchaseResult ? (
+        <article className="erp-card erp-write-result">
+          <h2>Purchase saved</h2>
+          <p>{purchaseResult.message}</p>
+          <p className="erp-muted">
+            Purchase #{purchaseResult.purchase_id}
+            {purchaseResult.payable_id ? ` · payable #${purchaseResult.payable_id}` : ""}
           </p>
         </article>
       ) : null}
