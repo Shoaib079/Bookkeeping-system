@@ -267,7 +267,7 @@ Scores reflect **live UI vs this contract** (screenshot review, 2026-06-05). Tar
 |-------|--------|--------|
 | **MONO-THEME-02-S0** | This visual contract (audit only) | ✅ **Complete** |
 | **MONO-THEME-02-S1** | Sidebar polish — desktop sidebar only (`stSidebar` selectors) | ✅ **Complete** |
-| **MONO-THEME-02-S2** | Top bar — compact alignment, softer controls, search prominence | 📋 Planned |
+| **MONO-THEME-02-S2** | Top bar — compact alignment, softer controls, search prominence | ✅ **Complete** |
 | **MONO-THEME-02-S3** | Dashboard + cards — density, KPI grid, activity hierarchy | 📋 Planned |
 | **MONO-THEME-02-S4** | Tables + lists — row density, hover, money alignment | 📋 Planned |
 | **MONO-THEME-02-S5** | Mobile parity — bottom nav, KPI chips, hub sheets | 📋 Planned |
@@ -298,4 +298,4 @@ Scores reflect **live UI vs this contract** (screenshot review, 2026-06-05). Tar
 | [UI_SYSTEM_02_REACT_DESIGN_CONTRACT.md](./UI_SYSTEM_02_REACT_DESIGN_CONTRACT.md) | React token + grammar export |
 | [ROADMAP.md](../ROADMAP.md) | Epic tracking |
 
-*Frozen 2026-06-05. MONO-THEME-02-S0 audit complete. MONO-THEME-02-S1 sidebar polish shipped. Next: **MONO-THEME-02-S2** (top bar).*
+*Frozen 2026-06-05. MONO-THEME-02-S0 audit complete. MONO-THEME-02-S1 sidebar + MONO-THEME-02-S2 top bar shipped. Next: **MONO-THEME-02-S3** (dashboard/cards).*
