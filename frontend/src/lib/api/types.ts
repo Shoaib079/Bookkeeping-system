@@ -26,6 +26,59 @@ export type ProfitLossResponse = {
   is_profit: boolean;
 };
 
+export type CashFlowRow = {
+  date: string;
+  description: string;
+  type: string;
+  inflow: number;
+  outflow: number;
+};
+
+export type CashFlowResponse = {
+  start_date: string;
+  end_date: string;
+  operating_rows: CashFlowRow[];
+  financing_rows: CashFlowRow[];
+  op_in: number;
+  op_out: number;
+  fin_in: number;
+  fin_out: number;
+  net_op: number;
+  net_fin: number;
+  net_total: number;
+  has_cash_accounts: boolean;
+};
+
+export type TransactionHistoryRow = {
+  date: string;
+  type: string;
+  reference: string;
+  party: string;
+  category: string;
+  subcategory: string;
+  amount: number;
+  currency: string;
+  method: string;
+  description: string;
+  status: string;
+  created_by: string;
+  source_type: string;
+  source_id: number;
+  company_id: number;
+};
+
+export type TransactionHistoryResponse = {
+  rows: TransactionHistoryRow[];
+  filters: {
+    start_date: string;
+    end_date: string;
+    search_keyword: string | null;
+    type_filter: string;
+    show_voided: boolean;
+  };
+  row_count: number;
+};
+
 export type BalanceSheetResponse = {
   as_of: string;
   total_assets: number;

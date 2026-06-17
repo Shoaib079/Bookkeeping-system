@@ -15466,161 +15466,25 @@ def _txh_fetch_filtered_rows(
     txh_all: str,
 ) -> list[tuple[dict, str, object]]:
     """Shared query + filter logic — identical rows for mobile and desktop."""
-    rows: list[tuple[dict, str, object]] = []
+    from services import read_transaction_history as _rtxh_svc
 
-    if type_filter in (txh_all, "Sale"):
-        _q = cq(session, Sale).filter(Sale.date.between(start_date, end_date))
-        if not show_voided:
-            _q = _q.filter(Sale.is_void == False)
-        for s in _q.order_by(Sale.date.desc()).all():
-            if not _txh_matches_keyword(
-                keyword,
-                party=s.customer_name,
-                description=s.description or "",
-                txn_type=s.sale_type + " Sale",
-                method=s.sale_type,
-                reference=s.invoice_number,
-                amount=float(s.amount or 0),
-            ):
-                continue
-            cat_label = cat_names_lkp.get(s.tx_category_id, "")
-            sub_label = subcat_names_lkp.get(s.tx_subcategory_id, "")
-            if cat_filter != txh_all and cat_label != cat_filter:
-                continue
-            if subcat_filter != txh_all and sub_label != subcat_filter:
-                continue
-            rows.append(({
-                "Date": s.date, "Type": s.sale_type + " Sale",
-                "Reference": s.invoice_number, "Party": s.customer_name,
-                "Category": cat_label, "Subcategory": sub_label,
-                "Amount": s.amount, "Currency": currency,
-                "Method": s.sale_type, "Description": s.description or "",
-                "Status": "VOID" if s.is_void else s.status,
-                "Created By": _txh_created_by_display(user_lkp, s),
-            }, "Sale", s))
-
-    if type_filter in (txh_all, "Expense"):
-        _q = cq(session, ExpenseRecord).filter(ExpenseRecord.date.between(start_date, end_date))
-        if not show_voided:
-            _q = _q.filter(ExpenseRecord.is_void == False)
-        for e in _q.order_by(ExpenseRecord.date.desc()).all():
-            if method_filter != txh_all and (e.payment_method or "").lower() != method_filter.lower():
-                continue
-            if not _txh_matches_keyword(
-                keyword,
-                party=e.employee_name or "",
-                description=e.description or "",
-                txn_type=e.expense_type or "Expense",
-                method=e.payment_method or "",
-                reference=e.category or "",
-                amount=float(e.amount or 0),
-            ):
-                continue
-            cat_label = cat_names_lkp.get(e.tx_category_id, "")
-            sub_label = subcat_names_lkp.get(e.tx_subcategory_id, "")
-            if cat_filter != txh_all and cat_label != cat_filter:
-                continue
-            if subcat_filter != txh_all and sub_label != subcat_filter:
-                continue
-            rows.append(({
-                "Date": e.date, "Type": e.expense_type or "Expense",
-                "Reference": e.category or "", "Party": e.employee_name or "",
-                "Category": cat_label, "Subcategory": sub_label,
-                "Amount": e.amount, "Currency": currency,
-                "Method": e.payment_method or "", "Description": e.description or "",
-                "Status": "VOID" if e.is_void else "Recorded",
-                "Created By": _txh_created_by_display(user_lkp, e),
-            }, "ExpenseRecord", e))
-
-    if type_filter in (txh_all, "Purchase"):
-        _q = cq(session, Purchase).filter(Purchase.date.between(start_date, end_date))
-        if not show_voided:
-            _q = _q.filter(Purchase.is_void == False)
-        for p in _q.order_by(Purchase.date.desc()).all():
-            _vnd = session.get(Vendor, p.vendor_id)
-            vname = _vnd.name if _vnd else ""
-            if not _txh_matches_keyword(
-                keyword,
-                party=vname,
-                description=p.description or "",
-                txn_type="Purchase",
-                method=p.purchase_type or "Credit",
-                reference=f"PUR#{p.id}",
-                amount=float(p.amount or 0),
-            ):
-                continue
-            cat_label = cat_names_lkp.get(p.tx_category_id, "")
-            sub_label = subcat_names_lkp.get(p.tx_subcategory_id, "")
-            if cat_filter != txh_all and cat_label != cat_filter:
-                continue
-            if subcat_filter != txh_all and sub_label != subcat_filter:
-                continue
-            rows.append(({
-                "Date": p.date, "Type": "Purchase",
-                "Reference": f"PUR#{p.id}", "Party": vname,
-                "Category": cat_label, "Subcategory": sub_label,
-                "Amount": p.amount, "Currency": currency,
-                "Method": p.purchase_type or "Credit", "Description": p.description or "",
-                "Status": "VOID" if p.is_void else "Active",
-                "Created By": _txh_created_by_display(user_lkp, p),
-            }, "Purchase", p))
-
-    if type_filter in (txh_all, "Banking"):
-        _q = cq(session, BankTransaction).filter(BankTransaction.date.between(start_date, end_date))
-        if not show_voided:
-            _q = _q.filter(BankTransaction.is_void == False)
-        for t in _q.order_by(BankTransaction.date.desc()).all():
-            _acct = session.get(BankAccount, t.account_id)
-            if not _txh_matches_keyword(
-                keyword,
-                party=_acct.name if _acct else "",
-                description=t.description or "",
-                txn_type="Bank " + t.type.title(),
-                method="Bank",
-                reference=f"TXN#{t.id}",
-                amount=float(t.amount or 0),
-            ):
-                continue
-            if cat_filter != txh_all:
-                continue
-            rows.append(({
-                "Date": t.date, "Type": "Bank " + t.type.title(),
-                "Reference": f"TXN#{t.id}", "Party": _acct.name if _acct else "",
-                "Category": "", "Subcategory": "",
-                "Amount": t.amount, "Currency": currency,
-                "Method": "Bank", "Description": t.description or "",
-                "Status": "VOID" if t.is_void else "Active",
-            }, "BankTransaction", t))
-
-    if type_filter in (txh_all, "Payable"):
-        _q = cq(session, Payable).filter(Payable.date.between(start_date, end_date))
-        if not show_voided:
-            _q = _q.filter(Payable.is_void == False)
-        for p in _q.order_by(Payable.date.desc()).all():
-            _vnd = session.get(Vendor, p.vendor_id)
-            vname = _vnd.name if _vnd else ""
-            if not _txh_matches_keyword(
-                keyword,
-                party=vname,
-                description=p.description or "",
-                txn_type="Payable",
-                method=p.payment_method or "Credit",
-                reference=f"PAY#{p.id}",
-                amount=float(p.amount or 0),
-            ):
-                continue
-            if cat_filter != txh_all:
-                continue
-            rows.append(({
-                "Date": p.date, "Type": "Payable",
-                "Reference": f"PAY#{p.id}", "Party": vname,
-                "Category": "", "Subcategory": "",
-                "Amount": p.amount, "Currency": currency,
-                "Method": p.payment_method or "Credit", "Description": p.description or "",
-                "Status": "VOID" if p.is_void else ("Paid" if p.paid else "Open"),
-            }, "Payable", p))
-
-    return sorted(rows, key=lambda x: x[0]["Date"], reverse=True)
+    return _rtxh_svc.fetch_filtered_rows_with_sources(
+        session,
+        company_id=current_company_required(),
+        start_date=start_date,
+        end_date=end_date,
+        keyword=keyword,
+        type_filter=type_filter,
+        method_filter=method_filter,
+        cat_filter=cat_filter,
+        subcat_filter=subcat_filter,
+        show_voided=show_voided,
+        currency=currency,
+        cat_names_lkp=cat_names_lkp,
+        subcat_names_lkp=subcat_names_lkp,
+        user_lkp=user_lkp,
+        filter_all_label=txh_all,
+    )
 
 
 def _txh_rows_to_dataframe(rows: list[tuple[dict, str, object]]) -> pd.DataFrame:

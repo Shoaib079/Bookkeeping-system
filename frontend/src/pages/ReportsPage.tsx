@@ -25,6 +25,8 @@ function formatMoney(value: number): string {
 const REPORT_LINKS = [
   { label: "Profit & Loss", to: "/reports/profit-loss" },
   { label: "Balance Sheet", to: "/reports/balance-sheet" },
+  { label: "Cash Flow", to: "/reports/cash-flow" },
+  { label: "Transaction Ledger", to: "/transactions/ledger" },
   { label: "Receivables", to: "/receivables" },
   { label: "Payables", to: "/payables" },
 ];

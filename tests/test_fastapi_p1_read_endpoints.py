@@ -16,15 +16,17 @@ import models
 from api.dependencies import get_db
 from api.main import create_app
 from api.serialization import (
+    cash_flow_to_dict,
     ledger_page_to_dict,
     partner_statement_to_dict,
     payables_page_to_dict,
     receivables_page_to_dict,
     statement_readiness_list_to_dict,
+    transaction_history_page_to_dict,
 )
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
-from services import read_ar_ap, read_ledger, read_partner_statement, read_reconciliation
+from services import read_ar_ap, read_ledger, read_partner_statement, read_reconciliation, read_reports, read_transaction_history
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
@@ -342,6 +344,8 @@ def seeded_tenant(db):
         "cash_account_a_id": cash_a.id,
         "cash_account_b_id": cash_b.id,
         "partner_id": partner.id,
+        "from_date_iso": FROM_DATE.isoformat(),
+        "to_date_iso": TO_DATE.isoformat(),
     }
 
 
@@ -380,6 +384,30 @@ READ_ENDPOINTS = [
         read_reconciliation.compute_company_statement_readiness,
         statement_readiness_list_to_dict,
         lambda db, tenant: {"company_id": tenant["company_a_id"], "limit": 10},
+    ),
+    (
+        "cash_flow",
+        "/api/v1/reports/cash-flow",
+        {"start_date": "from_date_iso", "end_date": "to_date_iso"},
+        read_reports.compute_cash_flow,
+        cash_flow_to_dict,
+        lambda db, tenant: {
+            "company_id": tenant["company_a_id"],
+            "start_date": FROM_DATE,
+            "end_date": TO_DATE,
+        },
+    ),
+    (
+        "transactions",
+        "/api/v1/transactions",
+        {"start_date": "from_date_iso", "end_date": "to_date_iso"},
+        read_transaction_history.compute_transaction_history_page,
+        transaction_history_page_to_dict,
+        lambda db, tenant: {
+            "company_id": tenant["company_a_id"],
+            "start_date": FROM_DATE,
+            "end_date": TO_DATE,
+        },
     ),
 ]
 
@@ -444,6 +472,12 @@ class TestReadEndpointsReturnJson:
         assert resp.json()["partner_name"] == "Alice Partner"
 
 
+_DATE_PARAMS = {
+    "start_date": FROM_DATE.isoformat(),
+    "end_date": TO_DATE.isoformat(),
+}
+
+
 class TestReadEndpointGuards:
     @pytest.mark.parametrize(
         "path,params",
@@ -452,6 +486,8 @@ class TestReadEndpointGuards:
             ("/api/v1/receivables", {}),
             ("/api/v1/payables", {}),
             ("/api/v1/banking/readiness", {}),
+            ("/api/v1/reports/cash-flow", _DATE_PARAMS),
+            ("/api/v1/transactions", _DATE_PARAMS),
             (
                 "/api/v1/partners/1/statement",
                 {"from_date": FROM_DATE.isoformat(), "to_date": TO_DATE.isoformat()},
@@ -473,6 +509,8 @@ class TestReadEndpointGuards:
             ("/api/v1/receivables", {}),
             ("/api/v1/payables", {}),
             ("/api/v1/banking/readiness", {}),
+            ("/api/v1/reports/cash-flow", _DATE_PARAMS),
+            ("/api/v1/transactions", _DATE_PARAMS),
             (
                 "/api/v1/partners/1/statement",
                 {"from_date": FROM_DATE.isoformat(), "to_date": TO_DATE.isoformat()},
@@ -497,6 +535,8 @@ class TestReadEndpointGuards:
             ("/api/v1/receivables", {}),
             ("/api/v1/payables", {}),
             ("/api/v1/banking/readiness", {}),
+            ("/api/v1/reports/cash-flow", _DATE_PARAMS),
+            ("/api/v1/transactions", _DATE_PARAMS),
             (
                 f"/api/v1/partners/{{partner_id}}/statement",
                 {"from_date": FROM_DATE.isoformat(), "to_date": TO_DATE.isoformat()},
@@ -532,6 +572,8 @@ class TestReadEndpointNoCommit:
             ("/api/v1/receivables", {}),
             ("/api/v1/payables", {}),
             ("/api/v1/banking/readiness", {}),
+            ("/api/v1/reports/cash-flow", _DATE_PARAMS),
+            ("/api/v1/transactions", _DATE_PARAMS),
             ("/api/v1/partners/{partner_id}/statement", None),
         ],
     )
@@ -547,6 +589,8 @@ class TestReadEndpointNoCommit:
                 "from_date": FROM_DATE.isoformat(),
                 "to_date": TO_DATE.isoformat(),
             }
+        elif params == _DATE_PARAMS:
+            params = dict(_DATE_PARAMS)
         with patch.object(db, "commit", wraps=db.commit) as mock_commit:
             resp = api_client.get(
                 path,

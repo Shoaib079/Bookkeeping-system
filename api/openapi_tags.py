@@ -13,7 +13,7 @@ OPENAPI_TAGS: list[dict[str, str]] = [
     },
     {
         "name": "reports",
-        "description": "Financial statements (profit & loss, balance sheet).",
+        "description": "Financial statements (profit & loss, balance sheet, cash flow).",
     },
     {
         "name": "ledger",
@@ -37,6 +37,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
     {
         "name": "banking",
         "description": "Bank statement import reconciliation readiness.",
+    },
+    {
+        "name": "transactions",
+        "description": "Cross-module transaction history for a date range.",
     },
     {
         "name": "writes",

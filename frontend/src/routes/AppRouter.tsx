@@ -10,12 +10,14 @@ import { routeSpecs, type RouteSpec } from "../lib/routes";
 import { HomePage } from "../pages/HomePage";
 import { BalanceSheetPage } from "../pages/BalanceSheetPage";
 import { BankingReadinessPage } from "../pages/BankingReadinessPage";
+import { CashFlowPage } from "../pages/CashFlowPage";
 import { LedgerPage } from "../pages/LedgerPage";
 import { PartnerStatementPage } from "../pages/PartnerStatementPage";
 import { PayablesPage } from "../pages/PayablesPage";
 import { ProfitLossPage } from "../pages/ProfitLossPage";
 import { ReceivablesPage } from "../pages/ReceivablesPage";
 import { ReportsPage } from "../pages/ReportsPage";
+import { TransactionLedgerPage } from "../pages/TransactionLedgerPage";
 import { NewTransactionPage } from "../pages/NewTransactionPage";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 
@@ -29,6 +31,8 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/banking": BankingReadinessPage,
   "/reports": ReportsPage,
   "/reports/profit-loss": ProfitLossPage,
+  "/reports/cash-flow": CashFlowPage,
+  "/transactions/ledger": TransactionLedgerPage,
 };
 
 const WRITE_PAGES: Record<string, ComponentType> = {

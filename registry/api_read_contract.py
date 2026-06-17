@@ -19,6 +19,8 @@ READ_API_PATHS: tuple[str, ...] = (
     "/auth/companies",
     "/api/v1/reports/profit-loss",
     "/api/v1/reports/balance-sheet",
+    "/api/v1/reports/cash-flow",
+    "/api/v1/transactions",
     "/api/v1/ledger",
     "/api/v1/receivables",
     "/api/v1/payables",
@@ -30,6 +32,7 @@ READ_API_TAGS: tuple[str, ...] = (
     "health",
     "auth",
     "reports",
+    "transactions",
     "ledger",
     "receivables",
     "payables",
@@ -52,6 +55,7 @@ HTTP_ERROR_MARKERS: tuple[str, ...] = (
 
 READ_SERVICE_MODULES: tuple[str, ...] = (
     "services/read_reports.py",
+    "services/read_transaction_history.py",
     "services/read_ledger.py",
     "services/read_ar_ap.py",
     "services/read_partner_statement.py",

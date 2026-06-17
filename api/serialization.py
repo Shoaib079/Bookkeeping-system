@@ -15,9 +15,12 @@ from services.read_ledger import LedgerPage, LedgerRow
 from services.read_reconciliation import ReadinessBlocker, StatementReadiness
 from services.read_reports import (
     BalanceSheetStatement,
+    CashFlowRow,
+    CashFlowStatement,
     FinancialStatementLine,
     ProfitLossStatement,
 )
+from services.read_transaction_history import TransactionHistoryPage, TransactionHistoryRow
 
 
 def _line_to_dict(line: FinancialStatementLine) -> dict[str, Any]:
@@ -55,6 +58,67 @@ def balance_sheet_to_dict(stmt: BalanceSheetStatement) -> dict[str, Any]:
         "total_equity": stmt.total_equity,
         "balanced": stmt.balanced,
         "imbalance": stmt.imbalance,
+    }
+
+
+def _cf_row_to_dict(row: CashFlowRow) -> dict[str, Any]:
+    return {
+        "date": row.date.isoformat(),
+        "description": row.description,
+        "type": row.type,
+        "inflow": row.inflow,
+        "outflow": row.outflow,
+    }
+
+
+def cash_flow_to_dict(stmt: CashFlowStatement) -> dict[str, Any]:
+    return {
+        "start_date": stmt.start_date.isoformat(),
+        "end_date": stmt.end_date.isoformat(),
+        "operating_rows": [_cf_row_to_dict(r) for r in stmt.operating_rows],
+        "financing_rows": [_cf_row_to_dict(r) for r in stmt.financing_rows],
+        "op_in": stmt.op_in,
+        "op_out": stmt.op_out,
+        "fin_in": stmt.fin_in,
+        "fin_out": stmt.fin_out,
+        "net_op": stmt.net_op,
+        "net_fin": stmt.net_fin,
+        "net_total": stmt.net_total,
+        "has_cash_accounts": stmt.has_cash_accounts,
+    }
+
+
+def _transaction_history_row_to_dict(row: TransactionHistoryRow) -> dict[str, Any]:
+    return {
+        "date": row.date.isoformat(),
+        "type": row.type,
+        "reference": row.reference,
+        "party": row.party,
+        "category": row.category,
+        "subcategory": row.subcategory,
+        "amount": row.amount,
+        "currency": row.currency,
+        "method": row.method,
+        "description": row.description,
+        "status": row.status,
+        "created_by": row.created_by,
+        "source_type": row.source_type,
+        "source_id": row.source_id,
+        "company_id": row.company_id,
+    }
+
+
+def transaction_history_page_to_dict(page: TransactionHistoryPage) -> dict[str, Any]:
+    return {
+        "rows": [_transaction_history_row_to_dict(r) for r in page.rows],
+        "filters": {
+            "start_date": page.filters.start_date.isoformat(),
+            "end_date": page.filters.end_date.isoformat(),
+            "search_keyword": page.filters.search_keyword,
+            "type_filter": page.filters.type_filter,
+            "show_voided": page.filters.show_voided,
+        },
+        "row_count": page.row_count,
     }
 
 

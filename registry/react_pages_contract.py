@@ -26,6 +26,8 @@ REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/banking", "BankingReadinessPage", "banking"),
     ("/reports", "ReportsPage", "reports"),
     ("/reports/profit-loss", "ProfitLossPage", "profit_loss"),
+    ("/reports/cash-flow", "CashFlowPage", "cash_flow"),
+    ("/transactions/ledger", "TransactionLedgerPage", "transaction_ledger"),
 )
 
 HOME_READ_API_PATHS: tuple[str, ...] = (
@@ -66,6 +68,14 @@ PROFIT_LOSS_READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/reports/profit-loss",
 )
 
+CASH_FLOW_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/reports/cash-flow",
+)
+
+TRANSACTION_LEDGER_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/transactions",
+)
+
 REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/config/featureFlags.ts",
     "frontend/src/lib/api/session.ts",
@@ -79,6 +89,8 @@ REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/pages/BankingReadinessPage.tsx",
     "frontend/src/pages/ReportsPage.tsx",
     "frontend/src/pages/ProfitLossPage.tsx",
+    "frontend/src/pages/CashFlowPage.tsx",
+    "frontend/src/pages/TransactionLedgerPage.tsx",
     "frontend/src/components/ReadApiSetup.tsx",
 )
 
@@ -131,14 +143,26 @@ FR18_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 )
 
 DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-21",
+    "chart-of-accounts picker",
+    "partner picker",
+)
+
+# Frozen for FR-19 audit tests (do not mutate).
+FR19_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-20",
     "transaction ledger read page",
     "cash flow read page",
     "chart-of-accounts picker",
 )
 
-# Frozen for FR-19 audit tests (do not mutate).
 FR19_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/reports", "ReportsPage", "reports"),
     ("/reports/profit-loss", "ProfitLossPage", "profit_loss"),
+)
+
+# Frozen for FR-20 audit tests (do not mutate).
+FR20_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("/reports/cash-flow", "CashFlowPage", "cash_flow"),
+    ("/transactions/ledger", "TransactionLedgerPage", "transaction_ledger"),
 )

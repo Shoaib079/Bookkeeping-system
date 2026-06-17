@@ -18,9 +18,9 @@
 
 | Concern | Mechanism | Location (app.py, 2026-06-17) |
 |---|---|---|
-| **Primary router** | `_PAGE_DISPATCH` dict → `render_*` per `nav_selection` — **derived from `registry/navigation.py`** | `26099`; dispatch call `26370` |
-| **Desktop sidebar render** | `_render_navigation_tree(st.sidebar, …)` (custom button accordion) | def `3185`; call `26327` |
-| **`st.sidebar` usage (only 2 sites)** | date-range filters; nav tree | `1008-1009`, `26328` |
+| **Primary router** | `_PAGE_DISPATCH` dict → `render_*` per `nav_selection` — **derived from `registry/navigation.py`** | `25963`; dispatch call `26234` |
+| **Desktop sidebar render** | `_render_navigation_tree(st.sidebar, …)` (custom button accordion) | def `3185`; call `26191` |
+| **`st.sidebar` usage (only 2 sites)** | date-range filters; nav tree | `1008-1009`, `26191` |
 | **`option_menu`** | **Not used** — no `streamlit-option-menu` dependency; nav is a custom button tree | (none) |
 | **radio / selectbox page selection** | **Not the primary router.** Sub-page pickers only: banking section picker (`_banking_section_select`), reports exec picker / `st.tabs` | (banking/reports render fns) |
 | **Accordion groups** | `_NAV_ACCORDION` (8 groups) — **derived from registry** | `3177` |
