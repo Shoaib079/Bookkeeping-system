@@ -179,7 +179,7 @@ No implementation before roadmap approval.
 | DEVELOPMENT_MODE | ✅ **Resolved by DEV-AUTH-01** — env-gated dev mode: `DEV_MODE = os.getenv("ERP_DEV_MODE", "0") == "1"` (default off). **Production checklist: must not run with `ERP_DEV_MODE=1`** |
 | Shell / mobile chrome (Phase A) | ✅ Stabilized — fixed header, 968px breakpoint, People hub wired |
 | Sidebar / navigation redesign (AD-UI-001) | 🟡 **D1 + D2-P0 shipped** — Financial Statements routes + promoted daily lookup route (app.py `AD-UI-001 D2-P0` wrapper); D2+ remainder gated — see [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §16 |
-| **NAV-ARCH** — Navigation single source of truth | 📋 **Planned (Deferred)** — after PG parity, before React; see [§ NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
+| **NAV-ARCH** — Navigation single source of truth | 🟡 **S1 complete** — audit + parity guardrails; S2–S4 planned — see [§ NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
 | **MOB-AT-C1** — Concept C Mobile AT UI | ✅ **Accepted** — reference implementation; 747 tests passing |
 | **MOBILE-11** — Mobile Design System | ✅ **Approved** — `docs/MOBILE_UI_SYSTEM.md` is the governing document for all future mobile work |
 | **MOBILE-12** — Design Governance | ✅ **Approved** — open decisions recorded; phased migration path defined |
@@ -1160,15 +1160,17 @@ Complete dark mode, readability, header/sidebar polish, mobile pass.
 
 ## NAV-ARCH — Navigation Single Source of Truth
 
-**Status:** 📋 **Planned (Deferred)**  
+**Status:** 🟡 **In progress — S1 complete**  
 **Priority:** After PostgreSQL parity, before React migration  
 **Blocker:** None  
 **Depends on:**
 
-- **NAV-UX-02** (S1–S7)
+- **NAV-UX-02** (S1–S7) ✅ structural contracts shipped
 - **PostgreSQL build + dual-run parity** ✅
 
 **Purpose:** Eliminate navigation drift by deriving all navigation structures from one registry while preserving current behavior.
+
+**Audit:** [NAV_ARCH_AUDIT.md](./docs/NAV_ARCH_AUDIT.md) · **Tests:** `tests/test_nav_arch_audit.py`
 
 **Problem:** Current navigation uses seven parallel structures:
 
@@ -1190,16 +1192,19 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 - Navigation remains UI-independent and FastAPI/React-ready.
 - Render functions stay thin.
 - React routes become the long-term contract.
+- **Navigation must eventually derive from one registry** (`registry/navigation.py`).
 
-**Future slices:**
+**Slices:**
 
-| Slice | Scope |
-|-------|--------|
-| **NAV-ARCH-S0 — Guardrails** | No new navigation structures may be introduced. Any new page must either (1) be added to the future registry, or (2) explicitly document why derivation is deferred. |
-| **NAV-ARCH-S1 — Parity tests** | Ensure dispatch ↔ role ↔ accordion ↔ mobile consistency. Preserve `KNOWN_HIDDEN` allow-list. |
-| **NAV-ARCH-S2 — Introduce `registry/navigation.py`** | Add per-page metadata: `route_key`, label/i18n, `render_fn`, surfaces, `accordion_group`, roles, `react_route`. |
-| **NAV-ARCH-S3 — Derive structures incrementally** | Derive `_PAGE_DISPATCH` first. Then derive accordion/direct/role/mobile one at a time. Behavior must remain unchanged. |
-| **NAV-ARCH-S4 — Freeze React route contract** | `react_route` becomes the migration contract for React. |
+| Slice | Scope | Status |
+|-------|--------|--------|
+| **NAV-ARCH-S0 — Guardrails** | No new navigation structures without registry plan | ✅ Active |
+| **NAV-ARCH-S1 — Audit + parity guardrails** | `docs/NAV_ARCH_AUDIT.md` + `tests/test_nav_arch_audit.py`; `KNOWN_HIDDEN` allow-list; no runtime change | ✅ **Complete** |
+| **NAV-ARCH-S2 — Introduce `registry/navigation.py`** | Per-page metadata; **derive `_PAGE_DISPATCH` only** first | 📋 **Next** |
+| **NAV-ARCH-S3A — Desktop derived** | Derive `_NAV_ACCORDION` + `_NAV_DIRECT_PAGES` from registry | 📋 Planned |
+| **NAV-ARCH-S3B — Role derived** | Derive `_NAV_ROLE_PAGES` from registry | 📋 Planned |
+| **NAV-ARCH-S3C — Mobile derived** | Derive `_MOBILE_BOTTOM_NAV` + `_MOBILE_HUB_CONFIG` from registry | 📋 Planned |
+| **NAV-ARCH-S4 — Freeze React route contract** | `docs/NAV_ARCH_REACT_ROUTE_CONTRACT.md`; `react_route` migration contract | 📋 Planned |
 
 **Success criteria:**
 
@@ -3299,6 +3304,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-17 | **NAV-ARCH-S1 (closure)** — Navigation audit + live parity guardrails: `docs/NAV_ARCH_AUDIT.md`, `tests/test_nav_arch_audit.py`; no runtime change; `registry/navigation.py` deferred to S2. Tag: `nav-arch-s1-audit-guardrails`. Next: **NAV-ARCH-S2** (registry + derive dispatch). |
 | 2026-06-16 | **POSTGRES-PRODUCTION-CUTOVER** — Flag-gated PostgreSQL runtime wired; SQLite→PG migration + parity verified (companies 1–4); smoke flows pass; backup preserved. Doc: [POSTGRES_PRODUCTION_CUTOVER.md](./docs/POSTGRES_PRODUCTION_CUTOVER.md). Tag: `postgres-production-cutover`. |
 | 2026-06-16 | **POSTGRES-REAL-DRY-RUN** — Real copy-only SQLite→PG dry run verified: row counts + TB + reports match (companies 1–4); `erp_data.db` untouched; `safe_for_production_cutover: true` (data parity only). Doc: [POSTGRES_REAL_DRY_RUN_20260616.md](./docs/POSTGRES_REAL_DRY_RUN_20260616.md). Tag: `postgres-real-dry-run-20260616`. |
 | 2026-06-16 | **POSTGRES-RUNTIME-CUTOVER-PREP (closure)** — Test-only SQLite→PG data copy harness + parse-only runtime gate; money snapshot parity on smoke tenant; production still SQLite. Doc: [POSTGRES_RUNTIME_CUTOVER_PREP.md](./docs/POSTGRES_RUNTIME_CUTOVER_PREP.md). Tag: `postgres-runtime-cutover-prep`. Next: **real SQLite→PG dry run**. |
