@@ -11,9 +11,9 @@
     color-mix(in srgb, var(--theme-info) 10%, var(--theme-card) 90%) 100%
   );
   --mob-at-panel-border: color-mix(in srgb, var(--theme-info) 55%, var(--theme-border) 45%);
-  --mob-at-surface: var(--theme-card);
-  --mob-at-surface-border: var(--theme-border);
-  --mob-at-surface-shadow: 0 1px 3px color-mix(in srgb, var(--theme-shadow) 65%, transparent);
+  --mob-at-surface: var(--erp-card-bg);
+  --mob-at-surface-border: var(--erp-card-border);
+  --mob-at-surface-shadow: var(--erp-card-shadow);
   --mob-at-chip-active-bg: var(--erp-chip-active-bg);
   --mob-at-chip-active-fg: var(--erp-chip-active-fg);
   --mob-at-chip-active-border: var(--erp-chip-active-border);
@@ -108,11 +108,11 @@
     padding: 6px 10px !important;
     font-size: 13px !important;
     font-weight: 600 !important;
-    border-radius: 10px !important;
+    border-radius: var(--erp-card-radius) !important;
     white-space: nowrap !important;
-    background: var(--theme-card) !important;
+    background: var(--erp-card-bg) !important;
     color: var(--theme-text) !important;
-    border: 1px solid var(--theme-border) !important;
+    border: 1px solid var(--erp-card-border) !important;
   }
 
   [data-testid="stMain"] [class*="st-key-mob_at_topbar"] button p,
@@ -451,9 +451,9 @@
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    border-radius: 8px !important;
-    border: 1px solid var(--theme-border) !important;
-    background: var(--theme-card) !important;
+    border-radius: var(--erp-radius-md) !important;
+    border: 1px solid var(--erp-card-border) !important;
+    background: var(--erp-card-bg) !important;
     color: var(--theme-text) !important;
   }
 

@@ -41,12 +41,12 @@
   [data-testid="stMain"] [class*="st-key-erp_mob_rpt_filters"] {
     margin: 0 0 10px !important;
     padding: 10px 12px !important;
-    border-radius: 12px !important;
-    border: 1px solid var(--theme-border) !important;
+    border-radius: var(--erp-card-radius) !important;
+    border: 1px solid var(--erp-card-border) !important;
     background: linear-gradient(
       180deg,
-      color-mix(in srgb, var(--theme-purple) 6%, var(--theme-card) 94%) 0%,
-      var(--theme-card) 100%
+      color-mix(in srgb, var(--theme-purple) 6%, var(--erp-card-bg) 94%) 0%,
+      var(--erp-card-bg) 100%
     ) !important;
     box-shadow: none !important;
   }

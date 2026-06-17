@@ -1,4 +1,5 @@
-/* MOBILE-UX-02-A — shared mobile component grammar (token-driven; extends --theme-*) */
+/* MOBILE-UX-02-A — shared mobile component grammar (token-driven; extends --theme-*)
+ * MONO-THEME-01-S5 — mob-surface aliases route through shared --erp-card-* grammar */
 
 :root {
   --mob-space-1: var(--erp-space-1, 4px);
@@ -9,10 +10,11 @@
   --mob-space-6: var(--erp-space-6, 32px);
   --mob-radius-sm: var(--erp-field-radius, 8px);
   --mob-radius-md: 10px;
-  --mob-radius-lg: 12px;
+  --mob-radius-lg: var(--erp-card-radius);
   --mob-touch-min: 44px;
-  --mob-surface-bg: var(--theme-card);
-  --mob-surface-border: var(--theme-border);
+  --mob-surface-bg: var(--erp-card-bg);
+  --mob-surface-border: var(--erp-card-border);
+  --mob-surface-shadow: var(--erp-card-shadow);
 }
 
 /* Section / list labels */
@@ -52,6 +54,7 @@
   background: var(--mob-surface-bg);
   border: 1px solid var(--mob-surface-border);
   border-radius: var(--mob-radius-md);
+  box-shadow: var(--mob-surface-shadow);
   padding: var(--mob-space-2) var(--mob-space-3);
   min-width: 0;
 }
@@ -122,6 +125,7 @@
   background: var(--mob-surface-bg);
   border: 1px solid var(--mob-surface-border);
   border-radius: var(--mob-radius-lg);
+  box-shadow: var(--mob-surface-shadow);
   padding: var(--mob-space-3);
 }
 
@@ -136,6 +140,7 @@
   border: 1px solid var(--mob-surface-border);
   margin-bottom: var(--mob-space-2);
   background: var(--mob-surface-bg);
+  box-shadow: var(--mob-surface-shadow);
 }
 
 .erp-mob-list-row-main,
