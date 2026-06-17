@@ -17,8 +17,10 @@ from api.dependencies import get_db
 from api.main import create_app
 from api.serialization import (
     cash_flow_to_dict,
+    coa_list_to_dict,
     ledger_page_to_dict,
     partner_statement_to_dict,
+    partners_list_to_dict,
     payables_page_to_dict,
     receivables_page_to_dict,
     statement_readiness_list_to_dict,
@@ -26,7 +28,7 @@ from api.serialization import (
 )
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
-from services import read_ar_ap, read_ledger, read_partner_statement, read_reconciliation, read_reports, read_transaction_history
+from services import read_ar_ap, read_coa, read_ledger, read_partner_statement, read_partners, read_reconciliation, read_reports, read_transaction_history
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
@@ -409,6 +411,22 @@ READ_ENDPOINTS = [
             "end_date": TO_DATE,
         },
     ),
+    (
+        "chart_of_accounts",
+        "/api/v1/chart-of-accounts",
+        {},
+        read_coa.compute_chart_of_accounts_list,
+        coa_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
+        "partners_list",
+        "/api/v1/partners",
+        {},
+        read_partners.compute_partners_list,
+        partners_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
 ]
 
 
@@ -483,8 +501,10 @@ class TestReadEndpointGuards:
         "path,params",
         [
             ("/api/v1/ledger", {"account_id": 1}),
+            ("/api/v1/chart-of-accounts", {}),
             ("/api/v1/receivables", {}),
             ("/api/v1/payables", {}),
+            ("/api/v1/partners", {}),
             ("/api/v1/banking/readiness", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/transactions", _DATE_PARAMS),
@@ -506,8 +526,10 @@ class TestReadEndpointGuards:
         "path,params",
         [
             ("/api/v1/ledger", {"account_id": 1}),
+            ("/api/v1/chart-of-accounts", {}),
             ("/api/v1/receivables", {}),
             ("/api/v1/payables", {}),
+            ("/api/v1/partners", {}),
             ("/api/v1/banking/readiness", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/transactions", _DATE_PARAMS),
@@ -532,8 +554,10 @@ class TestReadEndpointGuards:
         "path,params",
         [
             ("/api/v1/ledger", {"account_id": 1}),
+            ("/api/v1/chart-of-accounts", {}),
             ("/api/v1/receivables", {}),
             ("/api/v1/payables", {}),
+            ("/api/v1/partners", {}),
             ("/api/v1/banking/readiness", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/transactions", _DATE_PARAMS),
@@ -572,6 +596,8 @@ class TestReadEndpointNoCommit:
             ("/api/v1/receivables", {}),
             ("/api/v1/payables", {}),
             ("/api/v1/banking/readiness", {}),
+            ("/api/v1/chart-of-accounts", {}),
+            ("/api/v1/partners", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/transactions", _DATE_PARAMS),
             ("/api/v1/partners/{partner_id}/statement", None),

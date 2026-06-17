@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ReadApiSetup } from "../components/ReadApiSetup";
+import { PartnerPicker } from "../components/PartnerPicker";
 import { apiGet } from "../lib/api/client";
 import { getReadSession } from "../lib/api/session";
 import type { PartnerStatementResponse } from "../lib/api/types";
@@ -125,16 +126,12 @@ export function PartnerStatementPage() {
       ) : null}
 
       <form className="erp-ledger-filters" onSubmit={handleFilterSubmit}>
-        <label>
-          Partner id
-          <input
-            type="number"
-            min={1}
-            value={partnerId}
-            onChange={(event) => setPartnerId(event.target.value)}
-            required
-          />
-        </label>
+        <PartnerPicker
+          value={partnerId}
+          onChange={setPartnerId}
+          session={session}
+          disabled={!session}
+        />
         <label>
           From date
           <input
@@ -206,7 +203,7 @@ export function PartnerStatementPage() {
       ) : null}
 
       {session && !partnerId ? (
-        <p className="erp-muted">Enter a partner id to load the statement.</p>
+        <p className="erp-muted">Select a partner to load the statement.</p>
       ) : null}
     </section>
   );

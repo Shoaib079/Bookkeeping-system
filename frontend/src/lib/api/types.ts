@@ -79,6 +79,34 @@ export type TransactionHistoryResponse = {
   row_count: number;
 };
 
+export type CoaRow = {
+  id: number;
+  account_code: string;
+  account_name: string;
+  account_type: string;
+  currency: string | null;
+  is_active: boolean;
+  company_id: number;
+};
+
+export type CoaListResponse = {
+  rows: CoaRow[];
+  row_count: number;
+};
+
+export type PartnerListRow = {
+  id: number;
+  name: string;
+  profit_share_pct: number;
+  is_active: boolean;
+  company_id: number;
+};
+
+export type PartnersListResponse = {
+  rows: PartnerListRow[];
+  row_count: number;
+};
+
 export type BalanceSheetResponse = {
   as_of: string;
   total_assets: number;

@@ -76,6 +76,19 @@ TRANSACTION_LEDGER_READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/transactions",
 )
 
+CHART_OF_ACCOUNTS_LIST_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/chart-of-accounts",
+)
+
+PARTNERS_LIST_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/partners",
+)
+
+PICKER_FRONTEND_FILES: tuple[str, ...] = (
+    "frontend/src/components/CoaAccountPicker.tsx",
+    "frontend/src/components/PartnerPicker.tsx",
+)
+
 REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/config/featureFlags.ts",
     "frontend/src/lib/api/session.ts",
@@ -92,6 +105,7 @@ REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/pages/CashFlowPage.tsx",
     "frontend/src/pages/TransactionLedgerPage.tsx",
     "frontend/src/components/ReadApiSetup.tsx",
+    *PICKER_FRONTEND_FILES,
 )
 
 FORBIDDEN_FRONTEND_PATTERNS: tuple[str, ...] = (
@@ -142,12 +156,6 @@ FR18_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/banking", "BankingReadinessPage", "banking"),
 )
 
-DEFERRED_ITEMS: tuple[str, ...] = (
-    "FASTAPI-REACT-21",
-    "chart-of-accounts picker",
-    "partner picker",
-)
-
 # Frozen for FR-19 audit tests (do not mutate).
 FR19_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-20",
@@ -161,7 +169,19 @@ FR19_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/reports/profit-loss", "ProfitLossPage", "profit_loss"),
 )
 
+DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-22",
+    "bank account picker",
+    "worker picker",
+)
+
 # Frozen for FR-20 audit tests (do not mutate).
+FR20_DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-21",
+    "chart-of-accounts picker",
+    "partner picker",
+)
+
 FR20_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/reports/cash-flow", "CashFlowPage", "cash_flow"),
     ("/transactions/ledger", "TransactionLedgerPage", "transaction_ledger"),

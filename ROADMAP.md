@@ -1414,11 +1414,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-18** | Partner statement + banking readiness | ✅ **Complete** |
 | **FASTAPI-REACT-19** | Reports hub + profit & loss read pages | ✅ **Complete** |
 | **FASTAPI-REACT-20** | Cash flow + transaction ledger read pages | ✅ **Complete** |
-| **FASTAPI-REACT-21+** | COA/partner pickers or write match-type forms | 📋 Planned |
+| **FASTAPI-REACT-21** | COA + partner pickers | ✅ **Complete** |
+| **FASTAPI-REACT-22+** | Bank/worker pickers or write match-type forms | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_20_REACT_READ_CASHFLOW_TXN_LEDGER_AUDIT.md](./docs/FASTAPI_REACT_20_REACT_READ_CASHFLOW_TXN_LEDGER_AUDIT.md) · **Tests:** `tests/test_fastapi_react_20_react_read_cashflow_txn_ledger.py` · **Tag:** `fastapi-react-20-react-read-cashflow-txn-ledger`
+**Audit:** [FASTAPI_REACT_21_REACT_READ_PICKERS_AUDIT.md](./docs/FASTAPI_REACT_21_REACT_READ_PICKERS_AUDIT.md) · **Tests:** `tests/test_fastapi_react_21_react_read_pickers.py` · **Tag:** `fastapi-react-21-react-read-pickers`
 
-**Next slice:** **FASTAPI-REACT-21** — chart-of-accounts / partner pickers; see FR-20 audit §8.
+**Next slice:** **FASTAPI-REACT-22** — bank account / worker pickers on write tabs; see FR-21 audit §8.
 
 ---
 
@@ -3509,6 +3510,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-21 (closure)** — COA + partner pickers: thin P1 list APIs (`/api/v1/chart-of-accounts`, `/api/v1/partners`) + `CoaAccountPicker` / `PartnerPicker` on Ledger and Partner Statement pages behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-21-react-read-pickers`. Next: **FASTAPI-REACT-22**. |
 | 2026-06-05 | **FASTAPI-REACT-20 (closure)** — Cash flow + transaction ledger: thin P1 APIs (`/api/v1/reports/cash-flow`, `/api/v1/transactions`) + `services/read_transaction_history.py`; `CashFlowPage`, `TransactionLedgerPage` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-20-react-read-cashflow-txn-ledger`. Next: **FASTAPI-REACT-21**. |
 | 2026-06-05 | **FASTAPI-REACT-19 (closure)** — Reports hub + P&L read pages: `ReportsPage`, `ProfitLossPage` wired to `/api/v1/reports/profit-loss` behind `VITE_ERP_REACT_PAGES=1`; transaction ledger deferred (no P1 read endpoint). `docs/FASTAPI_REACT_19_REACT_READ_REPORTS_HUB_AUDIT.md` + `tests/test_fastapi_react_19_react_read_reports_hub.py`. Tag: `fastapi-react-19-react-read-reports-hub`. Next: **FASTAPI-REACT-20**. |
 | 2026-06-05 | **FASTAPI-REACT-18 (closure)** — Partner statement + banking readiness read pages: `PartnerStatementPage`, `BankingReadinessPage` wired to P1 read APIs behind `VITE_ERP_REACT_PAGES=1`; `docs/FASTAPI_REACT_18_REACT_READ_PARTNER_BANKING_AUDIT.md` + `tests/test_fastapi_react_18_react_read_partner_banking.py`. Streamlit primary unchanged. Tag: `fastapi-react-18-react-read-partner-banking`. Next: **FASTAPI-REACT-19**. |

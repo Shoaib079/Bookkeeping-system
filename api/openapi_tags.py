@@ -16,6 +16,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Financial statements (profit & loss, balance sheet, cash flow).",
     },
     {
+        "name": "chart-of-accounts",
+        "description": "Chart of accounts list for pickers and read-only views.",
+    },
+    {
         "name": "ledger",
         "description": (
             "General ledger lines for one account. "
@@ -32,7 +36,7 @@ OPENAPI_TAGS: list[dict[str, str]] = [
     },
     {
         "name": "partners",
-        "description": "Partner settlement statements for a date range.",
+        "description": "Partner directory and settlement statements.",
     },
     {
         "name": "banking",

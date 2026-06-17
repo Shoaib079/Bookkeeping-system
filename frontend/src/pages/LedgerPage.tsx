@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { ReadApiSetup } from "../components/ReadApiSetup";
+import { CoaAccountPicker } from "../components/CoaAccountPicker";
 import { apiGet } from "../lib/api/client";
 import { getReadSession } from "../lib/api/session";
 import type { LedgerPageResponse } from "../lib/api/types";
@@ -108,16 +109,12 @@ export function LedgerPage() {
       ) : null}
 
       <form className="erp-ledger-filters" onSubmit={handleFilterSubmit}>
-        <label>
-          Account id
-          <input
-            type="number"
-            min={1}
-            value={accountId}
-            onChange={(event) => setAccountId(event.target.value)}
-            required
-          />
-        </label>
+        <CoaAccountPicker
+          value={accountId}
+          onChange={setAccountId}
+          session={session}
+          disabled={!session}
+        />
         <label>
           Start date
           <input
@@ -180,7 +177,7 @@ export function LedgerPage() {
       ) : null}
 
       {session && !accountId ? (
-        <p className="erp-muted">Enter an account id to load ledger lines.</p>
+        <p className="erp-muted">Select an account to load ledger lines.</p>
       ) : null}
     </section>
   );

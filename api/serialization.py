@@ -20,6 +20,8 @@ from services.read_reports import (
     FinancialStatementLine,
     ProfitLossStatement,
 )
+from services.read_coa import CoaListPage, CoaRow
+from services.read_partners import PartnerListRow, PartnersListPage
 from services.read_transaction_history import TransactionHistoryPage, TransactionHistoryRow
 
 
@@ -118,6 +120,42 @@ def transaction_history_page_to_dict(page: TransactionHistoryPage) -> dict[str, 
             "type_filter": page.filters.type_filter,
             "show_voided": page.filters.show_voided,
         },
+        "row_count": page.row_count,
+    }
+
+
+def _coa_row_to_dict(row: CoaRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "account_code": row.account_code,
+        "account_name": row.account_name,
+        "account_type": row.account_type,
+        "currency": row.currency,
+        "is_active": row.is_active,
+        "company_id": row.company_id,
+    }
+
+
+def coa_list_to_dict(page: CoaListPage) -> dict[str, Any]:
+    return {
+        "rows": [_coa_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+    }
+
+
+def _partner_list_row_to_dict(row: PartnerListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "name": row.name,
+        "profit_share_pct": row.profit_share_pct,
+        "is_active": row.is_active,
+        "company_id": row.company_id,
+    }
+
+
+def partners_list_to_dict(page: PartnersListPage) -> dict[str, Any]:
+    return {
+        "rows": [_partner_list_row_to_dict(r) for r in page.rows],
         "row_count": page.row_count,
     }
 

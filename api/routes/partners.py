@@ -5,17 +5,45 @@ from __future__ import annotations
 import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from api.dependencies import get_db, get_request_context
 from api.errors import NOT_FOUND_PARTNER_STATEMENT
 from api.guards import require_company_read_access
-from api.serialization import partner_statement_to_dict
-from services import read_partner_statement
+from api.serialization import coa_list_to_dict, partner_statement_to_dict, partners_list_to_dict
+from services import read_coa, read_partner_statement, read_partners
 from services.context import RequestContext
 
 router = APIRouter(tags=["partners"])
+
+
+@router.get(
+    "",
+    summary="Partner directory",
+    description="Partners for the active company (picker / list read).",
+)
+def get_partners(
+    session: Annotated[Session, Depends(get_db)],
+    context: Annotated[RequestContext, Depends(get_request_context)],
+    active_only: Annotated[
+        bool,
+        Query(description="When true, return only active partners"),
+    ] = True,
+) -> dict:
+    company_id = require_company_read_access(
+        session,
+        context,
+        "view_partner_accounts",
+        "view_partner_statements",
+        "view_management_reports",
+    )
+    page = read_partners.compute_partners_list(
+        session,
+        company_id=company_id,
+        active_only=active_only,
+    )
+    return partners_list_to_dict(page)
 
 
 @router.get(
