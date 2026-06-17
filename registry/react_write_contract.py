@@ -18,11 +18,13 @@ WRITE_EXPENSES_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_EXPENSES"
 WRITE_VOIDS_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_VOIDS"
 WRITE_PURCHASES_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_PURCHASES"
 WRITE_RECEIVABLE_PAYMENTS_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_RECEIVABLE_PAYMENTS"
+WRITE_BANKING_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_BANKING"
 API_WRITE_SALES_ENV: Final[str] = "ERP_API_WRITE_SALES"
 API_WRITE_EXPENSES_ENV: Final[str] = "ERP_API_WRITE_EXPENSES"
 API_WRITE_VOIDS_ENV: Final[str] = "ERP_API_WRITE_VOIDS"
 API_WRITE_PURCHASES_ENV: Final[str] = "ERP_API_WRITE_PURCHASES"
 API_WRITE_RECEIVABLE_PAYMENTS_ENV: Final[str] = "ERP_API_WRITE_RECEIVABLE_PAYMENTS"
+API_WRITE_BANKING_ENV: Final[str] = "ERP_API_WRITE_BANKING"
 
 # (react_path, page_component, page_key)
 WRITE_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
@@ -49,6 +51,10 @@ RECEIVABLE_PAYMENT_WRITE_API_PATHS: tuple[str, ...] = (
     "/api/v1/receivable-payments",
 )
 
+BANK_TRANSACTION_WRITE_API_PATHS: tuple[str, ...] = (
+    "/api/v1/bank-transactions",
+)
+
 VOID_TARGET_TYPES: tuple[str, ...] = (
     "Sale",
     "ExpenseRecord",
@@ -65,6 +71,7 @@ P2_PURCHASE_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_purchase_write.py"
 P2_RECEIVABLE_PAYMENT_WRITE_TEST: Final[str] = (
     "tests/test_fastapi_p2_receivable_payment_write.py"
 )
+P2_BANKING_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_banking_write.py"
 
 REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/config/featureFlags.ts",
@@ -77,6 +84,7 @@ ALLOWED_SALE_PAYMENT_METHODS: tuple[str, ...] = ("Cash", "Card", "Credit")
 ALLOWED_EXPENSE_PAYMENT_METHODS: tuple[str, ...] = ("Cash", "Bank")
 ALLOWED_PURCHASE_PAYMENT_METHODS: tuple[str, ...] = ("Cash", "Bank", "Credit")
 ALLOWED_RECEIVABLE_PAYMENT_METHODS: tuple[str, ...] = ("Cash", "Bank")
+ALLOWED_BANK_TRANSACTION_TYPES: tuple[str, ...] = ("deposit", "withdrawal", "transfer")
 
 SALE_PAYMENT_OPTIONAL_FIELDS: tuple[str, ...] = (
     "customer_name",
@@ -97,6 +105,11 @@ PURCHASE_PAYMENT_OPTIONAL_FIELDS: tuple[str, ...] = (
 RECEIVABLE_PAYMENT_OPTIONAL_FIELDS: tuple[str, ...] = (
     "customer_name",
     "bank_account_id",
+)
+
+BANK_TRANSACTION_OPTIONAL_FIELDS: tuple[str, ...] = (
+    "destination_bank_account_id",
+    "currency",
 )
 
 FORBIDDEN_FRONTEND_PATTERNS: tuple[str, ...] = (
@@ -155,10 +168,19 @@ FR12_DEFERRED_ITEMS: tuple[str, ...] = (
     "production COMMIT_MODE_* flip",
 )
 
-DEFERRED_ITEMS: tuple[str, ...] = (
+# Frozen for FR-13 audit tests (do not mutate).
+FR13_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-14",
     "bank transaction write",
     "receivable sale picker",
+    "bank account picker",
+    "production COMMIT_MODE_* flip",
+)
+
+DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-15",
+    "partner movement write",
+    "worker payment write",
     "bank account picker",
     "production COMMIT_MODE_* flip",
 )

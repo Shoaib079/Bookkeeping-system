@@ -50,7 +50,7 @@ FORBIDDEN_FRONTEND_PATTERNS: tuple[str, ...] = (
 )
 
 DEFERRED_ITEMS: tuple[str, ...] = (
-    "FASTAPI-REACT-14",
+    "FASTAPI-REACT-15",
     "TD-PS-01",
     "chart-of-accounts picker",
 )

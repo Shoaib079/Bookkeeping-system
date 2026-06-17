@@ -149,3 +149,21 @@ export type CreateReceivablePaymentResponse = {
   message: string;
   status: string;
 };
+
+export type CreateBankTransactionRequest = {
+  date: string;
+  amount: number;
+  transaction_type: "deposit" | "withdrawal" | "transfer";
+  bank_account_id: number;
+  notes?: string;
+  destination_bank_account_id?: number;
+  currency?: string;
+};
+
+export type CreateBankTransactionResponse = {
+  bank_transaction_id: number;
+  paired_transaction_id: number | null;
+  journal_entry_id: number | null;
+  message: string;
+  status: string;
+};

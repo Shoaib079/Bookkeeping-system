@@ -22,12 +22,17 @@ export function reactWriteReceivablePaymentsEnabled(): boolean {
   return import.meta.env.VITE_ERP_REACT_WRITE_RECEIVABLE_PAYMENTS === "1";
 }
 
+export function reactWriteBankingEnabled(): boolean {
+  return import.meta.env.VITE_ERP_REACT_WRITE_BANKING === "1";
+}
+
 export function reactWriteEnabled(): boolean {
   return (
     reactWriteSalesEnabled() ||
     reactWriteExpensesEnabled() ||
     reactWriteVoidsEnabled() ||
     reactWritePurchasesEnabled() ||
-    reactWriteReceivablePaymentsEnabled()
+    reactWriteReceivablePaymentsEnabled() ||
+    reactWriteBankingEnabled()
   );
 }

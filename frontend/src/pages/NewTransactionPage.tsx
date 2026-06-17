@@ -3,6 +3,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { ReadApiSetup } from "../components/ReadApiSetup";
 import {
   reactWriteEnabled,
+  reactWriteBankingEnabled,
   reactWriteExpensesEnabled,
   reactWritePurchasesEnabled,
   reactWriteReceivablePaymentsEnabled,
@@ -12,6 +13,7 @@ import {
 import type { ApiError } from "../lib/api/client";
 import { getReadSession } from "../lib/api/session";
 import type {
+  CreateBankTransactionResponse,
   CreateExpenseResponse,
   CreatePurchaseResponse,
   CreateReceivablePaymentResponse,
@@ -21,11 +23,12 @@ import type {
 } from "../lib/api/types";
 import { apiPost } from "../lib/api/writeClient";
 
-type WriteTab = "sale" | "expense" | "void" | "purchase" | "receivable";
+type WriteTab = "sale" | "expense" | "void" | "purchase" | "receivable" | "banking";
 type SalePaymentMethod = "Cash" | "Card" | "Credit";
 type ExpensePaymentMethod = "Cash" | "Bank";
 type PurchasePaymentMethod = "Cash" | "Bank" | "Credit";
 type ReceivablePaymentMethod = "Cash" | "Bank";
+type BankTransactionType = "deposit" | "withdrawal" | "transfer";
 
 const CREDIT_CUSTOMER_MSG =
   "Enter a customer name for on-account (credit) sales.";
@@ -35,6 +38,8 @@ const VENDOR_REQUIRED_MSG = "Select a vendor before saving a purchase.";
 const CATEGORY_REQUIRED_MSG = "Select a category before saving";
 const PURCHASE_BANK_MSG = "No bank account selected.";
 const RECEIVABLE_BANK_MSG = "No bank account selected.";
+const BANK_TRANSFER_DEST_MSG =
+  "Choose a different destination account for transfer.";
 
 function todayIso(): string {
   const now = new Date();
@@ -64,6 +69,7 @@ export function NewTransactionPage() {
   const voidsOn = reactWriteVoidsEnabled();
   const purchasesOn = reactWritePurchasesEnabled();
   const receivableOn = reactWriteReceivablePaymentsEnabled();
+  const bankingOn = reactWriteBankingEnabled();
   const defaultTab: WriteTab = salesOn
     ? "sale"
     : expensesOn
@@ -72,7 +78,9 @@ export function NewTransactionPage() {
         ? "purchase"
         : receivableOn
           ? "receivable"
-          : "void";
+          : bankingOn
+            ? "banking"
+            : "void";
 
   const [sessionTick, setSessionTick] = useState(0);
   const session = useMemo(() => getReadSession(), [sessionTick]);
@@ -117,6 +125,13 @@ export function NewTransactionPage() {
   const [receivableBankAccountId, setReceivableBankAccountId] = useState("");
   const [receivableResult, setReceivableResult] =
     useState<CreateReceivablePaymentResponse | null>(null);
+  const [bankTransactionType, setBankTransactionType] =
+    useState<BankTransactionType>("deposit");
+  const [bankingAccountId, setBankingAccountId] = useState("");
+  const [bankingDestinationAccountId, setBankingDestinationAccountId] = useState("");
+  const [bankingCurrency, setBankingCurrency] = useState("");
+  const [bankingResult, setBankingResult] =
+    useState<CreateBankTransactionResponse | null>(null);
 
   if (!reactWriteEnabled()) {
     return (
@@ -126,7 +141,8 @@ export function NewTransactionPage() {
           Write UI disabled. Set <code>VITE_ERP_REACT_WRITE_SALES=1</code>,{" "}
           <code>VITE_ERP_REACT_WRITE_EXPENSES=1</code>,{" "}
           <code>VITE_ERP_REACT_WRITE_PURCHASES=1</code>,{" "}
-          <code>VITE_ERP_REACT_WRITE_RECEIVABLE_PAYMENTS=1</code>, and/or{" "}
+          <code>VITE_ERP_REACT_WRITE_RECEIVABLE_PAYMENTS=1</code>,{" "}
+          <code>VITE_ERP_REACT_WRITE_BANKING=1</code>, and/or{" "}
           <code>VITE_ERP_REACT_WRITE_VOIDS=1</code>.
         </p>
       </section>
@@ -425,6 +441,79 @@ export function NewTransactionPage() {
     }
   }
 
+  async function handleBankingSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!session) {
+      setError("Save a read API session before posting.");
+      return;
+    }
+    const parsedAmount = parseAmount(amount);
+    if (parsedAmount === null) {
+      setError("Enter a valid amount greater than zero.");
+      return;
+    }
+    const sourceId = parsePositiveInt(bankingAccountId);
+    if (sourceId === null) {
+      setError("Enter a valid bank account id.");
+      return;
+    }
+    let destinationId: number | undefined;
+    if (bankTransactionType === "transfer") {
+      const parsed = parsePositiveInt(bankingDestinationAccountId);
+      if (parsed === null) {
+        setError(BANK_TRANSFER_DEST_MSG);
+        return;
+      }
+      if (parsed === sourceId) {
+        setError(BANK_TRANSFER_DEST_MSG);
+        return;
+      }
+      destinationId = parsed;
+    }
+
+    setLoading(true);
+    setError(null);
+    setBankingResult(null);
+    try {
+      const body: {
+        date: string;
+        amount: number;
+        transaction_type: BankTransactionType;
+        bank_account_id: number;
+        notes: string;
+        destination_bank_account_id?: number;
+        currency?: string;
+      } = {
+        date,
+        amount: parsedAmount,
+        transaction_type: bankTransactionType,
+        bank_account_id: sourceId,
+        notes: notes.trim(),
+      };
+      if (bankTransactionType === "transfer" && destinationId !== undefined) {
+        body.destination_bank_account_id = destinationId;
+      }
+      const currencyOverride = bankingCurrency.trim().toUpperCase();
+      if (currencyOverride) {
+        body.currency = currencyOverride;
+      }
+      const response = await apiPost<CreateBankTransactionResponse>(
+        "/api/v1/bank-transactions",
+        body,
+        { session },
+      );
+      setBankingResult(response);
+      setAmount("");
+      setNotes("");
+      setBankingDestinationAccountId("");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setError(apiErr.detail ?? "Failed to record bank transaction.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleVoidSubmit(event: FormEvent) {
     event.preventDefault();
     if (!session) {
@@ -474,6 +563,7 @@ export function NewTransactionPage() {
     setVoidResult(null);
     setPurchaseResult(null);
     setReceivableResult(null);
+    setBankingResult(null);
   }
 
   return (
@@ -540,6 +630,17 @@ export function NewTransactionPage() {
             onClick={() => switchTab("receivable")}
           >
             Receivable
+          </button>
+        ) : null}
+        {bankingOn ? (
+          <button
+            type="button"
+            className={
+              tab === "banking" ? "erp-write-tabs__btn active" : "erp-write-tabs__btn"
+            }
+            onClick={() => switchTab("banking")}
+          >
+            Banking
           </button>
         ) : null}
       </nav>
@@ -902,6 +1003,87 @@ export function NewTransactionPage() {
         </form>
       ) : null}
 
+      {tab === "banking" && bankingOn ? (
+        <form className="erp-write-form" onSubmit={handleBankingSubmit}>
+          <label>
+            Transaction type
+            <select
+              value={bankTransactionType}
+              onChange={(event) =>
+                setBankTransactionType(event.target.value as BankTransactionType)
+              }
+            >
+              <option value="deposit">deposit</option>
+              <option value="withdrawal">withdrawal</option>
+              <option value="transfer">transfer</option>
+            </select>
+          </label>
+          <label>
+            Bank account id
+            <input
+              type="number"
+              min={1}
+              value={bankingAccountId}
+              onChange={(event) => setBankingAccountId(event.target.value)}
+              required
+            />
+          </label>
+          {bankTransactionType === "transfer" ? (
+            <label>
+              Destination bank account id
+              <input
+                type="number"
+                min={1}
+                value={bankingDestinationAccountId}
+                onChange={(event) => setBankingDestinationAccountId(event.target.value)}
+                required
+              />
+            </label>
+          ) : null}
+          <label>
+            Date
+            <input
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Amount
+            <input
+              type="text"
+              inputMode="decimal"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              placeholder="0.00"
+              required
+            />
+          </label>
+          <label>
+            Currency (optional)
+            <input
+              type="text"
+              value={bankingCurrency}
+              onChange={(event) => setBankingCurrency(event.target.value.toUpperCase())}
+              maxLength={3}
+              placeholder="Account default"
+            />
+          </label>
+          <label>
+            Notes
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              rows={3}
+            />
+          </label>
+          <button type="submit" disabled={!session || loading}>
+            {loading ? "Saving…" : `Record ${bankTransactionType}`}
+          </button>
+        </form>
+      ) : null}
+
       {tab === "void" && voidsOn ? (
         <form className="erp-write-form" onSubmit={handleVoidSubmit}>
           <label>
@@ -989,6 +1171,18 @@ export function NewTransactionPage() {
           <p>{receivableResult.message}</p>
           <p className="erp-muted">
             Sale #{receivableResult.sale_id} · payment #{receivableResult.payment_id}
+          </p>
+        </article>
+      ) : null}
+      {bankingResult ? (
+        <article className="erp-card erp-write-result">
+          <h2>Bank transaction saved</h2>
+          <p>{bankingResult.message}</p>
+          <p className="erp-muted">
+            Bank tx #{bankingResult.bank_transaction_id}
+            {bankingResult.paired_transaction_id
+              ? ` · paired #${bankingResult.paired_transaction_id}`
+              : ""}
           </p>
         </article>
       ) : null}
