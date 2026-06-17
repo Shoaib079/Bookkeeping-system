@@ -19,7 +19,8 @@ from registry.nav_keys import (
     NAV_REPORTS,
     NAV_TXN_LEDGER,
 )
-from registry.navigation import NAV_ACCORDION_GROUPS, NAV_GROUP_HINTS
+from registry.nav_group_hints import NAV_GROUP_HINTS
+from registry.navigation import NAV_ACCORDION_GROUPS
 
 SidebarItemKind = Literal["direct", "accordion"]
 

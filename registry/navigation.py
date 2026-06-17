@@ -61,6 +61,7 @@ from registry.nav_keys import (
     NAV_YEAR_END_CLOSE,
 )
 from registry.nav_labels import NAV_PAGE_I18N
+from registry.nav_group_hints import NAV_GROUP_HINTS
 
 RoleName = str
 
@@ -108,13 +109,6 @@ NAV_ACCORDION_GROUPS: tuple[NavAccordionGroupDef, ...] = (
     NavAccordionGroupDef("team", "Team & partners", "nav.group.team", 6),
     NavAccordionGroupDef("settings", "Settings", "nav.group.settings", 7),
 )
-
-# Optional accordion hints (sidebar + mobile More).
-NAV_GROUP_HINTS: dict[str, str] = {
-    "close_day": "nav.group.close_day_hint",
-    "accounting": "nav.group.accounting_hint",
-}
-
 
 @dataclass(frozen=True)
 class NavPageDef:
