@@ -26,6 +26,8 @@ READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/receivables",
     "/api/v1/payables",
     "/api/v1/partners",
+    "/api/v1/bank-accounts",
+    "/api/v1/workers",
     "/api/v1/partners/{partner_id}/statement",
     "/api/v1/banking/readiness",
 )
@@ -40,6 +42,8 @@ READ_API_TAGS: tuple[str, ...] = (
     "receivables",
     "payables",
     "partners",
+    "bank-accounts",
+    "workers",
     "banking",
 )
 
@@ -63,6 +67,8 @@ READ_SERVICE_MODULES: tuple[str, ...] = (
     "services/read_ar_ap.py",
     "services/read_coa.py",
     "services/read_partners.py",
+    "services/read_bank_accounts.py",
+    "services/read_workers.py",
     "services/read_partner_statement.py",
     "services/read_balances.py",
     "services/read_reconciliation.py",

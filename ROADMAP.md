@@ -1415,11 +1415,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-19** | Reports hub + profit & loss read pages | ✅ **Complete** |
 | **FASTAPI-REACT-20** | Cash flow + transaction ledger read pages | ✅ **Complete** |
 | **FASTAPI-REACT-21** | COA + partner pickers | ✅ **Complete** |
-| **FASTAPI-REACT-22+** | Bank/worker pickers or write match-type forms | 📋 Planned |
+| **FASTAPI-REACT-22** | Bank/worker/partner write pickers | ✅ **Complete** |
+| **FASTAPI-REACT-23+** | Match-type payload forms + statement/fiscal pickers | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_21_REACT_READ_PICKERS_AUDIT.md](./docs/FASTAPI_REACT_21_REACT_READ_PICKERS_AUDIT.md) · **Tests:** `tests/test_fastapi_react_21_react_read_pickers.py` · **Tag:** `fastapi-react-21-react-read-pickers`
+**Audit:** [FASTAPI_REACT_22_REACT_WRITE_PICKERS_AUDIT.md](./docs/FASTAPI_REACT_22_REACT_WRITE_PICKERS_AUDIT.md) · **Tests:** `tests/test_fastapi_react_22_react_write_pickers.py` · **Tag:** `fastapi-react-22-react-write-pickers`
 
-**Next slice:** **FASTAPI-REACT-22** — bank account / worker pickers on write tabs; see FR-21 audit §8.
+**Next slice:** **FASTAPI-REACT-23** — full match-type payload forms, statement row picker, fiscal period picker; see FR-22 audit §9.
 
 ---
 
@@ -3510,6 +3511,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-22 (closure)** — Bank/worker/partner write pickers: thin P1 list APIs (`/api/v1/bank-accounts`, `/api/v1/workers`) + `BankAccountPicker` / `WorkerPicker` / reused `PartnerPicker` on `NewTransactionPage` write tabs. Tag: `fastapi-react-22-react-write-pickers`. Next: **FASTAPI-REACT-23**. |
 | 2026-06-05 | **FASTAPI-REACT-21 (closure)** — COA + partner pickers: thin P1 list APIs (`/api/v1/chart-of-accounts`, `/api/v1/partners`) + `CoaAccountPicker` / `PartnerPicker` on Ledger and Partner Statement pages behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-21-react-read-pickers`. Next: **FASTAPI-REACT-22**. |
 | 2026-06-05 | **FASTAPI-REACT-20 (closure)** — Cash flow + transaction ledger: thin P1 APIs (`/api/v1/reports/cash-flow`, `/api/v1/transactions`) + `services/read_transaction_history.py`; `CashFlowPage`, `TransactionLedgerPage` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-20-react-read-cashflow-txn-ledger`. Next: **FASTAPI-REACT-21**. |
 | 2026-06-05 | **FASTAPI-REACT-19 (closure)** — Reports hub + P&L read pages: `ReportsPage`, `ProfitLossPage` wired to `/api/v1/reports/profit-loss` behind `VITE_ERP_REACT_PAGES=1`; transaction ledger deferred (no P1 read endpoint). `docs/FASTAPI_REACT_19_REACT_READ_REPORTS_HUB_AUDIT.md` + `tests/test_fastapi_react_19_react_read_reports_hub.py`. Tag: `fastapi-react-19-react-read-reports-hub`. Next: **FASTAPI-REACT-20**. |

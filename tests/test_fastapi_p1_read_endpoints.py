@@ -16,6 +16,7 @@ import models
 from api.dependencies import get_db
 from api.main import create_app
 from api.serialization import (
+    bank_accounts_list_to_dict,
     cash_flow_to_dict,
     coa_list_to_dict,
     ledger_page_to_dict,
@@ -25,10 +26,11 @@ from api.serialization import (
     receivables_page_to_dict,
     statement_readiness_list_to_dict,
     transaction_history_page_to_dict,
+    workers_list_to_dict,
 )
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
-from services import read_ar_ap, read_coa, read_ledger, read_partner_statement, read_partners, read_reconciliation, read_reports, read_transaction_history
+from services import read_ar_ap, read_bank_accounts, read_coa, read_ledger, read_partner_statement, read_partners, read_reconciliation, read_reports, read_transaction_history, read_workers
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
@@ -294,6 +296,14 @@ def seeded_tenant(db):
         company_id=co_a.id,
     )
     db.add(partner)
+    worker = models.Worker(
+        name="Staff P11",
+        role="Cashier",
+        is_active=True,
+        created_at=datetime.datetime.now(),
+        company_id=co_a.id,
+    )
+    db.add(worker)
 
     bank_a = models.BankAccount(
         name="Main Bank",
@@ -346,6 +356,7 @@ def seeded_tenant(db):
         "cash_account_a_id": cash_a.id,
         "cash_account_b_id": cash_b.id,
         "partner_id": partner.id,
+        "worker_id": worker.id,
         "from_date_iso": FROM_DATE.isoformat(),
         "to_date_iso": TO_DATE.isoformat(),
     }
@@ -427,6 +438,22 @@ READ_ENDPOINTS = [
         partners_list_to_dict,
         lambda db, tenant: {"company_id": tenant["company_a_id"]},
     ),
+    (
+        "bank_accounts_list",
+        "/api/v1/bank-accounts",
+        {},
+        read_bank_accounts.compute_bank_accounts_list,
+        bank_accounts_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
+        "workers_list",
+        "/api/v1/workers",
+        {},
+        read_workers.compute_workers_list,
+        workers_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
 ]
 
 
@@ -505,6 +532,8 @@ class TestReadEndpointGuards:
             ("/api/v1/receivables", {}),
             ("/api/v1/payables", {}),
             ("/api/v1/partners", {}),
+            ("/api/v1/bank-accounts", {}),
+            ("/api/v1/workers", {}),
             ("/api/v1/banking/readiness", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/transactions", _DATE_PARAMS),
@@ -530,6 +559,8 @@ class TestReadEndpointGuards:
             ("/api/v1/receivables", {}),
             ("/api/v1/payables", {}),
             ("/api/v1/partners", {}),
+            ("/api/v1/bank-accounts", {}),
+            ("/api/v1/workers", {}),
             ("/api/v1/banking/readiness", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/transactions", _DATE_PARAMS),
@@ -558,6 +589,7 @@ class TestReadEndpointGuards:
             ("/api/v1/receivables", {}),
             ("/api/v1/payables", {}),
             ("/api/v1/partners", {}),
+            ("/api/v1/workers", {}),
             ("/api/v1/banking/readiness", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/transactions", _DATE_PARAMS),
@@ -598,6 +630,8 @@ class TestReadEndpointNoCommit:
             ("/api/v1/banking/readiness", {}),
             ("/api/v1/chart-of-accounts", {}),
             ("/api/v1/partners", {}),
+            ("/api/v1/bank-accounts", {}),
+            ("/api/v1/workers", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/transactions", _DATE_PARAMS),
             ("/api/v1/partners/{partner_id}/statement", None),

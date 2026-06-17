@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from api.openapi_tags import OPENAPI_TAGS
-from api.routes import auth, bank_transactions, banking, chart_of_accounts, closing, expenses, ledger, partner_movements, partners, payables, purchases, receivable_payments, receivables, reconciliation, reports, sales, transactions, voids, worker_payments
+from api.routes import auth, bank_accounts, bank_transactions, banking, chart_of_accounts, closing, expenses, ledger, partner_movements, partners, payables, purchases, receivable_payments, receivables, reconciliation, reports, sales, transactions, voids, worker_payments, workers
 from services.permissions import PermissionDenied
 
 _API_DESCRIPTION = """\
@@ -55,6 +55,8 @@ def create_app() -> FastAPI:
     app.include_router(receivables.router, prefix="/api/v1/receivables")
     app.include_router(payables.router, prefix="/api/v1/payables")
     app.include_router(partners.router, prefix="/api/v1/partners")
+    app.include_router(bank_accounts.router, prefix="/api/v1/bank-accounts")
+    app.include_router(workers.router, prefix="/api/v1/workers")
     app.include_router(banking.router, prefix="/api/v1/banking")
     app.include_router(sales.router, prefix="/api/v1/sales")
     app.include_router(expenses.router, prefix="/api/v1/expenses")

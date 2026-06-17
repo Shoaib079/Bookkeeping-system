@@ -45,6 +45,8 @@ EXPECTED_PATHS = {
     "/api/v1/receivables",
     "/api/v1/payables",
     "/api/v1/partners",
+    "/api/v1/bank-accounts",
+    "/api/v1/workers",
     "/api/v1/partners/{partner_id}/statement",
     "/api/v1/banking/readiness",
 }
@@ -59,6 +61,8 @@ EXPECTED_TAGS = {
     "receivables",
     "payables",
     "partners",
+    "bank-accounts",
+    "workers",
     "banking",
     "writes",
 }
@@ -83,6 +87,8 @@ GET_ROUTES = [
     ("/api/v1/receivables", {}),
     ("/api/v1/payables", {}),
     ("/api/v1/partners", {}),
+    ("/api/v1/bank-accounts", {}),
+    ("/api/v1/workers", {}),
     (
         "/api/v1/partners/{partner_id}/statement",
         {"from_date": FROM_DATE.isoformat(), "to_date": TO_DATE.isoformat()},

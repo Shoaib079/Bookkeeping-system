@@ -107,6 +107,34 @@ export type PartnersListResponse = {
   row_count: number;
 };
 
+export type BankAccountListRow = {
+  id: number;
+  name: string;
+  bank_name: string | null;
+  kind: string;
+  currency: string | null;
+  is_active: boolean;
+  company_id: number;
+};
+
+export type BankAccountsListResponse = {
+  rows: BankAccountListRow[];
+  row_count: number;
+};
+
+export type WorkerListRow = {
+  id: number;
+  name: string;
+  role: string | null;
+  is_active: boolean;
+  company_id: number;
+};
+
+export type WorkersListResponse = {
+  rows: WorkerListRow[];
+  row_count: number;
+};
+
 export type BalanceSheetResponse = {
   as_of: string;
   total_assets: number;

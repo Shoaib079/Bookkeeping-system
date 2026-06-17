@@ -170,6 +170,11 @@ FR19_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 )
 
 DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-23",
+)
+
+# Frozen for FR-21 audit tests (do not mutate).
+FR21_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-22",
     "bank account picker",
     "worker picker",

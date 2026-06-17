@@ -100,10 +100,35 @@ P2_PARTNER_WORKER_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_partner_worker
 P2_RECONCILIATION_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_reconciliation_write.py"
 P2_CLOSING_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_closing_write.py"
 
+BANK_ACCOUNTS_LIST_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/bank-accounts",
+)
+
+WORKERS_LIST_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/workers",
+)
+
+PARTNERS_LIST_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/partners",
+)
+
+WRITE_PICKER_READ_API_PATHS: tuple[str, ...] = (
+    *BANK_ACCOUNTS_LIST_READ_API_PATHS,
+    *WORKERS_LIST_READ_API_PATHS,
+    *PARTNERS_LIST_READ_API_PATHS,
+)
+
+WRITE_PICKER_FRONTEND_FILES: tuple[str, ...] = (
+    "frontend/src/components/BankAccountPicker.tsx",
+    "frontend/src/components/WorkerPicker.tsx",
+    "frontend/src/components/PartnerPicker.tsx",
+)
+
 REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/config/featureFlags.ts",
     "frontend/src/lib/api/writeClient.ts",
     "frontend/src/pages/NewTransactionPage.tsx",
+    *WRITE_PICKER_FRONTEND_FILES,
 )
 
 # FR-08 cash only; FR-09 cash expense; FR-10 adds Card/Credit + Bank.
@@ -277,8 +302,17 @@ FR16_DEFERRED_ITEMS: tuple[str, ...] = (
     "production COMMIT_MODE_* flip",
 )
 
-DEFERRED_ITEMS: tuple[str, ...] = (
+# Frozen for FR-21 audit tests (write contract; do not mutate).
+FR21_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-22",
+    "bank account picker",
+    "worker picker",
+    "partner picker on write tab",
+    "production COMMIT_MODE_* flip",
+)
+
+DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-23",
     "full match-type payload forms",
     "statement row picker",
     "fiscal period picker",

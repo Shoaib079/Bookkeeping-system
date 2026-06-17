@@ -43,6 +43,14 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Bank statement import reconciliation readiness.",
     },
     {
+        "name": "bank-accounts",
+        "description": "Bank account directory for write-tab pickers and read-only views.",
+    },
+    {
+        "name": "workers",
+        "description": "Staff directory for write-tab pickers.",
+    },
+    {
         "name": "transactions",
         "description": "Cross-module transaction history for a date range.",
     },

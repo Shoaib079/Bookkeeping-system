@@ -1,6 +1,9 @@
 import { FormEvent, useMemo, useState } from "react";
 
+import { BankAccountPicker } from "../components/BankAccountPicker";
+import { PartnerPicker } from "../components/PartnerPicker";
 import { ReadApiSetup } from "../components/ReadApiSetup";
+import { WorkerPicker } from "../components/WorkerPicker";
 import {
   reactWriteEnabled,
   reactWriteBankingEnabled,
@@ -63,6 +66,7 @@ const VENDOR_REQUIRED_MSG = "Select a vendor before saving a purchase.";
 const CATEGORY_REQUIRED_MSG = "Select a category before saving";
 const PURCHASE_BANK_MSG = "No bank account selected.";
 const RECEIVABLE_BANK_MSG = "No bank account selected.";
+const CARD_BANK_MSG = "No bank account selected.";
 const BANK_TRANSFER_DEST_MSG =
   "Choose a different destination account for transfer.";
 const PARTNER_AMOUNT_MSG = "Amount must be greater than zero.";
@@ -249,7 +253,7 @@ export function NewTransactionPage() {
     if (salePaymentMethod === "Card") {
       const parsed = parsePositiveInt(cardBankAccountId);
       if (parsed === null) {
-        setError("Enter a bank account id for card sales.");
+        setError(CARD_BANK_MSG);
         return;
       }
       cardAccount = parsed;
@@ -318,7 +322,7 @@ export function NewTransactionPage() {
     if (expensePaymentMethod === "Bank") {
       const parsed = parsePositiveInt(bankAccountId);
       if (parsed === null) {
-        setError("Enter a bank account id for bank expenses.");
+        setError(RECEIVABLE_BANK_MSG);
         return;
       }
       bankId = parsed;
@@ -531,7 +535,7 @@ export function NewTransactionPage() {
     }
     const sourceId = parsePositiveInt(bankingAccountId);
     if (sourceId === null) {
-      setError("Enter a valid bank account id.");
+      setError(PURCHASE_BANK_MSG);
       return;
     }
     let destinationId: number | undefined;
@@ -599,7 +603,7 @@ export function NewTransactionPage() {
     }
     const parsedPartnerId = parsePositiveInt(partnerId);
     if (parsedPartnerId === null) {
-      setError("Enter a valid partner id.");
+      setError("Select a partner.");
       return;
     }
     const parsedAmount = parseAmount(amount);
@@ -666,7 +670,7 @@ export function NewTransactionPage() {
     }
     const parsedWorkerId = parsePositiveInt(workerId);
     if (parsedWorkerId === null) {
-      setError("Enter a valid worker id.");
+      setError("Select a worker.");
       return;
     }
     const parsedBank = parsePositiveInt(workerBankAccountId);
@@ -1098,16 +1102,14 @@ export function NewTransactionPage() {
             </label>
           ) : null}
           {salePaymentMethod === "Card" ? (
-            <label>
-              Card bank account id
-              <input
-                type="number"
-                min={1}
-                value={cardBankAccountId}
-                onChange={(event) => setCardBankAccountId(event.target.value)}
-                required
-              />
-            </label>
+            <BankAccountPicker
+              label="Card bank account"
+              value={cardBankAccountId}
+              onChange={setCardBankAccountId}
+              session={session}
+              disabled={loading}
+              excludeCreditCard
+            />
           ) : null}
           <label>
             Date
@@ -1168,16 +1170,12 @@ export function NewTransactionPage() {
             </select>
           </label>
           {expensePaymentMethod === "Bank" ? (
-            <label>
-              Bank account id
-              <input
-                type="number"
-                min={1}
-                value={bankAccountId}
-                onChange={(event) => setBankAccountId(event.target.value)}
-                required
-              />
-            </label>
+            <BankAccountPicker
+              value={bankAccountId}
+              onChange={setBankAccountId}
+              session={session}
+              disabled={loading}
+            />
           ) : null}
           <label>
             Date
@@ -1256,16 +1254,12 @@ export function NewTransactionPage() {
             </select>
           </label>
           {purchasePaymentMethod === "Bank" ? (
-            <label>
-              Bank account id
-              <input
-                type="number"
-                min={1}
-                value={purchaseBankAccountId}
-                onChange={(event) => setPurchaseBankAccountId(event.target.value)}
-                required
-              />
-            </label>
+            <BankAccountPicker
+              value={purchaseBankAccountId}
+              onChange={setPurchaseBankAccountId}
+              session={session}
+              disabled={loading}
+            />
           ) : null}
           <label>
             Vendor name
@@ -1354,16 +1348,12 @@ export function NewTransactionPage() {
             </select>
           </label>
           {receivablePaymentMethod === "Bank" ? (
-            <label>
-              Bank account id
-              <input
-                type="number"
-                min={1}
-                value={receivableBankAccountId}
-                onChange={(event) => setReceivableBankAccountId(event.target.value)}
-                required
-              />
-            </label>
+            <BankAccountPicker
+              value={receivableBankAccountId}
+              onChange={setReceivableBankAccountId}
+              session={session}
+              disabled={loading}
+            />
           ) : null}
           <label>
             Credit sale id
@@ -1444,27 +1434,20 @@ export function NewTransactionPage() {
               <option value="transfer">transfer</option>
             </select>
           </label>
-          <label>
-            Bank account id
-            <input
-              type="number"
-              min={1}
-              value={bankingAccountId}
-              onChange={(event) => setBankingAccountId(event.target.value)}
-              required
-            />
-          </label>
+          <BankAccountPicker
+            value={bankingAccountId}
+            onChange={setBankingAccountId}
+            session={session}
+            disabled={loading}
+          />
           {bankTransactionType === "transfer" ? (
-            <label>
-              Destination bank account id
-              <input
-                type="number"
-                min={1}
-                value={bankingDestinationAccountId}
-                onChange={(event) => setBankingDestinationAccountId(event.target.value)}
-                required
-              />
-            </label>
+            <BankAccountPicker
+              label="Destination bank account"
+              value={bankingDestinationAccountId}
+              onChange={setBankingDestinationAccountId}
+              session={session}
+              disabled={loading}
+            />
           ) : null}
           <label>
             Date
@@ -1512,16 +1495,12 @@ export function NewTransactionPage() {
 
       {tab === "partner" && partnerWorkerOn ? (
         <form className="erp-write-form" onSubmit={handlePartnerSubmit}>
-          <label>
-            Partner id
-            <input
-              type="number"
-              min={1}
-              value={partnerId}
-              onChange={(event) => setPartnerId(event.target.value)}
-              required
-            />
-          </label>
+          <PartnerPicker
+            value={partnerId}
+            onChange={setPartnerId}
+            session={session}
+            disabled={loading}
+          />
           <label>
             Movement type
             <select
@@ -1539,16 +1518,12 @@ export function NewTransactionPage() {
             </select>
           </label>
           {partnerMovementType !== "AdvanceOffset" ? (
-            <label>
-              Bank account id
-              <input
-                type="number"
-                min={1}
-                value={partnerBankAccountId}
-                onChange={(event) => setPartnerBankAccountId(event.target.value)}
-                required
-              />
-            </label>
+            <BankAccountPicker
+              value={partnerBankAccountId}
+              onChange={setPartnerBankAccountId}
+              session={session}
+              disabled={loading}
+            />
           ) : null}
           <label>
             Date
@@ -1586,16 +1561,12 @@ export function NewTransactionPage() {
 
       {tab === "worker" && partnerWorkerOn ? (
         <form className="erp-write-form" onSubmit={handleWorkerSubmit}>
-          <label>
-            Worker id
-            <input
-              type="number"
-              min={1}
-              value={workerId}
-              onChange={(event) => setWorkerId(event.target.value)}
-              required
-            />
-          </label>
+          <WorkerPicker
+            value={workerId}
+            onChange={setWorkerId}
+            session={session}
+            disabled={loading}
+          />
           <label>
             Movement type
             <select
@@ -1609,16 +1580,12 @@ export function NewTransactionPage() {
               <option value="Repayment">Repayment</option>
             </select>
           </label>
-          <label>
-            Bank account id
-            <input
-              type="number"
-              min={1}
-              value={workerBankAccountId}
-              onChange={(event) => setWorkerBankAccountId(event.target.value)}
-              required
-            />
-          </label>
+          <BankAccountPicker
+            value={workerBankAccountId}
+            onChange={setWorkerBankAccountId}
+            session={session}
+            disabled={loading}
+          />
           {workerMovementType === "Salary" ? (
             <>
               <label>

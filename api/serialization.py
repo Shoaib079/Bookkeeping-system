@@ -21,7 +21,9 @@ from services.read_reports import (
     ProfitLossStatement,
 )
 from services.read_coa import CoaListPage, CoaRow
+from services.read_bank_accounts import BankAccountListRow, BankAccountsListPage
 from services.read_partners import PartnerListRow, PartnersListPage
+from services.read_workers import WorkerListRow, WorkersListPage
 from services.read_transaction_history import TransactionHistoryPage, TransactionHistoryRow
 
 
@@ -156,6 +158,42 @@ def _partner_list_row_to_dict(row: PartnerListRow) -> dict[str, Any]:
 def partners_list_to_dict(page: PartnersListPage) -> dict[str, Any]:
     return {
         "rows": [_partner_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+    }
+
+
+def _bank_account_list_row_to_dict(row: BankAccountListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "name": row.name,
+        "bank_name": row.bank_name,
+        "kind": row.kind,
+        "currency": row.currency,
+        "is_active": row.is_active,
+        "company_id": row.company_id,
+    }
+
+
+def bank_accounts_list_to_dict(page: BankAccountsListPage) -> dict[str, Any]:
+    return {
+        "rows": [_bank_account_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+    }
+
+
+def _worker_list_row_to_dict(row: WorkerListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "name": row.name,
+        "role": row.role,
+        "is_active": row.is_active,
+        "company_id": row.company_id,
+    }
+
+
+def workers_list_to_dict(page: WorkersListPage) -> dict[str, Any]:
+    return {
+        "rows": [_worker_list_row_to_dict(r) for r in page.rows],
         "row_count": page.row_count,
     }
 
