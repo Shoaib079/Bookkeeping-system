@@ -180,7 +180,8 @@ No implementation before roadmap approval.
 | Shell / mobile chrome (Phase A) | ✅ Stabilized — fixed header, 968px breakpoint, People hub wired |
 | Sidebar / navigation redesign (AD-UI-001) | 🟡 **D1 + D2-P0 shipped** — Financial Statements routes + promoted daily lookup route (app.py `AD-UI-001 D2-P0` wrapper); D2+ remainder gated — see [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §16 |
 | **NAV-ARCH** — Navigation single source of truth | ✅ **S4 complete** — registry + React route contract frozen — see [§ NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
-| **UI-SYSTEM-02** — ERP-wide UI & theme modernization | 🟡 **S3 complete** — sidebar modernization — see [§ UI-SYSTEM-02](#ui-system-02--erp-wide-ui--theme-modernization) |
+| **UI-SYSTEM-02** — ERP-wide UI & theme modernization | ✅ **S1–S5 complete** — see [§ UI-SYSTEM-02](#ui-system-02--erp-wide-ui--theme-modernization) |
+| **MONO-THEME-01** — Option A+ unified mono ERP theme | 🟡 **S1 complete** — audit + design spec — see [§ MONO-THEME-01](#mono-theme-01--option-a-unified-mono-erp-theme) |
 | **MOB-AT-C1** — Concept C Mobile AT UI | ✅ **Accepted** — reference implementation; 747 tests passing |
 | **MOBILE-11** — Mobile Design System | ✅ **Approved** — `docs/MOBILE_UI_SYSTEM.md` is the governing document for all future mobile work |
 | **MOBILE-12** — Design Governance | ✅ **Approved** — open decisions recorded; phased migration path defined |
@@ -1266,7 +1267,35 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 - Sidebar visually modern without route drift.
 - React team can port `AppShell`, `SidebarNav`, `KpiGrid`, `ChipSelector` from documented contract.
 
-**Next slice:** UI-SYSTEM-02 epic **complete** — DS-6 React build or next ROADMAP priority.
+**Next slice:** UI-SYSTEM-02 epic **complete** — DS-6 React build or **MONO-THEME-01** (Option A+ shared grammar).
+
+---
+
+## MONO-THEME-01 — Option A+ Unified Mono ERP Theme
+
+**Status:** 🟡 **In progress** — S1 audit ✅ · S2 shared grammar tokens 📋 · S3 nav active 📋 · S4 desktop components 📋 · S5 mobile components 📋 · S6 tables/statuses 📋 · S7 React contract 📋  
+**Priority:** High — after UI-SYSTEM-02 token foundation; before React DS-6 build  
+**Depends on:** UI-SYSTEM-02-S2 (`ui/design_tokens.py`) · MOBILE-UX-02 theme audits · UI-SYSTEM-02-S5 React contract
+
+**User-approved direction (Option A+ Final Blend):** accounting-first shadcn-style spine · mono/neutral by default · one blue accent · dense accounting tables · rich dashboard only where meaningful · desktop and mobile feel like one ERP · no rainbow UI · color only when it carries meaning.
+
+**Audit:** [MONO_THEME_01_AUDIT.md](./docs/MONO_THEME_01_AUDIT.md) · **Tests:** `tests/test_mono_theme_01_audit.py`
+
+**Core finding:** Token foundation already matches Option A+. Problem is **duplicated component grammar** — desktop and mobile CSS style cards/nav/chips separately despite shared tokens.
+
+**Hard rules:** No accounting/PostgreSQL/schema/routing/nav/posting changes · no new color system · no template copying · shadcn inspiration only · all semantic colors preserved (success/warning/danger/info, P&L, recon matched/review/mismatch, void).
+
+| Slice | Scope | Status |
+|-------|--------|--------|
+| **MONO-THEME-01-S1** | Audit + design spec (this doc) | ✅ **Complete** |
+| **MONO-THEME-01-S2** | Shared component-grammar tokens (`--erp-nav-*`, `--erp-card-*`, `--erp-chip-*`, `--erp-table-*`) | 📋 Planned |
+| **MONO-THEME-01-S3** | Sidebar + mobile nav active grammar | 📋 Planned |
+| **MONO-THEME-01-S4** | Desktop cards, dashboard, forms, buttons | 📋 Planned |
+| **MONO-THEME-01-S5** | Mobile shell, cards, forms, lists | 📋 Planned |
+| **MONO-THEME-01-S6** | Reports, tables, banking statuses | 📋 Planned |
+| **MONO-THEME-01-S7** | Cleanup + React contract update | 📋 Planned |
+
+**Next slice:** **MONO-THEME-01-S2** — shared component grammar tokens.
 
 ---
 
@@ -3357,6 +3386,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-17 | **MONO-THEME-01-S1 (closure)** — Option A+ unified mono theme audit: `docs/MONO_THEME_01_AUDIT.md` + `tests/test_mono_theme_01_audit.py`. Verdict PROCEED (revise-light): shared grammar tokens on existing foundation; no new colors. Tag: `mono-theme-01-s1-audit-design-spec`. Next: **MONO-THEME-01-S2** (shared grammar tokens). |
 | 2026-06-05 | **BANKING-UX-04-S4 (closure)** — React workflow contract frozen: `registry/banking_workflow_contract.py` + `docs/BANKING_UX_04_REACT_WORKFLOW_CONTRACT.md`; epic matrix `tests/test_banking_ux_04_epic_matrix.py`. Tag: `banking-ux-04-s4-react-workflow-contract`. **BANKING-UX-04 epic complete.** |
 | 2026-06-05 | **BANKING-UX-04-S3 (closure)** — Add Transaction bank-path workflow routing: type order/landing, statement callout, Advanced manual bank type via `ui/banking.py`. No posting/recon/GL changes. Tests: `tests/test_banking_ux_04_s3_add_transaction_bank_paths.py`. Tag: `banking-ux-04-s3-add-transaction-bank-paths`. Next: **BANKING-UX-04-S4** (tests/React-readiness). |
 | 2026-06-05 | **BANKING-UX-04-S2 (closure)** — Workflow mode setting (`banking.workflow_mode`, default `statement_first`) + Banking UI routing: section order, landing, Advanced manual panel via `ui/banking.py`. No posting/recon/GL changes. Tests: `tests/test_banking_ux_04_s2_workflow_mode_routing.py`. Tag: `banking-ux-04-s2-workflow-mode-routing`. Next: **BANKING-UX-04-S3** (Add Transaction bank paths). |

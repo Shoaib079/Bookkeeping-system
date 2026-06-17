@@ -99,7 +99,14 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 | **TD-UI-SYSTEM-02-07** | **KPI grid split** — `.erp-mob-kpi-grid` / `.erp-mob-kpi-value` across `mobile_components.css`, `mobile_reports.css`, `mobile_txn.css` | Medium | **Resolved** — `mobile_components.css` owns grid; `--reports-cf` modifier | UI-SYSTEM-02-S4 |
 | **TD-UI-SYSTEM-02-08** | **No `mobile_banking.css`** — banking mobile layout adaptation deferred (ROADMAP Banking UX) | Medium | Open | Banking UX epic |
 
-**Audit:** [UI_SYSTEM_02_AUDIT.md](./UI_SYSTEM_02_AUDIT.md) · **Tests:** `tests/test_ui_system_02_audit.py`
+### MONO-THEME-01 (TD-MONO)
+
+| ID | Item | Priority | Status | When / trigger |
+|----|------|----------|--------|----------------|
+| **TD-MONO-THEME-01-01** | **Duplicated component grammar** — desktop (`theme.css`/`widgets.css`) and mobile (`mobile_*.css`) define card/nav-active/chip styling separately despite shared color tokens | High | Open | MONO-THEME-01-S2–S6 shared `--erp-nav-*` / `--erp-card-*` / `--erp-chip-*` / `--erp-table-*` tokens |
+| **TD-MONO-THEME-01-02** | **Role hue references remain** — `DEPRECATED_ROLE_TOKEN_KEYS` still referenced in `auth.css` etc. | Low | Open | MONO-THEME-01-S7 cleanup |
+
+**Audit:** [MONO_THEME_01_AUDIT.md](./MONO_THEME_01_AUDIT.md) · **Tests:** `tests/test_mono_theme_01_audit.py`
 
 ---
 
