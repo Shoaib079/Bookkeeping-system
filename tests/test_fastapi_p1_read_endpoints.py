@@ -25,6 +25,8 @@ from api.serialization import (
     partner_statement_to_dict,
     partners_list_to_dict,
     payables_page_to_dict,
+    profit_allocations_list_to_dict,
+    receivable_sales_list_to_dict,
     receivables_page_to_dict,
     statement_readiness_list_to_dict,
     transaction_history_page_to_dict,
@@ -33,7 +35,7 @@ from api.serialization import (
 )
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
-from services import read_ar_ap, read_bank_accounts, read_bank_statement_rows, read_coa, read_fiscal_periods, read_ledger, read_partner_statement, read_partners, read_reconciliation, read_reports, read_transaction_history, read_vendors, read_workers
+from services import read_ar_ap, read_bank_accounts, read_bank_statement_rows, read_coa, read_fiscal_periods, read_ledger, read_partner_statement, read_partners, read_profit_allocations, read_receivable_sales, read_reconciliation, read_reports, read_transaction_history, read_vendors, read_workers
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
@@ -360,8 +362,25 @@ def seeded_tenant(db):
         is_closed=False,
         company_id=co_a.id,
     )
-    db.add_all([stmt_row, fiscal_period])
+    profit_alloc = models.PartnerProfitAllocation(
+        fiscal_period_id=None,
+        allocated_at=datetime.datetime.now(),
+        total_net_income=150.0,
+        is_void=False,
+        created_at=datetime.datetime.now(),
+        company_id=co_a.id,
+    )
+    db.add(fiscal_period)
+    db.flush()
+    profit_alloc.fiscal_period_id = fiscal_period.id
+    db.add_all([stmt_row, profit_alloc])
     db.commit()
+
+    credit_sale = (
+        db.query(models.Sale)
+        .filter_by(company_id=co_a.id, invoice_number="INV-A1")
+        .one()
+    )
 
     cash_b = (
         db.query(models.ChartOfAccounts)
@@ -384,6 +403,8 @@ def seeded_tenant(db):
         "vendor_a_id": vendor_a.id,
         "statement_row_id": stmt_row.id,
         "fiscal_period_id": fiscal_period.id,
+        "credit_sale_id": credit_sale.id,
+        "profit_allocation_id": profit_alloc.id,
         "from_date_iso": FROM_DATE.isoformat(),
         "to_date_iso": TO_DATE.isoformat(),
     }
@@ -505,6 +526,22 @@ READ_ENDPOINTS = [
         vendors_list_to_dict,
         lambda db, tenant: {"company_id": tenant["company_a_id"]},
     ),
+    (
+        "receivable_sales_list",
+        "/api/v1/receivable-sales",
+        {},
+        read_receivable_sales.compute_receivable_sales_list,
+        receivable_sales_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
+        "profit_allocations_list",
+        "/api/v1/profit-allocations",
+        {},
+        read_profit_allocations.compute_profit_allocations_list,
+        profit_allocations_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
 ]
 
 
@@ -587,6 +624,8 @@ class TestReadEndpointGuards:
             ("/api/v1/bank-statement-rows", {}),
             ("/api/v1/fiscal-periods", {}),
             ("/api/v1/vendors", {}),
+            ("/api/v1/receivable-sales", {}),
+            ("/api/v1/profit-allocations", {}),
             ("/api/v1/workers", {}),
             ("/api/v1/banking/readiness", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
@@ -617,6 +656,8 @@ class TestReadEndpointGuards:
             ("/api/v1/bank-statement-rows", {}),
             ("/api/v1/fiscal-periods", {}),
             ("/api/v1/vendors", {}),
+            ("/api/v1/receivable-sales", {}),
+            ("/api/v1/profit-allocations", {}),
             ("/api/v1/workers", {}),
             ("/api/v1/banking/readiness", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
@@ -647,6 +688,7 @@ class TestReadEndpointGuards:
             ("/api/v1/payables", {}),
             ("/api/v1/partners", {}),
             ("/api/v1/fiscal-periods", {}),
+            ("/api/v1/profit-allocations", {}),
             ("/api/v1/workers", {}),
             ("/api/v1/banking/readiness", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
@@ -692,6 +734,8 @@ class TestReadEndpointNoCommit:
             ("/api/v1/bank-statement-rows", {}),
             ("/api/v1/fiscal-periods", {}),
             ("/api/v1/vendors", {}),
+            ("/api/v1/receivable-sales", {}),
+            ("/api/v1/profit-allocations", {}),
             ("/api/v1/workers", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/transactions", _DATE_PARAMS),

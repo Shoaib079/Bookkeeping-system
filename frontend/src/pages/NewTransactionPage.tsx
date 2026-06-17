@@ -4,7 +4,9 @@ import { BankAccountPicker } from "../components/BankAccountPicker";
 import { CoaAccountPicker } from "../components/CoaAccountPicker";
 import { FiscalPeriodPicker } from "../components/FiscalPeriodPicker";
 import { PartnerPicker } from "../components/PartnerPicker";
+import { ProfitAllocationPicker } from "../components/ProfitAllocationPicker";
 import { ReadApiSetup } from "../components/ReadApiSetup";
+import { ReceivableSalePicker } from "../components/ReceivableSalePicker";
 import { StatementRowPicker } from "../components/StatementRowPicker";
 import { VendorPicker } from "../components/VendorPicker";
 import { WorkerPicker } from "../components/WorkerPicker";
@@ -519,7 +521,7 @@ export function NewTransactionPage() {
     }
     const saleId = parsePositiveInt(receivableSaleId);
     if (saleId === null) {
-      setError("Enter a valid credit sale id.");
+      setError("Select a credit sale.");
       return;
     }
     let bankId: number | undefined;
@@ -1006,7 +1008,7 @@ export function NewTransactionPage() {
       } else {
         const allocationId = parsePositiveInt(closingAllocationId);
         if (allocationId === null) {
-          setError("Enter a valid allocation id.");
+          setError("Select a profit allocation.");
           setLoading(false);
           return;
         }
@@ -1494,16 +1496,12 @@ export function NewTransactionPage() {
               disabled={loading}
             />
           ) : null}
-          <label>
-            Credit sale id
-            <input
-              type="number"
-              min={1}
-              value={receivableSaleId}
-              onChange={(event) => setReceivableSaleId(event.target.value)}
-              required
-            />
-          </label>
+          <ReceivableSalePicker
+            value={receivableSaleId}
+            onChange={setReceivableSaleId}
+            session={session}
+            disabled={loading}
+          />
           <label>
             Customer name (optional)
             <input
@@ -2092,16 +2090,12 @@ export function NewTransactionPage() {
           </label>
           {closingAction === "voidAllocation" ? (
             <>
-              <label>
-                Allocation id
-                <input
-                  type="number"
-                  min={1}
-                  value={closingAllocationId}
-                  onChange={(event) => setClosingAllocationId(event.target.value)}
-                  required
-                />
-              </label>
+              <ProfitAllocationPicker
+                value={closingAllocationId}
+                onChange={setClosingAllocationId}
+                session={session}
+                disabled={loading}
+              />
               <label>
                 Void reason
                 <textarea

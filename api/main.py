@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from api.openapi_tags import OPENAPI_TAGS
-from api.routes import auth, bank_accounts, bank_statement_rows, bank_transactions, banking, chart_of_accounts, closing, expenses, fiscal_periods, ledger, partner_movements, partners, payables, purchases, receivable_payments, receivables, reconciliation, reports, sales, transactions, vendors, voids, worker_payments, workers
+from api.routes import auth, bank_accounts, bank_statement_rows, bank_transactions, banking, chart_of_accounts, closing, expenses, fiscal_periods, ledger, partner_movements, partners, payables, profit_allocations, purchases, receivable_payments, receivable_sales, receivables, reconciliation, reports, sales, transactions, vendors, voids, worker_payments, workers
 from services.permissions import PermissionDenied
 
 _API_DESCRIPTION = """\
@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(transactions.router, prefix="/api/v1/transactions")
     app.include_router(ledger.router, prefix="/api/v1/ledger")
     app.include_router(receivables.router, prefix="/api/v1/receivables")
+    app.include_router(receivable_sales.router, prefix="/api/v1/receivable-sales")
     app.include_router(payables.router, prefix="/api/v1/payables")
     app.include_router(partners.router, prefix="/api/v1/partners")
     app.include_router(bank_accounts.router, prefix="/api/v1/bank-accounts")
@@ -71,6 +72,7 @@ def create_app() -> FastAPI:
     app.include_router(bank_transactions.router, prefix="/api/v1/bank-transactions")
     app.include_router(reconciliation.router, prefix="/api/v1/reconciliation")
     app.include_router(closing.router, prefix="/api/v1")
+    app.include_router(profit_allocations.router, prefix="/api/v1/profit-allocations")
 
     @app.exception_handler(PermissionDenied)
     async def _permission_denied_handler(_request, exc: PermissionDenied):

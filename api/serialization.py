@@ -27,7 +27,8 @@ from services.read_bank_statement_rows import (
     BankStatementRowsListPage,
 )
 from services.read_fiscal_periods import FiscalPeriodListRow, FiscalPeriodsListPage
-from services.read_partners import PartnerListRow, PartnersListPage
+from services.read_profit_allocations import ProfitAllocationListRow, ProfitAllocationsListPage
+from services.read_receivable_sales import ReceivableSaleListRow, ReceivableSalesListPage
 from services.read_vendors import VendorListRow, VendorsListPage
 from services.read_workers import WorkerListRow, WorkersListPage
 from services.read_transaction_history import TransactionHistoryPage, TransactionHistoryRow
@@ -255,6 +256,46 @@ def _vendor_list_row_to_dict(row: VendorListRow) -> dict[str, Any]:
 def vendors_list_to_dict(page: VendorsListPage) -> dict[str, Any]:
     return {
         "rows": [_vendor_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+    }
+
+
+def _receivable_sale_list_row_to_dict(row: ReceivableSaleListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "invoice_number": row.invoice_number,
+        "customer_name": row.customer_name,
+        "date": row.date.isoformat(),
+        "due_date": row.due_date.isoformat() if row.due_date is not None else None,
+        "balance": row.balance,
+        "status": row.status,
+        "currency": row.currency,
+        "company_id": row.company_id,
+    }
+
+
+def receivable_sales_list_to_dict(page: ReceivableSalesListPage) -> dict[str, Any]:
+    return {
+        "rows": [_receivable_sale_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+    }
+
+
+def _profit_allocation_list_row_to_dict(row: ProfitAllocationListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "fiscal_period_id": row.fiscal_period_id,
+        "period_name": row.period_name,
+        "allocated_at": row.allocated_at.isoformat(),
+        "total_net_income": row.total_net_income,
+        "is_void": row.is_void,
+        "company_id": row.company_id,
+    }
+
+
+def profit_allocations_list_to_dict(page: ProfitAllocationsListPage) -> dict[str, Any]:
+    return {
+        "rows": [_profit_allocation_list_row_to_dict(r) for r in page.rows],
         "row_count": page.row_count,
     }
 

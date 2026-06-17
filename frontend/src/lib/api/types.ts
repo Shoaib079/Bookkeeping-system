@@ -178,6 +178,38 @@ export type VendorsListResponse = {
   row_count: number;
 };
 
+export type ReceivableSaleListRow = {
+  id: number;
+  invoice_number: string;
+  customer_name: string;
+  date: string;
+  due_date: string | null;
+  balance: number;
+  status: string;
+  currency: string | null;
+  company_id: number;
+};
+
+export type ReceivableSalesListResponse = {
+  rows: ReceivableSaleListRow[];
+  row_count: number;
+};
+
+export type ProfitAllocationListRow = {
+  id: number;
+  fiscal_period_id: number;
+  period_name: string;
+  allocated_at: string;
+  total_net_income: number;
+  is_void: boolean;
+  company_id: number;
+};
+
+export type ProfitAllocationsListResponse = {
+  rows: ProfitAllocationListRow[];
+  row_count: number;
+};
+
 export type BalanceSheetResponse = {
   as_of: string;
   total_assets: number;
