@@ -76,6 +76,7 @@ def test_inventory_mechanisms_with_line_numbers(doc_text):
     assert str(_app_line("_PAGE_DISPATCH = build_page_dispatch(")) in doc_text
     assert str(_app_line("def _render_navigation_tree(")) in doc_text
     assert str(_app_line("_NAV_ACCORDION = build_nav_accordion()")) in doc_text
+    assert str(_app_line("_NAV_ROLE_PAGES = build_nav_role_pages()")) in doc_text
     assert str(_app_line("_MOBILE_BOTTOM_NAV = (")) in doc_text
 
 

@@ -178,7 +178,9 @@ from registry.i18n import nav_display, normalize_locale, page_title, t
 from registry.navigation import (
     NavPageDef,
     build_nav_accordion,
+    build_nav_all_pages,
     build_nav_direct_pages,
+    build_nav_role_pages,
     build_page_dispatch,
 )
 
@@ -3224,55 +3226,9 @@ _MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
 _NAV_ACCORDION = build_nav_accordion()
 _NAV_ACCORDION_BY_KEY = {gk: (glabel, gpages) for gk, glabel, gpages in _NAV_ACCORDION}
 _NAV_DIRECT_PAGES = build_nav_direct_pages()
-_NAV_ALL_PAGES = _NAV_DIRECT_PAGES + [key for _, _, pages in _NAV_ACCORDION for _, key in pages]
+_NAV_ALL_PAGES = build_nav_all_pages()
 _NAV_MY_ACCOUNT = NAV_MY_ACCOUNT
-_NAV_ROLE_PAGES = {
-    "owner": _NAV_ALL_PAGES + [_NAV_MY_ACCOUNT],
-    "manager": [
-        NAV_HOME,
-        NAV_NEW_TRANSACTION, _TXN_LEDGER_PAGE_KEY, NAV_SALES, NAV_EXPENSES, NAV_RECURRING_EXPENSES, NAV_PURCHASES,
-        NAV_CASH_RECONCILIATION, NAV_EXTERNAL_SALES_VERIFICATION, NAV_END_OF_DAY_CLOSE,
-        NAV_RC_INGREDIENTS, NAV_RC_RECIPES, NAV_RC_COST_BREAKDOWN, NAV_RC_MENU_ITEMS,
-        NAV_CUSTOMERS, NAV_VENDORS, NAV_RECEIVABLES, NAV_PAYABLES,
-        NAV_INVENTORY, NAV_BANKING,
-        NAV_REPORTS,
-        NAV_PROFIT_LOSS, NAV_BALANCE_SHEET, NAV_CASH_FLOW,
-        NAV_GENERAL_LEDGER, NAV_TRIAL_BALANCE, NAV_JOURNAL_ENTRIES,
-        NAV_FISCAL_PERIODS, NAV_YEAR_END_CLOSE, NAV_BUDGET, NAV_CHART_OF_ACCOUNTS,
-        NAV_RECON_HEALTH,
-        NAV_PARTNER_ACCOUNTS,
-        NAV_WORKERS,
-        NAV_AUDIT_LOG,
-        NAV_OPENING_BALANCES,
-        _NAV_MY_ACCOUNT,
-    ],
-    "cashier": [
-        NAV_HOME,
-        NAV_NEW_TRANSACTION, _TXN_LEDGER_PAGE_KEY, NAV_SALES, NAV_EXPENSES, NAV_RECURRING_EXPENSES, NAV_PURCHASES,
-        NAV_CASH_RECONCILIATION, NAV_EXTERNAL_SALES_VERIFICATION, NAV_END_OF_DAY_CLOSE,
-        NAV_RECEIVABLES, NAV_PAYABLES,
-        NAV_BANKING,
-        NAV_REPORTS,
-        NAV_PROFIT_LOSS, NAV_BALANCE_SHEET, NAV_CASH_FLOW,
-        _NAV_MY_ACCOUNT,
-    ],
-    "partner": [
-        NAV_HOME,
-        NAV_SALES, NAV_RECEIVABLES,
-        _TXN_LEDGER_PAGE_KEY,
-        NAV_REPORTS,
-        NAV_PROFIT_LOSS, NAV_BALANCE_SHEET, NAV_CASH_FLOW,
-        NAV_PARTNER_ACCOUNTS,
-        _NAV_MY_ACCOUNT,
-    ],
-    "viewer": [
-        NAV_HOME,
-        _TXN_LEDGER_PAGE_KEY,
-        NAV_REPORTS,
-        NAV_PROFIT_LOSS, NAV_BALANCE_SHEET, NAV_CASH_FLOW,
-        _NAV_MY_ACCOUNT,
-    ],
-}
+_NAV_ROLE_PAGES = build_nav_role_pages()
 
 
 def _render_navigation_tree(

@@ -179,7 +179,7 @@ No implementation before roadmap approval.
 | DEVELOPMENT_MODE | ✅ **Resolved by DEV-AUTH-01** — env-gated dev mode: `DEV_MODE = os.getenv("ERP_DEV_MODE", "0") == "1"` (default off). **Production checklist: must not run with `ERP_DEV_MODE=1`** |
 | Shell / mobile chrome (Phase A) | ✅ Stabilized — fixed header, 968px breakpoint, People hub wired |
 | Sidebar / navigation redesign (AD-UI-001) | 🟡 **D1 + D2-P0 shipped** — Financial Statements routes + promoted daily lookup route (app.py `AD-UI-001 D2-P0` wrapper); D2+ remainder gated — see [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §16 |
-| **NAV-ARCH** — Navigation single source of truth | 🟡 **S3A complete** — desktop derived; S3B–S4 planned — see [§ NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
+| **NAV-ARCH** — Navigation single source of truth | 🟡 **S3B complete** — role gates derived; S3C–S4 planned — see [§ NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
 | **MOB-AT-C1** — Concept C Mobile AT UI | ✅ **Accepted** — reference implementation; 747 tests passing |
 | **MOBILE-11** — Mobile Design System | ✅ **Approved** — `docs/MOBILE_UI_SYSTEM.md` is the governing document for all future mobile work |
 | **MOBILE-12** — Design Governance | ✅ **Approved** — open decisions recorded; phased migration path defined |
@@ -1160,7 +1160,7 @@ Complete dark mode, readability, header/sidebar polish, mobile pass.
 
 ## NAV-ARCH — Navigation Single Source of Truth
 
-**Status:** 🟡 **In progress — S3A complete**  
+**Status:** 🟡 **In progress — S3B complete**  
 **Priority:** After PostgreSQL parity, before React migration  
 **Blocker:** None  
 **Depends on:**
@@ -1202,8 +1202,8 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **NAV-ARCH-S1 — Audit + parity guardrails** | `docs/NAV_ARCH_AUDIT.md` + `tests/test_nav_arch_audit.py`; `KNOWN_HIDDEN` allow-list; no runtime change | ✅ **Complete** |
 | **NAV-ARCH-S2 — Introduce `registry/navigation.py`** | Per-page metadata; **derive `_PAGE_DISPATCH` only** | ✅ **Complete** |
 | **NAV-ARCH-S3A — Desktop derived** | Derive `_NAV_ACCORDION` + `_NAV_DIRECT_PAGES` from registry | ✅ **Complete** |
-| **NAV-ARCH-S3B — Role derived** | Derive `_NAV_ROLE_PAGES` from registry | 📋 **Next** |
-| **NAV-ARCH-S3C — Mobile derived** | Derive `_MOBILE_BOTTOM_NAV` + `_MOBILE_HUB_CONFIG` from registry | 📋 Planned |
+| **NAV-ARCH-S3B — Role derived** | Derive `_NAV_ROLE_PAGES` from registry | ✅ **Complete** |
+| **NAV-ARCH-S3C — Mobile derived** | Derive `_MOBILE_BOTTOM_NAV` + `_MOBILE_HUB_CONFIG` from registry | 📋 **Next** |
 | **NAV-ARCH-S4 — Freeze React route contract** | `docs/NAV_ARCH_REACT_ROUTE_CONTRACT.md`; `react_route` migration contract | 📋 Planned |
 
 **Success criteria:**
@@ -3304,6 +3304,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-17 | **NAV-ARCH-S3B (closure)** — Static role gates derived: `_NAV_ROLE_PAGES` from `registry/navigation.py`; permission override for Staff Expenses unchanged in `app.py`. Tests: `tests/test_nav_arch_s3b_role_derived.py`. Tag: `nav-arch-s3b-role-derived`. Next: **NAV-ARCH-S3C** (derive mobile nav). |
 | 2026-06-17 | **NAV-ARCH-S3A (closure)** — Desktop nav derived: `_NAV_ACCORDION` + `_NAV_DIRECT_PAGES` from `registry/navigation.py`; sidebar render order unchanged. Tests: `tests/test_nav_arch_s3a_desktop_derived.py`. Tag: `nav-arch-s3a-desktop-derived`. Next: **NAV-ARCH-S3B** (derive role gates). |
 | 2026-06-17 | **NAV-ARCH-S2 (closure)** — `registry/navigation.py` derives `_PAGE_DISPATCH` (42 routes); accordion/direct/role/mobile unchanged. Tests: `tests/test_nav_arch_s2_registry_dispatch.py`. Tag: `nav-arch-s2-registry-dispatch`. Next: **NAV-ARCH-S3A** (derive desktop nav). |
 | 2026-06-17 | **NAV-ARCH-S1 (closure)** — Navigation audit + live parity guardrails: `docs/NAV_ARCH_AUDIT.md`, `tests/test_nav_arch_audit.py`; no runtime change; `registry/navigation.py` deferred to S2. Tag: `nav-arch-s1-audit-guardrails`. Next: **NAV-ARCH-S2** (registry + derive dispatch). |

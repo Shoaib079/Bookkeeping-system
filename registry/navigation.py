@@ -2,7 +2,8 @@
 
 S2: derives ``_PAGE_DISPATCH``.
 S3A: derives ``_NAV_ACCORDION`` and ``_NAV_DIRECT_PAGES``.
-Role gates and mobile config remain hand-edited until S3B/S3C.
+S3B: derives ``_NAV_ROLE_PAGES`` (static role gates; permission overrides stay in app.py).
+Mobile config remains hand-edited until S3C.
 """
 
 from __future__ import annotations
@@ -72,6 +73,14 @@ _OMCPV: frozenset[RoleName] = frozenset(
 )
 _OWNER_ONLY: frozenset[RoleName] = frozenset({"owner"})
 
+NAV_ROLE_NAMES: tuple[RoleName, ...] = (
+    "owner",
+    "manager",
+    "cashier",
+    "partner",
+    "viewer",
+)
+
 AccordionPage = tuple[None, str]
 NavAccordionRow = tuple[str, str, list[AccordionPage]]
 NavAccordionByKey = dict[str, tuple[str, list[AccordionPage]]]
@@ -117,6 +126,7 @@ class NavPageDef:
     sidebar_direct_order: int | None = None
     accordion_group: str | None = None
     accordion_order: int | None = None
+    permission_gate: frozenset[str] | None = None
 
 
 def _page(
@@ -131,6 +141,7 @@ def _page(
     sidebar_direct_order: int | None = None,
     accordion_group: str | None = None,
     accordion_order: int | None = None,
+    permission_gate: frozenset[str] | None = None,
     hidden: bool = False,
     legacy: bool = False,
 ) -> NavPageDef:
@@ -149,6 +160,7 @@ def _page(
         sidebar_direct_order=sidebar_direct_order,
         accordion_group=accordion_group,
         accordion_order=accordion_order,
+        permission_gate=permission_gate,
     )
 
 
@@ -183,6 +195,7 @@ NAV_PAGES: tuple[NavPageDef, ...] = (
         roles=_OWNER_ONLY,
         accordion_group="transactions",
         accordion_order=2,
+        permission_gate=frozenset({"submit_expense_drafts", "approve_expense_drafts"}),
     ),
     _page(
         NAV_RECURRING_EXPENSES,
@@ -410,6 +423,81 @@ def build_nav_accordion() -> list[NavAccordionRow]:
 def build_nav_accordion_by_key() -> NavAccordionByKey:
     """Derive ``_NAV_ACCORDION_BY_KEY`` from registry."""
     return {gk: (glabel, gpages) for gk, glabel, gpages in build_nav_accordion()}
+
+
+def build_nav_all_pages() -> list[str]:
+    """All sidebar-routed pages (direct + accordion); excludes ``NAV_MY_ACCOUNT``."""
+    return build_nav_direct_pages() + [
+        page_key
+        for _group_key, _label, pages in build_nav_accordion()
+        for _icon, page_key in pages
+    ]
+
+
+def validate_role_gates() -> None:
+    """Raise on incomplete or inconsistent static role metadata."""
+    validate_registry()
+    all_pages = set(build_nav_all_pages())
+
+    for page in NAV_PAGES:
+        if page.hidden:
+            continue
+        if not page.roles:
+            raise ValueError(f"Missing roles for {page.route_key!r}")
+        unknown = page.roles - set(NAV_ROLE_NAMES)
+        if unknown:
+            raise ValueError(f"Unknown roles {unknown} on {page.route_key!r}")
+
+    for role in NAV_ROLE_NAMES:
+        if role == "owner":
+            continue
+        derived = {p.route_key for p in NAV_PAGES if role in p.roles}
+        if NAV_MY_ACCOUNT not in derived:
+            raise ValueError(f"{role!r} missing NAV_MY_ACCOUNT in roles metadata")
+
+    owner_sidebar = set(all_pages)
+    owner_derived = {
+        p.route_key
+        for p in NAV_PAGES
+        if "owner" in p.roles and p.route_key != NAV_MY_ACCOUNT
+    }
+    if owner_derived != owner_sidebar:
+        missing = owner_sidebar - owner_derived
+        extra = owner_derived - owner_sidebar
+        raise ValueError(f"Owner role metadata mismatch: missing={missing}, extra={extra}")
+
+    # NAV-UX-02-S5 — staff expenses: static owner list only; runtime permission override in app.py.
+    staff = nav_page_by_key(NAV_STAFF_EXPENSE_CAPTURE)
+    if staff.permission_gate is None:
+        raise ValueError("Staff Expenses must declare permission_gate")
+    if "owner" not in staff.roles or staff.roles != _OWNER_ONLY:
+        raise ValueError("Staff Expenses static roles must be owner-only")
+
+    for restricted, roles in (
+        (NAV_MEMBERS, _OWNER_ONLY),
+        (NAV_PERMISSIONS, _OWNER_ONLY),
+        (NAV_BACKUP_RESTORE, _OWNER_ONLY),
+        (NAV_COMPANY_SETTINGS, _OWNER_ONLY),
+    ):
+        page = nav_page_by_key(restricted)
+        if page.roles != roles:
+            raise ValueError(f"{restricted!r} must remain owner-only in static roles")
+
+
+def build_nav_role_pages() -> dict[str, list[str]]:
+    """Derive ``_NAV_ROLE_PAGES`` static allow-lists from registry role metadata."""
+    validate_role_gates()
+    all_pages = build_nav_all_pages()
+    role_pages: dict[str, list[str]] = {
+        "owner": list(all_pages) + [NAV_MY_ACCOUNT],
+    }
+    for role in NAV_ROLE_NAMES:
+        if role == "owner":
+            continue
+        role_pages[role] = [
+            p.route_key for p in sorted(NAV_PAGES, key=lambda row: row.order) if role in p.roles
+        ]
+    return role_pages
 
 
 def build_page_dispatch(
