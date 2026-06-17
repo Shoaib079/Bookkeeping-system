@@ -90,10 +90,13 @@ def test_app_dispatches_to_ui_renderer(app_src: str):
 
 
 def test_nav_wired_under_settings(app_src: str):
-    idx = app_src.find('"settings", "Settings"')
-    assert idx != -1
-    snippet = app_src[idx : idx + 400]
-    assert "NAV_PERMISSIONS" in snippet
+    import app as erp
+    from registry.nav_keys import NAV_PERMISSIONS
+
+    settings_pages = [
+        page for _icon, page in erp._NAV_ACCORDION_BY_KEY["settings"][1]
+    ]
+    assert NAV_PERMISSIONS in settings_pages
 
 
 def test_renderer_public_signature():

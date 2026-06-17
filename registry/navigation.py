@@ -1,7 +1,8 @@
-"""NAV-ARCH-S2 — navigation registry (single source of truth for page dispatch).
+"""NAV-ARCH — navigation registry (single source of truth).
 
-Derives ``_PAGE_DISPATCH`` only. Desktop accordion/direct, role gates, and mobile
-config remain hand-edited in ``app.py`` until NAV-ARCH-S3A/S3B/S3C.
+S2: derives ``_PAGE_DISPATCH``.
+S3A: derives ``_NAV_ACCORDION`` and ``_NAV_DIRECT_PAGES``.
+Role gates and mobile config remain hand-edited until S3B/S3C.
 """
 
 from __future__ import annotations
@@ -71,10 +72,36 @@ _OMCPV: frozenset[RoleName] = frozenset(
 )
 _OWNER_ONLY: frozenset[RoleName] = frozenset({"owner"})
 
+AccordionPage = tuple[None, str]
+NavAccordionRow = tuple[str, str, list[AccordionPage]]
+NavAccordionByKey = dict[str, tuple[str, list[AccordionPage]]]
+
+
+@dataclass(frozen=True)
+class NavAccordionGroupDef:
+    """Desktop sidebar accordion group metadata (S3A)."""
+
+    group_key: str
+    legacy_label: str
+    label_i18n: str
+    list_order: int
+
+
+NAV_ACCORDION_GROUPS: tuple[NavAccordionGroupDef, ...] = (
+    NavAccordionGroupDef("transactions", "Record transactions", "nav.group.transactions", 0),
+    NavAccordionGroupDef("people", "Customers & suppliers", "nav.group.people", 1),
+    NavAccordionGroupDef("close_day", "Closings", "nav.group.close_day", 2),
+    NavAccordionGroupDef("recipe_costing", "Recipe Costing", "nav.group.recipe_costing", 3),
+    NavAccordionGroupDef("statements", "Financial Statements", "nav.group.statements", 4),
+    NavAccordionGroupDef("accounting", "Books", "nav.group.accounting", 5),
+    NavAccordionGroupDef("team", "Team & partners", "nav.group.team", 6),
+    NavAccordionGroupDef("settings", "Settings", "nav.group.settings", 7),
+)
+
 
 @dataclass(frozen=True)
 class NavPageDef:
-    """Per-page navigation metadata — dispatch SSOT; surfaces derived in S3."""
+    """Per-page navigation metadata — dispatch + desktop surfaces."""
 
     route_key: str
     label_i18n: str
@@ -87,7 +114,9 @@ class NavPageDef:
     session_arg: bool = True
     roles: frozenset[RoleName] = frozenset()
     sidebar_direct: bool = False
+    sidebar_direct_order: int | None = None
     accordion_group: str | None = None
+    accordion_order: int | None = None
 
 
 def _page(
@@ -99,7 +128,9 @@ def _page(
     roles: frozenset[RoleName] = frozenset(),
     session_arg: bool = True,
     sidebar_direct: bool = False,
+    sidebar_direct_order: int | None = None,
     accordion_group: str | None = None,
+    accordion_order: int | None = None,
     hidden: bool = False,
     legacy: bool = False,
 ) -> NavPageDef:
@@ -115,13 +146,15 @@ def _page(
         session_arg=session_arg,
         roles=roles,
         sidebar_direct=sidebar_direct,
+        sidebar_direct_order=sidebar_direct_order,
         accordion_group=accordion_group,
+        accordion_order=accordion_order,
     )
 
 
 # Order matches legacy ``_PAGE_DISPATCH`` in app.py (NAV-ARCH-S2 parity).
 NAV_PAGES: tuple[NavPageDef, ...] = (
-    _page(NAV_HOME, "render_dashboard", "/", 0, roles=_ALL_ROLES, sidebar_direct=True),
+    _page(NAV_HOME, "render_dashboard", "/", 0, roles=_ALL_ROLES, sidebar_direct=True, sidebar_direct_order=0),
     _page(
         NAV_NEW_TRANSACTION,
         "render_add_transaction",
@@ -129,6 +162,7 @@ NAV_PAGES: tuple[NavPageDef, ...] = (
         1,
         roles=_OMC,
         sidebar_direct=True,
+        sidebar_direct_order=1,
     ),
     _page(
         NAV_TXN_LEDGER,
@@ -137,9 +171,10 @@ NAV_PAGES: tuple[NavPageDef, ...] = (
         2,
         roles=_OMCPV,
         sidebar_direct=True,
+        sidebar_direct_order=2,
     ),
-    _page(NAV_SALES, "render_sales", "/sales", 3, roles=_OMCP, accordion_group="transactions"),
-    _page(NAV_EXPENSES, "render_expenses", "/expenses", 4, roles=_OMC, accordion_group="transactions"),
+    _page(NAV_SALES, "render_sales", "/sales", 3, roles=_OMCP, accordion_group="transactions", accordion_order=0),
+    _page(NAV_EXPENSES, "render_expenses", "/expenses", 4, roles=_OMC, accordion_group="transactions", accordion_order=1),
     _page(
         NAV_STAFF_EXPENSE_CAPTURE,
         "render_staff_expense_capture",
@@ -147,6 +182,7 @@ NAV_PAGES: tuple[NavPageDef, ...] = (
         5,
         roles=_OWNER_ONLY,
         accordion_group="transactions",
+        accordion_order=2,
     ),
     _page(
         NAV_RECURRING_EXPENSES,
@@ -155,8 +191,9 @@ NAV_PAGES: tuple[NavPageDef, ...] = (
         6,
         roles=_OMC,
         accordion_group="transactions",
+        accordion_order=4,
     ),
-    _page(NAV_PURCHASES, "render_purchases", "/purchases", 7, roles=_OMC, accordion_group="transactions"),
+    _page(NAV_PURCHASES, "render_purchases", "/purchases", 7, roles=_OMC, accordion_group="transactions", accordion_order=3),
     _page(
         NAV_CASH_RECONCILIATION,
         "render_cash_reconciliation",
@@ -164,6 +201,7 @@ NAV_PAGES: tuple[NavPageDef, ...] = (
         8,
         roles=_OMC,
         accordion_group="close_day",
+        accordion_order=0,
     ),
     _page(
         NAV_EXTERNAL_SALES_VERIFICATION,
@@ -172,9 +210,10 @@ NAV_PAGES: tuple[NavPageDef, ...] = (
         9,
         roles=_OMC,
         accordion_group="close_day",
+        accordion_order=1,
     ),
-    _page(NAV_RC_INGREDIENTS, "render_recipe_ingredients", "/recipes/ingredients", 10, roles=_OM, accordion_group="recipe_costing"),
-    _page(NAV_RC_RECIPES, "render_recipe_recipes", "/recipes", 11, roles=_OM, accordion_group="recipe_costing"),
+    _page(NAV_RC_INGREDIENTS, "render_recipe_ingredients", "/recipes/ingredients", 10, roles=_OM, accordion_group="recipe_costing", accordion_order=0),
+    _page(NAV_RC_RECIPES, "render_recipe_recipes", "/recipes", 11, roles=_OM, accordion_group="recipe_costing", accordion_order=1),
     _page(
         NAV_RC_COST_BREAKDOWN,
         "render_recipe_cost_breakdown",
@@ -182,8 +221,9 @@ NAV_PAGES: tuple[NavPageDef, ...] = (
         12,
         roles=_OM,
         accordion_group="recipe_costing",
+        accordion_order=2,
     ),
-    _page(NAV_RC_MENU_ITEMS, "render_recipe_menu_items", "/recipes/menu-items", 13, roles=_OM, accordion_group="recipe_costing"),
+    _page(NAV_RC_MENU_ITEMS, "render_recipe_menu_items", "/recipes/menu-items", 13, roles=_OM, accordion_group="recipe_costing", accordion_order=3),
     _page(
         NAV_END_OF_DAY_CLOSE,
         "render_end_of_day_close",
@@ -191,14 +231,15 @@ NAV_PAGES: tuple[NavPageDef, ...] = (
         14,
         roles=_OMC,
         accordion_group="close_day",
+        accordion_order=2,
     ),
-    _page(NAV_CUSTOMERS, "render_customers", "/customers", 15, roles=_OM, accordion_group="people"),
-    _page(NAV_VENDORS, "render_vendors", "/vendors", 16, roles=_OM, accordion_group="people"),
-    _page(NAV_RECEIVABLES, "render_receivables", "/receivables", 17, roles=_OMCP, accordion_group="people"),
-    _page(NAV_PAYABLES, "render_payables", "/payables", 18, roles=_OMC, accordion_group="people"),
-    _page(NAV_INVENTORY, "render_inventory", "/inventory", 19, roles=_OM, sidebar_direct=True),
-    _page(NAV_BANKING, "render_banking", "/banking", 20, roles=_OMC, sidebar_direct=True),
-    _page(NAV_REPORTS, "render_reports", "/reports", 21, roles=_OMCPV, sidebar_direct=True),
+    _page(NAV_CUSTOMERS, "render_customers", "/customers", 15, roles=_OM, accordion_group="people", accordion_order=0),
+    _page(NAV_VENDORS, "render_vendors", "/vendors", 16, roles=_OM, accordion_group="people", accordion_order=1),
+    _page(NAV_RECEIVABLES, "render_receivables", "/receivables", 17, roles=_OMCP, accordion_group="people", accordion_order=2),
+    _page(NAV_PAYABLES, "render_payables", "/payables", 18, roles=_OMC, accordion_group="people", accordion_order=3),
+    _page(NAV_INVENTORY, "render_inventory", "/inventory", 19, roles=_OM, sidebar_direct=True, sidebar_direct_order=3),
+    _page(NAV_BANKING, "render_banking", "/banking", 20, roles=_OMC, sidebar_direct=True, sidebar_direct_order=4),
+    _page(NAV_REPORTS, "render_reports", "/reports", 21, roles=_OMCPV, sidebar_direct=True, sidebar_direct_order=5),
     _page(
         NAV_PROFIT_LOSS,
         "render_profit_loss_page",
@@ -206,6 +247,7 @@ NAV_PAGES: tuple[NavPageDef, ...] = (
         22,
         roles=_OMCPV,
         accordion_group="statements",
+        accordion_order=0,
     ),
     _page(
         NAV_BALANCE_SHEET,
@@ -214,6 +256,7 @@ NAV_PAGES: tuple[NavPageDef, ...] = (
         23,
         roles=_OMCPV,
         accordion_group="statements",
+        accordion_order=1,
     ),
     _page(
         NAV_CASH_FLOW,
@@ -222,21 +265,22 @@ NAV_PAGES: tuple[NavPageDef, ...] = (
         24,
         roles=_OMCPV,
         accordion_group="statements",
+        accordion_order=2,
     ),
-    _page(NAV_GENERAL_LEDGER, "render_general_ledger", "/books/general-ledger", 25, roles=_OM, accordion_group="accounting"),
-    _page(NAV_TRIAL_BALANCE, "render_trial_balance", "/books/trial-balance", 26, roles=_OM, accordion_group="accounting"),
-    _page(NAV_JOURNAL_ENTRIES, "render_journal_entries", "/books/journal-entries", 27, roles=_OM, accordion_group="accounting"),
-    _page(NAV_FISCAL_PERIODS, "render_fiscal_periods", "/books/fiscal-periods", 28, roles=_OM, accordion_group="accounting"),
-    _page(NAV_YEAR_END_CLOSE, "render_year_end_close", "/books/year-end-close", 29, roles=_OM, accordion_group="accounting"),
-    _page(NAV_BUDGET, "render_budget", "/books/budget", 30, roles=_OM, accordion_group="accounting"),
-    _page(NAV_CHART_OF_ACCOUNTS, "render_chart_of_accounts", "/books/chart-of-accounts", 31, roles=_OM, accordion_group="accounting"),
-    _page(NAV_RECON_HEALTH, "render_reconciliation_health", "/books/recon-health", 32, roles=_OM, accordion_group="accounting"),
-    _page(NAV_PARTNER_ACCOUNTS, "render_partner_accounts", "/partners", 33, roles=frozenset({"owner", "manager", "partner"}), accordion_group="team"),
-    _page(NAV_WORKERS, "render_workers", "/workers", 34, roles=_OM, accordion_group="team"),
-    _page(NAV_COMPANY_SETTINGS, "render_company_settings", "/settings/company", 35, roles=_OWNER_ONLY, accordion_group="settings"),
-    _page(NAV_MEMBERS, "render_user_management", "/settings/members", 36, roles=_OWNER_ONLY, accordion_group="settings"),
-    _page(NAV_PERMISSIONS, "render_permissions_management", "/settings/permissions", 37, roles=_OWNER_ONLY, accordion_group="settings"),
-    _page(NAV_AUDIT_LOG, "render_audit_log", "/settings/audit-log", 38, roles=_OM, accordion_group="settings"),
+    _page(NAV_GENERAL_LEDGER, "render_general_ledger", "/books/general-ledger", 25, roles=_OM, accordion_group="accounting", accordion_order=0),
+    _page(NAV_TRIAL_BALANCE, "render_trial_balance", "/books/trial-balance", 26, roles=_OM, accordion_group="accounting", accordion_order=3),
+    _page(NAV_JOURNAL_ENTRIES, "render_journal_entries", "/books/journal-entries", 27, roles=_OM, accordion_group="accounting", accordion_order=2),
+    _page(NAV_FISCAL_PERIODS, "render_fiscal_periods", "/books/fiscal-periods", 28, roles=_OM, accordion_group="accounting", accordion_order=4),
+    _page(NAV_YEAR_END_CLOSE, "render_year_end_close", "/books/year-end-close", 29, roles=_OM, accordion_group="accounting", accordion_order=5),
+    _page(NAV_BUDGET, "render_budget", "/books/budget", 30, roles=_OM, accordion_group="accounting", accordion_order=6),
+    _page(NAV_CHART_OF_ACCOUNTS, "render_chart_of_accounts", "/books/chart-of-accounts", 31, roles=_OM, accordion_group="accounting", accordion_order=1),
+    _page(NAV_RECON_HEALTH, "render_reconciliation_health", "/books/recon-health", 32, roles=_OM, accordion_group="accounting", accordion_order=7),
+    _page(NAV_PARTNER_ACCOUNTS, "render_partner_accounts", "/partners", 33, roles=frozenset({"owner", "manager", "partner"}), accordion_group="team", accordion_order=0),
+    _page(NAV_WORKERS, "render_workers", "/workers", 34, roles=_OM, accordion_group="team", accordion_order=1),
+    _page(NAV_COMPANY_SETTINGS, "render_company_settings", "/settings/company", 35, roles=_OWNER_ONLY, accordion_group="settings", accordion_order=0),
+    _page(NAV_MEMBERS, "render_user_management", "/settings/members", 36, roles=_OWNER_ONLY, accordion_group="settings", accordion_order=1),
+    _page(NAV_PERMISSIONS, "render_permissions_management", "/settings/permissions", 37, roles=_OWNER_ONLY, accordion_group="settings", accordion_order=2),
+    _page(NAV_AUDIT_LOG, "render_audit_log", "/settings/audit-log", 38, roles=_OM, accordion_group="settings", accordion_order=3),
     _page(
         NAV_BACKUP_RESTORE,
         "render_backup_restore",
@@ -245,8 +289,9 @@ NAV_PAGES: tuple[NavPageDef, ...] = (
         roles=_OWNER_ONLY,
         session_arg=False,
         accordion_group="settings",
+        accordion_order=4,
     ),
-    _page(NAV_OPENING_BALANCES, "render_opening_balances", "/books/opening-balances", 40, roles=_OM, accordion_group="accounting"),
+    _page(NAV_OPENING_BALANCES, "render_opening_balances", "/books/opening-balances", 40, roles=_OM, accordion_group="accounting", accordion_order=8),
     _page(NAV_MY_ACCOUNT, "render_my_account", "/account", 41, roles=_ALL_ROLES),
 )
 
@@ -289,6 +334,82 @@ def validate_registry() -> None:
     extra = ALL_NAV_PAGE_KEYS - {p.route_key for p in NAV_PAGES}
     if extra:
         raise ValueError(f"ALL_NAV_PAGE_KEYS not in NAV_PAGES dispatch: {extra}")
+
+
+def validate_desktop_surfaces() -> None:
+    """Raise on invalid or incomplete desktop accordion/direct derivation."""
+    group_keys = {g.group_key for g in NAV_ACCORDION_GROUPS}
+    direct: list[NavPageDef] = []
+    accordion: list[NavPageDef] = []
+    for page in NAV_PAGES:
+        if page.hidden:
+            continue
+        if page.sidebar_direct_order is not None:
+            direct.append(page)
+        if page.accordion_group is not None:
+            accordion.append(page)
+        if page.sidebar_direct_order is not None and page.accordion_group is not None:
+            raise ValueError(f"{page.route_key!r} cannot be both direct and accordion")
+        if page.accordion_group is not None:
+            if page.accordion_group not in group_keys:
+                raise ValueError(f"Unknown accordion_group {page.accordion_group!r} for {page.route_key!r}")
+            if page.accordion_order is None:
+                raise ValueError(f"Missing accordion_order for {page.route_key!r}")
+        if page.sidebar_direct_order is not None and not page.sidebar_direct:
+            raise ValueError(f"{page.route_key!r} has sidebar_direct_order without sidebar_direct")
+
+    if not direct:
+        raise ValueError("No sidebar direct pages defined")
+    if not accordion:
+        raise ValueError("No accordion pages defined")
+
+    direct_orders = [p.sidebar_direct_order for p in direct]
+    if len(direct_orders) != len(set(direct_orders)):
+        raise ValueError("Duplicate sidebar_direct_order values")
+
+    for group in NAV_ACCORDION_GROUPS:
+        members = [p for p in accordion if p.accordion_group == group.group_key]
+        if not members:
+            raise ValueError(f"Accordion group {group.group_key!r} has no pages")
+        orders = [p.accordion_order for p in members]
+        if len(orders) != len(set(orders)):
+            raise ValueError(f"Duplicate accordion_order in group {group.group_key!r}")
+
+    surfaced = {p.route_key for p in direct} | {p.route_key for p in accordion}
+    dispatch_keys = {p.route_key for p in NAV_PAGES if not p.hidden}
+    missing = dispatch_keys - surfaced - {NAV_MY_ACCOUNT}
+    if missing:
+        raise ValueError(f"Dispatch routes missing desktop surface: {missing}")
+
+
+def build_nav_direct_pages() -> list[str]:
+    """Derive ``_NAV_DIRECT_PAGES`` from registry."""
+    validate_desktop_surfaces()
+    pages = [p for p in NAV_PAGES if p.sidebar_direct_order is not None]
+    pages.sort(key=lambda p: p.sidebar_direct_order or 0)
+    return [p.route_key for p in pages]
+
+
+def build_nav_accordion() -> list[NavAccordionRow]:
+    """Derive ``_NAV_ACCORDION`` from registry."""
+    validate_desktop_surfaces()
+    rows: list[NavAccordionRow] = []
+    for group in sorted(NAV_ACCORDION_GROUPS, key=lambda g: g.list_order):
+        members = [p for p in NAV_PAGES if p.accordion_group == group.group_key]
+        members.sort(key=lambda p: p.accordion_order or 0)
+        rows.append(
+            (
+                group.group_key,
+                group.legacy_label,
+                [(None, p.route_key) for p in members],
+            )
+        )
+    return rows
+
+
+def build_nav_accordion_by_key() -> NavAccordionByKey:
+    """Derive ``_NAV_ACCORDION_BY_KEY`` from registry."""
+    return {gk: (glabel, gpages) for gk, glabel, gpages in build_nav_accordion()}
 
 
 def build_page_dispatch(

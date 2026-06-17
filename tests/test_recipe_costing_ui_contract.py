@@ -124,13 +124,24 @@ def test_app_dispatches_to_ui_renderers(app_src: str):
 
 
 def test_nav_wired_under_recipe_costing(app_src: str):
-    idx = app_src.find('"recipe_costing", "Recipe Costing"')
-    assert idx != -1
-    snippet = app_src[idx : idx + 500]
-    assert "NAV_RC_INGREDIENTS" in snippet
-    assert "NAV_RC_RECIPES" in snippet
-    assert "NAV_RC_COST_BREAKDOWN" in snippet
-    assert "NAV_RC_MENU_ITEMS" in snippet
+    import app as erp
+    from registry.nav_keys import (
+        NAV_RC_COST_BREAKDOWN,
+        NAV_RC_INGREDIENTS,
+        NAV_RC_MENU_ITEMS,
+        NAV_RC_RECIPES,
+    )
+
+    recipe_pages = [
+        page for _icon, page in erp._NAV_ACCORDION_BY_KEY["recipe_costing"][1]
+    ]
+    for key in (
+        NAV_RC_INGREDIENTS,
+        NAV_RC_RECIPES,
+        NAV_RC_COST_BREAKDOWN,
+        NAV_RC_MENU_ITEMS,
+    ):
+        assert key in recipe_pages
 
 
 def test_permissions_registered():

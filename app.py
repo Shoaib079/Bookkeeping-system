@@ -175,7 +175,12 @@ from registry.locales.i18n_maps import (
     TXN_TYPE_I18N,
 )
 from registry.i18n import nav_display, normalize_locale, page_title, t
-from registry.navigation import NavPageDef, build_page_dispatch
+from registry.navigation import (
+    NavPageDef,
+    build_nav_accordion,
+    build_nav_direct_pages,
+    build_page_dispatch,
+)
 
 # Company roles (message keys) — kept in app.py to avoid i18n_maps import-order issues.
 _COMPANY_ROLE_I18N: dict[str, str] = {
@@ -3215,69 +3220,10 @@ _MOBILE_HUB_CONFIG: dict[str, list[tuple[str, str, str | None, str | None]]] = {
     ],
 }
 
-# Sidebar / mobile hub accordion — static; shared by main() and company-picker chrome.
-_NAV_ACCORDION = [
-    ("transactions", "Record transactions", [
-        (None, NAV_SALES),
-        (None, NAV_EXPENSES),
-        (None, NAV_STAFF_EXPENSE_CAPTURE),
-        (None, NAV_PURCHASES),
-        (None, NAV_RECURRING_EXPENSES),
-    ]),
-    ("people", "Customers & suppliers", [
-        (None, NAV_CUSTOMERS),
-        (None, NAV_VENDORS),
-        (None, NAV_RECEIVABLES),
-        (None, NAV_PAYABLES),
-    ]),
-    ("close_day", "Closings", [
-        (None, NAV_CASH_RECONCILIATION),
-        (None, NAV_EXTERNAL_SALES_VERIFICATION),
-        (None, NAV_END_OF_DAY_CLOSE),
-    ]),
-    ("recipe_costing", "Recipe Costing", [
-        (None, NAV_RC_INGREDIENTS),
-        (None, NAV_RC_RECIPES),
-        (None, NAV_RC_COST_BREAKDOWN),
-        (None, NAV_RC_MENU_ITEMS),
-    ]),
-    ("statements", "Financial Statements", [
-        (None, NAV_PROFIT_LOSS),
-        (None, NAV_BALANCE_SHEET),
-        (None, NAV_CASH_FLOW),
-    ]),
-    ("accounting", "Books", [
-        (None, NAV_GENERAL_LEDGER),
-        (None, NAV_CHART_OF_ACCOUNTS),
-        (None, NAV_JOURNAL_ENTRIES),
-        (None, NAV_TRIAL_BALANCE),
-        (None, NAV_FISCAL_PERIODS),
-        (None, NAV_YEAR_END_CLOSE),
-        (None, NAV_BUDGET),
-        (None, NAV_RECON_HEALTH),
-        (None, NAV_OPENING_BALANCES),
-    ]),
-    ("team", "Team & partners", [
-        (None, NAV_PARTNER_ACCOUNTS),
-        (None, NAV_WORKERS),
-    ]),
-    ("settings", "Settings", [
-        (None, NAV_COMPANY_SETTINGS),
-        (None, NAV_MEMBERS),
-        (None, NAV_PERMISSIONS),
-        (None, NAV_AUDIT_LOG),
-        (None, NAV_BACKUP_RESTORE),
-    ]),
-]
+# Sidebar / mobile hub accordion — NAV-ARCH-S3A: derived from registry.navigation.
+_NAV_ACCORDION = build_nav_accordion()
 _NAV_ACCORDION_BY_KEY = {gk: (glabel, gpages) for gk, glabel, gpages in _NAV_ACCORDION}
-_NAV_DIRECT_PAGES = [
-    NAV_HOME,
-    NAV_NEW_TRANSACTION,
-    _TXN_LEDGER_PAGE_KEY,
-    NAV_INVENTORY,
-    NAV_BANKING,
-    NAV_REPORTS,
-]
+_NAV_DIRECT_PAGES = build_nav_direct_pages()
 _NAV_ALL_PAGES = _NAV_DIRECT_PAGES + [key for _, _, pages in _NAV_ACCORDION for _, key in pages]
 _NAV_MY_ACCOUNT = NAV_MY_ACCOUNT
 _NAV_ROLE_PAGES = {

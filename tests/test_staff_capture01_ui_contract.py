@@ -98,10 +98,13 @@ def test_app_dispatches_to_ui_renderer(app_src: str):
 
 
 def test_nav_wired_under_transactions(app_src: str):
-    idx = app_src.find('"transactions", "Record transactions"')
-    assert idx != -1
-    snippet = app_src[idx : idx + 500]
-    assert "NAV_STAFF_EXPENSE_CAPTURE" in snippet
+    import app as erp
+    from registry.nav_keys import NAV_STAFF_EXPENSE_CAPTURE
+
+    txn_pages = [
+        page for _icon, page in erp._NAV_ACCORDION_BY_KEY["transactions"][1]
+    ]
+    assert NAV_STAFF_EXPENSE_CAPTURE in txn_pages
 
 
 def test_app_posting_seam_exists(app_src: str):

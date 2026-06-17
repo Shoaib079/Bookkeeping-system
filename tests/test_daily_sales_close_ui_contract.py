@@ -7,6 +7,8 @@ import pathlib
 
 import pytest
 
+import app as erp
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 UI_PATH = ROOT / "ui" / "external_sales_verification.py"
 APP_PATH = ROOT / "app.py"
@@ -103,11 +105,13 @@ def test_renderer_passes_explicit_company_id(ui_src: str):
 
 
 def test_nav_wired_under_closings(app_src: str):
+    from registry.nav_keys import NAV_EXTERNAL_SALES_VERIFICATION
+
     assert "NAV_EXTERNAL_SALES_VERIFICATION" in app_src
-    closings_idx = app_src.find('"close_day", "Closings"')
-    assert closings_idx != -1
-    snippet = app_src[closings_idx : closings_idx + 400]
-    assert "NAV_EXTERNAL_SALES_VERIFICATION" in snippet
+    closings_pages = [
+        page for _icon, page in erp._NAV_ACCORDION_BY_KEY["close_day"][1]
+    ]
+    assert NAV_EXTERNAL_SALES_VERIFICATION in closings_pages
 
 
 def test_permissions_registered():

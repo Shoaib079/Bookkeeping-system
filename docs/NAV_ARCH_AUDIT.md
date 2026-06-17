@@ -6,22 +6,24 @@
 
 **NAV-ARCH-S1 status:** ✅ **Complete** — `docs/NAV_ARCH_AUDIT.md` + strengthened `tests/test_nav_arch_audit.py` (doc contract + live parity guardrails).
 
-**NAV-ARCH-S2 status:** ✅ **Complete** — `registry/navigation.py` derives `_PAGE_DISPATCH` only. Accordion/direct/role/mobile remain hand-edited until S3A/S3B/S3C.
+**NAV-ARCH-S2 status:** ✅ **Complete** — `registry/navigation.py` derives `_PAGE_DISPATCH` only.
+
+**NAV-ARCH-S3A status:** ✅ **Complete** — `registry/navigation.py` derives `_NAV_ACCORDION` and `_NAV_DIRECT_PAGES`. Role gates and mobile remain hand-edited until S3B/S3C.
 
 ## 1. Navigation inventory
 
 | Concern | Mechanism | Location (app.py, 2026-06-17) |
 |---|---|---|
-| **Primary router** | `_PAGE_DISPATCH` dict → `render_*` per `nav_selection` — **derived from `registry/navigation.py`** | `26195`; dispatch call `26466` |
-| **Desktop sidebar render** | `_render_navigation_tree(st.sidebar, …)` (custom button accordion) | def `3332`; call `26424` |
-| **`st.sidebar` usage (only 2 sites)** | date-range filters; nav tree | `990-991`, `26424` |
+| **Primary router** | `_PAGE_DISPATCH` dict → `render_*` per `nav_selection` — **derived from `registry/navigation.py`** | `26141`; dispatch call `26412` |
+| **Desktop sidebar render** | `_render_navigation_tree(st.sidebar, …)` (custom button accordion) | def `3278`; call `26369` |
+| **`st.sidebar` usage (only 2 sites)** | date-range filters; nav tree | `990-991`, `26369` |
 | **`option_menu`** | **Not used** — no `streamlit-option-menu` dependency; nav is a custom button tree | (none) |
 | **radio / selectbox page selection** | **Not the primary router.** Sub-page pickers only: banking section picker (`_banking_section_select`), reports exec picker / `st.tabs` | (banking/reports render fns) |
-| **Accordion groups** | `_NAV_ACCORDION` (8 groups) | `3219` |
-| **Direct (top-level) pages** | `_NAV_DIRECT_PAGES` | `3273` |
-| **Role visibility** | `_NAV_ROLE_PAGES` (owner/manager/cashier/partner/viewer) | `3283` |
-| **Mobile bottom nav** | `_MOBILE_BOTTOM_NAV` (5 slots) | `3157` |
-| **Mobile hubs** | `_MOBILE_HUB_CONFIG` (money/reports/people/more) | `3176` |
+| **Accordion groups** | `_NAV_ACCORDION` (8 groups) — **derived from registry** | `3224` |
+| **Direct (top-level) pages** | `_NAV_DIRECT_PAGES` — **derived from registry** | `3226` |
+| **Role visibility** | `_NAV_ROLE_PAGES` (owner/manager/cashier/partner/viewer) | `3229` |
+| **Mobile bottom nav** | `_MOBILE_BOTTOM_NAV` (5 slots) | `3162` |
+| **Mobile hubs** | `_MOBILE_HUB_CONFIG` (money/reports/people/more) | `3181` |
 | **Canonical route keys** | `NAV_*` constants + `ALL_NAV_PAGE_KEYS` + `LEGACY_NAV_ALIASES` + `normalize_nav_key` | `registry/nav_keys.py` |
 | **Legacy reroutes** | `_LEGACY_NAV_TO_REPORTS_EXEC` (`3022`), `_LEGACY_RPT_EXEC_TO_STATEMENT/_TO_BOOKS`, Bank Statement Import reroute | `app.py` (per NAV-UX-02-S6) |
 
@@ -47,7 +49,7 @@ Full 43-route table with `render_fn`/`surface`/`role_gate`/`react_route` already
 
 ## 5. Risk areas
 
-- **Seven parallel nav structures must stay in sync** — `registry/nav_keys.py` (keys), `registry/navigation.py` (dispatch), `_NAV_ACCORDION` (3219), `_NAV_DIRECT_PAGES` (3273), `_NAV_ROLE_PAGES` (3283), `_MOBILE_BOTTOM_NAV` (3157), `_MOBILE_HUB_CONFIG` (3176). **Dispatch is now registry-derived; surfaces still hand-synced** (S3A/S3B/S3C).
+- **Seven parallel nav structures must stay in sync** — `registry/nav_keys.py` (keys), `registry/navigation.py` (dispatch + desktop), `_NAV_ROLE_PAGES` (3229), `_MOBILE_BOTTOM_NAV` (3162), `_MOBILE_HUB_CONFIG` (3181). **Dispatch and desktop surfaces are registry-derived; role/mobile still hand-synced** (S3B/S3C).
 - **Legacy reroute surface** (`_LEGACY_*`) adds resolution-order complexity (NAV-UX-02-S6) — telemetry-gated, low risk.
 - **Business-logic independence:** the nav structures are pure data + a render function; **no accounting/business logic lives in navigation** — good, and must stay that way for the FastAPI/React target.
 
@@ -66,8 +68,8 @@ Respect migration safety; **do not duplicate** the NAV-UX-02 S1–S7 work. Net-n
 | **NAV-ARCH-S0 — Guardrails** | No new parallel nav structures without registry plan | Active |
 | **NAV-ARCH-S1 — Audit + parity guardrails** | `docs/NAV_ARCH_AUDIT.md` + `tests/test_nav_arch_audit.py`; `KNOWN_HIDDEN` allow-list; no runtime change | ✅ **Complete** |
 | **NAV-ARCH-S2 — Introduce `registry/navigation.py`** | Per-page metadata registry; **derive `_PAGE_DISPATCH` only** | ✅ **Complete** |
-| **NAV-ARCH-S3A — Desktop derived** | Derive `_NAV_ACCORDION` + `_NAV_DIRECT_PAGES` from registry | 📋 **Next** |
-| **NAV-ARCH-S3B — Role derived** | Derive `_NAV_ROLE_PAGES` from registry | 📋 Planned |
+| **NAV-ARCH-S3A — Desktop derived** | Derive `_NAV_ACCORDION` + `_NAV_DIRECT_PAGES` from registry | ✅ **Complete** |
+| **NAV-ARCH-S3B — Role derived** | Derive `_NAV_ROLE_PAGES` from registry | 📋 **Next** |
 | **NAV-ARCH-S3C — Mobile derived** | Derive `_MOBILE_BOTTOM_NAV` + `_MOBILE_HUB_CONFIG` from registry | 📋 Planned |
 | **NAV-ARCH-S4 — React route contract** | `docs/NAV_ARCH_REACT_ROUTE_CONTRACT.md`; freeze `react_route` map | 📋 Planned |
 
@@ -94,4 +96,4 @@ Respect migration safety; **do not duplicate** the NAV-UX-02 S1–S7 work. Net-n
 
 ---
 
-*Audit refreshed 2026-06-17. `_PAGE_DISPATCH` is derived from `registry/navigation.py` (`app.py:26195`). Navigation render tree still uses seven parallel structures for surfaces; **core risk: accordion/role/mobile hand-sync → drift**, mitigated by parity tests. Next: derive desktop nav (S3A).*
+*Audit refreshed 2026-06-17. `_PAGE_DISPATCH`, `_NAV_ACCORDION`, and `_NAV_DIRECT_PAGES` derive from `registry/navigation.py`. Sidebar render order in `_render_navigation_tree` is unchanged. **Core risk: role/mobile hand-sync → drift**, mitigated by parity tests. Next: derive role gates (S3B).*
