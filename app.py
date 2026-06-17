@@ -337,6 +337,7 @@ from registry.date_utils import (
     normalize_date_digits,
     normalize_user_date_format,
     parse_date_text,
+    streamlit_date_input_format,
 )
 
 _validate_settings_registry()
@@ -2949,15 +2950,6 @@ def _format_at_display_date(d: datetime.date) -> str:
     return date_ui.format_display_date(d)
 
 
-def _at_date_input_placeholder() -> str:
-    return date_input_placeholder(_active_user_date_format())
-
-
-def _at_defer_date_text_display(d: datetime.date) -> None:
-    """Queue formatted desktop date text — applied before the widget renders."""
-    st.session_state["at_date_text_sync_from"] = d
-
-
 def _at_defer_subcat_default(name: str) -> None:
     """Queue desktop subcategory selectbox value — applied before widget renders."""
     st.session_state["at_subcat_sync_from"] = name
@@ -2978,22 +2970,13 @@ def _at_apply_deferred_subcat_sync() -> None:
         st.session_state["at_subcat"] = sync_from
 
 
-def _at_apply_deferred_date_text_sync() -> None:
-    """Apply queued date display to at_date_text (call only before widget render)."""
-    sync_from = st.session_state.pop("at_date_text_sync_from", None)
-    if isinstance(sync_from, datetime.date):
-        st.session_state["at_date_text"] = _format_at_display_date(sync_from)
-
-
 def _at_refresh_date_text_display(d: datetime.date | None = None) -> None:
-    """Sync desktop/mobile typed date strings to the user's display format."""
+    """Sync mobile custom date picker seed after post-save (desktop uses at_date widget)."""
     if d is None:
         d = st.session_state.get("at_date", datetime.date.today())
     if not isinstance(d, datetime.date):
         return
-    shown = _format_at_display_date(d)
-    _at_defer_date_text_display(d)
-    st.session_state["mob_at_date_custom_str"] = shown
+    st.session_state["mob_at_date_custom_pick"] = d
 
 
 def _next_header_theme_mode(current: str) -> str:
@@ -4374,8 +4357,7 @@ _COMPANY_SCOPED_AT_KEYS = (
     "mob_at_picker",
     "mob_at_picker_search",
     "at_date",
-    "at_date_text",
-    "at_date_text_sync_from",
+    "mob_at_date_custom_pick",
     "at_subcat_sync_from",
     "at_subcat_sync_clear",
     "at_submit_resolved_date",
@@ -5383,7 +5365,7 @@ _AT_POST_SAVE_CLEAR_KEYS = (
     "at_submit_resolved_date",
     "at_subcat_sync_from",
     "at_subcat_sync_clear",
-    "at_date_text_sync_from",
+    "mob_at_date_custom_pick",
     "_mob_at_coerce_pm_type",
     "at_pending_attachment",
 )
@@ -11516,14 +11498,8 @@ def _mob_at_parse_date_text(raw: str) -> datetime.date | None:
 
 
 def _at_entry_date_error() -> str | None:
-    """Return localized error when the typed date text is present but invalid.
-
-    Desktop-only: the mobile AT uses its own date sheet (at_date directly), so
-    stale desktop text must never block or affect a mobile submit.
-    """
-    if _is_mobile_ui():
-        return None
-    return date_ui.date_text_error("at_date_text", invalid_message=_t("txn.date_invalid"))
+    """Native ``st.date_input`` on desktop AT — widget always holds a valid date."""
+    return None
 
 
 def _at_capture_submit_resolved_date() -> None:
@@ -11569,79 +11545,34 @@ def _at_resolve_submit_subcategory(
 
 
 def _at_resolve_entry_date() -> datetime.date:
-    """Resolve entry date.
+    """Resolve entry date from ``at_date`` session state (widget SSOT).
 
-    Desktop: typed text wins when the user is entering a date; an explicit
-    backdated ``at_date`` (``at_date_follows_today`` is False) wins over stale
-    today-shaped display text left in ``at_date_text``.
-    Mobile: the date sheet writes ``at_date`` directly — desktop text is ignored.
+    Desktop: ``st.date_input(key="at_date")`` writes directly; mobile date sheet
+    also writes ``at_date``. Updates ``at_date_follows_today`` when date != today.
     """
-    if not _is_mobile_ui():
-        if st.session_state.get("at_date_follows_today", True) is False:
-            d = st.session_state.get("at_date")
-            if isinstance(d, datetime.date):
-                return d
-
-        raw = st.session_state.get("at_date_text")
-        typed = _at_parse_date_text(str(raw)) if raw and str(raw).strip() else None
-        canonical = st.session_state.get("at_date")
-        if not isinstance(canonical, datetime.date):
-            canonical = None
-
-        if typed is not None:
-            today = datetime.date.today()
-            if (
-                canonical is not None
-                and canonical != today
-                and typed == today
-                and st.session_state.get("at_date_follows_today")
-            ):
-                # Seeded/stale today display must not override a backdated pick.
-                resolved = canonical
-                st.session_state["at_date_follows_today"] = False
-            else:
-                resolved = typed
-                if resolved != today:
-                    st.session_state["at_date_follows_today"] = False
-        elif canonical is not None:
-            resolved = canonical
-        else:
-            resolved = datetime.date.today()
-            st.session_state["at_date_follows_today"] = True
-
-        st.session_state["at_date"] = resolved
-        _at_defer_date_text_display(resolved)
-        return resolved
-
     d = st.session_state.get("at_date")
-    if isinstance(d, datetime.date):
-        return d
+    if not isinstance(d, datetime.date):
+        d = datetime.date.today()
+        st.session_state["at_date"] = d
     today = datetime.date.today()
-    st.session_state["at_date"] = today
-    return today
+    if d != today:
+        st.session_state["at_date_follows_today"] = False
+    return d
 
 
 def _at_render_desktop_date_field() -> None:
-    """ADD-TXN date UX — one masked text field inside the entry form (Enter submits)."""
-    today = datetime.date.today()
-    d = st.session_state.get("at_date", today)
-    if not isinstance(d, datetime.date):
-        d = today
-        st.session_state["at_date"] = d
+    """ADD-TXN date UX — one native date picker inside the entry form."""
+    _mob_at_apply_date_follow_today()
+    if "at_date" not in st.session_state or not isinstance(
+        st.session_state.get("at_date"), datetime.date
+    ):
+        st.session_state["at_date"] = datetime.date.today()
 
-    _at_apply_deferred_date_text_sync()
-
-    if "at_date_text" not in st.session_state:
-        date_ui.seed_date_text_key("at_date_text", d)
-    elif st.session_state.get("at_date_follows_today", True) is False:
-        st.session_state["at_date_text"] = _format_at_display_date(d)
-
-    date_ui.render_preferred_date_input(
-        "📅 " + _t("col.date"),
-        "at_date_text",
-        in_form=True,
+    st.date_input(
+        _t("col.date"),
+        key="at_date",
+        format=streamlit_date_input_format(_active_user_date_format()),
         help=_t("txn.date_help"),
-        invalid_message=_t("txn.date_invalid"),
     )
 
 
@@ -12523,7 +12454,7 @@ def _mob_at_set_date_choice(
     st.session_state["at_date"] = chosen
     st.session_state["at_date_follows_today"] = follows_today
     st.session_state.pop("mob_at_date_custom", None)
-    _at_defer_date_text_display(chosen)
+    st.session_state["mob_at_date_custom_pick"] = chosen
 
 
 def _mob_at_apply_date_follow_today() -> None:
@@ -12593,18 +12524,14 @@ def _mob_at_render_date_picker_sheet(session) -> bool:
             ):
                 st.session_state["mob_at_date_custom"] = True
                 st.session_state["at_date_follows_today"] = False
-                st.session_state["mob_at_date_custom_str"] = _format_at_display_date(
-                    current
-                )
+                st.session_state["mob_at_date_custom_pick"] = current
                 st.rerun()
 
         if custom_open:
-            date_ui.seed_date_text_key("mob_at_date_custom_str", current)
-            date_ui.render_preferred_date_input(
+            st.date_input(
                 _tf("txn.mob.date_custom_label", "Date"),
-                "mob_at_date_custom_str",
-                label_visibility="collapsed",
-                invalid_message=_t("txn.date_invalid"),
+                key="mob_at_date_custom_pick",
+                format=streamlit_date_input_format(_active_user_date_format()),
             )
             if st.button(
                 _tf("txn.mob.date_confirm", "✓ Confirm Date"),
@@ -12612,17 +12539,12 @@ def _mob_at_render_date_picker_sheet(session) -> bool:
                 use_container_width=True,
                 type="primary",
             ):
-                parsed = _mob_at_parse_date_text(
-                    st.session_state.get("mob_at_date_custom_str", "")
-                )
-                if parsed is None:
+                picked = st.session_state.get("mob_at_date_custom_pick")
+                if not isinstance(picked, datetime.date):
                     st.warning(_t("txn.date_invalid"))
                     return False
-                _mob_at_render_date_closed_period_notice(session, parsed)
-                _mob_at_set_date_choice(parsed, follows_today=False)
-                st.session_state["mob_at_date_custom_str"] = _format_at_display_date(
-                    parsed
-                )
+                _mob_at_render_date_closed_period_notice(session, picked)
+                _mob_at_set_date_choice(picked, follows_today=False)
                 _mob_at_close_picker()
                 return True
     return False
@@ -14252,9 +14174,7 @@ def render_add_transaction(session):
                         )
 
                     with st.form("at_entry_form", clear_on_submit=False):
-                        # ADD-TXN-FIX date UX — single Date field INSIDE the form so
-                        # Enter submits; calendar helper is a collapsed expander
-                        # (callback-free; reconciled in _at_resolve_entry_date).
+                        # UX-STABILIZE-03 — one native date picker (key=at_date) inside form.
                         _at_render_desktop_date_field()
                         # ── CONDITIONAL FIELDS BY TRANSACTION TYPE ─────────────────────
                         if txn_type == "Sale":

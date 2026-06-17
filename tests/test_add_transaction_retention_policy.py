@@ -89,7 +89,6 @@ def _filled_state(**extra) -> dict:
         "mob_at_tab": 1,
         "at_date": PAST,
         "at_date_follows_today": False,
-        "at_date_text": "15.03.2026",
         "at_amount_display": "250",
         "at_notes_field": "keep clearing me",
         "at_currency": "USD",

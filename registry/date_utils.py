@@ -104,3 +104,13 @@ def format_date_input_for_preference(raw: str, preference: str) -> str:
 def date_input_placeholder(preference: str) -> str:
     sample = format_date_for_preference(datetime.date(2026, 6, 12), preference)
     return f"{sample} ({DATE_PARSE_HINT})"
+
+
+def streamlit_date_input_format(preference: str) -> str:
+    """Map user date-format preference to ``st.date_input`` *format* string."""
+    key = normalize_user_date_format(preference)
+    if key == "DD/MM/YYYY":
+        return "DD/MM/YYYY"
+    if key == "YYYY-MM-DD":
+        return "YYYY-MM-DD"
+    return "DD.MM.YYYY"

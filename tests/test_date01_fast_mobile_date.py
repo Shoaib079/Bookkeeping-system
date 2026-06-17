@@ -235,22 +235,20 @@ def test_backdated_css_contract():
 # ── Desktop unchanged ─────────────────────────────────────────────────────────
 
 
-def test_desktop_date_field_is_single_text_input_only():
-    """ADD-TXN date UX final: desktop AT has exactly one date control — a typed
-    text field (in-form, Enter submits). No checkbox, no calendar expander,
-    no st.date_input. Mobile keeps its own date sheet."""
+def test_desktop_date_field_is_single_native_date_input():
+    """UX-STABILIZE-03: desktop AT has one native st.date_input (key=at_date)."""
     src = inspect.getsource(erp.render_add_transaction)
     form_pos = src.index('st.form("at_entry_form"')
     assert "_at_render_desktop_date_field()" in src
     assert src.index("_at_render_desktop_date_field()") > form_pos
     date_helper = inspect.getsource(erp._at_render_desktop_date_field)
-    assert "at_date_text" in date_helper
-    assert "render_preferred_date_input" in date_helper
-    for banned in ("st.checkbox", "st.date_input", "st.expander", "st.popover",
-                   "at_date_manual_entry"):
+    assert 'key="at_date"' in date_helper
+    assert "st.date_input" in date_helper
+    assert date_helper.count("st.date_input") == 1
+    for banned in ("st.checkbox", "st.expander", "st.popover", "render_preferred_date_input",
+                   "show_calendar", "at_date_manual_entry"):
         assert banned not in date_helper
     desktop_host = src.split('with st.container(key="erp_at_desktop_host")', 1)[1]
-    assert "_mob_at_apply_date_follow_today" not in desktop_host
     assert "_mob_at_render_date_picker_sheet" not in desktop_host
     mobile_src = inspect.getsource(erp._render_add_transaction_mobile)
     assert "_mob_at_apply_date_follow_today" in mobile_src

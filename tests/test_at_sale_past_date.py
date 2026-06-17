@@ -153,20 +153,18 @@ def _assert_sale_and_je_dates(
             "Cash",
             "CashSale",
             {
-                "at_date_text": "15.03.2026",
                 "_user_date_format": "DD.MM.YYYY",
-                "at_date": datetime.date.today(),
-                "at_date_follows_today": True,
+                "at_date": PAST,
+                "at_date_follows_today": False,
             },
         ),
         (
             "Card",
             "CardSale",
             {
-                "at_date_text": "15.03.2026",
                 "_user_date_format": "DD.MM.YYYY",
-                "at_date": datetime.date.today(),
-                "at_date_follows_today": True,
+                "at_date": PAST,
+                "at_date_follows_today": False,
                 "at_card_bank_acct": "Main Bank",
             },
         ),
@@ -174,10 +172,9 @@ def _assert_sale_and_je_dates(
             "Credit",
             "CreditSale",
             {
-                "at_date_text": "15.03.2026",
                 "_user_date_format": "DD.MM.YYYY",
-                "at_date": datetime.date.today(),
-                "at_date_follows_today": True,
+                "at_date": PAST,
+                "at_date_follows_today": False,
                 "at_cust": "Acme Corp",
             },
         ),
@@ -190,17 +187,15 @@ def test_desktop_typed_past_date_persists_on_sale_and_je(db, pm, ref_type, extra
     assert erp.st.session_state.get("at_date_follows_today") is False
 
 
-def test_explicit_backdated_at_date_wins_over_stale_today_text(db):
-    """Mobile/custom pick stored in at_date must not lose to stale today text."""
+def test_backdated_at_date_persists_on_sale_and_je(db):
+    """Widget SSOT: at_date is posted directly."""
     _setup_company(db)
-    today_text = erp._format_at_display_date(datetime.date.today())
     _submit_sale(
         db,
         pm="Cash",
         extra_state={
             "at_date": PAST,
             "at_date_follows_today": False,
-            "at_date_text": today_text,
             "_user_date_format": "DD.MM.YYYY",
         },
     )
@@ -216,13 +211,12 @@ def test_mobile_backdated_at_date_persists_on_sale_and_je(db):
             "_erp_mobile_ui": True,
             "at_date": PAST,
             "at_date_follows_today": False,
-            "at_date_text": "stale-desktop-text",
         },
     )
     _assert_sale_and_je_dates(db, sale_type="Cash", ref_type="CashSale", expected=PAST)
 
 
-def test_default_today_when_no_date_selected(db):
+def test_default_today_when_at_date_is_today(db):
     _setup_company(db)
     today = datetime.date.today()
     _submit_sale(
@@ -231,23 +225,16 @@ def test_default_today_when_no_date_selected(db):
         extra_state={
             "at_date": today,
             "at_date_follows_today": True,
-            "at_date_text": "",
         },
     )
     _assert_sale_and_je_dates(db, sale_type="Cash", ref_type="CashSale", expected=today)
 
 
-def test_resolve_entry_date_does_not_mutate_widget_key(monkeypatch):
+def test_resolve_entry_date_returns_at_date_unchanged(monkeypatch):
     state = {
-        "_user_date_format": "DD.MM.YYYY",
-        "at_date_text": "15032026",
-        "at_date": datetime.date(2020, 1, 1),
-        "at_date_follows_today": True,
+        "at_date": PAST,
+        "at_date_follows_today": False,
     }
     monkeypatch.setattr(erp.st, "session_state", state)
-    resolved = erp._at_resolve_entry_date()
-    assert resolved == PAST
-    assert state["at_date_text"] == "15032026"
+    assert erp._at_resolve_entry_date() == PAST
     assert state["at_date"] == PAST
-    erp._at_apply_deferred_date_text_sync()
-    assert state["at_date_text"] == "15.03.2026"

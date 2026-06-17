@@ -139,7 +139,7 @@ def test_clear_company_scoped_session_state_clears_new_keys():
 
 
 def test_mobile_at_renders_date_picker():
-    """Mobile date picker uses quick rows (Today/Yesterday/Custom), not st.date_input."""
+    """Mobile date sheet: Today/Yesterday quick rows + native picker on custom path."""
     panel_src = inspect.getsource(erp._render_add_transaction_mobile)
     picker_src = inspect.getsource(erp._mob_at_render_date_picker_sheet)
 
@@ -147,8 +147,8 @@ def test_mobile_at_renders_date_picker():
     assert "mob_at_pick_date_today" in picker_src
     assert "mob_at_pick_date_yesterday" in picker_src
     assert "mob_at_pick_date_custom" in picker_src
-    assert "st.date_input" not in picker_src
-    assert '"at_date"' in picker_src
+    assert picker_src.count("st.date_input") == 1
+    assert "mob_at_date_custom_pick" in picker_src
 
 
 def test_gather_submit_fields_reads_entry_date():

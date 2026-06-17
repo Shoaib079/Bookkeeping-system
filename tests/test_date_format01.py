@@ -66,29 +66,19 @@ def test_parse_date_text_remains_format_agnostic(raw, expected):
 
 
 @pytest.mark.parametrize("pref", ["DD.MM.YYYY", "YYYY-MM-DD", "DD/MM/YYYY"])
-@pytest.mark.parametrize(
-    "typed",
-    ["2026-06-12", "12.06.2026", "12/06/2026"],
-)
-def test_resolve_entry_date_stores_same_underlying_date(pref, typed, monkeypatch):
+def test_resolve_entry_date_reads_at_date_widget(pref, monkeypatch):
     state = _FakeSessionState(
         {
             "_user_date_format": pref,
-            "at_date_text": typed,
-            "at_date": datetime.date(2020, 1, 1),
+            "at_date": datetime.date(2026, 6, 12),
         }
     )
     monkeypatch.setattr(erp.st, "session_state", state)
     resolved = erp._at_resolve_entry_date()
     assert resolved == datetime.date(2026, 6, 12)
-    assert state["at_date"] == datetime.date(2026, 6, 12)
-    erp._at_apply_deferred_date_text_sync()
-    assert state["at_date_text"] == erp._format_date_for_user_pref(
-        datetime.date(2026, 6, 12), pref
-    )
 
 
-def test_refresh_date_text_display_uses_active_preference(monkeypatch):
+def test_refresh_date_text_display_seeds_mobile_custom_pick(monkeypatch):
     state = _FakeSessionState(
         {
             "_user_date_format": "DD.MM.YYYY",
@@ -97,21 +87,22 @@ def test_refresh_date_text_display_uses_active_preference(monkeypatch):
     )
     monkeypatch.setattr(erp.st, "session_state", state)
     erp._at_refresh_date_text_display()
-    erp._at_apply_deferred_date_text_sync()
-    assert state["at_date_text"] == "12.06.2026"
-    assert state["mob_at_date_custom_str"] == "12.06.2026"
+    assert state["mob_at_date_custom_pick"] == datetime.date(2026, 6, 12)
 
 
-def test_desktop_date_field_uses_shared_preferred_input():
+def test_desktop_date_field_uses_native_date_input():
     src = inspect.getsource(erp._at_render_desktop_date_field)
-    assert "render_preferred_date_input" in src
-    assert "in_form=True" in src
+    assert "st.date_input" in src
+    assert 'key="at_date"' in src
+    assert "streamlit_date_input_format" in src
     assert "isoformat()" not in src
 
 
-def test_mobile_custom_date_uses_shared_preferred_input():
+def test_mobile_custom_date_uses_native_date_input():
     src = inspect.getsource(erp._mob_at_render_date_picker_sheet)
-    assert "render_preferred_date_input" in src
+    assert "st.date_input" in src
+    assert "mob_at_date_custom_pick" in src
+    assert "render_preferred_date_input" not in src
     assert "isoformat()" not in src
 
 
@@ -180,26 +171,21 @@ def test_normalize_date_digits_strips_non_digits():
     assert erp.normalize_date_digits("ab03cd06") == "0306"
 
 
-def test_resolve_entry_date_digit_only_masks_on_save(monkeypatch):
+def test_resolve_entry_date_returns_at_date_directly(monkeypatch):
     state = _FakeSessionState(
         {
             "_user_date_format": "DD.MM.YYYY",
-            "at_date_text": "03062026",
-            "at_date": datetime.date(2020, 1, 1),
+            "at_date": datetime.date(2026, 6, 3),
         }
     )
     monkeypatch.setattr(erp.st, "session_state", state)
     resolved = erp._at_resolve_entry_date()
     assert resolved == datetime.date(2026, 6, 3)
-    assert isinstance(resolved, datetime.date)
-    erp._at_apply_deferred_date_text_sync()
-    assert state["at_date_text"] == "03.06.2026"
 
 
-def test_desktop_date_field_single_widget_with_mask_helper():
+def test_desktop_date_field_single_native_widget():
     src = inspect.getsource(erp._at_render_desktop_date_field)
-    assert "render_preferred_date_input" in src
-    assert "in_form=True" in src
-    assert "st.text_input" not in src
-    for banned in ("st.checkbox", "st.date_input", "st.expander", "st.popover"):
+    assert "st.date_input" in src
+    assert 'key="at_date"' in src
+    for banned in ("st.checkbox", "st.expander", "st.popover", "render_preferred_date_input"):
         assert banned not in src

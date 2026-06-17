@@ -122,25 +122,21 @@ def _assert_cash_dates(db, expected: datetime.date):
     return sale
 
 
-def test_submit_capture_pins_desktop_typed_past_date(db):
+def test_submit_capture_pins_desktop_at_date(db):
     """Simulate desktop form submit: capture before rerender clobber."""
     _setup_company(db)
     erp.st.session_state.update(
         {
             **_cash_sale_state(),
-            "at_date_text": "15.03.2026",
+            "at_date": PAST,
+            "at_date_follows_today": False,
             "_user_date_format": "DD.MM.YYYY",
-            "at_date": datetime.date.today(),
-            "at_date_follows_today": True,
         }
     )
     erp._at_capture_submit_resolved_date()
     assert erp.st.session_state["at_submit_resolved_date"] == PAST
 
     erp.st.session_state["at_date"] = datetime.date.today()
-    erp.st.session_state["at_date_text"] = erp._format_at_display_date(
-        datetime.date.today()
-    )
     _submit_cash_sale(db)
     _assert_cash_dates(db, PAST)
 
@@ -185,7 +181,6 @@ def test_recent_display_uses_sale_date_not_today(db):
         extra_state={
             "at_date": PAST,
             "at_date_follows_today": False,
-            "at_date_text": "15.03.2026",
             "_user_date_format": "DD.MM.YYYY",
         },
     )

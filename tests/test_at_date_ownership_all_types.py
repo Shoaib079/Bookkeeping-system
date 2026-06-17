@@ -101,7 +101,6 @@ def _past_date_state(**extra):
     state = {
         "at_date": PAST,
         "at_date_follows_today": False,
-        "at_date_text": "15.03.2026",
         "_user_date_format": "DD.MM.YYYY",
         "at_amount_display": "100",
         "at_currency": "TRY",

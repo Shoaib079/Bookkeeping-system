@@ -11,9 +11,8 @@ import app as erp
 ROOT = Path(__file__).resolve().parents[1]
 
 # Migrated to preferred masked text inputs (Phase A/B).
+# Add Transaction uses native st.date_input — excluded from this list.
 MIGRATED_MARKERS = (
-    "_at_render_desktop_date_field",
-    "_mob_at_render_date_picker_sheet",
     "_render_date_range_filters",
     "_render_txh_date_filters",
     "_render_preferred_date_range_cols",
@@ -173,11 +172,11 @@ def test_render_preferred_date_input_outside_form_uses_on_change(monkeypatch):
 
 def test_add_transaction_date_field_is_form_safe():
     src = inspect.getsource(erp._at_render_desktop_date_field)
-    assert "in_form=True" in src
-    assert "_at_apply_deferred_date_text_sync" in src
+    assert "st.date_input" in src
+    assert 'key="at_date"' in src
     resolve_src = inspect.getsource(erp._at_resolve_entry_date)
-    assert "_at_defer_date_text_display" in resolve_src
-    assert 'st.session_state["at_date_text"]' not in resolve_src
+    assert "at_date" in resolve_src
+    assert "reconcile_text_and_calendar" not in resolve_src
 
 
 def test_cash_recon_form_date_field_is_form_safe():
