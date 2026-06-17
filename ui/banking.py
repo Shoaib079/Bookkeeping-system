@@ -28,7 +28,10 @@ from reconciliation.unsettled_card_sales_list import (
     sum_unsettled_card_sales,
 )
 from registry.banking_config import (
+    BANKING_WORKFLOW_MODE_DEFAULT,
+    BANKING_WORKFLOW_MODE_IDS,
     banking_default_import_tab,
+    banking_normalize_workflow_mode,
     banking_resolve_landing,
 )
 from registry.nav_keys import NAV_BANKING
@@ -43,21 +46,104 @@ def _erp():
     return app_module
 
 
+def banking_build_section_options(
+    *,
+    workflow_mode: str,
+    show_cockpit: bool,
+    show_pos_settlement: bool,
+    show_settings: bool,
+) -> list[tuple[str, str]]:
+    """Ordered Banking chip options — visibility/routing only (BANKING-UX-04)."""
+    mode = banking_normalize_workflow_mode(workflow_mode)
+    opts: list[tuple[str, str]] = []
+
+    def _cockpit() -> None:
+        if show_cockpit:
+            opts.append(("cockpit", "bank.section.cockpit"))
+
+    def _accounts() -> None:
+        opts.append(("accounts", "bank.section.accounts"))
+
+    def _import() -> None:
+        opts.append(("import", "bank.section.import"))
+
+    def _pos() -> None:
+        if show_pos_settlement:
+            opts.append(("pos_settlement", "banking.pos_entry.title"))
+
+    def _settings() -> None:
+        if show_settings:
+            opts.append(("settings", "bank.section.settings"))
+
+    if mode == "manual_first":
+        _accounts()
+        _cockpit()
+        _import()
+        _pos()
+        _settings()
+    elif mode == "statement_first":
+        _cockpit()
+        _import()
+        _pos()
+        _settings()
+    else:
+        _cockpit()
+        _accounts()
+        _import()
+        _pos()
+        _settings()
+    return opts
+
+
+def banking_section_extra_valid(workflow_mode: str) -> frozenset[str]:
+    """Sections valid in session but hidden from chips (statement-first manual path)."""
+    if banking_normalize_workflow_mode(workflow_mode) == "statement_first":
+        return frozenset({"accounts"})
+    return frozenset()
+
+
+def banking_workflow_default_section(
+    section_opts: list[tuple[str, str]],
+    workflow_mode: str,
+) -> str:
+    """Mode-specific default chip when workflow landing applies."""
+    mode = banking_normalize_workflow_mode(workflow_mode)
+    ids = [opt_id for opt_id, _ in section_opts]
+    if not ids:
+        return "import"
+    if mode == "manual_first" and "accounts" in ids:
+        return "accounts"
+    if mode == "statement_first":
+        if "cockpit" in ids:
+            return "cockpit"
+        if "import" in ids:
+            return "import"
+        return ids[0]
+    return ids[0]
+
+
 def banking_apply_session_landing(
     session,
     company_id: int,
     *,
     user_id: int | None = None,
+    workflow_mode: str | None = None,
+    section_opts: list[tuple[str, str]] | None = None,
 ) -> None:
     """Apply company/user landing preference once per session."""
     if st.session_state.get("banking_landing_applied"):
         return
-    landing = banking_resolve_landing(session, company_id, user_id=user_id)
-    if landing == "queue":
-        st.session_state["banking_section"] = "import"
-        st.session_state["bsi_section"] = "match"
-    elif landing in ("cockpit", "accounts"):
-        st.session_state["banking_section"] = landing
+    mode = banking_normalize_workflow_mode(workflow_mode or BANKING_WORKFLOW_MODE_DEFAULT)
+    opts = section_opts or []
+    if mode in ("statement_first", "manual_first") and opts:
+        st.session_state["banking_section"] = banking_workflow_default_section(opts, mode)
+    else:
+        landing = banking_resolve_landing(session, company_id, user_id=user_id)
+        if landing == "queue":
+            st.session_state["banking_section"] = "import"
+            st.session_state["bsi_section"] = "match"
+        elif landing in ("cockpit", "accounts"):
+            st.session_state["banking_section"] = landing
     st.session_state["banking_landing_applied"] = True
 
 
@@ -76,12 +162,18 @@ def banking_apply_default_import_tab(
     st.session_state["bsi_import_tab_applied"] = True
 
 
-def banking_section_select(widget_key: str, options: list[tuple[str, str]]) -> str:
+def banking_section_select(
+    widget_key: str,
+    options: list[tuple[str, str]],
+    *,
+    extra_valid: frozenset[str] | None = None,
+) -> str:
     """Banking chip grid — canonical section selector (BANKING-DESKTOP-01 B1)."""
     erp = _erp()
     ids = [opt_id for opt_id, _ in options]
-    if widget_key not in st.session_state or st.session_state[widget_key] not in ids:
-        st.session_state[widget_key] = ids[0]
+    valid = frozenset(ids) | (extra_valid or frozenset())
+    if widget_key not in st.session_state or st.session_state[widget_key] not in valid:
+        st.session_state[widget_key] = ids[0] if ids else "import"
     cur = st.session_state[widget_key]
 
     with st.container(border=False, key=f"bank_sec_sel_{widget_key}"):
@@ -100,6 +192,28 @@ def banking_section_select(widget_key: str, options: list[tuple[str, str]]) -> s
                     st.rerun()
 
     return st.session_state[widget_key]
+
+
+def banking_show_manual_advanced_panel(workflow_mode: str, current_section: str) -> bool:
+    """Statement-first: manual entry lives under Advanced when not on accounts."""
+    return (
+        banking_normalize_workflow_mode(workflow_mode) == "statement_first"
+        and current_section != "accounts"
+    )
+
+
+def banking_render_manual_advanced_gate(workflow_mode: str) -> None:
+    """Advanced expander — routes to manual accounts without removing the workflow."""
+    erp = _erp()
+    with st.expander(erp._t("bank.advanced.section"), expanded=False):
+        st.caption(erp._t("bank.advanced.manual_caption"))
+        if st.button(
+            erp._t("bank.advanced.open_manual"),
+            key="bank_adv_open_manual",
+            use_container_width=True,
+        ):
+            st.session_state["banking_section"] = "accounts"
+            st.rerun()
 
 
 def banking_match_kind_confidence(

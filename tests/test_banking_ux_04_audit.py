@@ -19,7 +19,7 @@ REQUIRED_SECTIONS = (
     "Current architecture assessment",
     "Where the workflow-mode setting should live",
     "What must NOT change",
-    "Minimal implementation slices",
+    "Implementation slices",
     "Risk matrix",
     "Test plan",
     "UI wording",

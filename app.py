@@ -133,6 +133,7 @@ from registry.banking_config import (
     banking_show_accounting_previews,
     banking_show_confidence_chips,
     banking_sort_queue_rows,
+    banking_workflow_mode,
 )
 from registry.service import get_module_state
 from registry.setup01_wizard import (
@@ -283,10 +284,15 @@ from ui.banking import (
     apply_banking_pos_settlement_route as _apply_banking_pos_settlement_route,
     banking_apply_default_import_tab as _banking_apply_default_import_tab,
     banking_apply_session_landing as _banking_apply_session_landing,
+    banking_build_section_options as _banking_build_section_options,
     banking_match_failure_label as _banking_match_failure_label,
     banking_match_kind_confidence as _banking_match_kind_confidence,
     banking_pos_settlement_route_keys as _banking_pos_settlement_route_keys,
+    banking_render_manual_advanced_gate as _banking_render_manual_advanced_gate,
+    banking_section_extra_valid as _banking_section_extra_valid,
     banking_section_select as _banking_section_select,
+    banking_show_manual_advanced_panel as _banking_show_manual_advanced_panel,
+    banking_workflow_default_section as _banking_workflow_default_section,
     render_banking_match_suggestion_chip as _render_banking_match_suggestion_chip,
     render_banking_match_queue_list as _render_banking_match_queue_list,
     render_banking_recon_cockpit as _render_banking_recon_cockpit,
@@ -4855,6 +4861,23 @@ def _banking_reconciliation_on(session) -> bool:
     except Exception:
         _log.warning("_banking_reconciliation_on: failed for company %s", cid, exc_info=True)
         return False
+
+
+def _banking_workflow_mode(session) -> str:
+    """BANKING-UX-04 — company workflow mode (UI routing only)."""
+    cid = _current_company_id()
+    if cid is None:
+        return "statement_first"
+    try:
+        return banking_workflow_mode(session, cid)
+    except Exception:
+        _log.warning("_banking_workflow_mode: failed for company %s", cid, exc_info=True)
+        return "statement_first"
+
+
+def _render_banking_manual_advanced_if_needed(workflow_mode: str, section: str) -> None:
+    if _banking_show_manual_advanced_panel(workflow_mode, section):
+        _banking_render_manual_advanced_gate(workflow_mode)
 
 
 def _bank_charges_on(session) -> bool:
@@ -21082,36 +21105,56 @@ def render_banking(session):
 
     cid = current_company_required()
     uid = (_current_user() or {}).get("id")
-    _banking_apply_session_landing(session, cid, user_id=uid)
+    workflow_mode = _banking_workflow_mode(session)
+
+    show_cockpit = (
+        _banking_reconciliation_on(session)
+        and _can("view_bank_statement_import")
+    )
+    _bank_opts = _banking_build_section_options(
+        workflow_mode=workflow_mode,
+        show_cockpit=show_cockpit,
+        show_pos_settlement=_banking_pos_settlement_enabled(session),
+        show_settings=_can("manage_banking"),
+    )
+    _banking_apply_session_landing(
+        session,
+        cid,
+        user_id=uid,
+        workflow_mode=workflow_mode,
+        section_opts=_bank_opts,
+    )
 
     _render_banking_pos_settlement_entry(session)
 
-    _bank_opts: list[tuple[str, str]] = []
-    if (
-        _banking_reconciliation_on(session)
-        and _can("view_bank_statement_import")
-    ):
-        _bank_opts.append(("cockpit", "bank.section.cockpit"))
-    _bank_opts.append(("accounts", "bank.section.accounts"))
-    if _banking_pos_settlement_enabled(session):
-        _bank_opts.append(("pos_settlement", "banking.pos_entry.title"))
-    _bank_opts.append(("import", "bank.section.import"))
-    if _can("manage_banking"):
-        _bank_opts.append(("settings", "bank.section.settings"))
-    section = _banking_section_select("banking_section", _bank_opts)
+    section = _banking_section_select(
+        "banking_section",
+        _bank_opts,
+        extra_valid=_banking_section_extra_valid(workflow_mode),
+    )
     st.divider()
     if section == "cockpit":
         _render_banking_recon_cockpit(session, current_company_required())
+        _render_banking_manual_advanced_if_needed(workflow_mode, section)
         return
     if section == "pos_settlement":
         _render_banking_pos_settlement_section(session)
+        _render_banking_manual_advanced_if_needed(workflow_mode, section)
         return
     if section == "import":
         _render_banking_statement_import(session)
+        _render_banking_manual_advanced_if_needed(workflow_mode, section)
         return
     if section == "settings":
         _render_banking_page_settings(session, current_company_required())
         return
+
+    if workflow_mode == "statement_first" and section == "accounts":
+        if st.button(_t("bank.advanced.back_to_statement"), key="bank_adv_back"):
+            st.session_state["banking_section"] = _banking_workflow_default_section(
+                _bank_opts, workflow_mode
+            )
+            st.rerun()
 
     _cc_on = _company_card_on(session)
     with st.form(key="bank_form"):
@@ -24471,6 +24514,11 @@ def _render_banking_page_settings(session, cid: int):
 
     uid = (_current_user() or {}).get("id")
 
+    workflow_val = (
+        get_setting(session, "banking.workflow_mode", company_id=cid) or "statement_first"
+    )
+    _workflow_opts = ("statement_first", "hybrid", "manual_first")
+
     rec_on = bool(get_setting(session, "banking.reconciliation_enabled", company_id=cid))
     card_on = bool(get_setting(session, "banking.company_card_enabled", company_id=cid))
     charges_on = bool(get_setting(session, "banking.bank_charges_enabled", company_id=cid))
@@ -24492,6 +24540,34 @@ def _render_banking_page_settings(session, cid: int):
         get_setting(session, "banking.batch_confidence_threshold", company_id=cid) or "high"
     )
     _conf_opts = ("high", "high_and_medium")
+
+    with st.container(border=True):
+        st.markdown(f"**{_t('settings.banking.workflow_mode')}**")
+        st.caption(_t("settings.banking.workflow_mode_caption"))
+        workflow_new = st.radio(
+            _t("settings.banking.workflow_mode_prompt"),
+            _workflow_opts,
+            index=_workflow_opts.index(workflow_val)
+            if workflow_val in _workflow_opts
+            else 0,
+            format_func=lambda v: _t(f"settings.banking.workflow_mode.{v}"),
+            key="bank_workflow_mode",
+        )
+        if st.button(
+            "💾  " + _t("common.save"),
+            key="bank_workflow_mode_save",
+            use_container_width=True,
+        ):
+            save_company_settings_batch(
+                session,
+                cid,
+                {"banking.workflow_mode": workflow_new},
+                locale=_ui_locale(),
+            )
+            session.commit()
+            st.session_state.pop("banking_landing_applied", None)
+            st.success(_t("common.settings_saved"))
+            st.rerun()
 
     with st.container(border=True):
         st.markdown(f"**{_t('bank.settings.section')}**")

@@ -238,6 +238,19 @@ SETTINGS: tuple[SettingDef, ...] = (
     # ── Banking & reconciliation (Phase 18-MVP-1) ────────────────────────────
     # All OFF by default => posting behaviour identical to pre-Phase-18.
     SettingDef(
+        key="banking.workflow_mode",
+        scope="company",
+        type="enum",
+        group="banking",
+        label_key="settings.banking.workflow_mode",
+        default="statement_first",
+        storage="company_setting",
+        legacy_key="banking.workflow_mode",
+        options=("statement_first", "hybrid", "manual_first"),
+        audit=True,
+        description="How bank activity is entered — UI routing only (statement-first / hybrid / manual-first).",
+    ),
+    SettingDef(
         key="banking.reconciliation_enabled",
         scope="company",
         type="bool",
@@ -671,6 +684,7 @@ LEGACY_COMPANY_SETTING_KEYS = frozenset(
         "setup.vertical_template",
         "policy.accounting_mode",
         "company.document_language",
+        "banking.workflow_mode",
         "banking.reconciliation_enabled",
         "banking.company_card_enabled",
         "banking.bank_charges_enabled",

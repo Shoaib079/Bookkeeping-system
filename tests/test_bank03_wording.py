@@ -5,6 +5,7 @@ import inspect
 import re
 
 import app as erp
+import ui.banking as banking_ui
 from registry.i18n import t
 from registry.locales.messages import MESSAGES
 from registry.locales.transactional import TRANSACTIONAL_EN, TRANSACTIONAL_TR
@@ -136,7 +137,7 @@ class TestBankingPageHeaders:
         assert '_st_page_title("Banking")' not in src
 
     def test_banking_chips_use_locale_keys(self):
-        src = inspect.getsource(erp.render_banking)
+        src = inspect.getsource(banking_ui.banking_build_section_options)
         assert '("import", "bank.section.import")' in src
         assert '("settings", "bank.section.settings")' in src
         assert '("pos_settlement", "banking.pos_entry.title")' in src

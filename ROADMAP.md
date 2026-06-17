@@ -164,7 +164,7 @@ No implementation before roadmap approval.
 | BANKING-POS-WORKFLOW-01 P1+P2 | ✅ Shipped — Other Income Sales Revenue guardrails + POS Settlement explainer (no posting changes) |
 | **BANKING-UX-02** — POS Settlement Transparency | ✅ **Complete** — P1 preview · P1B focused entry · P2 clearing visibility · P3 unsettled list · P4 match check (no posting changes) |
 | **BANKING-UX-03** — Reconciliation Cockpit & Queue | ✅ **P1–P2 shipped** · 📋 **P3 future** — see [BANKING_UX_03_ROADMAP](./docs/BANKING_UX_03_ROADMAP.md) |
-| **BANKING-UX-04** — Configurable Banking Workflow | 📋 **Future** — statement-first / hybrid / manual-first modes; see [§ BANKING-UX-04](#banking-ux-04--configurable-banking-workflow) |
+| **BANKING-UX-04** — Configurable Banking Workflow | 🟡 **In progress** — S1 audit ✅ S2 routing ✅; see [§ BANKING-UX-04](#banking-ux-04--configurable-banking-workflow) |
 | **ERP Core Principles (Locked)** | ✅ **Approved** — 10 locked principles; see [§ ERP Core Principles](#erp-core-principles-locked) |
 | **RETENTION-01** — Add Transaction post-save policy | ✅ **Shipped** — keep type + date; reset all other fields |
 | **DATE OWNERSHIP** — Submit-time date capture | ✅ **Shipped** — single resolved date through GL/bank/reports |
@@ -876,11 +876,15 @@ Shipped: error UX hardening · confidence chips · fragment-scoped match queue �
 
 ### BANKING-UX-04 — Configurable Banking Workflow
 
-**Status:** 📋 Future — design approved 2026-06-14  
+**Status:** 🟡 **In progress** — S1 audit ✅ · S2 workflow mode + UI routing ✅ · S3 Add Transaction paths 📋 · S4 tests/React-readiness 📋  
 **Priority:** Medium — after BANKING-UX-03 P3 or alongside registry settings expansion  
-**Principle:** [Configurable ERP Philosophy](#8-configurable-erp-philosophy) · [BANKING_UX_03 § P2.3](./docs/BANKING_UX_03_ROADMAP.md)
+**Principle:** [Configurable ERP Philosophy](#8-configurable-erp-philosophy) · [BANKING_UX_03 § P2.3](./docs/BANKING_UX_03_ROADMAP.md) · [BANKING_UX_04_AUDIT](./docs/BANKING_UX_04_AUDIT.md)
 
 **Goal:** Let each company choose how bank activity enters the system — without removing any workflow.
+
+**S2 delivered:** `banking.workflow_mode` in `registry/settings_catalog.py`; `banking_workflow_mode()` getter; `render_banking` section order/landing/Advanced panel via `ui/banking.py` helpers. Tests: `tests/test_banking_ux_04_s2_workflow_mode_routing.py`. Tag: `banking-ux-04-s2-workflow-mode-routing`.
+
+**Next slice:** **BANKING-UX-04-S3** — Add Transaction bank-path placement.
 
 #### Modes
 
@@ -3351,6 +3355,8 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **BANKING-UX-04-S2 (closure)** — Workflow mode setting (`banking.workflow_mode`, default `statement_first`) + Banking UI routing: section order, landing, Advanced manual panel via `ui/banking.py`. No posting/recon/GL changes. Tests: `tests/test_banking_ux_04_s2_workflow_mode_routing.py`. Tag: `banking-ux-04-s2-workflow-mode-routing`. Next: **BANKING-UX-04-S3** (Add Transaction bank paths). |
+| 2026-06-05 | **BANKING-UX-04-S1 (closure)** — Configurable banking workflow architecture audit: `docs/BANKING_UX_04_AUDIT.md` + `tests/test_banking_ux_04_audit.py`. Recommendation: PROCEED (UI-only). Tag: `banking-ux-04-s1-audit`. |
 | 2026-06-05 | **UI-SYSTEM-02-S5 (closure)** — React design contract: `docs/UI_SYSTEM_02_REACT_DESIGN_CONTRACT.md` + `ui/react_design_contract.py`; frozen component prop map, `react_token_bundle()`, Streamlit-only selector retirement list. Tests: `tests/test_ui_system_02_s5_react_design_contract.py`. Tag: `ui-system-02-s5-react-design-contract`. **UI-SYSTEM-02 epic S1–S5 complete.** |
 | 2026-06-05 | **UI-SYSTEM-02-S4 (closure)** — Unified shell/component pass: removed dead `.erp-mobile-report-filters` mobile block rule; 96× expense-bar `[data-pct]` ladder → inline `width:%`; KPI grid owned by `mobile_components.css` with `--reports-cf` modifier; `--mob-space-*` alias `--erp-space-*`. Tests: `tests/test_ui_system_02_s4_shell_component_pass.py`. Tag: `ui-system-02-s4-unified-shell-component-pass`. Next: **UI-SYSTEM-02-S5** (React design contract). |
 | 2026-06-05 | **UI-SYSTEM-02-S3 (closure)** — Sidebar modernization: `registry/sidebar_layout.py` drives desktop render tree; `_NAV_GROUP_KEYS` derived; tokenized section headers + CSS chevrons. Tests: `tests/test_ui_system_02_s3_sidebar_modernization.py`. Tag: `ui-system-02-s3-sidebar-modernization`. Next: **UI-SYSTEM-02-S4** (unified shell/component pass). |

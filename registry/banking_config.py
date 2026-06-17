@@ -21,6 +21,10 @@ LANDING_IDS: frozenset[str] = frozenset({"cockpit", "queue", "accounts"})
 IMPORT_TAB_IDS: frozenset[str] = frozenset({"upload", "review", "match", "history"})
 QUEUE_SORT_IDS: frozenset[str] = frozenset({"date", "amount", "confidence"})
 QUEUE_DENSITY_IDS: frozenset[str] = frozenset({"compact", "comfortable"})
+BANKING_WORKFLOW_MODE_IDS: frozenset[str] = frozenset(
+    {"statement_first", "hybrid", "manual_first"}
+)
+BANKING_WORKFLOW_MODE_DEFAULT = "statement_first"
 
 _CONFIDENCE_RANK = {"high": 3, "medium": 2, "low": 1}
 
@@ -77,6 +81,18 @@ def banking_confidence_meets_batch_threshold(threshold: str, confidence: str) ->
     if threshold == "high_and_medium":
         return confidence in ("high", "medium")
     return confidence == "high"
+
+
+def banking_normalize_workflow_mode(value: str | None) -> str:
+    """Company workflow mode — UI routing only; invalid values fall back safely."""
+    if value in BANKING_WORKFLOW_MODE_IDS:
+        return value
+    return BANKING_WORKFLOW_MODE_DEFAULT
+
+
+def banking_workflow_mode(session, company_id: int) -> str:
+    raw = get_setting(session, "banking.workflow_mode", company_id=company_id)
+    return banking_normalize_workflow_mode(raw)
 
 
 def banking_resolve_landing(

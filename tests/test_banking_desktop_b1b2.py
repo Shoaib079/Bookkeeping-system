@@ -80,7 +80,7 @@ def test_banking_section_select_chips_not_radio():
 def test_render_banking_uses_chips_and_banking_section_key():
     src = inspect.getsource(erp.render_banking)
     assert "st.radio" not in src
-    assert '_banking_section_select("banking_section"' in src
+    assert '_banking_section_select(\n        "banking_section"' in src or '_banking_section_select("banking_section"' in src
     assert '"banking_section"' in src
     assert 'section == "import"' in src
     assert 'section == "settings"' in src

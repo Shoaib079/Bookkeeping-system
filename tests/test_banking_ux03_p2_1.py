@@ -13,6 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from db import Base
 import models
 import app as erp_app
+import ui.banking as banking_ui
 from reconciliation.company_card import compute_cc_payable_recon_health
 from reconciliation.match_post import get_postable_rows
 from registry.locales.transactional import TRANSACTIONAL_EN, TRANSACTIONAL_TR
@@ -322,11 +323,12 @@ class TestDrillThrough:
 
 class TestBankingWiring:
     def test_render_banking_exposes_cockpit_section(self):
-        src = inspect.getsource(erp_app.render_banking)
-        assert "render_banking_recon_cockpit" in src
-        assert '("cockpit", "bank.section.cockpit")' in src or (
-            '("cockpit", "bank.section.cockpit")' in src
+        render_src = inspect.getsource(erp_app.render_banking)
+        opts_src = inspect.getsource(banking_ui.banking_build_section_options)
+        assert "render_banking_recon_cockpit" in render_src or (
+            "_render_banking_recon_cockpit" in render_src
         )
+        assert '("cockpit", "bank.section.cockpit")' in opts_src
 
 
 class TestLocales:

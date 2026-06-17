@@ -44,12 +44,12 @@ This is a **UI-only routing/visibility change behind a company-scoped setting**,
 - **Existing imports/matching** — unchanged; statement-first is preferred, not mandatory.
 - **Duplicate-post safeguards** — remain the single source of truth for "don't post twice"; UI mode does not add a second dedup path.
 
-## 4. Minimal implementation slices (suggested — DO NOT implement)
+## 4. Implementation slices
 
-- **BANKING-UX-04-S1 — audit + setting contract:** this doc + define `banking.workflow_mode` in `settings_catalog.py` (catalog entry only; default `statement_first`); add the `_banking_workflow_mode(session)` getter contract + company-isolation test. No UI change.
-- **BANKING-UX-04-S2 — UI routing/visibility:** `render_banking` orders sections + sets default landing + groups manual under "Advanced" per mode. UI-only; all sections retained.
-- **BANKING-UX-04-S3 — Add Transaction bank/manual placement:** apply the same mode to the Add Transaction bank paths (manual entry prominent in manual-first; under Advanced in statement-first). UI-only.
-- **BANKING-UX-04-S4 — tests/docs/React-readiness:** the §6 test matrix + freeze the setting as a value the React banking page reads.
+- **BANKING-UX-04-S1 — audit + setting contract:** ✅ **Complete** — `docs/BANKING_UX_04_AUDIT.md` + `tests/test_banking_ux_04_audit.py`. Tag: `banking-ux-04-s1-audit`.
+- **BANKING-UX-04-S2 — UI routing/visibility:** ✅ **Complete** — `banking.workflow_mode` setting + `_banking_workflow_mode` getter + `ui/banking.py` section order/landing/Advanced panel. Tests: `tests/test_banking_ux_04_s2_workflow_mode_routing.py`. Tag: `banking-ux-04-s2-workflow-mode-routing`.
+- **BANKING-UX-04-S3 — Add Transaction bank/manual placement:** 📋 Planned — apply the same mode to the Add Transaction bank paths. UI-only.
+- **BANKING-UX-04-S4 — tests/docs/React-readiness:** 📋 Planned — extended test matrix + freeze setting for React banking page.
 
 ## 5. Risk matrix
 

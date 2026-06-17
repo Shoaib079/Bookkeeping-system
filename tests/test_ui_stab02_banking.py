@@ -83,7 +83,10 @@ class TestRouteKeysUnchanged:
 class TestBankingPageWiring:
     def test_render_banking_uses_chip_selector_and_pos_entry(self):
         src = inspect.getsource(erp.render_banking)
-        assert '_banking_section_select("banking_section"' in src
+        assert (
+            '_banking_section_select("banking_section"' in src
+            or '_banking_section_select(\n        "banking_section"' in src
+        )
         assert "_render_banking_pos_settlement_entry" in src
         assert 'section == "pos_settlement"' in src
         assert "_render_banking_pos_settlement_section" in src

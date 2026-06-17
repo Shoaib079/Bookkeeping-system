@@ -5,6 +5,7 @@ import inspect
 from pathlib import Path
 
 import app as erp
+import ui.banking as banking_ui
 from registry.i18n import t
 from registry.locales.messages import MESSAGES
 from registry.locales.transactional import TRANSACTIONAL_EN, TRANSACTIONAL_TR
@@ -31,16 +32,19 @@ class TestBankingEntryPoint:
     def test_render_banking_exposes_pos_settlement_entry(self):
         src = inspect.getsource(erp.render_banking)
         assert "_render_banking_pos_settlement_entry" in src
-        assert src.index("_render_banking_pos_settlement_entry") < src.index(
-            '_banking_section_select("banking_section"'
-        )
+        section_select = src.find('_banking_section_select("banking_section"')
+        if section_select < 0:
+            section_select = src.find('_banking_section_select(\n        "banking_section"')
+        assert section_select >= 0
+        assert src.index("_render_banking_pos_settlement_entry") < section_select
 
     def test_banking_section_includes_pos_settlement_when_enabled(self):
-        src = inspect.getsource(erp.render_banking)
-        assert '_banking_pos_settlement_enabled(session)' in src
-        assert '("pos_settlement", "banking.pos_entry.title")' in src
-        assert 'section == "pos_settlement"' in src
-        assert "_render_banking_pos_settlement_section" in src
+        render_src = inspect.getsource(erp.render_banking)
+        opts_src = inspect.getsource(banking_ui.banking_build_section_options)
+        assert '_banking_pos_settlement_enabled(session)' in render_src
+        assert '("pos_settlement", "banking.pos_entry.title")' in opts_src
+        assert 'section == "pos_settlement"' in render_src
+        assert "_render_banking_pos_settlement_section" in render_src
 
     def test_entry_uses_t_helper_like_other_banking_labels(self):
         src = inspect.getsource(erp._render_banking_pos_settlement_entry)
