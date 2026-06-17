@@ -49,7 +49,7 @@ This is a **UI-only routing/visibility change behind a company-scoped setting**,
 - **BANKING-UX-04-S1 — audit + setting contract:** ✅ **Complete** — `docs/BANKING_UX_04_AUDIT.md` + `tests/test_banking_ux_04_audit.py`. Tag: `banking-ux-04-s1-audit`.
 - **BANKING-UX-04-S2 — UI routing/visibility:** ✅ **Complete** — `banking.workflow_mode` setting + `_banking_workflow_mode` getter + `ui/banking.py` section order/landing/Advanced panel. Tests: `tests/test_banking_ux_04_s2_workflow_mode_routing.py`. Tag: `banking-ux-04-s2-workflow-mode-routing`.
 - **BANKING-UX-04-S3 — Add Transaction bank/manual placement:** ✅ **Complete** — workflow mode on Add Transaction type order, statement callout, Advanced manual bank type. Tests: `tests/test_banking_ux_04_s3_add_transaction_bank_paths.py`. Tag: `banking-ux-04-s3-add-transaction-bank-paths`.
-- **BANKING-UX-04-S4 — tests/docs/React-readiness:** 📋 Planned — extended test matrix + freeze setting for React banking page.
+- **BANKING-UX-04-S4 — tests/docs/React-readiness:** ✅ **Complete** — `docs/BANKING_UX_04_REACT_WORKFLOW_CONTRACT.md` + `registry/banking_workflow_contract.py`; epic matrix `tests/test_banking_ux_04_epic_matrix.py`. Tag: `banking-ux-04-s4-react-workflow-contract`. **BANKING-UX-04 epic complete.**
 
 ## 5. Risk matrix
 

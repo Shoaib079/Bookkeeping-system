@@ -168,6 +168,7 @@ Examples:
 | `mobile_hub_open` | Overlay route or query param |
 | `_erp_mobile_ui` | `useMediaQuery('(max-width: 968px)')` + user preference |
 | `banking_section` | `/banking/:section` |
+| `banking.workflow_mode` | Company setting — governs Banking tab order + Add Transaction bank-type placement (see `docs/BANKING_UX_04_REACT_WORKFLOW_CONTRACT.md`) |
 | `mob_reports_tab` | `/reports?tab=sales` |
 | `date_from`, `date_to` | URL search params or Zustand filter store |
 | `txh_active_view` | `/ledger/:id` |

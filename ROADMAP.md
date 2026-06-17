@@ -164,7 +164,7 @@ No implementation before roadmap approval.
 | BANKING-POS-WORKFLOW-01 P1+P2 | ✅ Shipped — Other Income Sales Revenue guardrails + POS Settlement explainer (no posting changes) |
 | **BANKING-UX-02** — POS Settlement Transparency | ✅ **Complete** — P1 preview · P1B focused entry · P2 clearing visibility · P3 unsettled list · P4 match check (no posting changes) |
 | **BANKING-UX-03** — Reconciliation Cockpit & Queue | ✅ **P1–P2 shipped** · 📋 **P3 future** — see [BANKING_UX_03_ROADMAP](./docs/BANKING_UX_03_ROADMAP.md) |
-| **BANKING-UX-04** — Configurable Banking Workflow | 🟡 **In progress** — S1 audit ✅ S2 routing ✅ S3 Add Transaction ✅; see [§ BANKING-UX-04](#banking-ux-04--configurable-banking-workflow) |
+| **BANKING-UX-04** — Configurable Banking Workflow | ✅ **Complete** — S1–S4; see [§ BANKING-UX-04](#banking-ux-04--configurable-banking-workflow) |
 | **ERP Core Principles (Locked)** | ✅ **Approved** — 10 locked principles; see [§ ERP Core Principles](#erp-core-principles-locked) |
 | **RETENTION-01** — Add Transaction post-save policy | ✅ **Shipped** — keep type + date; reset all other fields |
 | **DATE OWNERSHIP** — Submit-time date capture | ✅ **Shipped** — single resolved date through GL/bank/reports |
@@ -876,7 +876,7 @@ Shipped: error UX hardening · confidence chips · fragment-scoped match queue �
 
 ### BANKING-UX-04 — Configurable Banking Workflow
 
-**Status:** 🟡 **In progress** — S1 audit ✅ · S2 workflow mode + UI routing ✅ · S3 Add Transaction paths ✅ · S4 tests/React-readiness 📋  
+**Status:** ✅ **Complete** — S1 audit ✅ · S2 workflow mode + UI routing ✅ · S3 Add Transaction paths ✅ · S4 React contract ✅  
 **Priority:** Medium — after BANKING-UX-03 P3 or alongside registry settings expansion  
 **Principle:** [Configurable ERP Philosophy](#8-configurable-erp-philosophy) · [BANKING_UX_03 § P2.3](./docs/BANKING_UX_03_ROADMAP.md) · [BANKING_UX_04_AUDIT](./docs/BANKING_UX_04_AUDIT.md)
 
@@ -886,7 +886,7 @@ Shipped: error UX hardening · confidence chips · fragment-scoped match queue �
 
 **S3 delivered:** Add Transaction bank-path routing via `ui/banking.py` helpers (`at_primary_type_indices`, statement callout, Advanced manual bank type, manual-first landing). Tests: `tests/test_banking_ux_04_s3_add_transaction_bank_paths.py`. Tag: `banking-ux-04-s3-add-transaction-bank-paths`.
 
-**Next slice:** **BANKING-UX-04-S4** — extended tests/docs/React-readiness freeze.
+**S4 delivered:** React workflow contract frozen in `registry/banking_workflow_contract.py` + `docs/BANKING_UX_04_REACT_WORKFLOW_CONTRACT.md`. Epic matrix: `tests/test_banking_ux_04_epic_matrix.py`. Tag: `banking-ux-04-s4-react-workflow-contract`. **BANKING-UX-04 epic complete.**
 
 #### Modes
 
@@ -3357,6 +3357,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **BANKING-UX-04-S4 (closure)** — React workflow contract frozen: `registry/banking_workflow_contract.py` + `docs/BANKING_UX_04_REACT_WORKFLOW_CONTRACT.md`; epic matrix `tests/test_banking_ux_04_epic_matrix.py`. Tag: `banking-ux-04-s4-react-workflow-contract`. **BANKING-UX-04 epic complete.** |
 | 2026-06-05 | **BANKING-UX-04-S3 (closure)** — Add Transaction bank-path workflow routing: type order/landing, statement callout, Advanced manual bank type via `ui/banking.py`. No posting/recon/GL changes. Tests: `tests/test_banking_ux_04_s3_add_transaction_bank_paths.py`. Tag: `banking-ux-04-s3-add-transaction-bank-paths`. Next: **BANKING-UX-04-S4** (tests/React-readiness). |
 | 2026-06-05 | **BANKING-UX-04-S2 (closure)** — Workflow mode setting (`banking.workflow_mode`, default `statement_first`) + Banking UI routing: section order, landing, Advanced manual panel via `ui/banking.py`. No posting/recon/GL changes. Tests: `tests/test_banking_ux_04_s2_workflow_mode_routing.py`. Tag: `banking-ux-04-s2-workflow-mode-routing`. Next: **BANKING-UX-04-S3** (Add Transaction bank paths). |
 | 2026-06-05 | **BANKING-UX-04-S1 (closure)** — Configurable banking workflow architecture audit: `docs/BANKING_UX_04_AUDIT.md` + `tests/test_banking_ux_04_audit.py`. Recommendation: PROCEED (UI-only). Tag: `banking-ux-04-s1-audit`. |
