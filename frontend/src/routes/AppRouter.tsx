@@ -9,7 +9,9 @@ import { AppShell } from "../layouts/AppShell";
 import { routeSpecs, type RouteSpec } from "../lib/routes";
 import { HomePage } from "../pages/HomePage";
 import { BalanceSheetPage } from "../pages/BalanceSheetPage";
+import { BankingReadinessPage } from "../pages/BankingReadinessPage";
 import { LedgerPage } from "../pages/LedgerPage";
+import { PartnerStatementPage } from "../pages/PartnerStatementPage";
 import { PayablesPage } from "../pages/PayablesPage";
 import { ReceivablesPage } from "../pages/ReceivablesPage";
 import { NewTransactionPage } from "../pages/NewTransactionPage";
@@ -21,6 +23,8 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/reports/balance-sheet": BalanceSheetPage,
   "/receivables": ReceivablesPage,
   "/payables": PayablesPage,
+  "/partners": PartnerStatementPage,
+  "/banking": BankingReadinessPage,
 };
 
 const WRITE_PAGES: Record<string, ComponentType> = {

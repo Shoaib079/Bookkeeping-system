@@ -43,7 +43,7 @@ def test_audit_doc_exists_and_sections(audit_text):
         assert section.lower() in audit_text.lower(), f"Missing section: {section!r}"
 
 
-@pytest.mark.parametrize("path,component,_key", contract.REAL_PAGE_ROUTES)
+@pytest.mark.parametrize("path,component,_key", contract.FR17_REAL_PAGE_ROUTES)
 def test_real_page_routes_include_fr17_pages(path, component, _key):
     assert (ROOT / f"frontend/src/pages/{component}.tsx").is_file(), component
 
@@ -52,7 +52,7 @@ def test_app_router_wires_fr17_read_pages():
     router_src = (ROOT / "frontend/src/routes/AppRouter.tsx").read_text(
         encoding="utf-8"
     )
-    for _path, component, _key in contract.REAL_PAGE_ROUTES:
+    for _path, component, _key in contract.FR17_REAL_PAGE_ROUTES:
         assert component in router_src
 
 
@@ -105,6 +105,6 @@ def test_roadmap_lists_fastapi_react_17_complete():
     assert "fastapi-react-17-react-read-expansion" in roadmap
 
 
-@pytest.mark.parametrize("item", contract.DEFERRED_ITEMS)
+@pytest.mark.parametrize("item", contract.FR17_DEFERRED_ITEMS)
 def test_audit_documents_deferred_items(audit_text, item):
     assert item in audit_text

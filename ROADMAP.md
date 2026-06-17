@@ -1411,11 +1411,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-11** | Void write tab (New Transaction) | ✅ **Complete** |
 | **FASTAPI-REACT-12** | Purchase write tab (New Transaction) | ✅ **Complete** |
 | **FASTAPI-REACT-17** | Read expansion (balance sheet + AR/AP) | ✅ **Complete** |
-| **FASTAPI-REACT-18+** | Partner statement + banking readiness | 📋 Planned |
+| **FASTAPI-REACT-18** | Partner statement + banking readiness | ✅ **Complete** |
+| **FASTAPI-REACT-19+** | Transaction ledger read + reports hub | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_17_REACT_READ_EXPANSION_AUDIT.md](./docs/FASTAPI_REACT_17_REACT_READ_EXPANSION_AUDIT.md) · **Tests:** `tests/test_fastapi_react_17_react_read_expansion.py` · **Tag:** `fastapi-react-17-react-read-expansion`
+**Audit:** [FASTAPI_REACT_18_REACT_READ_PARTNER_BANKING_AUDIT.md](./docs/FASTAPI_REACT_18_REACT_READ_PARTNER_BANKING_AUDIT.md) · **Tests:** `tests/test_fastapi_react_18_react_read_partner_banking.py` · **Tag:** `fastapi-react-18-react-read-partner-banking`
 
-**Next slice:** **FASTAPI-REACT-18** — partner statement + banking readiness read pages; see FR-17 audit §7.
+**Next slice:** **FASTAPI-REACT-19** — transaction ledger read page + reports hub; see FR-18 audit §7.
 
 ---
 
@@ -3506,6 +3507,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-18 (closure)** — Partner statement + banking readiness read pages: `PartnerStatementPage`, `BankingReadinessPage` wired to P1 read APIs behind `VITE_ERP_REACT_PAGES=1`; `docs/FASTAPI_REACT_18_REACT_READ_PARTNER_BANKING_AUDIT.md` + `tests/test_fastapi_react_18_react_read_partner_banking.py`. Streamlit primary unchanged. Tag: `fastapi-react-18-react-read-partner-banking`. Next: **FASTAPI-REACT-19**. |
 | 2026-06-05 | **FASTAPI-REACT-17 (closure)** — Read page expansion: `BalanceSheetPage`, `ReceivablesPage`, `PayablesPage` wired to P1 read APIs behind `VITE_ERP_REACT_PAGES=1`; `docs/FASTAPI_REACT_17_REACT_READ_EXPANSION_AUDIT.md` + `tests/test_fastapi_react_17_react_read_expansion.py`. Streamlit primary unchanged. Tag: `fastapi-react-17-react-read-expansion`. Next: **FASTAPI-REACT-18**. |
 | 2026-06-05 | **FASTAPI-REACT-16 (closure)** — Reconciliation + Closing write tabs on `/transactions/new` via P2.8/P2.9 APIs behind `VITE_ERP_REACT_WRITE_RECONCILIATION` / `VITE_ERP_REACT_WRITE_CLOSING`; `docs/FASTAPI_REACT_16_REACT_WRITE_RECON_CLOSING_AUDIT.md` + `tests/test_fastapi_react_16_react_write_recon_closing.py`. Completes P2 write UI coverage. Tag: `fastapi-react-16-react-write-recon-closing`. Next: **FASTAPI-REACT-17**. |
 | 2026-06-05 | **FASTAPI-REACT-15 (closure)** — Partner + Worker write tabs on `/transactions/new` via `POST /api/v1/partner-movements` and `POST /api/v1/worker-payments` behind `VITE_ERP_REACT_WRITE_PARTNER_WORKER=1`; `docs/FASTAPI_REACT_15_REACT_WRITE_PARTNER_WORKER_AUDIT.md` + `tests/test_fastapi_react_15_react_write_partner_worker.py`. Streamlit primary unchanged. Tag: `fastapi-react-15-react-write-partner-worker`. Next: **FASTAPI-REACT-16**. |

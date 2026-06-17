@@ -75,6 +75,92 @@ export type PayablesPageResponse = {
   showing_count: number;
 };
 
+export type PartnerStatementDetailLine = {
+  line_date: string | null;
+  section_key: string;
+  type_key: string;
+  description: string;
+  reference: string;
+  gross_amount: number;
+  inflow: number;
+  outflow: number;
+  signed_amount: number;
+  net_effect: number;
+  running_position: number;
+  source_id: number | null;
+};
+
+export type PartnerStatementWarning = {
+  key: string;
+  kwargs: Record<string, unknown>;
+};
+
+export type PartnerStatementResponse = {
+  partner_id: number;
+  partner_name: string;
+  partner_is_active: boolean;
+  from_date: string;
+  to_date: string;
+  opening_position: number;
+  opening_capital: number;
+  opening_current: number;
+  opening_advances: number;
+  capital_contributions: number;
+  profit_allocated: number;
+  repayments: number;
+  drawings: number;
+  salary: number;
+  advances_taken: number;
+  loss_allocated: number;
+  advance_offsets: number;
+  closing_position: number;
+  closing_capital: number;
+  closing_current: number;
+  closing_advances: number;
+  net_position_change: number;
+  status: string;
+  status_amount: number;
+  warnings: PartnerStatementWarning[];
+  reconciliation_ok: boolean;
+  detail_lines: PartnerStatementDetailLine[];
+  company_id: number;
+};
+
+export type ReadinessBlocker = {
+  kind: string;
+  count: number;
+};
+
+export type StatementReadinessItem = {
+  import_id: number;
+  file_name: string;
+  period: string;
+  complete: boolean;
+  complete_tri: string;
+  reconciled: boolean;
+  reconciled_tri: string;
+  tie_out: string;
+  tie_out_available: boolean;
+  declared_movement: number | null;
+  row_signed_total: number | null;
+  tie_out_delta: number | null;
+  remaining_rows: number;
+  review_pending: number;
+  failed_blocked: number;
+  row_counts_by_status: Record<string, number>;
+  drill_section: string;
+  company_id: number;
+  blockers: ReadinessBlocker[];
+};
+
+export type BankingReadinessResponse = {
+  items: StatementReadinessItem[];
+  meta?: {
+    limit: number;
+    count: number;
+  };
+};
+
 export type LedgerRow = {
   date: string;
   reference: string;

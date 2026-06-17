@@ -278,7 +278,7 @@ FR16_DEFERRED_ITEMS: tuple[str, ...] = (
 )
 
 DEFERRED_ITEMS: tuple[str, ...] = (
-    "FASTAPI-REACT-18",
+    "FASTAPI-REACT-19",
     "full match-type payload forms",
     "statement row picker",
     "fiscal period picker",

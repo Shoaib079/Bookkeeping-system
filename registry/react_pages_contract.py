@@ -22,6 +22,8 @@ REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/reports/balance-sheet", "BalanceSheetPage", "balance_sheet"),
     ("/receivables", "ReceivablesPage", "receivables"),
     ("/payables", "PayablesPage", "payables"),
+    ("/partners", "PartnerStatementPage", "partners"),
+    ("/banking", "BankingReadinessPage", "banking"),
 )
 
 HOME_READ_API_PATHS: tuple[str, ...] = (
@@ -46,6 +48,14 @@ PAYABLES_READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/payables",
 )
 
+PARTNER_STATEMENT_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/partners/{partner_id}/statement",
+)
+
+BANKING_READINESS_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/banking/readiness",
+)
+
 REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/config/featureFlags.ts",
     "frontend/src/lib/api/session.ts",
@@ -55,6 +65,8 @@ REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/pages/BalanceSheetPage.tsx",
     "frontend/src/pages/ReceivablesPage.tsx",
     "frontend/src/pages/PayablesPage.tsx",
+    "frontend/src/pages/PartnerStatementPage.tsx",
+    "frontend/src/pages/BankingReadinessPage.tsx",
     "frontend/src/components/ReadApiSetup.tsx",
 )
 
@@ -79,9 +91,29 @@ FR06_DEFERRED_ITEMS: tuple[str, ...] = (
     "chart-of-accounts picker",
 )
 
-DEFERRED_ITEMS: tuple[str, ...] = (
+# Frozen for FR-17 audit tests (do not mutate).
+FR17_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("/reports/balance-sheet", "BalanceSheetPage", "balance_sheet"),
+    ("/receivables", "ReceivablesPage", "receivables"),
+    ("/payables", "PayablesPage", "payables"),
+)
+
+FR17_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-18",
     "partner statement page",
     "banking readiness page",
     "chart-of-accounts picker",
+)
+
+DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-19",
+    "chart-of-accounts picker",
+    "partner picker",
+    "transaction ledger read page",
+)
+
+# Frozen for FR-18 audit tests (do not mutate).
+FR18_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("/partners", "PartnerStatementPage", "partners"),
+    ("/banking", "BankingReadinessPage", "banking"),
 )
