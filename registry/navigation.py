@@ -109,6 +109,12 @@ NAV_ACCORDION_GROUPS: tuple[NavAccordionGroupDef, ...] = (
     NavAccordionGroupDef("settings", "Settings", "nav.group.settings", 7),
 )
 
+# Optional accordion hints (sidebar + mobile More).
+NAV_GROUP_HINTS: dict[str, str] = {
+    "close_day": "nav.group.close_day_hint",
+    "accounting": "nav.group.accounting_hint",
+}
+
 
 @dataclass(frozen=True)
 class NavPageDef:

@@ -180,7 +180,7 @@ No implementation before roadmap approval.
 | Shell / mobile chrome (Phase A) | ✅ Stabilized — fixed header, 968px breakpoint, People hub wired |
 | Sidebar / navigation redesign (AD-UI-001) | 🟡 **D1 + D2-P0 shipped** — Financial Statements routes + promoted daily lookup route (app.py `AD-UI-001 D2-P0` wrapper); D2+ remainder gated — see [NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md) §16 |
 | **NAV-ARCH** — Navigation single source of truth | ✅ **S4 complete** — registry + React route contract frozen — see [§ NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
-| **UI-SYSTEM-02** — ERP-wide UI & theme modernization | 🟡 **S2 complete** — design token registry — see [§ UI-SYSTEM-02](#ui-system-02--erp-wide-ui--theme-modernization) |
+| **UI-SYSTEM-02** — ERP-wide UI & theme modernization | 🟡 **S3 complete** — sidebar modernization — see [§ UI-SYSTEM-02](#ui-system-02--erp-wide-ui--theme-modernization) |
 | **MOB-AT-C1** — Concept C Mobile AT UI | ✅ **Accepted** — reference implementation; 747 tests passing |
 | **MOBILE-11** — Mobile Design System | ✅ **Approved** — `docs/MOBILE_UI_SYSTEM.md` is the governing document for all future mobile work |
 | **MOBILE-12** — Design Governance | ✅ **Approved** — open decisions recorded; phased migration path defined |
@@ -1220,7 +1220,7 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 
 ## UI-SYSTEM-02 — ERP-Wide UI & Theme Modernization
 
-**Status:** 🟡 **In progress — S2 complete**  
+**Status:** 🟡 **In progress — S3 complete**  
 **Priority:** High — after NAV-ARCH, before Banking UX  
 **Blocker:** None  
 **Depends on:**
@@ -1249,7 +1249,7 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **UI-SYSTEM-02-S0 — Guardrails** | Audit-only; CSS-02; no parallel theme systems | ✅ Active |
 | **UI-SYSTEM-02-S1 — Audit + guardrails** | `docs/UI_SYSTEM_02_AUDIT.md` + `tests/test_ui_system_02_audit.py`; no runtime change | ✅ **Complete** |
 | **UI-SYSTEM-02-S2 — Design token registry** | Centralize colour/spacing/radius/shadow/typography; resolve `--hdr-h` mobile conflict; deprecate stale role hues | ✅ **Complete** |
-| **UI-SYSTEM-02-S3 — Sidebar modernization** | Visual grouping/spacing/icons only; derive presentation from registry; **no route moves** | 📋 Planned |
+| **UI-SYSTEM-02-S3 — Sidebar modernization** | Visual grouping/spacing/icons only; derive presentation from registry; **no route moves** | ✅ **Complete** |
 | **UI-SYSTEM-02-S4 — Unified shell/component pass** | Header/sidebar mobile dedupe; KPI grid single owner; expense-bar ladder; desktop/mobile component parity | 📋 Planned |
 | **UI-SYSTEM-02-S5 — Theme governance / React design contract** | Frozen component + token contract for FastAPI/React migration | 📋 Planned |
 
@@ -1260,7 +1260,7 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 - Sidebar visually modern without route drift.
 - React team can port `AppShell`, `SidebarNav`, `KpiGrid`, `ChipSelector` from documented contract.
 
-**Next slice:** **UI-SYSTEM-02-S3** (sidebar modernization).
+**Next slice:** **UI-SYSTEM-02-S4** (unified shell/component pass).
 
 ---
 
@@ -3351,6 +3351,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **UI-SYSTEM-02-S3 (closure)** — Sidebar modernization: `registry/sidebar_layout.py` drives desktop render tree; `_NAV_GROUP_KEYS` derived; tokenized section headers + CSS chevrons. Tests: `tests/test_ui_system_02_s3_sidebar_modernization.py`. Tag: `ui-system-02-s3-sidebar-modernization`. Next: **UI-SYSTEM-02-S4** (unified shell/component pass). |
 | 2026-06-05 | **UI-SYSTEM-02-S2 (closure)** — Design token registry: `ui/design_tokens.py` derives `LIGHT_ROOT_VARS`/`DARK_ROOT_VARS`; spacing/radius/shadow/typography scales in `theme.css`; resolved mobile `--hdr-h` conflict (removed stale 120px). Tests: `tests/test_ui_system_02_s2_design_token_registry.py`. Tag: `ui-system-02-s2-design-token-registry`. Next: **UI-SYSTEM-02-S3** (sidebar modernization). |
 | 2026-06-05 | **UI-SYSTEM-02-S1 (closure)** — ERP-wide UI & theme audit: `docs/UI_SYSTEM_02_AUDIT.md` + `tests/test_ui_system_02_audit.py`; 14 CSS files / 7,379 lines inventoried; sidebar visual readiness documented; no runtime change. Tag: `ui-system-02-s1-ui-theme-audit`. Next: **UI-SYSTEM-02-S2** (design token registry). |
 | 2026-06-17 | **NAV-ARCH-S4 (closure)** — React route contract frozen: `docs/NAV_ARCH_REACT_ROUTE_CONTRACT.md` + `validate_react_route_contract()`; 42 routes 1:1; legacy aliases canonical only. Tag: `nav-arch-s4-react-route-contract`. **NAV-ARCH epic S0–S4 complete.** |

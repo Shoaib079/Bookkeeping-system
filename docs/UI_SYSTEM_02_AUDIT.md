@@ -10,6 +10,8 @@
 
 **UI-SYSTEM-02-S2 status:** ✅ **Complete** — `ui/design_tokens.py` + `tests/test_ui_system_02_s2_design_token_registry.py`; mobile `--hdr-h` conflict resolved; scale tokens added to `theme.css :root`.
 
+**UI-SYSTEM-02-S3 status:** ✅ **Complete** — `registry/sidebar_layout.py` drives `_render_navigation_tree`; section headers + accordion chevrons use design tokens.
+
 ---
 
 ## 1. CSS ownership
@@ -277,11 +279,11 @@ Home, New Transaction, Transaction Ledger          [direct — matches registry 
 | **UI-SYSTEM-02-S0 — Guardrails** | Audit-only; no CSS without doc/test; CSS-02 remains law | ✅ Active |
 | **UI-SYSTEM-02-S1 — Audit** | This document + contract tests | ✅ **Complete** |
 | **UI-SYSTEM-02-S2 — Design token registry** | Centralize colour/spacing/radius/shadow/typography; deprecate stale role hues; resolve UI-02-C1 `--hdr-h` | ✅ **Complete** |
-| **UI-SYSTEM-02-S3 — Sidebar modernization** | Visual grouping polish; derive section layout from registry; no route moves | 📋 Planned |
+| **UI-SYSTEM-02-S3 — Sidebar modernization** | Visual grouping/spacing/icons only; derive presentation from registry; no route moves | ✅ **Complete** |
 | **UI-SYSTEM-02-S4 — Unified shell/component pass** | Dedupe header/sidebar mobile rules; KPI grid single owner; expense bar ladder; desktop/mobile component parity | 📋 Planned |
 | **UI-SYSTEM-02-S5 — Theme governance / React design contract** | `docs/UI_SYSTEM_02_REACT_DESIGN_CONTRACT.md`; component prop map; retire Streamlit selector list | 📋 Planned |
 
-**Recommended next slice:** **UI-SYSTEM-02-S3** (sidebar modernization) — visual grouping only; no route moves.
+**Recommended next slice:** **UI-SYSTEM-02-S4** (unified shell/component pass).
 
 ---
 

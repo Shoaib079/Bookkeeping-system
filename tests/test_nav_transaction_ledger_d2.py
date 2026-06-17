@@ -8,18 +8,23 @@ from unittest.mock import MagicMock
 
 import app as erp
 from registry.i18n import nav_display, t
-from registry.nav_keys import NAV_TXN_LEDGER
+from registry.nav_keys import NAV_NEW_TRANSACTION, NAV_TXN_LEDGER
 from registry.navigation import dispatch_render_spec
 from tests.nav_ux_02_contract import page_dispatch_from_main
 _TXN_LEDGER_KEY = NAV_TXN_LEDGER
 
 
 def test_sidebar_contains_transaction_ledger_after_new_transaction():
-    src = inspect.getsource(erp._render_navigation_tree)
-    new_pos = src.index('_nav_direct(NAV_NEW_TRANSACTION)')
-    ledger_pos = src.index("_nav_direct(_TXN_LEDGER_PAGE_KEY)")
-    work_pos = src.index('_nav_section_caption("nav.sidebar.section_work")')
-    assert new_pos < ledger_pos < work_pos
+    from registry.sidebar_layout import flatten_sidebar_layout_keys
+
+    keys = flatten_sidebar_layout_keys()
+    direct = [k for kind, k in keys if kind == "direct"]
+    new_idx = direct.index(NAV_NEW_TRANSACTION)
+    ledger_idx = direct.index(_TXN_LEDGER_KEY)
+    assert new_idx < ledger_idx
+    work_pos = keys.index(("section", "nav.sidebar.section_work"))
+    ledger_flat = keys.index(("direct", _TXN_LEDGER_KEY))
+    assert ledger_flat < work_pos
 
 
 def test_transaction_ledger_route_dispatches_to_wrapper():

@@ -159,9 +159,11 @@ def test_legacy_exec_sel_redirect_map():
 
 
 def test_desktop_nav_statements_group_before_reports():
-    tree_source = inspect.getsource(erp._render_navigation_tree)
-    stmt_pos = tree_source.index('_nav_group("statements"')
-    reports_pos = tree_source.index('_nav_direct(NAV_REPORTS)')
+    from registry.sidebar_layout import flatten_sidebar_layout_keys
+
+    keys = flatten_sidebar_layout_keys()
+    stmt_pos = keys.index(("accordion", "statements"))
+    reports_pos = keys.index(("direct", NAV_REPORTS))
     assert stmt_pos < reports_pos
 
 

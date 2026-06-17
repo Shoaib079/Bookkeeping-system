@@ -2113,12 +2113,23 @@ section[data-testid="stSidebarContent"] {
   border-color: var(--theme-card) !important;
 }
 
-/* Sidebar nav hierarchy */
+/* Sidebar nav hierarchy — UI-SYSTEM-02-S3 token spacing + section headers */
+[data-testid="stSidebar"] .erp-nav-section-hdr {
+  display: block !important;
+  font-size: var(--erp-font-caption) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: var(--theme-muted) !important;
+  margin: var(--erp-space-4) var(--erp-space-2) var(--erp-space-2) !important;
+  padding: 0 !important;
+  line-height: var(--erp-line-tight) !important;
+}
 [data-testid="stSidebar"] .nav-grp-hdr-mark {
   display: block !important;
   height: 0 !important;
   border-top: 1px solid var(--theme-border) !important;
-  margin: 10px 8px 4px !important;
+  margin: var(--erp-space-3) var(--erp-space-2) var(--erp-space-1) !important;
   padding: 0 !important;
 }
 /* Accordion child items — marker is the immediate sibling before each nav button */
@@ -2133,9 +2144,9 @@ section[data-testid="stSidebarContent"] {
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div [data-testid="stButton"] > button,
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div [data-testid="baseButton-primary"] > button,
 [data-testid="stSidebar"] div:has(.nav-item-active-mark) + div [data-testid="baseButton-primary"] button {
-  padding-left: 20px !important;
+  padding-left: var(--erp-space-5) !important;
   font-size: 0.875rem !important;
-  border-radius: 0 6px 6px 0 !important;
+  border-radius: 0 var(--erp-radius-sm) var(--erp-radius-sm) 0 !important;
   border-top: none !important;
   border-right: none !important;
   border-bottom: none !important;
@@ -2166,11 +2177,35 @@ section[data-testid="stSidebarContent"] {
   letter-spacing: 0.06em !important;
   text-transform: uppercase !important;
   color: var(--theme-muted) !important;
-  padding-left: 4px !important;
-  padding-top: 6px !important;
-  padding-bottom: 4px !important;
+  padding-left: var(--erp-space-1) !important;
+  padding-top: var(--erp-space-2) !important;
+  padding-bottom: var(--erp-space-1) !important;
+  padding-right: calc(var(--erp-space-4) + 10px) !important;
   border: none !important;
-  border-radius: 0 !important;
+  border-radius: var(--erp-radius-md) !important;
+  position: relative !important;
+}
+[data-testid="stSidebar"] .nav-grp-hdr-mark:not(.nav-grp-open) + div [data-testid="stButton"] > button::after,
+[data-testid="stSidebar"] div:has(> [data-testid="stMarkdown"] .nav-grp-hdr-mark:not(.nav-grp-open)) + div [data-testid="stButton"] > button::after {
+  content: "▸" !important;
+  position: absolute !important;
+  right: var(--erp-space-2) !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  font-size: 0.7rem !important;
+  color: var(--theme-muted) !important;
+  font-weight: 700 !important;
+}
+[data-testid="stSidebar"] .nav-grp-hdr-mark.nav-grp-open + div [data-testid="stButton"] > button::after,
+[data-testid="stSidebar"] div:has(> [data-testid="stMarkdown"] .nav-grp-hdr-mark.nav-grp-open) + div [data-testid="stButton"] > button::after {
+  content: "▾" !important;
+  position: absolute !important;
+  right: var(--erp-space-2) !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  font-size: 0.7rem !important;
+  color: var(--theme-info) !important;
+  font-weight: 700 !important;
 }
 [data-testid="stSidebar"] div:has(> [data-testid="stMarkdown"] .nav-grp-hdr-mark:not(.nav-grp-active)) + div [data-testid="stButton"] > button p,
 [data-testid="stSidebar"] div:has(> [data-testid="stMarkdown"] .nav-grp-hdr-mark:not(.nav-grp-active)) + div [data-testid="stButton"] > button span,
@@ -2193,7 +2228,9 @@ section[data-testid="stSidebarContent"] {
   letter-spacing: 0.01em !important;
   text-transform: none !important;
   border: 1px solid color-mix(in srgb, var(--theme-info) 35%, var(--theme-border) 65%) !important;
-  border-radius: 8px !important;
+  border-radius: var(--erp-radius-md) !important;
+  padding-right: calc(var(--erp-space-4) + 10px) !important;
+  position: relative !important;
 }
 [data-testid="stSidebar"] div:has(> [data-testid="stMarkdown"] .nav-grp-hdr-mark.nav-grp-active) + div [data-testid="stButton"] > button p,
 [data-testid="stSidebar"] div:has(> [data-testid="stMarkdown"] .nav-grp-hdr-mark.nav-grp-active) + div [data-testid="stButton"] > button span,
@@ -2212,10 +2249,10 @@ section[data-testid="stSidebarContent"] {
 }
 [data-testid="stSidebar"] .nav-grp-hdr-mark.nav-grp-open ~ div:has(.nav-ch-open) {
   border-left: 3px solid color-mix(in srgb, var(--theme-info) 45%, var(--theme-border) 55%) !important;
-  margin-left: 6px !important;
-  padding: 4px 0 4px 4px !important;
+  margin-left: var(--erp-space-2) !important;
+  padding: var(--erp-space-1) 0 var(--erp-space-1) var(--erp-space-1) !important;
   background: color-mix(in srgb, var(--theme-info) 4%, var(--theme-card) 96%) !important;
-  border-radius: 0 8px 8px 0 !important;
+  border-radius: 0 var(--erp-radius-md) var(--erp-radius-md) 0 !important;
 }
 /* Open folder header — slightly brighter so the folder name stays readable */
 [data-testid="stSidebar"] .nav-grp-hdr-mark.nav-grp-open + div [data-testid="stButton"] > button {

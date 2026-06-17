@@ -180,14 +180,14 @@ def test_registry_accordion_group_count():
 
 
 def test_render_tree_layout_unchanged():
-    """S3A must not reorder the hardcoded sidebar render sequence."""
-    src = inspect.getsource(erp._render_navigation_tree)
-    home_pos = src.index("_nav_direct(NAV_HOME)")
-    new_pos = src.index("_nav_direct(NAV_NEW_TRANSACTION)")
-    ledger_pos = src.index("_nav_direct(_TXN_LEDGER_PAGE_KEY)")
-    banking_pos = src.index("_nav_direct(NAV_BANKING)")
-    inventory_pos = src.index("_nav_direct(NAV_INVENTORY)")
-    reports_pos = src.index("_nav_direct(NAV_REPORTS)")
-    assert home_pos < new_pos < ledger_pos < banking_pos
-    assert inventory_pos < reports_pos
-    assert '_nav_group("settings"' in src
+    """S3 preserves frozen sidebar render sequence via registry/sidebar_layout.py."""
+    from registry.nav_keys import NAV_BANKING, NAV_HOME, NAV_INVENTORY, NAV_NEW_TRANSACTION, NAV_REPORTS
+    from registry.sidebar_layout import flatten_sidebar_layout_keys
+
+    keys = flatten_sidebar_layout_keys()
+    direct = [k for kind, k in keys if kind == "direct"]
+    assert direct.index(NAV_HOME) < direct.index(NAV_NEW_TRANSACTION)
+    assert direct.index(NAV_NEW_TRANSACTION) < direct.index(NAV_TXN_LEDGER)
+    assert direct.index(NAV_BANKING) < direct.index(NAV_INVENTORY)
+    assert direct.index(NAV_INVENTORY) < direct.index(NAV_REPORTS)
+    assert ("accordion", "settings") in keys

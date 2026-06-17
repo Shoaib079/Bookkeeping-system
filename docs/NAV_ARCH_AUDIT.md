@@ -18,16 +18,17 @@
 
 | Concern | Mechanism | Location (app.py, 2026-06-17) |
 |---|---|---|
-| **Primary router** | `_PAGE_DISPATCH` dict → `render_*` per `nav_selection` — **derived from `registry/navigation.py`** | `26050`; dispatch call `26321` |
-| **Desktop sidebar render** | `_render_navigation_tree(st.sidebar, …)` (custom button accordion) | def `3187`; call `26278` |
-| **`st.sidebar` usage (only 2 sites)** | date-range filters; nav tree | `990-991`, `26278` |
+| **Primary router** | `_PAGE_DISPATCH` dict → `render_*` per `nav_selection` — **derived from `registry/navigation.py`** | `26037`; dispatch call `26265` |
+| **Desktop sidebar render** | `_render_navigation_tree(st.sidebar, …)` (custom button accordion) | def `3176`; call `26265` |
+| **`st.sidebar` usage (only 2 sites)** | date-range filters; nav tree | `990-991`, `26265` |
 | **`option_menu`** | **Not used** — no `streamlit-option-menu` dependency; nav is a custom button tree | (none) |
 | **radio / selectbox page selection** | **Not the primary router.** Sub-page pickers only: banking section picker (`_banking_section_select`), reports exec picker / `st.tabs` | (banking/reports render fns) |
-| **Accordion groups** | `_NAV_ACCORDION` (8 groups) — **derived from registry** | `3179` |
-| **Direct (top-level) pages** | `_NAV_DIRECT_PAGES` — **derived from registry** | `3181` |
-| **Role visibility** | `_NAV_ROLE_PAGES` (owner/manager/cashier/partner/viewer) — **derived from registry** | `3184` |
-| **Mobile bottom nav** | `_MOBILE_BOTTOM_NAV` (5 slots) — **derived from registry** | `3167` |
-| **Mobile hubs** | `_MOBILE_HUB_CONFIG` (money/reports/people/more) — **derived from registry** | `3176` |
+| **Accordion groups** | `_NAV_ACCORDION` (8 groups) — **derived from registry** | `3168` |
+| **Direct (top-level) pages** | `_NAV_DIRECT_PAGES` — **derived from registry** | `3170` |
+| **Role visibility** | `_NAV_ROLE_PAGES` (owner/manager/cashier/partner/viewer) — **derived from registry** | `3173` |
+| **Mobile bottom nav** | `_MOBILE_BOTTOM_NAV` (5 slots) — **derived from registry** | `3156` |
+| **Mobile hubs** | `_MOBILE_HUB_CONFIG` (money/reports/people/more) — **derived from registry** | `3165` |
+| **Sidebar layout** | `SIDEBAR_LAYOUT` — frozen desktop visual sequence | `registry/sidebar_layout.py`; render loop in `_render_navigation_tree` |
 | **Canonical route keys** | `NAV_*` constants + `ALL_NAV_PAGE_KEYS` + `LEGACY_NAV_ALIASES` + `normalize_nav_key` | `registry/nav_keys.py` |
 | **Legacy reroutes** | `_LEGACY_NAV_TO_REPORTS_EXEC` (`3022`), `_LEGACY_RPT_EXEC_TO_STATEMENT/_TO_BOOKS`, Bank Statement Import reroute | `app.py` (per NAV-UX-02-S6) |
 

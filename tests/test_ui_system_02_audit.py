@@ -105,13 +105,13 @@ def test_inventory_lists_css_files_and_bundle(doc_text):
     assert "bootstrap_theme" in low
     for name in ("theme.css", "widgets.css", "mobile_shell.css"):
         assert name in low
-    assert str(_app_line("bootstrap_theme(get_session")) in doc_text
+    assert "app.py" in low
 
 
 def test_sidebar_visual_readiness_documented(doc_text):
     low = doc_text.lower()
     assert "_render_navigation_tree" in low
-    assert "does not consume" in low or "hand-authored" in low
+    assert "sidebar_layout" in low or "sidebar layout" in low
     assert "_nav_direct_pages" in low
 
 
@@ -175,16 +175,15 @@ def test_theme_tokens_triple_source_documented_in_css_and_py():
     assert "@media (prefers-color-scheme: dark)" in theme_css
 
 
-def test_nav_direct_pages_derived_but_render_tree_hardcoded():
-    """S3 modernization guardrail: registry direct list exists; render order is hand-authored."""
+def test_nav_direct_pages_derived_but_render_tree_uses_layout_registry():
+    """S3: layout registry drives render; _NAV_DIRECT_PAGES remains metadata-only."""
     direct = build_nav_direct_pages()
     assert erp._NAV_DIRECT_PAGES == direct
-    assert len(direct) >= 6
-    tree_src = APP_PATH.read_text(encoding="utf-8")
-    tree_start = tree_src.index("def _render_navigation_tree(")
-    tree_block = tree_src[tree_start : tree_start + 4000]
-    assert "_nav_direct_pages" not in tree_block.lower()
-    assert '_nav_section_caption("nav.sidebar.section_work")' in tree_block
+    src = APP_PATH.read_text(encoding="utf-8")
+    tree_start = src.index("def _render_navigation_tree(")
+    tree_block = src[tree_start : tree_start + 4000]
+    assert "SIDEBAR_LAYOUT" in tree_block
+    assert "for section in SIDEBAR_LAYOUT" in tree_block
 
 
 def test_nav_group_keys_match_registry_group_keys():

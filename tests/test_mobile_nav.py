@@ -126,11 +126,12 @@ def test_statement_reports_in_reports_hub_only():
 
 def test_desktop_nav_statements_unchanged():
     """Desktop sidebar still exposes Financial Statements before Reports."""
-    src = inspect.getsource(erp._render_navigation_tree)
-    assert '_nav_group("statements"' in src
-    assert '_nav_direct(NAV_REPORTS)' in src
-    stmt_pos = src.index('_nav_group("statements"')
-    reports_pos = src.index('_nav_direct(NAV_REPORTS)')
+    from registry.nav_keys import NAV_REPORTS
+    from registry.sidebar_layout import flatten_sidebar_layout_keys
+
+    keys = flatten_sidebar_layout_keys()
+    stmt_pos = keys.index(("accordion", "statements"))
+    reports_pos = keys.index(("direct", NAV_REPORTS))
     assert stmt_pos < reports_pos
 
 

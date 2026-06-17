@@ -177,6 +177,7 @@ from registry.locales.i18n_maps import (
 from registry.i18n import nav_display, normalize_locale, page_title, t
 from registry.navigation import (
     NavPageDef,
+    NAV_GROUP_HINTS,
     build_mobile_bottom_nav,
     build_mobile_hub_config,
     build_mobile_hub_keys,
@@ -186,6 +187,7 @@ from registry.navigation import (
     build_nav_role_pages,
     build_page_dispatch,
 )
+from registry.sidebar_layout import SIDEBAR_LAYOUT, build_nav_group_keys
 
 # Company roles (message keys) — kept in app.py to avoid i18n_maps import-order issues.
 _COMPANY_ROLE_I18N: dict[str, str] = {
@@ -3046,21 +3048,8 @@ def _log_legacy_nav_hit(kind: str, **fields: str) -> None:
     else:
         _NAV_LEGACY_LOGGER.info("legacy_nav_hit kind=%s", kind)
 
-_NAV_GROUP_KEYS = {
-    "transactions": "nav.group.transactions",
-    "people": "nav.group.people",
-    "close_day": "nav.group.close_day",
-    "recipe_costing": "nav.group.recipe_costing",
-    "statements": "nav.group.statements",
-    "accounting": "nav.group.accounting",
-    "team": "nav.group.team",
-    "settings": "nav.group.settings",
-}
-
-_NAV_GROUP_HINTS = {
-    "close_day": "nav.group.close_day_hint",
-    "accounting": "nav.group.accounting_hint",
-}
+_NAV_GROUP_KEYS = build_nav_group_keys()
+_NAV_GROUP_HINTS = NAV_GROUP_HINTS
 
 # Optional modules: hide nav when company wizard disabled them (posting unchanged).
 _MODULE_NAV_PAGES: dict[str, str] = {
@@ -3221,7 +3210,6 @@ def _render_navigation_tree(
             return
         is_open = _active_grp == gkey
         has_active = any(key == selection for key in gvisible)
-        chevron = "▾" if is_open else "▸"
         mark_cls = "nav-grp-hdr-mark"
         if has_active:
             mark_cls += " nav-grp-active"
@@ -3229,7 +3217,7 @@ def _render_navigation_tree(
             mark_cls += " nav-grp-open"
         container.markdown(f'<div class="{mark_cls}"></div>', unsafe_allow_html=True)
         if container.button(
-            f"{glabel}  {chevron}",
+            glabel,
             key=f"{_pfx}grp_btn_{gkey}",
             use_container_width=True,
             type="primary" if has_active else "secondary",
@@ -3256,27 +3244,26 @@ def _render_navigation_tree(
                 )
             container.markdown('<div class="nav-ch-close"></div>', unsafe_allow_html=True)
 
-    def _nav_section_caption(i18n_key: str) -> None:
-        container.markdown("---")
-        container.caption(_t(i18n_key))
+    def _nav_section_header(i18n_key: str) -> None:
+        label = html.escape(_t(i18n_key))
+        container.markdown(
+            f'<div class="erp-nav-section-hdr">{label}</div>',
+            unsafe_allow_html=True,
+        )
 
-    _nav_direct(NAV_HOME)
-    _nav_direct(NAV_NEW_TRANSACTION)
-    _nav_direct(_TXN_LEDGER_PAGE_KEY)
-    _nav_section_caption("nav.sidebar.section_work")
-    _nav_group("transactions", accordion_by_key["transactions"][1])
-    _nav_direct(NAV_BANKING)
-    _nav_group("people", accordion_by_key["people"][1])
-    _nav_direct(NAV_INVENTORY)
-    _nav_group("recipe_costing", accordion_by_key["recipe_costing"][1])
-    _nav_section_caption("nav.sidebar.section_reports")
-    _nav_group("statements", accordion_by_key["statements"][1])
-    _nav_direct(NAV_REPORTS)
-    _nav_group("close_day", accordion_by_key["close_day"][1])
-    _nav_section_caption("nav.sidebar.section_advanced")
-    _nav_group("accounting", accordion_by_key["accounting"][1])
-    _nav_group("team", accordion_by_key["team"][1])
-    _nav_group("settings", accordion_by_key["settings"][1])
+    for section in SIDEBAR_LAYOUT:
+        if section.section_i18n:
+            _nav_section_header(section.section_i18n)
+        for item in section.items:
+            if item.kind == "direct":
+                page_key = _TXN_LEDGER_PAGE_KEY if item.key == NAV_TXN_LEDGER else item.key
+                _nav_direct(page_key)
+            else:
+                _nav_group(
+                    item.key,
+                    accordion_by_key[item.key][1],
+                    hint_key=item.hint_i18n,
+                )
 
 
 def _navigate_new_transaction(type_idx: int = 0) -> None:

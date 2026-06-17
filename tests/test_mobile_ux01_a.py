@@ -76,11 +76,16 @@ def test_legacy_banking_hub_key_resolves_to_money():
 
 
 def test_desktop_sidebar_nav_unchanged():
-    src = inspect.getsource(erp._render_navigation_tree)
-    assert '_nav_group("statements"' in src
-    assert '_nav_group("accounting"' in src
-    assert '_nav_direct(NAV_REPORTS)' in src
+    from registry.nav_keys import NAV_REPORTS, NAV_RECON_HEALTH
+    from registry.sidebar_layout import flatten_sidebar_layout_keys
+
+    keys = flatten_sidebar_layout_keys()
+    assert ("accordion", "statements") in keys
+    assert ("accordion", "accounting") in keys
+    assert ("direct", NAV_REPORTS) in keys
     main_src = (_ROOT / "app.py").read_text(encoding="utf-8")
     assert "NAV_RECON_HEALTH" in main_src
     accounting_pages = [k for _, k in erp._NAV_ACCORDION_BY_KEY["accounting"][1]]
     assert NAV_RECON_HEALTH in accounting_pages
+    src = inspect.getsource(erp._render_navigation_tree)
+    assert "SIDEBAR_LAYOUT" in src
