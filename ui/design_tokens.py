@@ -140,6 +140,71 @@ CHIP_TOKEN_KEYS: Final[tuple[str, ...]] = (
     "--erp-chip-idle-border",
 )
 
+# MONO-THEME-01-S2 — shared component grammar (by reference; no new hex colours).
+NAV_GRAMMAR_TOKEN_KEYS: Final[tuple[str, ...]] = (
+    "--erp-nav-active-bg",
+    "--erp-nav-active-fg",
+    "--erp-nav-active-bar",
+    "--erp-nav-hover-bg",
+    "--erp-nav-section-fg",
+)
+
+CARD_GRAMMAR_TOKEN_KEYS: Final[tuple[str, ...]] = (
+    "--erp-card-bg",
+    "--erp-card-border",
+    "--erp-card-radius",
+    "--erp-card-shadow",
+    "--erp-card-muted-bg",
+)
+
+CHIP_GRAMMAR_EXTENSION_KEYS: Final[tuple[str, ...]] = (
+    "--erp-chip-radius",
+    "--erp-chip-border",
+    "--erp-chip-padding-x",
+    "--erp-chip-padding-y",
+)
+
+TABLE_GRAMMAR_TOKEN_KEYS: Final[tuple[str, ...]] = (
+    "--erp-table-border",
+    "--erp-table-header-bg",
+    "--erp-table-row-hover-bg",
+    "--erp-table-total-bg",
+)
+
+COMPONENT_GRAMMAR_TOKENS: Final[dict[str, str]] = {
+    # Nav — desktop sidebar + mobile bottom nav share active grammar
+    "--erp-nav-active-bg": "color-mix(in srgb, var(--theme-info) 12%, var(--theme-card) 88%)",
+    "--erp-nav-active-fg": "var(--theme-info)",
+    "--erp-nav-active-bar": "var(--erp-primary-fill)",
+    "--erp-nav-hover-bg": "color-mix(in srgb, var(--theme-bg) 6%, var(--theme-card) 94%)",
+    "--erp-nav-section-fg": "var(--theme-muted)",
+    # Card — dashboard/KPI/form panels
+    "--erp-card-bg": "var(--theme-card)",
+    "--erp-card-border": "var(--theme-border)",
+    "--erp-card-radius": "var(--erp-radius-lg)",
+    "--erp-card-shadow": "var(--erp-shadow-sm)",
+    "--erp-card-muted-bg": "color-mix(in srgb, var(--theme-bg) 50%, var(--theme-card) 50%)",
+    # Chip extensions — semantic chip colours remain CHIP_TOKEN_KEYS
+    "--erp-chip-radius": "var(--erp-radius-pill)",
+    "--erp-chip-border": "var(--erp-chip-idle-border)",
+    "--erp-chip-padding-x": "var(--erp-space-3)",
+    "--erp-chip-padding-y": "var(--erp-space-1)",
+    # Table — dense accounting readability
+    "--erp-table-border": "var(--theme-border)",
+    "--erp-table-header-bg": "color-mix(in srgb, var(--theme-bg) 45%, var(--theme-card) 55%)",
+    "--erp-table-row-hover-bg": "color-mix(in srgb, var(--theme-bg) 35%, var(--theme-card) 65%)",
+    "--erp-table-total-bg": "color-mix(in srgb, var(--theme-bg) 30%, var(--theme-card) 70%)",
+}
+
+COMPONENT_GRAMMAR_TOKEN_KEYS: Final[frozenset[str]] = frozenset(COMPONENT_GRAMMAR_TOKENS)
+
+_HEX_IN_VALUE_RE = re.compile(r"#[0-9a-fA-F]{3,8}")
+
+
+def grammar_values_reference_only() -> bool:
+    """True when every grammar token value avoids raw hex (references existing tokens only)."""
+    return all(not _HEX_IN_VALUE_RE.search(v) for v in COMPONENT_GRAMMAR_TOKENS.values())
+
 # Deprecated — mono avatar policy (role_accent_css_var); do not use for new UI.
 DEPRECATED_ROLE_TOKEN_KEYS: Final[frozenset[str]] = frozenset(
     {
@@ -245,7 +310,11 @@ def color_values_match(css_value: str, registry_value: str) -> bool:
 
 
 __all__ = (
+    "CARD_GRAMMAR_TOKEN_KEYS",
+    "CHIP_GRAMMAR_EXTENSION_KEYS",
     "CHIP_TOKEN_KEYS",
+    "COMPONENT_GRAMMAR_TOKEN_KEYS",
+    "COMPONENT_GRAMMAR_TOKENS",
     "DARK_COLOR_TOKENS",
     "DEPRECATED_ROLE_TOKEN_KEYS",
     "DEPRECATED_ROLE_TOKEN_VALUES",
@@ -253,15 +322,18 @@ __all__ = (
     "LAYOUT_TOKENS",
     "LIGHT_COLOR_TOKENS",
     "MOBILE_HEADER_LAYOUT_TOKENS",
+    "NAV_GRAMMAR_TOKEN_KEYS",
     "RADIUS_TOKENS",
     "SCALE_TOKEN_KEYS",
     "SPACING_TOKENS",
     "SHADOW_TOKENS",
     "SYSTEM_DARK_MEDIA_COLOR_TOKENS",
+    "TABLE_GRAMMAR_TOKEN_KEYS",
     "TYPOGRAPHY_TOKENS",
     "build_dark_root_vars",
     "build_light_root_vars",
     "color_values_match",
+    "grammar_values_reference_only",
     "normalize_hex",
     "parse_css_root_vars",
     "parse_system_dark_media_vars",

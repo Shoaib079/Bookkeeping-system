@@ -49,6 +49,7 @@ MOBILE_VIEWPORT_CSS_OWNER_FILES: tuple[str, ...] = (
 
 # Injected after theme.css; wins over @media (prefers-color-scheme).
 # UI-SYSTEM-02-S2: derived from ui/design_tokens.py
+# MONO-THEME-01-S2: component grammar tokens live in theme.css :root (see design_tokens.COMPONENT_GRAMMAR_TOKENS)
 LIGHT_ROOT_VARS: dict[str, str] = build_light_root_vars()
 DARK_ROOT_VARS: dict[str, str] = build_dark_root_vars()
 
