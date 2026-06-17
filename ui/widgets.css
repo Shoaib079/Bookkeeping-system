@@ -994,6 +994,21 @@ div[data-baseweb="calendar"] [aria-selected="true"] div {
     margin-bottom: 12px !important;
     gap: 8px !important;
   }
+  /* MONO-THEME-02-S4 — desktop stTable density & row hover (mobile → S5) */
+  [data-testid="stMain"] [data-testid="stTable"] th {
+    padding: 7px 10px !important;
+    font-size: 10px !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+  }
+  [data-testid="stMain"] [data-testid="stTable"] td {
+    padding: 8px 10px !important;
+    vertical-align: middle !important;
+    font-variant-numeric: tabular-nums !important;
+  }
+  [data-testid="stMain"] [data-testid="stTable"] tbody tr:hover td {
+    background: var(--erp-table-row-hover-bg) !important;
+  }
 }
 
 .erp-hdr-role-marker {

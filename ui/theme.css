@@ -1951,6 +1951,44 @@ section[data-testid="stSidebarContent"] {
   }
 }
 
+/* MONO-THEME-02-S4 — desktop table density & money alignment (mobile → S5) */
+@media (min-width: 969px) {
+  .erp-data-table-wrap {
+    margin: 8px 0 14px;
+  }
+  .erp-data-table th {
+    padding: 7px 10px;
+  }
+  .erp-data-table td {
+    padding: 8px 10px;
+    vertical-align: middle;
+  }
+  .erp-data-table td.num {
+    font-weight: 600;
+  }
+  .erp-fin-table-wrap {
+    margin: 4px 0 6px;
+  }
+  .erp-fin-table thead th {
+    padding: 7px 10px;
+    position: sticky;
+    top: var(--hdr-h, 52px);
+    z-index: 8;
+    box-shadow: 0 2px 4px color-mix(in srgb, var(--theme-shadow) 25%, transparent);
+  }
+  .erp-fin-table td {
+    padding: 8px 10px;
+    vertical-align: middle;
+  }
+  .erp-fin-table tbody tr.erp-fin-row-total td {
+    padding-top: 9px;
+    padding-bottom: 9px;
+  }
+  .erp-fin-amount {
+    min-width: 7.5rem;
+  }
+}
+
 /* Header profile popover card */
 .erp-hdr-profile-card {
   display: flex;
