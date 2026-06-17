@@ -4,10 +4,12 @@ S2: derives ``_PAGE_DISPATCH``.
 S3A: derives ``_NAV_ACCORDION`` and ``_NAV_DIRECT_PAGES``.
 S3B: derives ``_NAV_ROLE_PAGES`` (static role gates; permission overrides stay in app.py).
 S3C: derives ``_MOBILE_BOTTOM_NAV`` and ``_MOBILE_HUB_CONFIG``.
+S4: freezes ``react_route`` contract — see ``docs/NAV_ARCH_REACT_ROUTE_CONTRACT.md``.
 """
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -326,6 +328,36 @@ def dispatch_render_spec() -> dict[str, str]:
 
 def react_routes() -> dict[str, str]:
     return {p.route_key: p.react_route for p in NAV_PAGES}
+
+
+REACT_ROUTE_SAFE_RE = re.compile(r"^/(?:[a-z0-9]+(?:/[a-z0-9-]+)*)?$")
+
+
+def validate_react_route_contract() -> None:
+    """Raise ``ValueError`` when the frozen React route contract is violated."""
+    validate_registry()
+    routes = react_routes()
+    if set(routes) != {p.route_key for p in NAV_PAGES}:
+        raise ValueError("react_routes() keys must match NAV_PAGES route_key set")
+
+    for page in NAV_PAGES:
+        path = page.react_route
+        if not path or not path.startswith("/"):
+            raise ValueError(f"react_route must be absolute path for {page.route_key!r}")
+        if " " in path or "//" in path:
+            raise ValueError(f"Unsafe react_route for {page.route_key!r}: {path!r}")
+        if not REACT_ROUTE_SAFE_RE.match(path):
+            raise ValueError(f"react_route failed safe naming for {page.route_key!r}: {path!r}")
+
+    root_paths = [path for path in routes.values() if path == "/"]
+    if len(root_paths) != 1:
+        raise ValueError(f"Exactly one root react_route required, got {len(root_paths)}")
+
+
+def react_route_contract_rows() -> list[tuple[str, str]]:
+    """Ordered ``(route_key, react_route)`` rows for docs and migration tooling."""
+    validate_react_route_contract()
+    return [(p.route_key, p.react_route) for p in NAV_PAGES]
 
 
 def validate_registry() -> None:

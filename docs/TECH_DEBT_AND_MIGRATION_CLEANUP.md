@@ -78,9 +78,9 @@ Inherited cross-cutting debt — not introduced by DSC-P1 alone.
 
 | ID | Item | Priority | Status | When / trigger |
 |----|------|----------|--------|----------------|
-| **TD-NAV-ARCH-01** | **Navigation registry** — dispatch, desktop, static roles, and mobile all derive from `registry/navigation.py` | High | **In progress** — S3C mobile derived | NAV-ARCH-S4 |
-| **TD-NAV-ARCH-02** | **Mobile presentation helpers** — `_MOBILE_HUB_CONFIG_ALIASES`, `_MOBILE_MORE_ACCORDION_EXCLUDE` still in `app.py` | Low | Open | Optional S4+ cleanup |
-| **TD-NAV-ARCH-03** | **React route contract not frozen** — `react_route` metadata scattered; no `docs/NAV_ARCH_REACT_ROUTE_CONTRACT.md` yet | Medium | Open | NAV-ARCH-S4 |
+| **TD-NAV-ARCH-01** | **Navigation registry** — dispatch, desktop, static roles, mobile, and `react_route` contract derive from `registry/navigation.py` | High | **Resolved** — S4 contract frozen | React migration |
+| **TD-NAV-ARCH-02** | **Mobile presentation helpers** — `_MOBILE_HUB_CONFIG_ALIASES`, `_MOBILE_MORE_ACCORDION_EXCLUDE` still in `app.py` | Low | Open | Optional cleanup |
+| **TD-NAV-ARCH-03** | **React route contract** — frozen in `docs/NAV_ARCH_REACT_ROUTE_CONTRACT.md` + `validate_react_route_contract()` | Medium | **Resolved** | NAV-ARCH-S4 |
 
 **Audit:** [NAV_ARCH_AUDIT.md](./NAV_ARCH_AUDIT.md) · **Tests:** `tests/test_nav_arch_audit.py`
 

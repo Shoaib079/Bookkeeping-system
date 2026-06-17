@@ -119,6 +119,12 @@ def test_s2_registry_exists():
     assert (root / "registry" / "navigation.py").exists()
 
 
+def test_s4_react_route_contract_doc_exists():
+    """NAV-ARCH-S4: frozen React route contract doc."""
+    root = Path(__file__).resolve().parents[1]
+    assert (root / "docs" / "NAV_ARCH_REACT_ROUTE_CONTRACT.md").exists()
+
+
 def test_avoid_duplicate_fixes_link(doc_text):
     low = doc_text.lower()
     assert "nav-ux-02" in low

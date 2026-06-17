@@ -12,6 +12,8 @@
 
 **NAV-ARCH-S3C status:** ✅ **Complete** — `registry/navigation.py` derives `_MOBILE_BOTTOM_NAV` and `_MOBILE_HUB_CONFIG`.
 
+**NAV-ARCH-S4 status:** ✅ **Complete** — `docs/NAV_ARCH_REACT_ROUTE_CONTRACT.md` freezes `react_route` map from registry.
+
 ## 1. Navigation inventory
 
 | Concern | Mechanism | Location (app.py, 2026-06-17) |
@@ -74,7 +76,7 @@ Respect migration safety; **do not duplicate** the NAV-UX-02 S1–S7 work. Net-n
 | **NAV-ARCH-S3A — Desktop derived** | Derive `_NAV_ACCORDION` + `_NAV_DIRECT_PAGES` from registry | ✅ **Complete** |
 | **NAV-ARCH-S3B — Role derived** | Derive `_NAV_ROLE_PAGES` from registry | ✅ **Complete** |
 | **NAV-ARCH-S3C — Mobile derived** | Derive `_MOBILE_BOTTOM_NAV` + `_MOBILE_HUB_CONFIG` from registry | ✅ **Complete** |
-| **NAV-ARCH-S4 — React route contract** | `docs/NAV_ARCH_REACT_ROUTE_CONTRACT.md`; freeze `react_route` map | 📋 **Next** |
+| **NAV-ARCH-S4 — React route contract** | `docs/NAV_ARCH_REACT_ROUTE_CONTRACT.md`; freeze `react_route` map | ✅ **Complete** |
 
 **Defer** legacy-reroute retirement to the existing NAV-UX-02-S6 telemetry gate; **do not** re-open NAV-UX-02 S2/S4/S6 (already implemented).
 
@@ -99,4 +101,4 @@ Respect migration safety; **do not duplicate** the NAV-UX-02 S1–S7 work. Net-n
 
 ---
 
-*Audit refreshed 2026-06-17. All primary nav structures derive from `registry/navigation.py`. Next: freeze React route contract (S4).*
+*Audit refreshed 2026-06-17. All primary nav structures and the React route contract derive from `registry/navigation.py`. NAV-ARCH epic S0–S4 complete.*
