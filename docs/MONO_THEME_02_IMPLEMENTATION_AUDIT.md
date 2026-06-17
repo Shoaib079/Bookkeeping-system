@@ -10,7 +10,7 @@
 | **S0** | ✅ Committed `ebdfe42` | `mono-theme-02-s0-visual-contract` | Audit only — frozen |
 | **S1** | ✅ Committed (this slice) | `mono-theme-02-s1-sidebar-refinement` | Sidebar-only `ui/theme.css` |
 | **S2** | ✅ Committed (this slice) | `mono-theme-02-s2-topbar-refinement` | Desktop hdr_shell only |
-| **S3** | 📋 Not started | — | Dashboard — `.erp-dash-*`, `.kpi-*`, `widgets.css` stMetric |
+| **S3** | ✅ Committed (this slice) | `mono-theme-02-s3-dashboard-refinement` | Desktop dashboard `.erp-dash-*`, `.kpi-*`, widgets bordered panels |
 | **S4** | 📋 Not started | — | Tables — `.erp-fin-table`, `.erp-data-table`, `widgets.css` stTable |
 | **S5** | 📋 Not started | — | Mobile — `mobile_shell.css`, `mobile_components.css`, `widgets.css` mob_bar |
 

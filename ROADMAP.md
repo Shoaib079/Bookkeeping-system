@@ -1296,19 +1296,19 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **MONO-THEME-01-S6** | Reports, tables, banking statuses | ✅ **Complete** |
 | **MONO-THEME-01-S7** | Cleanup + React contract update | ✅ **Complete** |
 
-**Next slice:** MONO-THEME-01 epic **complete** — **MONO-THEME-02-S3** dashboard/cards (S1 sidebar ✅ · S2 top bar ✅).
+**Next slice:** MONO-THEME-01 epic **complete** — **MONO-THEME-02-S4** tables (S1 sidebar ✅ · S2 top bar ✅ · S3 dashboard ✅).
 
 ---
 
 ## MONO-THEME-02 — Real UI Visual Refinement Pass
 
-**Status:** 🟡 **In progress** — S0 visual contract ✅ · S1 sidebar ✅ · S2 top bar ✅ · S3 dashboard/cards 📋 · S4 tables 📋 · S5 mobile parity 📋  
+**Status:** 🟡 **In progress** — S0 visual contract ✅ · S1 sidebar ✅ · S2 top bar ✅ · S3 dashboard/cards ✅ · S4 tables 📋 · S5 mobile parity 📋  
 **Priority:** High — closes the gap between MONO-THEME-01 grammar tokens and live screenshot quality  
 **Depends on:** MONO-THEME-01 complete · UI-SYSTEM-02 token foundation · user-approved screenshots
 
 **Goal:** Make the actual desktop/mobile app match the approved Option A+ direction — **refined, denser, stronger hierarchy** — without redesign, new colors, or business-logic changes.
 
-**Contract:** [MONO_THEME_02_VISUAL_CONTRACT.md](./docs/MONO_THEME_02_VISUAL_CONTRACT.md) · **Tests:** `tests/test_mono_theme_02_visual_contract.py`, `tests/test_mono_theme_02_s1_sidebar_polish.py`, `tests/test_mono_theme_02_s2_topbar_refinement.py`
+**Contract:** [MONO_THEME_02_VISUAL_CONTRACT.md](./docs/MONO_THEME_02_VISUAL_CONTRACT.md) · **Tests:** `tests/test_mono_theme_02_visual_contract.py`, `tests/test_mono_theme_02_s1_sidebar_polish.py`, `tests/test_mono_theme_02_s2_topbar_refinement.py`, `tests/test_mono_theme_02_s3_dashboard_refinement.py`
 
 **Hard rules:** No accounting/PostgreSQL/nav-route/business-logic changes · no new palette · existing `--erp-*` grammar tokens only · semantic colors immutable · CSS/layout only per slice.
 
@@ -1317,11 +1317,11 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **MONO-THEME-02-S0** | Option A+ visual contract (audit only) | ✅ **Complete** |
 | **MONO-THEME-02-S1** | Desktop sidebar only — active tint + accent bar, spacing rhythm | ✅ **Complete** |
 | **MONO-THEME-02-S2** | Top bar — compact desktop header, search prominence | ✅ **Complete** |
-| **MONO-THEME-02-S3** | Dashboard + cards — density, KPI grid, activity hierarchy | 📋 Planned |
+| **MONO-THEME-02-S3** | Dashboard + cards — density, KPI grid, activity hierarchy | ✅ **Complete** |
 | **MONO-THEME-02-S4** | Tables + lists — row density, hover, money alignment | 📋 Planned |
 | **MONO-THEME-02-S5** | Mobile parity — bottom nav, KPI chips, hub sheets | 📋 Planned |
 
-**Next slice:** **MONO-THEME-02-S3** — dashboard & card hierarchy.
+**Next slice:** **MONO-THEME-02-S4** — tables & financial readability.
 
 ---
 
@@ -3412,6 +3412,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **MONO-THEME-02-S3 (closure)** — Desktop dashboard density: tighter KPI grid/cards, card-shell insight rows, activity hover focal point, bordered Streamlit panels; `tests/test_mono_theme_02_s3_dashboard_refinement.py`. Tag: `mono-theme-02-s3-dashboard-refinement`. Next: **MONO-THEME-02-S4** (tables). |
 | 2026-06-05 | **MONO-THEME-02-S2 (closure)** — Desktop top bar: compact `--hdr-h` 52px, search card prominence, softer toolbar controls; `tests/test_mono_theme_02_s2_topbar_refinement.py`. Tag: `mono-theme-02-s2-topbar-refinement`. Next: **MONO-THEME-02-S3** (dashboard/cards). |
 | 2026-06-05 | **MONO-THEME-02-S1 (closure)** — Desktop sidebar polish: quiet active row (tint + 3px accent bar, no filled button), section header rhythm, item padding; `tests/test_mono_theme_02_s1_sidebar_polish.py`. Tag: `mono-theme-02-s1-sidebar-refinement`. Next: **MONO-THEME-02-S2** (top bar). |
 | 2026-06-05 | **MONO-THEME-02-S0 (closure)** — Option A+ visual contract frozen: `docs/MONO_THEME_02_VISUAL_CONTRACT.md` + `tests/test_mono_theme_02_visual_contract.py`. Audit only; screenshots = source of truth; S1–S5 slice plan. Next: **MONO-THEME-02-S1** (sidebar polish). |

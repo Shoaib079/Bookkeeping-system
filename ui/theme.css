@@ -1858,6 +1858,99 @@ section[data-testid="stSidebarContent"] {
 }
 .erp-dash-insight-sub { font-size: 11px; color: var(--theme-muted); margin-top: 1px; }
 
+/* MONO-THEME-02-S3 — desktop dashboard density & card hierarchy (mobile → S5) */
+@media (min-width: 969px) {
+  .erp-kpi-section {
+    margin: 8px 0 12px;
+  }
+  .erp-kpi-section:last-child {
+    margin-bottom: 8px;
+  }
+  .kpi-grid {
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  }
+  .kpi-card {
+    padding: 10px 12px;
+    min-height: 64px;
+  }
+  .kpi-label {
+    margin-bottom: 4px;
+  }
+  .kpi-sub {
+    margin-top: 4px;
+  }
+  [data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] .erp-kpi-section {
+    margin-top: 4px;
+    margin-bottom: 8px;
+  }
+  [data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] .erp-kpi-section .kpi-grid {
+    gap: 8px;
+  }
+  .erp-section-hdr {
+    margin-bottom: 10px;
+  }
+  .erp-dash-welcome-card {
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .erp-dash-welcome-hi {
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .erp-dash-alert-card {
+    padding: 8px 12px;
+    margin-bottom: 10px;
+  }
+  .erp-dash-status-row {
+    margin-top: 4px;
+    padding: 4px 2px;
+  }
+  .erp-dash-cash-row {
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    background: var(--erp-card-muted-bg);
+    border: 1px solid var(--erp-card-border);
+    border-radius: var(--erp-card-radius);
+  }
+  .erp-dash-activity-row {
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    gap: 10px;
+    box-shadow: var(--erp-card-shadow);
+  }
+  .erp-dash-activity-row:hover {
+    background: var(--erp-table-row-hover-bg);
+  }
+  .erp-dash-activity-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+  }
+  .erp-dash-activity-party {
+    font-size: 13px;
+  }
+  .erp-dash-activity-amt {
+    font-size: 14px;
+  }
+  .erp-dash-expense-bar-row {
+    margin-bottom: 6px;
+  }
+  .erp-dash-insight-row {
+    gap: 8px;
+    padding: 7px 10px;
+    margin-bottom: 4px;
+    border-bottom: none;
+    background: var(--erp-card-bg);
+    border: 1px solid var(--erp-card-border);
+    border-radius: var(--erp-card-radius);
+    box-shadow: var(--erp-card-shadow);
+  }
+  .erp-dash-insight-row:last-child {
+    margin-bottom: 0;
+  }
+}
+
 /* Header profile popover card */
 .erp-hdr-profile-card {
   display: flex;

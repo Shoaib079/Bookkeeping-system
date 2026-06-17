@@ -967,6 +967,7 @@ div[data-baseweb="calendar"] [aria-selected="true"] div {
   display: none !important;
 }
 
+/* MONO-THEME-02-S3 — desktop dashboard bordered panels & metrics (mobile → S5) */
 @media (min-width: 969px) {
   [data-testid="stMain"] [data-testid="stLayoutWrapper"]:has(.erp-mobile-hub-host),
   [data-testid="stMain"] [data-testid="stElementContainer"]:has(.erp-mobile-chrome-active) {
@@ -978,6 +979,20 @@ div[data-baseweb="calendar"] [aria-selected="true"] div {
   [data-testid="stMain"] [class*="st-key-mob_qc_"],
   [data-testid="stMain"] [class*="st-key-mob_rpt_main_tabs"] {
     display: none !important;
+  }
+  [data-testid="stMain"] [data-testid="stVerticalBlock"] {
+    gap: 0.625rem;
+  }
+  [data-testid="stMain"] [data-testid="stMetric"] {
+    padding: 10px 12px !important;
+  }
+  [data-testid="stMain"] [data-testid="stMetricValue"] {
+    font-size: clamp(14px, 1.8vw, 18px) !important;
+  }
+  [data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] {
+    padding: 12px 14px !important;
+    margin-bottom: 12px !important;
+    gap: 8px !important;
   }
 }
 
