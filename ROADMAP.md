@@ -1408,11 +1408,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-08** | First React write page (cash sale) | ✅ **Complete** |
 | **FASTAPI-REACT-09** | Expense write tab (New Transaction) | ✅ **Complete** |
 | **FASTAPI-REACT-10** | Card/credit sale + bank expense | ✅ **Complete** |
-| **FASTAPI-REACT-11+** | Void/purchase write UI | 📋 Planned |
+| **FASTAPI-REACT-11** | Void write tab (New Transaction) | ✅ **Complete** |
+| **FASTAPI-REACT-12+** | Purchase write tab | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_10_REACT_WRITE_PAYMENT_METHODS_AUDIT.md](./docs/FASTAPI_REACT_10_REACT_WRITE_PAYMENT_METHODS_AUDIT.md) · **Tests:** `tests/test_fastapi_react_10_react_write_payment_methods.py` · **Tag:** `fastapi-react-10-react-write-payment-methods`
+**Audit:** [FASTAPI_REACT_11_REACT_WRITE_VOID_AUDIT.md](./docs/FASTAPI_REACT_11_REACT_WRITE_VOID_AUDIT.md) · **Tests:** `tests/test_fastapi_react_11_react_write_void.py` · **Tag:** `fastapi-react-11-react-write-void`
 
-**Next slice:** **FASTAPI-REACT-11** — void or purchase write tab; see FR-10 audit §8.
+**Next slice:** **FASTAPI-REACT-12** — purchase write tab; see FR-11 audit §7.
 
 ---
 
@@ -3503,6 +3504,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-11 (closure)** — Void write tab on `/transactions/new` via `POST /api/v1/voids` behind `VITE_ERP_REACT_WRITE_VOIDS=1`; `docs/FASTAPI_REACT_11_REACT_WRITE_VOID_AUDIT.md` + `tests/test_fastapi_react_11_react_write_void.py`. Streamlit primary unchanged. Tag: `fastapi-react-11-react-write-void`. Next: **FASTAPI-REACT-12**. |
 | 2026-06-05 | **FASTAPI-REACT-10 (closure)** — Payment method expansion: Card/Credit sale fields + Bank expense on `/transactions/new`; `docs/FASTAPI_REACT_10_REACT_WRITE_PAYMENT_METHODS_AUDIT.md` + `tests/test_fastapi_react_10_react_write_payment_methods.py`. Streamlit primary unchanged. Tag: `fastapi-react-10-react-write-payment-methods`. Next: **FASTAPI-REACT-11**. |
 | 2026-06-05 | **FASTAPI-REACT-09 (closure)** — Expense write tab on `/transactions/new` via `POST /api/v1/expenses` behind `VITE_ERP_REACT_WRITE_EXPENSES=1`; tabbed UI with FR-08 cash sale; `docs/FASTAPI_REACT_09_REACT_WRITE_EXPENSE_AUDIT.md` + `tests/test_fastapi_react_09_react_write_expense.py`. Streamlit primary unchanged. Tag: `fastapi-react-09-react-write-expense`. Next: **FASTAPI-REACT-10**. |
 | 2026-06-05 | **FASTAPI-REACT-08 (closure)** — First React write page: cash sale form on `/transactions/new` via `POST /api/v1/sales` behind `VITE_ERP_REACT_WRITE_SALES=1` + `VITE_ERP_REACT_PAGES=1` + `ERP_API_WRITE_SALES=1`; `registry/react_write_contract.py` + `docs/FASTAPI_REACT_08_REACT_WRITE_AUDIT.md` + `tests/test_fastapi_react_08_react_write.py`. Streamlit primary unchanged. Tag: `fastapi-react-08-react-write`. Next: **FASTAPI-REACT-09**. |

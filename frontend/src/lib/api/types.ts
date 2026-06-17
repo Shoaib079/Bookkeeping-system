@@ -89,3 +89,24 @@ export type CreateExpenseResponse = {
   message: string;
   status: string;
 };
+
+export type VoidTargetType =
+  | "Sale"
+  | "ExpenseRecord"
+  | "Purchase"
+  | "Payable"
+  | "BankTransaction";
+
+export type VoidRequest = {
+  target_type: VoidTargetType;
+  target_id: number;
+  reason: string;
+};
+
+export type VoidResponse = {
+  target_type: string;
+  target_id: number;
+  reversal_journal_entry_id: number | null;
+  message: string;
+  status: string;
+};

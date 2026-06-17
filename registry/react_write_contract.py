@@ -15,8 +15,10 @@ BOUNDARY_CONTRACT: Final[str] = "registry/pg_boundary_contract.py"
 READ_PAGES_FLAG_ENV: Final[str] = "VITE_ERP_REACT_PAGES"
 WRITE_SALES_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_SALES"
 WRITE_EXPENSES_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_EXPENSES"
+WRITE_VOIDS_FLAG_ENV: Final[str] = "VITE_ERP_REACT_WRITE_VOIDS"
 API_WRITE_SALES_ENV: Final[str] = "ERP_API_WRITE_SALES"
 API_WRITE_EXPENSES_ENV: Final[str] = "ERP_API_WRITE_EXPENSES"
+API_WRITE_VOIDS_ENV: Final[str] = "ERP_API_WRITE_VOIDS"
 
 # (react_path, page_component, page_key)
 WRITE_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
@@ -31,9 +33,22 @@ EXPENSE_WRITE_API_PATHS: tuple[str, ...] = (
     "/api/v1/expenses",
 )
 
+VOID_WRITE_API_PATHS: tuple[str, ...] = (
+    "/api/v1/voids",
+)
+
+VOID_TARGET_TYPES: tuple[str, ...] = (
+    "Sale",
+    "ExpenseRecord",
+    "Purchase",
+    "Payable",
+    "BankTransaction",
+)
+
 WRITE_CLIENT_MODULE: Final[str] = "frontend/src/lib/api/writeClient.ts"
 P2_SALES_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_sales_write.py"
 P2_EXPENSE_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_expense_write.py"
+P2_VOID_WRITE_TEST: Final[str] = "tests/test_fastapi_p2_void_write.py"
 
 REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/config/featureFlags.ts",
@@ -85,9 +100,17 @@ FR09_DEFERRED_ITEMS: tuple[str, ...] = (
     "production COMMIT_MODE_* flip",
 )
 
-DEFERRED_ITEMS: tuple[str, ...] = (
+# Frozen for FR-10 audit tests (do not mutate).
+FR10_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-11",
     "void write page",
     "purchase write page",
+    "production COMMIT_MODE_* flip",
+)
+
+DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-12",
+    "purchase write page",
+    "receivable payment write",
     "production COMMIT_MODE_* flip",
 )

@@ -5,21 +5,26 @@ import {
   reactWriteEnabled,
   reactWriteExpensesEnabled,
   reactWriteSalesEnabled,
+  reactWriteVoidsEnabled,
 } from "../config/featureFlags";
 import type { ApiError } from "../lib/api/client";
 import { getReadSession } from "../lib/api/session";
 import type {
   CreateExpenseResponse,
   CreateSaleResponse,
+  VoidResponse,
+  VoidTargetType,
 } from "../lib/api/types";
 import { apiPost } from "../lib/api/writeClient";
 
-type WriteTab = "sale" | "expense";
+type WriteTab = "sale" | "expense" | "void";
 type SalePaymentMethod = "Cash" | "Card" | "Credit";
 type ExpensePaymentMethod = "Cash" | "Bank";
 
 const CREDIT_CUSTOMER_MSG =
   "Enter a customer name for on-account (credit) sales.";
+
+const VOID_REASON_MSG = "Void reason is required.";
 
 function todayIso(): string {
   const now = new Date();
@@ -46,7 +51,8 @@ function parsePositiveInt(raw: string): number | null {
 export function NewTransactionPage() {
   const salesOn = reactWriteSalesEnabled();
   const expensesOn = reactWriteExpensesEnabled();
-  const defaultTab: WriteTab = salesOn ? "sale" : "expense";
+  const voidsOn = reactWriteVoidsEnabled();
+  const defaultTab: WriteTab = salesOn ? "sale" : expensesOn ? "expense" : "void";
 
   const [sessionTick, setSessionTick] = useState(0);
   const session = useMemo(() => getReadSession(), [sessionTick]);
@@ -70,14 +76,19 @@ export function NewTransactionPage() {
   const [expenseResult, setExpenseResult] = useState<CreateExpenseResponse | null>(
     null,
   );
+  const [voidTargetType, setVoidTargetType] = useState<VoidTargetType>("Sale");
+  const [voidTargetId, setVoidTargetId] = useState("");
+  const [voidReason, setVoidReason] = useState("");
+  const [voidResult, setVoidResult] = useState<VoidResponse | null>(null);
 
   if (!reactWriteEnabled()) {
     return (
       <section className="erp-placeholder">
         <h1>New Transaction</h1>
         <p>
-          Write UI disabled. Set <code>VITE_ERP_REACT_WRITE_SALES=1</code> and/or{" "}
-          <code>VITE_ERP_REACT_WRITE_EXPENSES=1</code>.
+          Write UI disabled. Set <code>VITE_ERP_REACT_WRITE_SALES=1</code>,{" "}
+          <code>VITE_ERP_REACT_WRITE_EXPENSES=1</code>, and/or{" "}
+          <code>VITE_ERP_REACT_WRITE_VOIDS=1</code>.
         </p>
       </section>
     );
@@ -226,11 +237,53 @@ export function NewTransactionPage() {
     }
   }
 
+  async function handleVoidSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!session) {
+      setError("Save a read API session before posting.");
+      return;
+    }
+    const targetId = parsePositiveInt(voidTargetId);
+    if (targetId === null) {
+      setError("Enter a valid target id.");
+      return;
+    }
+    const reason = voidReason.trim();
+    if (!reason) {
+      setError(VOID_REASON_MSG);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setVoidResult(null);
+    try {
+      const response = await apiPost<VoidResponse>(
+        "/api/v1/voids",
+        {
+          target_type: voidTargetType,
+          target_id: targetId,
+          reason,
+        },
+        { session },
+      );
+      setVoidResult(response);
+      setVoidTargetId("");
+      setVoidReason("");
+    } catch (err) {
+      const apiErr = err as ApiError;
+      setError(apiErr.detail ?? "Failed to void record.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function switchTab(next: WriteTab) {
     setTab(next);
     setError(null);
     setSaleResult(null);
     setExpenseResult(null);
+    setVoidResult(null);
   }
 
   return (
@@ -266,6 +319,15 @@ export function NewTransactionPage() {
             onClick={() => switchTab("expense")}
           >
             Expense
+          </button>
+        ) : null}
+        {voidsOn ? (
+          <button
+            type="button"
+            className={tab === "void" ? "erp-write-tabs__btn active" : "erp-write-tabs__btn"}
+            onClick={() => switchTab("void")}
+          >
+            Void
           </button>
         ) : null}
       </nav>
@@ -439,6 +501,48 @@ export function NewTransactionPage() {
         </form>
       ) : null}
 
+      {tab === "void" && voidsOn ? (
+        <form className="erp-write-form" onSubmit={handleVoidSubmit}>
+          <label>
+            Target type
+            <select
+              value={voidTargetType}
+              onChange={(event) =>
+                setVoidTargetType(event.target.value as VoidTargetType)
+              }
+            >
+              <option value="Sale">Sale</option>
+              <option value="ExpenseRecord">ExpenseRecord</option>
+              <option value="Purchase">Purchase</option>
+              <option value="Payable">Payable</option>
+              <option value="BankTransaction">BankTransaction</option>
+            </select>
+          </label>
+          <label>
+            Target id
+            <input
+              type="number"
+              min={1}
+              value={voidTargetId}
+              onChange={(event) => setVoidTargetId(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Void reason
+            <textarea
+              value={voidReason}
+              onChange={(event) => setVoidReason(event.target.value)}
+              rows={3}
+              required
+            />
+          </label>
+          <button type="submit" disabled={!session || loading}>
+            {loading ? "Voiding…" : "Void record"}
+          </button>
+        </form>
+      ) : null}
+
       {error ? <p className="erp-error">{error}</p> : null}
       {saleResult ? (
         <article className="erp-card erp-write-result">
@@ -454,6 +558,18 @@ export function NewTransactionPage() {
           <h2>Expense saved</h2>
           <p>{expenseResult.message}</p>
           <p className="erp-muted">Expense #{expenseResult.expense_id}</p>
+        </article>
+      ) : null}
+      {voidResult ? (
+        <article className="erp-card erp-write-result">
+          <h2>Record voided</h2>
+          <p>{voidResult.message}</p>
+          <p className="erp-muted">
+            {voidResult.target_type} #{voidResult.target_id}
+            {voidResult.reversal_journal_entry_id
+              ? ` · reversal JE #${voidResult.reversal_journal_entry_id}`
+              : ""}
+          </p>
         </article>
       ) : null}
     </section>
