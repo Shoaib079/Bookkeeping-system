@@ -85,6 +85,10 @@
       "routeKey": "Banking"
     },
     {
+      "path": "/banking/accounts",
+      "routeKey": "Bank Accounts"
+    },
+    {
       "path": "/reports",
       "routeKey": "Reports"
     },

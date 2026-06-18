@@ -17,7 +17,7 @@ This document freezes the **1:1 `route_key → react_route` migration contract**
 4. **Retired routes stay retired** — `Today's Summary` reroutes to `Reports` (`/reports`); no `/today` path.
 5. **Change policy** — any `react_route` edit requires updating `registry/navigation.py`, this doc, and `tests/test_nav_arch_s4_react_route_contract.py`.
 
-## Domain map (42 routes)
+## Domain map (43 routes)
 
 | Domain | `react_route` prefix | Notes |
 |--------|----------------------|-------|
@@ -26,7 +26,7 @@ This document freezes the **1:1 `route_key → react_route` migration contract**
 | Operations | `/sales`, `/expenses/*`, `/purchases`, `/closings/*` | Includes staff capture under `/expenses/` |
 | Recipes | `/recipes/*` | Recipe costing module |
 | CRM | `/customers`, `/vendors`, `/receivables`, `/payables` | People operational records |
-| Inventory / Banking | `/inventory`, `/banking` | Direct sidebar routes |
+| Inventory / Banking | `/inventory`, `/banking`, `/banking/accounts` | Direct sidebar + hidden React-only bank accounts list |
 | Reports | `/reports`, `/reports/*` | Hub + statement shortcuts share reporting domain |
 | Books | `/books/*` | GL, COA, fiscal, budget, recon health, opening balances |
 | Team | `/partners`, `/workers` | Partner accounts + workers |
@@ -58,6 +58,7 @@ This document freezes the **1:1 `route_key → react_route` migration contract**
 | Payables | `/payables` |
 | Inventory | `/inventory` |
 | Banking | `/banking` |
+| Bank Accounts | `/banking/accounts` |
 | Reports | `/reports` |
 | Profit & Loss | `/reports/profit-loss` |
 | Balance Sheet | `/reports/balance-sheet` |

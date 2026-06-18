@@ -103,11 +103,14 @@ def test_page_dispatch_from_main_matches_registry():
 
 
 def test_app_page_dispatch_keys_match_registry():
-    assert set(erp._PAGE_DISPATCH.keys()) == {p.route_key for p in NAV_PAGES}
+    visible = {p.route_key for p in NAV_PAGES if not p.hidden}
+    assert set(erp._PAGE_DISPATCH.keys()) == visible
 
 
 def test_app_page_dispatch_count():
-    assert len(erp._PAGE_DISPATCH) == len(NAV_PAGES) == len(ALL_NAV_PAGE_KEYS)
+    visible_count = sum(1 for p in NAV_PAGES if not p.hidden)
+    assert len(erp._PAGE_DISPATCH) == visible_count
+    assert len(ALL_NAV_PAGE_KEYS) == len(NAV_PAGES)
 
 
 def test_every_registry_render_fn_resolves_in_app():
@@ -129,7 +132,8 @@ def test_build_page_dispatch_produces_callables():
         )
 
     dispatch = build_page_dispatch(_resolve)
-    assert set(dispatch) == {p.route_key for p in NAV_PAGES}
+    visible = {p.route_key for p in NAV_PAGES if not p.hidden}
+    assert set(dispatch) == visible
     for key, fn in dispatch.items():
         assert callable(fn), key
 

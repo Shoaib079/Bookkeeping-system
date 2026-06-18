@@ -35,6 +35,7 @@ REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/workers", "WorkersPage", "workers"),
     ("/customers", "CustomersPage", "customers"),
     ("/purchases", "PurchasesPage", "purchases"),
+    ("/banking/accounts", "BankAccountsPage", "bank_accounts"),
 )
 
 HOME_READ_API_PATHS: tuple[str, ...] = (
@@ -65,6 +66,10 @@ PARTNER_STATEMENT_READ_API_PATHS: tuple[str, ...] = (
 
 BANKING_READINESS_READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/banking/readiness",
+)
+
+BANK_ACCOUNTS_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/bank-accounts",
 )
 
 REPORTS_HUB_READ_API_PATHS: tuple[str, ...] = (
@@ -144,6 +149,7 @@ REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/pages/WorkersPage.tsx",
     "frontend/src/pages/CustomersPage.tsx",
     "frontend/src/pages/PurchasesPage.tsx",
+    "frontend/src/pages/BankAccountsPage.tsx",
     "frontend/src/components/ReadApiSetup.tsx",
     *PICKER_FRONTEND_FILES,
 )
@@ -210,7 +216,7 @@ FR19_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 )
 
 DEFERRED_ITEMS: tuple[str, ...] = (
-    "FASTAPI-REACT-30",
+    "FASTAPI-REACT-31",
     "production COMMIT_MODE_* flip",
 )
 
@@ -274,6 +280,17 @@ FR29_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 FR29_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-30",
     "bank accounts read page",
+    "production COMMIT_MODE_* flip",
+)
+
+# Frozen for FR-30 audit tests (do not mutate).
+FR30_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("/banking/accounts", "BankAccountsPage", "bank_accounts"),
+)
+
+FR30_DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-31",
+    "fiscal periods read page",
     "production COMMIT_MODE_* flip",
 )
 

@@ -25,6 +25,7 @@ NAV_RECEIVABLES = "Receivables"
 NAV_PAYABLES = "Payables"
 NAV_INVENTORY = "Inventory"
 NAV_BANKING = "Banking"
+NAV_BANK_ACCOUNTS = "Bank Accounts"
 NAV_REPORTS = "Reports"
 NAV_PROFIT_LOSS = "Profit & Loss"
 NAV_BALANCE_SHEET = "Balance Sheet"
@@ -70,6 +71,7 @@ ALL_NAV_PAGE_KEYS: frozenset[str] = frozenset(
         NAV_PAYABLES,
         NAV_INVENTORY,
         NAV_BANKING,
+        NAV_BANK_ACCOUNTS,
         NAV_REPORTS,
         NAV_PROFIT_LOSS,
         NAV_BALANCE_SHEET,

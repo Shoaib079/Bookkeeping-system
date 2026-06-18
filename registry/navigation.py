@@ -21,6 +21,7 @@ from registry.nav_keys import (
     NAV_BACKUP_RESTORE,
     NAV_BALANCE_SHEET,
     NAV_BANKING,
+    NAV_BANK_ACCOUNTS,
     NAV_BUDGET,
     NAV_CASH_FLOW,
     NAV_CASH_RECONCILIATION,
@@ -254,6 +255,14 @@ NAV_PAGES: tuple[NavPageDef, ...] = (
     _page(NAV_PAYABLES, "render_payables", "/payables", 18, roles=_OMC, accordion_group="people", accordion_order=3),
     _page(NAV_INVENTORY, "render_inventory", "/inventory", 19, roles=_OM, sidebar_direct=True, sidebar_direct_order=3),
     _page(NAV_BANKING, "render_banking", "/banking", 20, roles=_OMC, sidebar_direct=True, sidebar_direct_order=4),
+    _page(
+        NAV_BANK_ACCOUNTS,
+        "render_banking",
+        "/banking/accounts",
+        42,
+        roles=_OMC,
+        hidden=True,
+    ),
     _page(NAV_REPORTS, "render_reports", "/reports", 21, roles=_OMCPV, sidebar_direct=True, sidebar_direct_order=5),
     _page(
         NAV_PROFIT_LOSS,
@@ -323,6 +332,7 @@ def dispatch_render_spec() -> dict[str, str]:
     return {
         p.route_key: ("<lambda>" if not p.session_arg else p.render_fn)
         for p in NAV_PAGES
+        if not p.hidden
     }
 
 
@@ -491,7 +501,9 @@ def validate_role_gates() -> None:
     owner_derived = {
         p.route_key
         for p in NAV_PAGES
-        if "owner" in p.roles and p.route_key != NAV_MY_ACCOUNT
+        if "owner" in p.roles
+        and p.route_key != NAV_MY_ACCOUNT
+        and not p.hidden
     }
     if owner_derived != owner_sidebar:
         missing = owner_sidebar - owner_derived
@@ -527,7 +539,9 @@ def build_nav_role_pages() -> dict[str, list[str]]:
         if role == "owner":
             continue
         role_pages[role] = [
-            p.route_key for p in sorted(NAV_PAGES, key=lambda row: row.order) if role in p.roles
+            p.route_key
+            for p in sorted(NAV_PAGES, key=lambda row: row.order)
+            if role in p.roles and not p.hidden
         ]
     return role_pages
 
@@ -646,4 +660,4 @@ def build_page_dispatch(
 ) -> dict[str, Callable[..., Any]]:
     """Build runtime dispatch map from registry entries."""
     validate_registry()
-    return {p.route_key: resolve(p) for p in NAV_PAGES}
+    return {p.route_key: resolve(p) for p in NAV_PAGES if not p.hidden}

@@ -1423,11 +1423,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-27** | Workers read page | ✅ **Complete** |
 | **FASTAPI-REACT-28** | Customers read page | ✅ **Complete** |
 | **FASTAPI-REACT-29** | Purchases read page | ✅ **Complete** |
-| **FASTAPI-REACT-30+** | React read page expansion or ops slices | 📋 Planned |
+| **FASTAPI-REACT-30** | Bank accounts read page | ✅ **Complete** |
+| **FASTAPI-REACT-31+** | React read page expansion or ops slices | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_29_REACT_READ_PURCHASES_AUDIT.md](./docs/FASTAPI_REACT_29_REACT_READ_PURCHASES_AUDIT.md) · **Tests:** `tests/test_fastapi_react_29_react_read_purchases.py` · **Tag:** `fastapi-react-29-react-read-purchases`
+**Audit:** [FASTAPI_REACT_30_REACT_READ_BANK_ACCOUNTS_AUDIT.md](./docs/FASTAPI_REACT_30_REACT_READ_BANK_ACCOUNTS_AUDIT.md) · **Tests:** `tests/test_fastapi_react_30_react_read_bank_accounts.py` · **Tag:** `fastapi-react-30-react-read-bank-accounts`
 
-**Next slice:** **FASTAPI-REACT-30** — bank accounts read page or production `COMMIT_MODE_*` flip; see FR-29 audit §7.
+**Next slice:** **FASTAPI-REACT-31** — fiscal periods read page or production `COMMIT_MODE_*` flip; see FR-30 audit §7.
 
 ---
 
@@ -3518,6 +3519,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-30 (closure)** — Bank accounts read page: `BankAccountsPage` wired to existing `GET /api/v1/bank-accounts` at `/banking/accounts` (hidden NAV route) behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-30-react-read-bank-accounts`. Next: **FASTAPI-REACT-31**. |
 | 2026-06-05 | **FASTAPI-REACT-29 (closure)** — Purchases read page: thin P1 list API (`GET /api/v1/purchases`) + `PurchasesPage` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-29-react-read-purchases`. Next: **FASTAPI-REACT-30**. |
 | 2026-06-05 | **FASTAPI-REACT-28 (closure)** — Customers read page: thin P1 list API (`GET /api/v1/customers`) + `CustomersPage` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-28-react-read-customers`. Next: **FASTAPI-REACT-29**. |
 | 2026-06-05 | **FASTAPI-REACT-27 (closure)** — Workers read page: `WorkersPage` wired to existing `GET /api/v1/workers` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-27-react-read-workers`. Next: **FASTAPI-REACT-28**. |
