@@ -47,6 +47,7 @@ REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/books/budget", "BudgetPage", "budget"),
     ("/settings/permissions", "PermissionsPage", "permissions"),
     ("/settings/company", "CompanySettingsPage", "company_settings"),
+    ("/settings/backup-restore", "BackupRestorePage", "backup_restore"),
 )
 
 HOME_READ_API_PATHS: tuple[str, ...] = (
@@ -94,6 +95,10 @@ PERMISSIONS_READ_API_PATHS: tuple[str, ...] = (
 
 COMPANY_SETTINGS_READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/company-settings",
+)
+
+BACKUP_STATUS_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/backup-status",
 )
 
 BALANCE_SHEET_READ_API_PATHS: tuple[str, ...] = (
@@ -469,6 +474,16 @@ FR41_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 
 FR41_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-42",
+    "production COMMIT_MODE_* flip",
+)
+
+# Frozen for FR-42 audit tests (do not mutate).
+FR42_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("/settings/backup-restore", "BackupRestorePage", "backup_restore"),
+)
+
+FR42_DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-43",
     "production COMMIT_MODE_* flip",
 )
 

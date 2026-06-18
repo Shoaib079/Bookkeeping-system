@@ -47,6 +47,7 @@ from services.read_company_members import (
     CompanyMembersPage,
 )
 from services.read_company_settings import CompanySettingsPage
+from services.read_backup_status import BackupFileRow, BackupStatusPage
 from services.read_opening_balances import OpeningBalancesStatusPage
 from services.read_recon_health import (
     ReconHealthBankRow,
@@ -212,6 +213,29 @@ def company_settings_page_to_dict(page: CompanySettingsPage) -> dict[str, Any]:
         "fiscal_year_label": page.fiscal_year_label,
         "document_language": page.document_language,
         "wizard_complete": page.wizard_complete,
+    }
+
+
+def _backup_file_row_to_dict(row: BackupFileRow) -> dict[str, Any]:
+    return {
+        "name": row.name,
+        "size_kb": row.size_kb,
+        "modified": row.modified.isoformat(sep=" ", timespec="minutes"),
+        "has_uploads_zip": row.has_uploads_zip,
+    }
+
+
+def backup_status_page_to_dict(page: BackupStatusPage) -> dict[str, Any]:
+    return {
+        "rows": [_backup_file_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+        "last_backup": page.last_backup.isoformat(sep=" ", timespec="minutes")
+        if page.last_backup
+        else None,
+        "db_size_kb": page.db_size_kb,
+        "cloud_folder": page.cloud_folder,
+        "cloud_folder_exists": page.cloud_folder_exists,
+        "company_id": page.company_id,
     }
 
 

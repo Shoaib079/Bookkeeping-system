@@ -592,6 +592,23 @@ export type CompanySettingsResponse = {
   wizard_complete: boolean;
 };
 
+export type BackupFileRow = {
+  name: string;
+  size_kb: number;
+  modified: string;
+  has_uploads_zip: boolean;
+};
+
+export type BackupStatusResponse = {
+  rows: BackupFileRow[];
+  row_count: number;
+  last_backup: string | null;
+  db_size_kb: number;
+  cloud_folder: string | null;
+  cloud_folder_exists: boolean;
+  company_id: number;
+};
+
 export type ReceivableRow = {
   id: number;
   invoice_number: string;

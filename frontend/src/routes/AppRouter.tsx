@@ -9,6 +9,7 @@ import { AppShell } from "../layouts/AppShell";
 import { AuditLogPage } from "../pages/AuditLogPage";
 import { InventoryPage } from "../pages/InventoryPage";
 import { BudgetPage } from "../pages/BudgetPage";
+import { BackupRestorePage } from "../pages/BackupRestorePage";
 import { CompanySettingsPage } from "../pages/CompanySettingsPage";
 import { PermissionsPage } from "../pages/PermissionsPage";
 import { MembersPage } from "../pages/MembersPage";
@@ -69,6 +70,7 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/purchases": PurchasesPage,
   "/settings/audit-log": AuditLogPage,
   "/settings/company": CompanySettingsPage,
+  "/settings/backup-restore": BackupRestorePage,
   "/settings/members": MembersPage,
   "/settings/permissions": PermissionsPage,
 };
