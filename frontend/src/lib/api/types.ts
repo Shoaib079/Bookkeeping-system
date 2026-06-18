@@ -396,6 +396,59 @@ export type ReconHealthResponse = {
   company_id: number;
 };
 
+export type OpeningBalancesStatusResponse = {
+  currency: string;
+  obe_balance: number;
+  obe_status: string;
+  obe_account_exists: boolean;
+  bank_rows: Array<{
+    id: number;
+    name: string;
+    kind: string;
+    currency: string | null;
+    stored_balance: number;
+    is_active: boolean;
+    ob_posted: boolean;
+    ob_date: string | null;
+    ob_amount: number | null;
+  }>;
+  customer_rows: Array<{
+    id: number;
+    name: string;
+    ob_posted: boolean;
+    ob_date: string | null;
+    ob_amount: number | null;
+  }>;
+  vendor_rows: Array<{
+    id: number;
+    name: string;
+    ob_posted: boolean;
+    ob_date: string | null;
+    ob_amount: number | null;
+  }>;
+  product_rows: Array<{
+    id: number;
+    name: string;
+    sku: string | null;
+    quantity: number;
+    ob_posted: boolean;
+    ob_date: string | null;
+    ob_cost: number | null;
+  }>;
+  capital: {
+    ob_posted: boolean;
+    ob_date: string | null;
+    ob_amount: number | null;
+  };
+  loan_rows: Array<{
+    journal_entry_id: number;
+    entry_date: string;
+    description: string;
+    amount: number;
+  }>;
+  company_id: number;
+};
+
 export type ReceivableRow = {
   id: number;
   invoice_number: string;

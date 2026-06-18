@@ -47,6 +47,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "GL-vs-subledger reconciliation health checks.",
     },
     {
+        "name": "opening-balances",
+        "description": "Opening balance equity summary and OB posting status.",
+    },
+    {
         "name": "bank-accounts",
         "description": "Bank account directory for write-tab pickers and read-only views.",
     },

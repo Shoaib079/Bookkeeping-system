@@ -40,6 +40,7 @@ from services.read_sales import SalesListPage, SalesListRow
 from services.read_expenses import ExpenseListRow, ExpensesListPage
 from services.read_vendors import VendorListRow, VendorsListPage
 from services.read_workers import WorkerListRow, WorkersListPage
+from services.read_opening_balances import OpeningBalancesStatusPage
 from services.read_recon_health import (
     ReconHealthBankRow,
     ReconHealthCoaDriftRow,
@@ -175,6 +176,78 @@ def recon_health_to_dict(page: ReconHealthPage) -> dict[str, Any]:
             _recon_health_coa_drift_row_to_dict(row) for row in page.coa_drift_rows
         ],
         "coa_cache_clean": page.coa_cache_clean,
+        "company_id": page.company_id,
+    }
+
+
+def opening_balances_status_to_dict(page: OpeningBalancesStatusPage) -> dict[str, Any]:
+    return {
+        "currency": page.currency,
+        "obe_balance": page.obe_balance,
+        "obe_status": page.obe_status,
+        "obe_account_exists": page.obe_account_exists,
+        "bank_rows": [
+            {
+                "id": row.id,
+                "name": row.name,
+                "kind": row.kind,
+                "currency": row.currency,
+                "stored_balance": row.stored_balance,
+                "is_active": row.is_active,
+                "ob_posted": row.ob_posted,
+                "ob_date": row.ob_date.isoformat() if row.ob_date else None,
+                "ob_amount": row.ob_amount,
+            }
+            for row in page.bank_rows
+        ],
+        "customer_rows": [
+            {
+                "id": row.id,
+                "name": row.name,
+                "ob_posted": row.ob_posted,
+                "ob_date": row.ob_date.isoformat() if row.ob_date else None,
+                "ob_amount": row.ob_amount,
+            }
+            for row in page.customer_rows
+        ],
+        "vendor_rows": [
+            {
+                "id": row.id,
+                "name": row.name,
+                "ob_posted": row.ob_posted,
+                "ob_date": row.ob_date.isoformat() if row.ob_date else None,
+                "ob_amount": row.ob_amount,
+            }
+            for row in page.vendor_rows
+        ],
+        "product_rows": [
+            {
+                "id": row.id,
+                "name": row.name,
+                "sku": row.sku,
+                "quantity": row.quantity,
+                "ob_posted": row.ob_posted,
+                "ob_date": row.ob_date.isoformat() if row.ob_date else None,
+                "ob_cost": row.ob_cost,
+            }
+            for row in page.product_rows
+        ],
+        "capital": {
+            "ob_posted": page.capital.ob_posted,
+            "ob_date": (
+                page.capital.ob_date.isoformat() if page.capital.ob_date else None
+            ),
+            "ob_amount": page.capital.ob_amount,
+        },
+        "loan_rows": [
+            {
+                "journal_entry_id": row.journal_entry_id,
+                "entry_date": row.entry_date.isoformat(),
+                "description": row.description,
+                "amount": row.amount,
+            }
+            for row in page.loan_rows
+        ],
         "company_id": page.company_id,
     }
 

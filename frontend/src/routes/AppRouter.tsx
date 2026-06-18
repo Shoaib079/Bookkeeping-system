@@ -18,6 +18,7 @@ import { ExpensesPage } from "../pages/ExpensesPage";
 import { FiscalPeriodsPage } from "../pages/FiscalPeriodsPage";
 import { JournalEntriesPage } from "../pages/JournalEntriesPage";
 import { LedgerPage } from "../pages/LedgerPage";
+import { OpeningBalancesPage } from "../pages/OpeningBalancesPage";
 import { PartnerStatementPage } from "../pages/PartnerStatementPage";
 import { PayablesPage } from "../pages/PayablesPage";
 import { ProfitLossPage } from "../pages/ProfitLossPage";
@@ -38,6 +39,7 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/books/general-ledger": LedgerPage,
   "/books/trial-balance": TrialBalancePage,
   "/books/recon-health": ReconHealthPage,
+  "/books/opening-balances": OpeningBalancesPage,
   "/books/chart-of-accounts": ChartOfAccountsPage,
   "/books/fiscal-periods": FiscalPeriodsPage,
   "/books/journal-entries": JournalEntriesPage,

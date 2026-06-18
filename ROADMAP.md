@@ -1428,11 +1428,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-32** | Journal entries read page | ✅ **Complete** |
 | **FASTAPI-REACT-33** | Trial balance read page | ✅ **Complete** |
 | **FASTAPI-REACT-34** | Recon health read page | ✅ **Complete** |
-| **FASTAPI-REACT-35+** | React read page expansion or ops slices | 📋 Planned |
+| **FASTAPI-REACT-35** | Opening balances read page | ✅ **Complete** |
+| **FASTAPI-REACT-36+** | React read page expansion or ops slices | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_34_REACT_READ_RECON_HEALTH_AUDIT.md](./docs/FASTAPI_REACT_34_REACT_READ_RECON_HEALTH_AUDIT.md) · **Tests:** `tests/test_fastapi_react_34_react_read_recon_health.py` · **Tag:** `fastapi-react-34-react-read-recon-health`
+**Audit:** [FASTAPI_REACT_35_REACT_READ_OPENING_BALANCES_AUDIT.md](./docs/FASTAPI_REACT_35_REACT_READ_OPENING_BALANCES_AUDIT.md) · **Tests:** `tests/test_fastapi_react_35_react_read_opening_balances.py` · **Tag:** `fastapi-react-35-react-read-opening-balances`
 
-**Next slice:** **FASTAPI-REACT-35** — production `COMMIT_MODE_*` flip or opening balances read slice; see FR-34 audit §7.
+**Next slice:** **FASTAPI-REACT-36** — production `COMMIT_MODE_*` flip or next NAV read placeholder; see FR-35 audit §7.
 
 ---
 
@@ -3523,6 +3524,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-35 (closure)** — Opening balances read page: thin `GET /api/v1/opening-balances` + `OpeningBalancesPage` at `/books/opening-balances` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-35-react-read-opening-balances`. Next: **FASTAPI-REACT-36**. |
 | 2026-06-05 | **FASTAPI-REACT-34 (closure)** — Recon health read page: thin `GET /api/v1/reconciliation/health` + `ReconHealthPage` at `/books/recon-health` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-34-react-read-recon-health`. Next: **FASTAPI-REACT-35**. |
 | 2026-06-05 | **FASTAPI-REACT-33 (closure)** — Trial balance read page: thin `GET /api/v1/reports/trial-balance` + `TrialBalancePage` at `/books/trial-balance` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-33-react-read-trial-balance`. Next: **FASTAPI-REACT-34**. |
 | 2026-06-05 | **FASTAPI-REACT-32 (closure)** — Journal entries read page: thin `GET /api/v1/journal-entries` + `JournalEntriesPage` at `/books/journal-entries` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-32-react-read-journal-entries`. Next: **FASTAPI-REACT-33**. |
