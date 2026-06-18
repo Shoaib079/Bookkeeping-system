@@ -343,6 +343,59 @@ export type TrialBalanceResponse = {
   row_count: number;
 };
 
+export type ReconHealthSectionResponse = {
+  gl_balance: number;
+  subledger_balance: number;
+  difference: number;
+  status: string;
+};
+
+export type ReconHealthBankRow = {
+  account_id: number;
+  name: string;
+  currency: string | null;
+  stored_balance: number;
+  derived_balance: number;
+  difference: number;
+  status: string;
+};
+
+export type ReconHealthCoaDriftRow = {
+  account_code: string;
+  account_name: string;
+  account_type: string;
+  cached_balance: number;
+  expected_balance: number;
+  delta: number;
+  status: string;
+};
+
+export type ReconHealthCreditCardResponse = {
+  enabled: boolean;
+  gl_balance: number;
+  subledger_total: number;
+  difference: number;
+  status: string;
+  cards: Array<{
+    id: number;
+    name: string;
+    balance: number;
+    currency: string | null;
+    last_activity_date: string | null;
+  }>;
+};
+
+export type ReconHealthResponse = {
+  currency: string;
+  accounts_receivable: ReconHealthSectionResponse;
+  accounts_payable: ReconHealthSectionResponse;
+  credit_card: ReconHealthCreditCardResponse | null;
+  bank_accounts: ReconHealthBankRow[];
+  coa_drift_rows: ReconHealthCoaDriftRow[];
+  coa_cache_clean: boolean;
+  company_id: number;
+};
+
 export type ReceivableRow = {
   id: number;
   invoice_number: string;

@@ -60,6 +60,7 @@ EXPECTED_PATHS = {
     "/api/v1/workers",
     "/api/v1/partners/{partner_id}/statement",
     "/api/v1/banking/readiness",
+    "/api/v1/reconciliation/health",
 }
 
 EXPECTED_TAGS = {
@@ -85,6 +86,7 @@ EXPECTED_TAGS = {
     "profit-allocations",
     "workers",
     "banking",
+    "reconciliation-health",
     "writes",
 }
 
@@ -126,6 +128,7 @@ GET_ROUTES = [
         {"from_date": FROM_DATE.isoformat(), "to_date": TO_DATE.isoformat()},
     ),
     ("/api/v1/banking/readiness", {}),
+    ("/api/v1/reconciliation/health", {}),
 ]
 
 

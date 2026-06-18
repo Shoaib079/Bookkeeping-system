@@ -39,6 +39,7 @@ REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/banking/accounts", "BankAccountsPage", "bank_accounts"),
     ("/books/fiscal-periods", "FiscalPeriodsPage", "fiscal_periods"),
     ("/books/journal-entries", "JournalEntriesPage", "journal_entries"),
+    ("/books/recon-health", "ReconHealthPage", "recon_health"),
 )
 
 HOME_READ_API_PATHS: tuple[str, ...] = (
@@ -53,6 +54,10 @@ LEDGER_READ_API_PATHS: tuple[str, ...] = (
 
 TRIAL_BALANCE_READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/reports/trial-balance",
+)
+
+RECON_HEALTH_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/reconciliation/health",
 )
 
 BALANCE_SHEET_READ_API_PATHS: tuple[str, ...] = (
@@ -168,6 +173,7 @@ REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/pages/BankAccountsPage.tsx",
     "frontend/src/pages/FiscalPeriodsPage.tsx",
     "frontend/src/pages/JournalEntriesPage.tsx",
+    "frontend/src/pages/ReconHealthPage.tsx",
     "frontend/src/components/ReadApiSetup.tsx",
     *PICKER_FRONTEND_FILES,
 )
@@ -234,7 +240,7 @@ FR19_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 )
 
 DEFERRED_ITEMS: tuple[str, ...] = (
-    "FASTAPI-REACT-34",
+    "FASTAPI-REACT-35",
     "production COMMIT_MODE_* flip",
 )
 
@@ -340,6 +346,16 @@ FR33_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 
 FR33_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-34",
+    "production COMMIT_MODE_* flip",
+)
+
+# Frozen for FR-34 audit tests (do not mutate).
+FR34_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("/books/recon-health", "ReconHealthPage", "recon_health"),
+)
+
+FR34_DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-35",
     "production COMMIT_MODE_* flip",
 )
 

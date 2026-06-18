@@ -41,6 +41,7 @@ READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/workers",
     "/api/v1/partners/{partner_id}/statement",
     "/api/v1/banking/readiness",
+    "/api/v1/reconciliation/health",
 )
 
 READ_API_TAGS: tuple[str, ...] = (
@@ -66,6 +67,7 @@ READ_API_TAGS: tuple[str, ...] = (
     "profit-allocations",
     "workers",
     "banking",
+    "reconciliation-health",
 )
 
 ERROR_CONTRACT_MARKERS: tuple[str, ...] = (
@@ -104,6 +106,7 @@ READ_SERVICE_MODULES: tuple[str, ...] = (
     "services/read_partner_statement.py",
     "services/read_balances.py",
     "services/read_reconciliation.py",
+    "services/read_recon_health.py",
 )
 
 SERIALIZATION_MODULE: Final[str] = "api/serialization.py"

@@ -40,7 +40,15 @@ from services.read_sales import SalesListPage, SalesListRow
 from services.read_expenses import ExpenseListRow, ExpensesListPage
 from services.read_vendors import VendorListRow, VendorsListPage
 from services.read_workers import WorkerListRow, WorkersListPage
+from services.read_recon_health import (
+    ReconHealthBankRow,
+    ReconHealthCoaDriftRow,
+    ReconHealthCreditCardSection,
+    ReconHealthPage,
+    ReconHealthSection,
+)
 from services.read_trial_balance import TrialBalanceRow, TrialBalanceStatement
+from services.read_transaction_history import TransactionHistoryPage, TransactionHistoryRow
 
 
 def _line_to_dict(line: FinancialStatementLine) -> dict[str, Any]:
@@ -101,6 +109,73 @@ def trial_balance_to_dict(stmt: TrialBalanceStatement) -> dict[str, Any]:
         "gl_balanced": stmt.gl_balanced,
         "gl_difference": stmt.gl_difference,
         "row_count": stmt.row_count,
+    }
+
+
+def _recon_health_section_to_dict(section: ReconHealthSection) -> dict[str, Any]:
+    return {
+        "gl_balance": section.gl_balance,
+        "subledger_balance": section.subledger_balance,
+        "difference": section.difference,
+        "status": section.status,
+    }
+
+
+def _recon_health_bank_row_to_dict(row: ReconHealthBankRow) -> dict[str, Any]:
+    return {
+        "account_id": row.account_id,
+        "name": row.name,
+        "currency": row.currency,
+        "stored_balance": row.stored_balance,
+        "derived_balance": row.derived_balance,
+        "difference": row.difference,
+        "status": row.status,
+    }
+
+
+def _recon_health_coa_drift_row_to_dict(row: ReconHealthCoaDriftRow) -> dict[str, Any]:
+    return {
+        "account_code": row.account_code,
+        "account_name": row.account_name,
+        "account_type": row.account_type,
+        "cached_balance": row.cached_balance,
+        "expected_balance": row.expected_balance,
+        "delta": row.delta,
+        "status": row.status,
+    }
+
+
+def _recon_health_credit_card_to_dict(
+    section: ReconHealthCreditCardSection,
+) -> dict[str, Any]:
+    return {
+        "enabled": section.enabled,
+        "gl_balance": section.gl_balance,
+        "subledger_total": section.subledger_total,
+        "difference": section.difference,
+        "status": section.status,
+        "cards": list(section.cards),
+    }
+
+
+def recon_health_to_dict(page: ReconHealthPage) -> dict[str, Any]:
+    return {
+        "currency": page.currency,
+        "accounts_receivable": _recon_health_section_to_dict(page.accounts_receivable),
+        "accounts_payable": _recon_health_section_to_dict(page.accounts_payable),
+        "credit_card": (
+            _recon_health_credit_card_to_dict(page.credit_card)
+            if page.credit_card is not None
+            else None
+        ),
+        "bank_accounts": [
+            _recon_health_bank_row_to_dict(row) for row in page.bank_accounts
+        ],
+        "coa_drift_rows": [
+            _recon_health_coa_drift_row_to_dict(row) for row in page.coa_drift_rows
+        ],
+        "coa_cache_clean": page.coa_cache_clean,
+        "company_id": page.company_id,
     }
 
 

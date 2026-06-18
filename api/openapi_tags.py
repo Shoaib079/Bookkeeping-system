@@ -43,6 +43,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Bank statement import reconciliation readiness.",
     },
     {
+        "name": "reconciliation-health",
+        "description": "GL-vs-subledger reconciliation health checks.",
+    },
+    {
         "name": "bank-accounts",
         "description": "Bank account directory for write-tab pickers and read-only views.",
     },

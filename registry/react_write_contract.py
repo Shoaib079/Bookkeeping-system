@@ -366,6 +366,6 @@ FR24_DEFERRED_ITEMS: tuple[str, ...] = (
 )
 
 DEFERRED_ITEMS: tuple[str, ...] = (
-    "FASTAPI-REACT-34",
+    "FASTAPI-REACT-35",
     "production COMMIT_MODE_* flip",
 )
