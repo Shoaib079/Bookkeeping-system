@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Final
 
 EPIC_ID: Final[str] = "PRODUCTION-HARDENING-01"
+EPIC_STATUS: Final[str] = "complete"
 
 PH01_CONTRACT_DOC: Final[str] = (
     "docs/PRODUCTION_HARDENING_01_PH01_REGISTER_CLEANUP_AUDIT.md"
@@ -69,8 +70,22 @@ EPIC_SLICES: tuple[tuple[str, str, str], ...] = (
     (
         "PRODUCTION-HARDENING-01-PH05",
         "Launch-readiness verification gate + epic closure",
-        "planned",
+        "complete",
     ),
+)
+
+PH05_CONTRACT_DOC: Final[str] = (
+    "docs/PRODUCTION_HARDENING_01_PH05_LAUNCH_READINESS_AUDIT.md"
+)
+PH05_SLICE_ID: Final[str] = "PRODUCTION-HARDENING-01-PH05"
+PH05_TAG: Final[str] = "production-hardening-01-ph05-launch-readiness"
+PH05_GATE_CONTRACT: Final[str] = "registry/launch_readiness_gate_contract.py"
+
+# Frozen for PH-05 audit tests (do not mutate).
+PH05_DEFERRED_ITEMS: tuple[str, ...] = (
+    "TD-PS-03",
+    "CI optional_postgres job",
+    "production operator sign-off",
 )
 
 PH04_CONTRACT_DOC: Final[str] = (

@@ -344,8 +344,9 @@ FR19_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 )
 
 DEFERRED_ITEMS: tuple[str, ...] = (
-    "PRODUCTION-HARDENING-05",
+    "TD-PS-03",
     "production operator sign-off",
+    "CI optional_postgres job",
 )
 
 # Frozen for FR-24 audit tests (pages contract; do not mutate).
