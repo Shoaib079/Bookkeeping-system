@@ -91,6 +91,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Recurring expense templates and drafts for the active company.",
     },
     {
+        "name": "staff-expense-drafts",
+        "description": "Staff expense draft submissions and approval inbox for the active company.",
+    },
+    {
         "name": "bank-accounts",
         "description": "Bank account directory for write-tab pickers and read-only views.",
     },

@@ -76,6 +76,7 @@ EXPECTED_PATHS = {
     "/api/v1/cash-reconciliations",
     "/api/v1/external-sales-verifications",
     "/api/v1/recurring-expenses",
+    "/api/v1/staff-expense-drafts",
 }
 
 EXPECTED_TAGS = {
@@ -115,6 +116,7 @@ EXPECTED_TAGS = {
     "cash-reconciliations",
     "external-sales-verifications",
     "recurring-expenses",
+    "staff-expense-drafts",
     "writes",
 }
 
@@ -181,6 +183,7 @@ GET_ROUTES = [
         {"start_date": FROM_DATE.isoformat(), "end_date": TO_DATE.isoformat()},
     ),
     ("/api/v1/recurring-expenses", {}),
+    ("/api/v1/staff-expense-drafts", {}),
 ]
 
 

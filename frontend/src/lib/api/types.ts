@@ -334,6 +334,38 @@ export type RecurringExpensesPageResponse = {
   company_id: number;
 };
 
+export type StaffExpenseDraftRow = {
+  id: number;
+  company_id: number;
+  created_by_id: number;
+  status: string;
+  created_at: string;
+  submitted_at: string | null;
+  submitted_note: string | null;
+  reviewed_by_id: number | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  expense_record_id: number | null;
+  date: string;
+  amount: number;
+  currency: string;
+  payment_method: string;
+  tx_category_id: number | null;
+  tx_subcategory_id: number | null;
+  description: string;
+};
+
+export type StaffExpenseDraftsPageResponse = {
+  my_drafts: StaffExpenseDraftRow[];
+  inbox_drafts: StaffExpenseDraftRow[];
+  my_draft_count: number;
+  inbox_count: number;
+  company_id: number;
+  user_id: number;
+  can_submit: boolean;
+  can_approve: boolean;
+};
+
 export type JournalEntryLineListRow = {
   id: number;
   account_id: number;

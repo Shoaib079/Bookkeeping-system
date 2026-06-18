@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from api.openapi_tags import OPENAPI_TAGS
-from api.routes import audit_log, auth, backup_status, bank_accounts, bank_statement_rows, bank_transactions, banking, cash_reconciliations, chart_of_accounts, closing, company_settings, customers, eod_closes, expenses, expenses_read, external_sales_verifications, fiscal_periods, journal_entries, ledger, members, my_account, opening_balances, partner_movements, partners, payables, permissions, products, profit_allocations, purchases, purchases_read, receivable_payments, receivable_sales, receivables, recon_health, reconciliation, recurring_expenses, reports, sales, sales_read, transactions, vendors, voids, worker_payments, workers, year_end_closes
+from api.routes import audit_log, auth, backup_status, bank_accounts, bank_statement_rows, bank_transactions, banking, cash_reconciliations, chart_of_accounts, closing, company_settings, customers, eod_closes, expenses, expenses_read, external_sales_verifications, fiscal_periods, journal_entries, ledger, members, my_account, opening_balances, partner_movements, partners, payables, permissions, products, profit_allocations, purchases, purchases_read, receivable_payments, receivable_sales, receivables, recon_health, reconciliation, recurring_expenses, reports, sales, sales_read, staff_expense_drafts, transactions, vendors, voids, worker_payments, workers, year_end_closes
 from services.permissions import PermissionDenied
 
 _API_DESCRIPTION = """\
@@ -75,6 +75,7 @@ def create_app() -> FastAPI:
         prefix="/api/v1/external-sales-verifications",
     )
     app.include_router(recurring_expenses.router, prefix="/api/v1/recurring-expenses")
+    app.include_router(staff_expense_drafts.router, prefix="/api/v1/staff-expense-drafts")
     app.include_router(vendors.router, prefix="/api/v1/vendors")
     app.include_router(customers.router, prefix="/api/v1/customers")
     app.include_router(products.router, prefix="/api/v1/products")

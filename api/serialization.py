@@ -42,6 +42,7 @@ from services.read_recurring_expenses import (
     RecurringExpenseTemplateRow,
     RecurringExpensesPage,
 )
+from services.read_staff_expense_drafts import StaffExpenseDraftsPage
 from services.read_journal_entries import (
     JournalEntriesListPage,
     JournalEntryLineListRow,
@@ -793,6 +794,19 @@ def recurring_expenses_page_to_dict(page: RecurringExpensesPage) -> dict[str, An
         "pending_count": page.pending_count,
         "history_count": page.history_count,
         "company_id": page.company_id,
+    }
+
+
+def staff_expense_drafts_page_to_dict(page: StaffExpenseDraftsPage) -> dict[str, Any]:
+    return {
+        "my_drafts": [row.to_dict() for row in page.my_drafts],
+        "inbox_drafts": [row.to_dict() for row in page.inbox_drafts],
+        "my_draft_count": page.my_draft_count,
+        "inbox_count": page.inbox_count,
+        "company_id": page.company_id,
+        "user_id": page.user_id,
+        "can_submit": page.can_submit,
+        "can_approve": page.can_approve,
     }
 
 
