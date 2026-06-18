@@ -1,7 +1,7 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** 2026-06-05 (UX-STABILIZE-01 — data-entry state cleanup)  
+**Last updated:** 2026-06-19 (DUAL-RUNTIME-01 — operating model documented)  
 **Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
@@ -201,6 +201,7 @@ docker-compose down
 
 | Area | Status |
 |------|--------|
+| **Current operating mode (DUAL-RUNTIME-01)** | ✅ **Streamlit-primary + SQLite daily use** · FastAPI/React parallel validation when needed · **PostgreSQL staging/testing only** — see [§ DUAL-RUNTIME-01](#dual-runtime-01--operating-model) |
 | Core ERP & accounting engine | ✅ Complete |
 | **Docker safe local development** | ✅ **Complete (2026-06-16)** — Dockerfile + docker-compose.yml + persistent SQLite volume |
 | Multi-company isolation | ✅ Complete |
@@ -1527,6 +1528,43 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 **Audit (OR-05):** [OPERATOR_ROLLOUT_OR05_COMMIT_MODE_EXPENSE_STAGING.md](./docs/OPERATOR_ROLLOUT_OR05_COMMIT_MODE_EXPENSE_STAGING.md) · **Tests:** `tests/test_operator_rollout_or05_commit_mode_expense_staging.py` · **Tag:** `operator-rollout-or05-commit-mode-expense-staging`
 
 **Next stage:** None — operator rollout staging sequence **complete** (OR-01–OR11). Production flags require sign-off.
+
+---
+
+## DUAL-RUNTIME-01 — Operating Model
+
+**Status:** ✅ **Active** — documentation only (2026-06-19)  
+**Tag:** `dual-runtime-01-operating-model`  
+**Prerequisite:** BACKUP-01 complete · OR-01–OR11 staging complete
+
+**Current operating mode:**
+
+| Lane | Runtime | Database | Purpose |
+|------|---------|----------|---------|
+| **Primary** | Streamlit | SQLite (`erp_data.db`) | Real daily bookkeeping |
+| **Parallel validation** | FastAPI + React (read-only by default) | SQLite live or backup copy | Compare UI/API against books when needed |
+| **Staging / test** | pytest + optional FastAPI PG matrix | PostgreSQL disposable (`erp_pytest`) | Boundary parity — **not production** |
+
+**Hard rules (locked):**
+
+- No production PostgreSQL cutover in this mode
+- No React write production enablement
+- Never run `pytest tests/` with `DATABASE_URL` pointing at live `erp_data.db`
+- Never point `ERP_TEST_POSTGRES_URL` at production PostgreSQL
+- **Backup-before-use** before FastAPI/React validation sessions against live data
+- PostgreSQL production runtime only when cloud/server deployment is chosen and operator cutover gates pass
+
+**Doc:** [DUAL_RUNTIME_OPERATING_MODEL.md](./docs/DUAL_RUNTIME_OPERATING_MODEL.md)
+
+**Daily Streamlit:**
+
+```bash
+streamlit run app.py
+```
+
+**FastAPI/React read-only validation:** `VITE_ERP_REACT_PAGES=1` only — no `VITE_ERP_REACT_WRITE_*` / `ERP_API_WRITE_*` / `COMMIT_MODE_*`. Prefer a timestamped backup copy via `DATABASE_URL`. See operating-model doc §4.
+
+**PostgreSQL production:** Deferred until cloud/server deployment + operator sign-off + staging PG parity + rollback runbook (see doc §7).
 
 ---
 
