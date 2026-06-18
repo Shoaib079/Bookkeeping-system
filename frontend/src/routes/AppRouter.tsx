@@ -22,6 +22,7 @@ import { ReportsPage } from "../pages/ReportsPage";
 import { SalesPage } from "../pages/SalesPage";
 import { TransactionLedgerPage } from "../pages/TransactionLedgerPage";
 import { VendorsPage } from "../pages/VendorsPage";
+import { WorkersPage } from "../pages/WorkersPage";
 import { NewTransactionPage } from "../pages/NewTransactionPage";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 
@@ -41,6 +42,7 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/vendors": VendorsPage,
   "/sales": SalesPage,
   "/expenses": ExpensesPage,
+  "/workers": WorkersPage,
 };
 
 const WRITE_PAGES: Record<string, ComponentType> = {
