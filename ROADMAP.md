@@ -1441,11 +1441,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-45** | End-of-day close read page | ✅ **Complete** |
 | **FASTAPI-REACT-46** | Cash reconciliation read page | ✅ **Complete** |
 | **FASTAPI-REACT-47** | External sales verification read page | ✅ **Complete** |
-| **FASTAPI-REACT-48+** | React read page expansion or ops slices | 📋 Planned |
+| **FASTAPI-REACT-48** | Recurring expenses read page | ✅ **Complete** |
+| **FASTAPI-REACT-49+** | React read page expansion or ops slices | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_47_REACT_READ_EXTERNAL_SALES_AUDIT.md](./docs/FASTAPI_REACT_47_REACT_READ_EXTERNAL_SALES_AUDIT.md) · **Tests:** `tests/test_fastapi_react_47_react_read_external_sales.py` · **Tag:** `fastapi-react-47-react-read-external-sales`
+**Audit:** [FASTAPI_REACT_48_REACT_READ_RECURRING_EXPENSES_AUDIT.md](./docs/FASTAPI_REACT_48_REACT_READ_RECURRING_EXPENSES_AUDIT.md) · **Tests:** `tests/test_fastapi_react_48_react_read_recurring_expenses.py` · **Tag:** `fastapi-react-48-react-read-recurring-expenses`
 
-**Next slice:** **FASTAPI-REACT-48** — production `COMMIT_MODE_*` flip or next NAV read placeholder; see FR-47 audit §7.
+**Next slice:** **FASTAPI-REACT-49** — production `COMMIT_MODE_*` flip or next NAV read placeholder; see FR-48 audit §7.
 
 ---
 
@@ -3536,6 +3537,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-48 (closure)** — Recurring expenses read page: thin `GET /api/v1/recurring-expenses` + `RecurringExpensesPage` at `/expenses/recurring` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-48-react-read-recurring-expenses`. Next: **FASTAPI-REACT-49**. |
 | 2026-06-05 | **FASTAPI-REACT-47 (closure)** — External sales verification read page: thin `GET /api/v1/external-sales-verifications` + `ExternalSalesPage` at `/closings/external-sales` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-47-react-read-external-sales`. Next: **FASTAPI-REACT-48**. |
 | 2026-06-05 | **FASTAPI-REACT-46 (closure)** — Cash reconciliation read page: thin `GET /api/v1/cash-reconciliations` + `CashReconPage` at `/closings/cash-recon` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-46-react-read-cash-recon`. Next: **FASTAPI-REACT-47**. |
 | 2026-06-05 | **FASTAPI-REACT-45 (closure)** — End-of-day close read page: thin `GET /api/v1/end-of-day-closes` + `EodClosePage` at `/closings/eod` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-45-react-read-eod-close`. Next: **FASTAPI-REACT-46**. |

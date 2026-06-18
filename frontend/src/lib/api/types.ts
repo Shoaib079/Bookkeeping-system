@@ -298,6 +298,42 @@ export type ExternalSalesVerificationsListResponse = {
   end_date: string | null;
 };
 
+export type RecurringExpenseTemplateRow = {
+  id: number;
+  name: string;
+  category: string;
+  amount: number;
+  frequency: string;
+  next_due_date: string;
+  is_active: boolean;
+  pending_count: number;
+  company_id: number;
+};
+
+export type RecurringExpenseDraftRow = {
+  id: number;
+  template_id: number;
+  template_name: string;
+  due_date: string;
+  category: string;
+  amount: number;
+  payment_method: string;
+  status: string;
+  actioned_at: string | null;
+  note: string | null;
+  company_id: number;
+};
+
+export type RecurringExpensesPageResponse = {
+  templates: RecurringExpenseTemplateRow[];
+  pending_drafts: RecurringExpenseDraftRow[];
+  draft_history: RecurringExpenseDraftRow[];
+  template_count: number;
+  pending_count: number;
+  history_count: number;
+  company_id: number;
+};
+
 export type JournalEntryLineListRow = {
   id: number;
   account_id: number;

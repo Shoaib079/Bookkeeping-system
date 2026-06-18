@@ -37,6 +37,11 @@ from services.read_cash_reconciliations import (
     CashReconciliationsListPage,
 )
 from services.read_external_sales_verifications import ExternalSalesVerificationsListPage
+from services.read_recurring_expenses import (
+    RecurringExpenseDraftRow,
+    RecurringExpenseTemplateRow,
+    RecurringExpensesPage,
+)
 from services.read_journal_entries import (
     JournalEntriesListPage,
     JournalEntryLineListRow,
@@ -740,6 +745,54 @@ def external_sales_verifications_list_to_dict(
         "company_id": page.company_id,
         "start_date": page.start_date.isoformat() if page.start_date else None,
         "end_date": page.end_date.isoformat() if page.end_date else None,
+    }
+
+
+def _recurring_expense_template_row_to_dict(
+    row: RecurringExpenseTemplateRow,
+) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "name": row.name,
+        "category": row.category,
+        "amount": row.amount,
+        "frequency": row.frequency,
+        "next_due_date": row.next_due_date.isoformat(),
+        "is_active": row.is_active,
+        "pending_count": row.pending_count,
+        "company_id": row.company_id,
+    }
+
+
+def _recurring_expense_draft_row_to_dict(row: RecurringExpenseDraftRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "template_id": row.template_id,
+        "template_name": row.template_name,
+        "due_date": row.due_date.isoformat(),
+        "category": row.category,
+        "amount": row.amount,
+        "payment_method": row.payment_method,
+        "status": row.status,
+        "actioned_at": row.actioned_at.isoformat() if row.actioned_at else None,
+        "note": row.note,
+        "company_id": row.company_id,
+    }
+
+
+def recurring_expenses_page_to_dict(page: RecurringExpensesPage) -> dict[str, Any]:
+    return {
+        "templates": [_recurring_expense_template_row_to_dict(r) for r in page.templates],
+        "pending_drafts": [
+            _recurring_expense_draft_row_to_dict(r) for r in page.pending_drafts
+        ],
+        "draft_history": [
+            _recurring_expense_draft_row_to_dict(r) for r in page.draft_history
+        ],
+        "template_count": page.template_count,
+        "pending_count": page.pending_count,
+        "history_count": page.history_count,
+        "company_id": page.company_id,
     }
 
 

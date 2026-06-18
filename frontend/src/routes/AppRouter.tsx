@@ -36,6 +36,7 @@ import { ProfitLossPage } from "../pages/ProfitLossPage";
 import { PurchasesPage } from "../pages/PurchasesPage";
 import { ReceivablesPage } from "../pages/ReceivablesPage";
 import { ReconHealthPage } from "../pages/ReconHealthPage";
+import { RecurringExpensesPage } from "../pages/RecurringExpensesPage";
 import { ReportsPage } from "../pages/ReportsPage";
 import { SalesPage } from "../pages/SalesPage";
 import { TransactionLedgerPage } from "../pages/TransactionLedgerPage";
@@ -70,6 +71,7 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/vendors": VendorsPage,
   "/sales": SalesPage,
   "/expenses": ExpensesPage,
+  "/expenses/recurring": RecurringExpensesPage,
   "/workers": WorkersPage,
   "/customers": CustomersPage,
   "/inventory": InventoryPage,

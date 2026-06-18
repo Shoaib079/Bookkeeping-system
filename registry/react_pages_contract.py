@@ -53,6 +53,7 @@ REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/closings/eod", "EodClosePage", "eod_close"),
     ("/closings/cash-recon", "CashReconPage", "cash_recon"),
     ("/closings/external-sales", "ExternalSalesPage", "external_sales"),
+    ("/expenses/recurring", "RecurringExpensesPage", "recurring_expenses"),
 )
 
 HOME_READ_API_PATHS: tuple[str, ...] = (
@@ -120,6 +121,10 @@ CASH_RECONCILIATIONS_READ_API_PATHS: tuple[str, ...] = (
 
 EXTERNAL_SALES_READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/external-sales-verifications",
+)
+
+RECURRING_EXPENSES_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/recurring-expenses",
 )
 
 BALANCE_SHEET_READ_API_PATHS: tuple[str, ...] = (
@@ -559,6 +564,16 @@ FR47_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 
 FR47_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-48",
+    "production COMMIT_MODE_* flip",
+)
+
+# Frozen for FR-48 audit tests (do not mutate).
+FR48_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("/expenses/recurring", "RecurringExpensesPage", "recurring_expenses"),
+)
+
+FR48_DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-49",
     "production COMMIT_MODE_* flip",
 )
 
