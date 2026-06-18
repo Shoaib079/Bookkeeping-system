@@ -29,6 +29,8 @@ from services.read_bank_statement_rows import (
 from services.read_fiscal_periods import FiscalPeriodListRow, FiscalPeriodsListPage
 from services.read_profit_allocations import ProfitAllocationListRow, ProfitAllocationsListPage
 from services.read_receivable_sales import ReceivableSaleListRow, ReceivableSalesListPage
+from services.read_sales import SalesListPage, SalesListRow
+from services.read_expenses import ExpenseListRow, ExpensesListPage
 from services.read_vendors import VendorListRow, VendorsListPage
 from services.read_workers import WorkerListRow, WorkersListPage
 from services.read_transaction_history import TransactionHistoryPage, TransactionHistoryRow
@@ -277,6 +279,55 @@ def _receivable_sale_list_row_to_dict(row: ReceivableSaleListRow) -> dict[str, A
 def receivable_sales_list_to_dict(page: ReceivableSalesListPage) -> dict[str, Any]:
     return {
         "rows": [_receivable_sale_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+    }
+
+
+def _sales_list_row_to_dict(row: SalesListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "date": row.date.isoformat(),
+        "invoice_number": row.invoice_number,
+        "customer_name": row.customer_name,
+        "description": row.description,
+        "amount": row.amount,
+        "sale_type": row.sale_type,
+        "paid_amount": row.paid_amount,
+        "balance": row.balance,
+        "due_date": row.due_date.isoformat() if row.due_date is not None else None,
+        "status": row.status,
+        "is_void": row.is_void,
+        "currency": row.currency,
+        "company_id": row.company_id,
+    }
+
+
+def sales_list_to_dict(page: SalesListPage) -> dict[str, Any]:
+    return {
+        "rows": [_sales_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+    }
+
+
+def _expense_list_row_to_dict(row: ExpenseListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "date": row.date.isoformat(),
+        "expense_type": row.expense_type,
+        "category": row.category,
+        "description": row.description,
+        "amount": row.amount,
+        "payment_method": row.payment_method,
+        "employee_name": row.employee_name,
+        "is_void": row.is_void,
+        "currency": row.currency,
+        "company_id": row.company_id,
+    }
+
+
+def expenses_list_to_dict(page: ExpensesListPage) -> dict[str, Any]:
+    return {
+        "rows": [_expense_list_row_to_dict(r) for r in page.rows],
         "row_count": page.row_count,
     }
 

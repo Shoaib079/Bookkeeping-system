@@ -27,6 +27,8 @@ from api.serialization import (
     payables_page_to_dict,
     profit_allocations_list_to_dict,
     receivable_sales_list_to_dict,
+    sales_list_to_dict,
+    expenses_list_to_dict,
     receivables_page_to_dict,
     statement_readiness_list_to_dict,
     transaction_history_page_to_dict,
@@ -35,7 +37,7 @@ from api.serialization import (
 )
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
-from services import read_ar_ap, read_bank_accounts, read_bank_statement_rows, read_coa, read_fiscal_periods, read_ledger, read_partner_statement, read_partners, read_profit_allocations, read_receivable_sales, read_reconciliation, read_reports, read_transaction_history, read_vendors, read_workers
+from services import read_ar_ap, read_bank_accounts, read_bank_statement_rows, read_coa, read_expenses, read_fiscal_periods, read_ledger, read_partner_statement, read_partners, read_profit_allocations, read_receivable_sales, read_reconciliation, read_reports, read_sales, read_transaction_history, read_vendors, read_workers
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
@@ -260,6 +262,16 @@ def seeded_tenant(db):
                 paid=False,
                 description="Supplies",
                 company_id=co_b.id,
+            ),
+            models.ExpenseRecord(
+                date=POST_DATE,
+                expense_type="Office",
+                category="Office",
+                description="Supplies",
+                amount=75.0,
+                payment_method="Cash",
+                company_id=co_a.id,
+                is_void=False,
             ),
         ]
     )
@@ -535,6 +547,22 @@ READ_ENDPOINTS = [
         lambda db, tenant: {"company_id": tenant["company_a_id"]},
     ),
     (
+        "sales_list",
+        "/api/v1/sales",
+        {},
+        read_sales.compute_sales_list,
+        sales_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
+        "expenses_list",
+        "/api/v1/expenses",
+        {},
+        read_expenses.compute_expenses_list,
+        expenses_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
         "profit_allocations_list",
         "/api/v1/profit-allocations",
         {},
@@ -624,6 +652,8 @@ class TestReadEndpointGuards:
             ("/api/v1/bank-statement-rows", {}),
             ("/api/v1/fiscal-periods", {}),
             ("/api/v1/vendors", {}),
+            ("/api/v1/sales", {}),
+            ("/api/v1/expenses", {}),
             ("/api/v1/receivable-sales", {}),
             ("/api/v1/profit-allocations", {}),
             ("/api/v1/workers", {}),
@@ -656,6 +686,8 @@ class TestReadEndpointGuards:
             ("/api/v1/bank-statement-rows", {}),
             ("/api/v1/fiscal-periods", {}),
             ("/api/v1/vendors", {}),
+            ("/api/v1/sales", {}),
+            ("/api/v1/expenses", {}),
             ("/api/v1/receivable-sales", {}),
             ("/api/v1/profit-allocations", {}),
             ("/api/v1/workers", {}),
@@ -734,6 +766,8 @@ class TestReadEndpointNoCommit:
             ("/api/v1/bank-statement-rows", {}),
             ("/api/v1/fiscal-periods", {}),
             ("/api/v1/vendors", {}),
+            ("/api/v1/sales", {}),
+            ("/api/v1/expenses", {}),
             ("/api/v1/receivable-sales", {}),
             ("/api/v1/profit-allocations", {}),
             ("/api/v1/workers", {}),

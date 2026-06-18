@@ -178,6 +178,47 @@ export type VendorsListResponse = {
   row_count: number;
 };
 
+export type SalesListRow = {
+  id: number;
+  date: string;
+  invoice_number: string;
+  customer_name: string;
+  description: string;
+  amount: number;
+  sale_type: string;
+  paid_amount: number;
+  balance: number;
+  due_date: string | null;
+  status: string;
+  is_void: boolean;
+  currency: string | null;
+  company_id: number;
+};
+
+export type SalesListResponse = {
+  rows: SalesListRow[];
+  row_count: number;
+};
+
+export type ExpenseListRow = {
+  id: number;
+  date: string;
+  expense_type: string;
+  category: string | null;
+  description: string;
+  amount: number;
+  payment_method: string | null;
+  employee_name: string | null;
+  is_void: boolean;
+  currency: string | null;
+  company_id: number;
+};
+
+export type ExpensesListResponse = {
+  rows: ExpenseListRow[];
+  row_count: number;
+};
+
 export type ReceivableSaleListRow = {
   id: number;
   invoice_number: string;

@@ -67,6 +67,14 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Open credit sales for receivable payment pickers.",
     },
     {
+        "name": "sales",
+        "description": "Sales register read-only list.",
+    },
+    {
+        "name": "expenses",
+        "description": "Expense register read-only list.",
+    },
+    {
         "name": "profit-allocations",
         "description": "Profit allocation directory for closing void pickers.",
     },

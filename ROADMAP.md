@@ -1419,11 +1419,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-23** | Reconcile/closing pickers + match-type forms | ✅ **Complete** |
 | **FASTAPI-REACT-24** | Receivable sale + allocation pickers | ✅ **Complete** |
 | **FASTAPI-REACT-25** | Chart of accounts + vendors read pages | ✅ **Complete** |
-| **FASTAPI-REACT-26+** | React read page expansion or ops slices | 📋 Planned |
+| **FASTAPI-REACT-26** | Sales + expenses read pages | ✅ **Complete** |
+| **FASTAPI-REACT-27+** | React read page expansion or ops slices | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_25_REACT_READ_COA_VENDORS_AUDIT.md](./docs/FASTAPI_REACT_25_REACT_READ_COA_VENDORS_AUDIT.md) · **Tests:** `tests/test_fastapi_react_25_react_read_coa_vendors.py` · **Tag:** `fastapi-react-25-react-read-coa-vendors`
+**Audit:** [FASTAPI_REACT_26_REACT_READ_SALES_EXPENSES_AUDIT.md](./docs/FASTAPI_REACT_26_REACT_READ_SALES_EXPENSES_AUDIT.md) · **Tests:** `tests/test_fastapi_react_26_react_read_sales_expenses.py` · **Tag:** `fastapi-react-26-react-read-sales-expenses`
 
-**Next slice:** **FASTAPI-REACT-26** — sales/expenses read pages or production `COMMIT_MODE_*` flip; see FR-25 audit §7.
+**Next slice:** **FASTAPI-REACT-27** — workers read page or production `COMMIT_MODE_*` flip; see FR-26 audit §7.
 
 ---
 
@@ -3514,6 +3515,8 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-26 (closure)** — Sales + expenses read pages: thin P1 list APIs (`GET /api/v1/sales`, `GET /api/v1/expenses`) + `SalesPage`, `ExpensesPage` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-26-react-read-sales-expenses`. Next: **FASTAPI-REACT-27**. |
+| 2026-06-05 | **FASTAPI-REACT-25 (closure)** — Chart of accounts + vendors read pages: `ChartOfAccountsPage`, `VendorsPage` wired to existing P1 list APIs behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-25-react-read-coa-vendors`. Next: **FASTAPI-REACT-26**. |
 | 2026-06-05 | **FASTAPI-REACT-24 (closure)** — Receivable sale + allocation pickers: thin P1 list APIs (`/api/v1/receivable-sales`, `/api/v1/profit-allocations`) + `ReceivableSalePicker` / `ProfitAllocationPicker` on `NewTransactionPage`. Write picker track complete. Tag: `fastapi-react-24-react-write-final-pickers`. Next: **FASTAPI-REACT-25**. |
 | 2026-06-05 | **FASTAPI-REACT-23 (closure)** — Reconcile/closing pickers + match-type forms: thin P1 list APIs (`/api/v1/bank-statement-rows`, `/api/v1/fiscal-periods`, `/api/v1/vendors`) + `StatementRowPicker`, `FiscalPeriodPicker`, `VendorPicker`, and per-match-type payload fields on `NewTransactionPage`. Tag: `fastapi-react-23-react-write-recon-forms`. Next: **FASTAPI-REACT-24**. |
 | 2026-06-05 | **FASTAPI-REACT-22 (closure)** — Bank/worker/partner write pickers: thin P1 list APIs (`/api/v1/bank-accounts`, `/api/v1/workers`) + `BankAccountPicker` / `WorkerPicker` / reused `PartnerPicker` on `NewTransactionPage` write tabs. Tag: `fastapi-react-22-react-write-pickers`. Next: **FASTAPI-REACT-23**. |
