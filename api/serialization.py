@@ -43,6 +43,12 @@ from services.read_recurring_expenses import (
     RecurringExpensesPage,
 )
 from services.read_staff_expense_drafts import StaffExpenseDraftsPage
+from services.read_recipe_costing import (
+    MenuProfitabilityListPage,
+    RecipeIngredientsListPage,
+    RecipesListPage,
+)
+from services import recipe_costing as rc_svc
 from services.read_journal_entries import (
     JournalEntriesListPage,
     JournalEntryLineListRow,
@@ -807,6 +813,35 @@ def staff_expense_drafts_page_to_dict(page: StaffExpenseDraftsPage) -> dict[str,
         "user_id": page.user_id,
         "can_submit": page.can_submit,
         "can_approve": page.can_approve,
+    }
+
+
+def recipe_ingredients_list_to_dict(page: RecipeIngredientsListPage) -> dict[str, Any]:
+    return {
+        "rows": [row.to_dict() for row in page.rows],
+        "row_count": page.row_count,
+        "company_id": page.company_id,
+    }
+
+
+def recipes_list_to_dict(page: RecipesListPage) -> dict[str, Any]:
+    return {
+        "rows": [row.to_dict() for row in page.rows],
+        "row_count": page.row_count,
+        "company_id": page.company_id,
+    }
+
+
+def recipe_cost_breakdown_to_dict(breakdown: rc_svc.RecipeCostBreakdown) -> dict[str, Any]:
+    return breakdown.to_dict()
+
+
+def menu_profitability_list_to_dict(page: MenuProfitabilityListPage) -> dict[str, Any]:
+    return {
+        "rows": [row.to_dict() for row in page.rows],
+        "row_count": page.row_count,
+        "company_id": page.company_id,
+        "target_food_cost_pct": page.target_food_cost_pct,
     }
 
 

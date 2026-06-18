@@ -58,6 +58,10 @@ READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/external-sales-verifications",
     "/api/v1/recurring-expenses",
     "/api/v1/staff-expense-drafts",
+    "/api/v1/recipe-ingredients",
+    "/api/v1/recipes",
+    "/api/v1/recipe-cost-breakdowns",
+    "/api/v1/menu-profitability",
 )
 
 READ_API_TAGS: tuple[str, ...] = (
@@ -98,6 +102,10 @@ READ_API_TAGS: tuple[str, ...] = (
     "external-sales-verifications",
     "recurring-expenses",
     "staff-expense-drafts",
+    "recipe-ingredients",
+    "recipes",
+    "recipe-cost-breakdowns",
+    "menu-profitability",
 )
 
 ERROR_CONTRACT_MARKERS: tuple[str, ...] = (

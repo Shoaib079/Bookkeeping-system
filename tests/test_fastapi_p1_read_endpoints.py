@@ -36,6 +36,10 @@ from api.serialization import (
     external_sales_verifications_list_to_dict,
     recurring_expenses_page_to_dict,
     staff_expense_drafts_page_to_dict,
+    recipe_ingredients_list_to_dict,
+    recipes_list_to_dict,
+    recipe_cost_breakdown_to_dict,
+    menu_profitability_list_to_dict,
     effective_permissions_page_to_dict,
     partner_statement_to_dict,
     partners_list_to_dict,
@@ -58,7 +62,8 @@ from api.serialization import (
 )
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
-from services import read_ar_ap, read_audit_log, read_backup_status, read_bank_accounts, read_bank_statement_rows, read_budget, read_cash_reconciliations, read_coa, read_company_members, read_company_settings, read_customers, read_eod_closes, read_expenses, read_external_sales_verifications, read_fiscal_periods, read_journal_entries, read_ledger, read_my_account, read_opening_balances, read_partner_statement, read_partners, read_permissions, read_products, read_profit_allocations, read_purchases, read_receivable_sales, read_recon_health, read_reconciliation, read_recurring_expenses, read_reports, read_sales, read_staff_expense_drafts, read_transaction_history, read_trial_balance, read_vendors, read_workers, read_year_end_closes
+from services import read_ar_ap, read_audit_log, read_backup_status, read_bank_accounts, read_bank_statement_rows, read_budget, read_cash_reconciliations, read_coa, read_company_members, read_company_settings, read_customers, read_eod_closes, read_expenses, read_external_sales_verifications, read_fiscal_periods, read_journal_entries, read_ledger, read_my_account, read_opening_balances, read_partner_statement, read_partners, read_permissions, read_products, read_profit_allocations, read_purchases, read_receivable_sales, read_recon_health, read_reconciliation, read_recipe_costing, read_recurring_expenses, read_reports, read_sales, read_staff_expense_drafts, read_transaction_history, read_trial_balance, read_vendors, read_workers, read_year_end_closes
+from services import recipe_costing as rc_svc
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
@@ -70,6 +75,34 @@ if "streamlit" not in sys.modules:
 POST_DATE = datetime.date(2026, 6, 1)
 FROM_DATE = datetime.date(2026, 6, 1)
 TO_DATE = datetime.date(2026, 6, 30)
+
+
+def _ensure_sample_recipe(db, tenant) -> int:
+    company_id = tenant["company_a_id"]
+    existing = rc_svc.list_recipes(db, company_id, active_only=None)
+    if existing:
+        return existing[0].id
+    ing = rc_svc.create_ingredient(
+        db,
+        company_id,
+        "React Test Flour",
+        "weight",
+        "g",
+        0.01,
+        tenant["owner_id"],
+    )
+    assert ing.ok, ing.error
+    saved = rc_svc.save_recipe(
+        db,
+        company_id,
+        "React Test Recipe",
+        1.0,
+        "each",
+        [rc_svc.RecipeLineInput(ingredient_id=ing.record_id, quantity=100.0, unit="g")],
+        tenant["owner_id"],
+    )
+    assert saved.ok, saved.error
+    return int(saved.record_id)
 
 
 @pytest.fixture(autouse=True)
@@ -646,6 +679,41 @@ READ_ENDPOINTS = [
         },
     ),
     (
+        "recipe_ingredients_list",
+        "/api/v1/recipe-ingredients",
+        {},
+        read_recipe_costing.compute_recipe_ingredients_list,
+        recipe_ingredients_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
+        "recipes_list",
+        "/api/v1/recipes",
+        {},
+        read_recipe_costing.compute_recipes_list,
+        recipes_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
+        "recipe_cost_breakdown",
+        "/api/v1/recipe-cost-breakdowns",
+        {},
+        read_recipe_costing.compute_recipe_cost_breakdown,
+        recipe_cost_breakdown_to_dict,
+        lambda db, tenant: {
+            "company_id": tenant["company_a_id"],
+            "recipe_id": _ensure_sample_recipe(db, tenant),
+        },
+    ),
+    (
+        "menu_profitability_list",
+        "/api/v1/menu-profitability",
+        {},
+        read_recipe_costing.compute_menu_profitability_list,
+        menu_profitability_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
         "cash_flow",
         "/api/v1/reports/cash-flow",
         {"start_date": "from_date_iso", "end_date": "to_date_iso"},
@@ -834,6 +902,9 @@ class TestReadEndpointsReturnJson:
         result = compute_fn(db, **compute_kwargs)
         if name == "banking_readiness":
             expected = to_dict(result, limit=compute_kwargs["limit"])
+        elif name == "recipe_cost_breakdown":
+            expected = to_dict(result)
+            params = {"recipe_id": compute_kwargs["recipe_id"]}
         else:
             expected = to_dict(result)
         resp = api_client.get(
@@ -917,6 +988,9 @@ class TestReadEndpointGuards:
             ("/api/v1/external-sales-verifications", _DATE_PARAMS),
             ("/api/v1/recurring-expenses", {}),
             ("/api/v1/staff-expense-drafts", {}),
+            ("/api/v1/recipe-ingredients", {}),
+            ("/api/v1/recipes", {}),
+            ("/api/v1/menu-profitability", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
             ("/api/v1/reports/budget-vs-actual", _BUDGET_PARAMS),
@@ -972,6 +1046,9 @@ class TestReadEndpointGuards:
             ("/api/v1/external-sales-verifications", _DATE_PARAMS),
             ("/api/v1/recurring-expenses", {}),
             ("/api/v1/staff-expense-drafts", {}),
+            ("/api/v1/recipe-ingredients", {}),
+            ("/api/v1/recipes", {}),
+            ("/api/v1/menu-profitability", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
             ("/api/v1/reports/budget-vs-actual", _BUDGET_PARAMS),
@@ -1017,6 +1094,10 @@ class TestReadEndpointGuards:
             ("/api/v1/backup-status", {}),
             ("/api/v1/end-of-day-closes", _DATE_PARAMS),
             ("/api/v1/external-sales-verifications", _DATE_PARAMS),
+            ("/api/v1/recipe-ingredients", {}),
+            ("/api/v1/recipes", {}),
+            ("/api/v1/recipe-cost-breakdowns", {"recipe_id": 1}),
+            ("/api/v1/menu-profitability", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
             ("/api/v1/reports/budget-vs-actual", _BUDGET_PARAMS),
@@ -1136,6 +1217,10 @@ class TestReadEndpointNoCommit:
             ("/api/v1/external-sales-verifications", _DATE_PARAMS),
             ("/api/v1/recurring-expenses", {}),
             ("/api/v1/staff-expense-drafts", {}),
+            ("/api/v1/recipe-ingredients", {}),
+            ("/api/v1/recipes", {}),
+            ("/api/v1/menu-profitability", {}),
+            ("/api/v1/recipe-cost-breakdowns", {"recipe_id": 1}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
             ("/api/v1/reports/budget-vs-actual", _BUDGET_PARAMS),
@@ -1157,6 +1242,8 @@ class TestReadEndpointNoCommit:
             }
         elif params == _DATE_PARAMS:
             params = dict(_DATE_PARAMS)
+        elif path == "/api/v1/recipe-cost-breakdowns":
+            params = {"recipe_id": _ensure_sample_recipe(db, seeded_tenant)}
         with patch.object(db, "commit", wraps=db.commit) as mock_commit:
             resp = api_client.get(
                 path,

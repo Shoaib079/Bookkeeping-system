@@ -95,6 +95,22 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Staff expense draft submissions and approval inbox for the active company.",
     },
     {
+        "name": "recipe-ingredients",
+        "description": "Recipe ingredient catalog for the active company.",
+    },
+    {
+        "name": "recipes",
+        "description": "Recipe summaries for the active company.",
+    },
+    {
+        "name": "recipe-cost-breakdowns",
+        "description": "Recipe cost breakdown for the active company.",
+    },
+    {
+        "name": "menu-profitability",
+        "description": "Menu item profitability for the active company.",
+    },
+    {
         "name": "bank-accounts",
         "description": "Bank account directory for write-tab pickers and read-only views.",
     },

@@ -20,6 +20,7 @@ from api.main import create_app
 from api.openapi_tags import OPENAPI_TAGS
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
+from services import recipe_costing as rc_svc
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
@@ -30,6 +31,35 @@ if "streamlit" not in sys.modules:
 
 FROM_DATE = datetime.date(2026, 6, 1)
 TO_DATE = datetime.date(2026, 6, 30)
+
+
+def _ensure_sample_recipe(db, tenant) -> int:
+    company_id = tenant["company_id"]
+    existing = rc_svc.list_recipes(db, company_id, active_only=None)
+    if existing:
+        return existing[0].id
+    ing = rc_svc.create_ingredient(
+        db,
+        company_id,
+        "Contract Test Flour",
+        "weight",
+        "g",
+        0.01,
+        tenant["owner"].id,
+    )
+    assert ing.ok, ing.error
+    saved = rc_svc.save_recipe(
+        db,
+        company_id,
+        "Contract Test Recipe",
+        1.0,
+        "each",
+        [rc_svc.RecipeLineInput(ingredient_id=ing.record_id, quantity=100.0, unit="g")],
+        tenant["owner"].id,
+    )
+    assert saved.ok, saved.error
+    return int(saved.record_id)
+
 
 EXPECTED_PATHS = {
     "/health",
@@ -77,6 +107,10 @@ EXPECTED_PATHS = {
     "/api/v1/external-sales-verifications",
     "/api/v1/recurring-expenses",
     "/api/v1/staff-expense-drafts",
+    "/api/v1/recipe-ingredients",
+    "/api/v1/recipes",
+    "/api/v1/recipe-cost-breakdowns",
+    "/api/v1/menu-profitability",
 }
 
 EXPECTED_TAGS = {
@@ -117,6 +151,10 @@ EXPECTED_TAGS = {
     "external-sales-verifications",
     "recurring-expenses",
     "staff-expense-drafts",
+    "recipe-ingredients",
+    "recipes",
+    "recipe-cost-breakdowns",
+    "menu-profitability",
     "writes",
 }
 
@@ -184,6 +222,10 @@ GET_ROUTES = [
     ),
     ("/api/v1/recurring-expenses", {}),
     ("/api/v1/staff-expense-drafts", {}),
+    ("/api/v1/recipe-ingredients", {}),
+    ("/api/v1/recipes", {}),
+    ("/api/v1/recipe-cost-breakdowns", {"recipe_id": 1}),
+    ("/api/v1/menu-profitability", {}),
 ]
 
 
@@ -218,10 +260,12 @@ def _resolve_path(path: str, seeded_tenant: dict) -> str:
     return path
 
 
-def _resolve_params(params: dict, seeded_tenant: dict) -> dict:
+def _resolve_params(params: dict, seeded_tenant: dict, db=None) -> dict:
     out = dict(params)
     if "account_id" in out and out["account_id"] == 1:
         out["account_id"] = seeded_tenant["cash_account_id"]
+    if "recipe_id" in out and out["recipe_id"] == 1 and db is not None:
+        out["recipe_id"] = _ensure_sample_recipe(db, seeded_tenant)
     return out
 
 
@@ -502,7 +546,7 @@ class TestNoWriteInvariant:
                 company_id=seeded_tenant["company_id"],
             )
         resolved_path = _resolve_path(path, seeded_tenant)
-        resolved_params = _resolve_params(params, seeded_tenant)
+        resolved_params = _resolve_params(params, seeded_tenant, db=db)
         with patch.object(db, "commit", wraps=db.commit) as mock_commit:
             resp = api_client.get(
                 resolved_path, params=resolved_params, headers=auth_headers

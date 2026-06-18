@@ -1443,11 +1443,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-47** | External sales verification read page | ✅ **Complete** |
 | **FASTAPI-REACT-48** | Recurring expenses read page | ✅ **Complete** |
 | **FASTAPI-REACT-49** | Staff expense capture read page | ✅ **Complete** |
-| **FASTAPI-REACT-50+** | React read page expansion or ops slices | 📋 Planned |
+| **FASTAPI-REACT-50** | Recipe costing read pages | ✅ **Complete** |
+| **FASTAPI-REACT-51+** | Ops slices or production rollout | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_49_REACT_READ_STAFF_CAPTURE_AUDIT.md](./docs/FASTAPI_REACT_49_REACT_READ_STAFF_CAPTURE_AUDIT.md) · **Tests:** `tests/test_fastapi_react_49_react_read_staff_capture.py` · **Tag:** `fastapi-react-49-react-read-staff-capture`
+**Audit:** [FASTAPI_REACT_50_REACT_READ_RECIPE_COSTING_AUDIT.md](./docs/FASTAPI_REACT_50_REACT_READ_RECIPE_COSTING_AUDIT.md) · **Tests:** `tests/test_fastapi_react_50_react_read_recipe_costing.py` · **Tag:** `fastapi-react-50-react-read-recipe-costing`
 
-**Next slice:** **FASTAPI-REACT-50** — production `COMMIT_MODE_*` flip or next NAV read placeholder; see FR-49 audit §7.
+**Next slice:** **FASTAPI-REACT-51** — production `COMMIT_MODE_*` flip or next epic ops slice; all NAV read placeholders are now wired.
 
 ---
 
@@ -3538,6 +3539,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-50 (closure)** — Recipe costing read pages: thin `GET /api/v1/recipe-ingredients`, `/api/v1/recipes`, `/api/v1/recipe-cost-breakdowns`, `/api/v1/menu-profitability` + four React pages under `/recipes/*` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-50-react-read-recipe-costing`. Next: **FASTAPI-REACT-51**. |
 | 2026-06-05 | **FASTAPI-REACT-49 (closure)** — Staff expense capture read page: thin `GET /api/v1/staff-expense-drafts` + `StaffCapturePage` at `/expenses/staff-capture` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-49-react-read-staff-capture`. Next: **FASTAPI-REACT-50**. |
 | 2026-06-05 | **FASTAPI-REACT-48 (closure)** — Recurring expenses read page: thin `GET /api/v1/recurring-expenses` + `RecurringExpensesPage` at `/expenses/recurring` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-48-react-read-recurring-expenses`. Next: **FASTAPI-REACT-49**. |
 | 2026-06-05 | **FASTAPI-REACT-47 (closure)** — External sales verification read page: thin `GET /api/v1/external-sales-verifications` + `ExternalSalesPage` at `/closings/external-sales` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-47-react-read-external-sales`. Next: **FASTAPI-REACT-48**. |

@@ -36,6 +36,10 @@ import { ProfitLossPage } from "../pages/ProfitLossPage";
 import { PurchasesPage } from "../pages/PurchasesPage";
 import { ReceivablesPage } from "../pages/ReceivablesPage";
 import { ReconHealthPage } from "../pages/ReconHealthPage";
+import { RecipeCostBreakdownPage } from "../pages/RecipeCostBreakdownPage";
+import { RecipeIngredientsPage } from "../pages/RecipeIngredientsPage";
+import { RecipeMenuItemsPage } from "../pages/RecipeMenuItemsPage";
+import { RecipesPage } from "../pages/RecipesPage";
 import { RecurringExpensesPage } from "../pages/RecurringExpensesPage";
 import { ReportsPage } from "../pages/ReportsPage";
 import { StaffCapturePage } from "../pages/StaffCapturePage";
@@ -74,6 +78,10 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/expenses": ExpensesPage,
   "/expenses/recurring": RecurringExpensesPage,
   "/expenses/staff-capture": StaffCapturePage,
+  "/recipes/ingredients": RecipeIngredientsPage,
+  "/recipes": RecipesPage,
+  "/recipes/cost-breakdown": RecipeCostBreakdownPage,
+  "/recipes/menu-items": RecipeMenuItemsPage,
   "/workers": WorkersPage,
   "/customers": CustomersPage,
   "/inventory": InventoryPage,

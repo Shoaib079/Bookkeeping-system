@@ -366,6 +366,89 @@ export type StaffExpenseDraftsPageResponse = {
   can_approve: boolean;
 };
 
+export type RecipeIngredientRow = {
+  id: number;
+  company_id: number;
+  name: string;
+  base_dimension: string;
+  base_unit: string;
+  cost_per_base_unit: number;
+  is_active: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+export type RecipeIngredientsListResponse = {
+  rows: RecipeIngredientRow[];
+  row_count: number;
+  company_id: number;
+};
+
+export type RecipeSummaryRow = {
+  id: number;
+  name: string;
+  yield_quantity: number;
+  yield_unit: string;
+  is_active: boolean;
+  line_count: number;
+};
+
+export type RecipesListResponse = {
+  rows: RecipeSummaryRow[];
+  row_count: number;
+  company_id: number;
+};
+
+export type RecipeLineCostRow = {
+  line_id: number | null;
+  ingredient_id: number | null;
+  sub_recipe_id: number | null;
+  name: string;
+  quantity: number;
+  unit: string;
+  waste_percent: number;
+  line_cost: number;
+  warnings: string[];
+};
+
+export type RecipeCostBreakdownResponse = {
+  recipe_id: number;
+  recipe_name: string;
+  total_cost: number;
+  cost_per_yield_unit: number;
+  yield_quantity: number;
+  yield_unit: string;
+  yield_dimension: string;
+  line_costs: RecipeLineCostRow[];
+  warnings: string[];
+};
+
+export type MenuProfitabilityRow = {
+  menu_item_id: number;
+  menu_item_name: string;
+  recipe_id: number;
+  recipe_name: string;
+  is_active: boolean;
+  recipe_cost: number | null;
+  selling_price_gross: number | null;
+  selling_price_net: number | null;
+  tax_rate_pct: number;
+  gross_profit: number | null;
+  food_cost_pct: number | null;
+  markup_pct: number | null;
+  target_food_cost_pct: number;
+  suggested_price_gross: number | null;
+  warnings: string[];
+};
+
+export type MenuProfitabilityListResponse = {
+  rows: MenuProfitabilityRow[];
+  row_count: number;
+  company_id: number;
+  target_food_cost_pct: number;
+};
+
 export type JournalEntryLineListRow = {
   id: number;
   account_id: number;

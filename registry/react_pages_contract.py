@@ -55,6 +55,10 @@ REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/closings/external-sales", "ExternalSalesPage", "external_sales"),
     ("/expenses/recurring", "RecurringExpensesPage", "recurring_expenses"),
     ("/expenses/staff-capture", "StaffCapturePage", "staff_capture"),
+    ("/recipes/ingredients", "RecipeIngredientsPage", "recipe_ingredients"),
+    ("/recipes", "RecipesPage", "recipes"),
+    ("/recipes/cost-breakdown", "RecipeCostBreakdownPage", "recipe_cost_breakdown"),
+    ("/recipes/menu-items", "RecipeMenuItemsPage", "recipe_menu_items"),
 )
 
 HOME_READ_API_PATHS: tuple[str, ...] = (
@@ -130,6 +134,23 @@ RECURRING_EXPENSES_READ_API_PATHS: tuple[str, ...] = (
 
 STAFF_CAPTURE_READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/staff-expense-drafts",
+)
+
+RECIPE_INGREDIENTS_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/recipe-ingredients",
+)
+
+RECIPES_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/recipes",
+)
+
+RECIPE_COST_BREAKDOWN_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/recipes",
+    "/api/v1/recipe-cost-breakdowns",
+)
+
+RECIPE_MENU_ITEMS_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/menu-profitability",
 )
 
 BALANCE_SHEET_READ_API_PATHS: tuple[str, ...] = (
@@ -589,6 +610,19 @@ FR49_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 
 FR49_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-50",
+    "production COMMIT_MODE_* flip",
+)
+
+# Frozen for FR-50 audit tests (do not mutate).
+FR50_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("/recipes/ingredients", "RecipeIngredientsPage", "recipe_ingredients"),
+    ("/recipes", "RecipesPage", "recipes"),
+    ("/recipes/cost-breakdown", "RecipeCostBreakdownPage", "recipe_cost_breakdown"),
+    ("/recipes/menu-items", "RecipeMenuItemsPage", "recipe_menu_items"),
+)
+
+FR50_DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-51",
     "production COMMIT_MODE_* flip",
 )
 
