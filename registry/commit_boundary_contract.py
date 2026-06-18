@@ -50,7 +50,7 @@ COMMIT_FAMILY_CHARACTERIZATION: tuple[CommitFamilySpec, ...] = (
     ),
     CommitFamilySpec(
         cm.POST_BANK_TRANSACTION_FAMILY,
-        "tests/test_fastapi_p0_commit_ownership_scaffold.py",
+        "tests/test_fastapi_p0_commit_ownership_banking.py",
     ),
     CommitFamilySpec(
         cm.POST_PARTNER_MOVEMENT_FAMILY,
@@ -62,7 +62,7 @@ COMMIT_FAMILY_CHARACTERIZATION: tuple[CommitFamilySpec, ...] = (
     ),
     CommitFamilySpec(
         cm.POST_EQUITY_MOVEMENT_FAMILY,
-        "tests/test_fastapi_p0_commit_ownership_scaffold.py",
+        "tests/test_fastapi_p0_commit_ownership_movements.py",
     ),
     CommitFamilySpec(
         cm.PROFIT_ALLOCATION_FAMILY,

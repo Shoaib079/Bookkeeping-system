@@ -344,7 +344,7 @@ FR19_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 )
 
 DEFERRED_ITEMS: tuple[str, ...] = (
-    "PRODUCTION-HARDENING-02",
+    "PRODUCTION-HARDENING-03",
     "production COMMIT_MODE_* flip",
 )
 

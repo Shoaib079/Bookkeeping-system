@@ -67,6 +67,15 @@ MOVEMENT_TABLES: tuple[type, ...] = (
     models.BankAccount,
 )
 
+BANKING_TABLES: tuple[type, ...] = (
+    models.JournalEntry,
+    models.JournalEntryLine,
+    models.AuditLog,
+    models.ChartOfAccounts,
+    models.BankTransaction,
+    models.BankAccount,
+)
+
 CLOSE_ALLOCATION_TABLES: tuple[type, ...] = (
     models.JournalEntry,
     models.JournalEntryLine,

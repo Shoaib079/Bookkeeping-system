@@ -54,7 +54,7 @@ EPIC_SLICES: tuple[tuple[str, str, str], ...] = (
     (
         "PRODUCTION-HARDENING-01-PH02",
         "bank_transaction + equity_movement commit characterization",
-        "planned",
+        "complete",
     ),
     (
         "PRODUCTION-HARDENING-01-PH03",
@@ -71,4 +71,30 @@ EPIC_SLICES: tuple[tuple[str, str, str], ...] = (
         "Launch-readiness verification gate + epic closure",
         "planned",
     ),
+)
+
+PH02_CONTRACT_DOC: Final[str] = (
+    "docs/PRODUCTION_HARDENING_01_PH02_COMMIT_CHARACTERIZATION_AUDIT.md"
+)
+PH02_SLICE_ID: Final[str] = "PRODUCTION-HARDENING-01-PH02"
+PH02_TAG: Final[str] = "production-hardening-01-ph02-commit-characterization"
+
+PH02_CHARACTERIZATION_TESTS: tuple[str, ...] = (
+    "tests/test_fastapi_p0_commit_ownership_banking.py",
+    "tests/test_fastapi_p0_commit_ownership_movements.py",
+)
+
+PH02_BOUNDARY_FAMILIES: tuple[str, ...] = (
+    "bank_transaction",
+    "post_equity_movement",
+)
+
+# Frozen for PH-02 audit tests (do not mutate).
+PH02_DEFERRED_ITEMS: tuple[str, ...] = (
+    "PRODUCTION-HARDENING-03",
+    "PRODUCTION-HARDENING-04",
+    "PRODUCTION-HARDENING-05",
+    "bank_transaction PG matrix",
+    "equity_movement PG matrix",
+    "production COMMIT_MODE_* flip",
 )
