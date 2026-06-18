@@ -51,6 +51,7 @@ REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/settings/backup-restore", "BackupRestorePage", "backup_restore"),
     ("/account", "MyAccountPage", "my_account"),
     ("/closings/eod", "EodClosePage", "eod_close"),
+    ("/closings/cash-recon", "CashReconPage", "cash_recon"),
 )
 
 HOME_READ_API_PATHS: tuple[str, ...] = (
@@ -110,6 +111,10 @@ MY_ACCOUNT_READ_API_PATHS: tuple[str, ...] = (
 
 EOD_CLOSES_READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/end-of-day-closes",
+)
+
+CASH_RECONCILIATIONS_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/cash-reconciliations",
 )
 
 BALANCE_SHEET_READ_API_PATHS: tuple[str, ...] = (
@@ -529,6 +534,16 @@ FR45_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 
 FR45_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-46",
+    "production COMMIT_MODE_* flip",
+)
+
+# Frozen for FR-46 audit tests (do not mutate).
+FR46_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("/closings/cash-recon", "CashReconPage", "cash_recon"),
+)
+
+FR46_DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-47",
     "production COMMIT_MODE_* flip",
 )
 

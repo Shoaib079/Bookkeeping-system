@@ -79,6 +79,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "End-of-day close history for the active company.",
     },
     {
+        "name": "cash-reconciliations",
+        "description": "Daily cash reconciliation history for the active company.",
+    },
+    {
         "name": "bank-accounts",
         "description": "Bank account directory for write-tab pickers and read-only views.",
     },

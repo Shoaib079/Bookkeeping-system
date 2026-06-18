@@ -238,6 +238,31 @@ export type EodClosesListResponse = {
   end_date: string | null;
 };
 
+export type CashReconciliationListRow = {
+  id: number;
+  date: string;
+  cash_account_name: string | null;
+  expected_cash: number;
+  actual_cash: number;
+  difference: number;
+  variance_type: string;
+  status: string;
+  submitted_by_name: string | null;
+  approved_by_name: string | null;
+  journal_entry_id: number | null;
+  is_void: boolean;
+  company_id: number;
+};
+
+export type CashReconciliationsListResponse = {
+  rows: CashReconciliationListRow[];
+  row_count: number;
+  company_id: number;
+  start_date: string | null;
+  end_date: string | null;
+  status: string | null;
+};
+
 export type JournalEntryLineListRow = {
   id: number;
   account_id: number;

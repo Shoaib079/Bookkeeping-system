@@ -32,6 +32,10 @@ from services.read_fiscal_periods import FiscalPeriodListRow, FiscalPeriodsListP
 from services.read_year_end_closes import YearEndCloseListRow, YearEndClosesListPage
 from services.read_my_account import MyAccountCompanyRow, MyAccountPage
 from services.read_eod_closes import EodCloseListRow, EodClosesListPage
+from services.read_cash_reconciliations import (
+    CashReconciliationListRow,
+    CashReconciliationsListPage,
+)
 from services.read_journal_entries import (
     JournalEntriesListPage,
     JournalEntryLineListRow,
@@ -694,6 +698,35 @@ def eod_closes_list_to_dict(page: EodClosesListPage) -> dict[str, Any]:
         "company_id": page.company_id,
         "start_date": page.start_date.isoformat() if page.start_date else None,
         "end_date": page.end_date.isoformat() if page.end_date else None,
+    }
+
+
+def _cash_reconciliation_list_row_to_dict(row: CashReconciliationListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "date": row.date.isoformat(),
+        "cash_account_name": row.cash_account_name,
+        "expected_cash": row.expected_cash,
+        "actual_cash": row.actual_cash,
+        "difference": row.difference,
+        "variance_type": row.variance_type,
+        "status": row.status,
+        "submitted_by_name": row.submitted_by_name,
+        "approved_by_name": row.approved_by_name,
+        "journal_entry_id": row.journal_entry_id,
+        "is_void": row.is_void,
+        "company_id": row.company_id,
+    }
+
+
+def cash_reconciliations_list_to_dict(page: CashReconciliationsListPage) -> dict[str, Any]:
+    return {
+        "rows": [_cash_reconciliation_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+        "company_id": page.company_id,
+        "start_date": page.start_date.isoformat() if page.start_date else None,
+        "end_date": page.end_date.isoformat() if page.end_date else None,
+        "status": page.status,
     }
 
 
