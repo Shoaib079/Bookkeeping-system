@@ -1505,7 +1505,16 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **OPERATOR-ROLLOUT-OR03** | `ERP_API_WRITE_SALES=1` + `VITE_ERP_REACT_WRITE_SALES=1` staging | ✅ **Complete** |
 | **OPERATOR-ROLLOUT-OR04** | `COMMIT_MODE_POST_CASH_SALE=boundary` staging | ✅ **Complete** |
 | **OPERATOR-ROLLOUT-OR05** | `COMMIT_MODE_POST_EXPENSE=boundary` staging | ✅ **Complete** |
-| **OPERATOR-ROLLOUT-OR06–OR11** | COMMIT_MODE tiers 3–8 per PH-04 | ⬜ Pending |
+| **OPERATOR-ROLLOUT-OR06** | `COMMIT_MODE_POST_PURCHASE` + `POST_PAYABLE_PAYMENT` boundary | ✅ **Complete** |
+| **OPERATOR-ROLLOUT-OR07** | `COMMIT_MODE_POST_RECEIVABLE_PAYMENT` + `BANK_TRANSACTION` boundary | ✅ **Complete** |
+| **OPERATOR-ROLLOUT-OR08** | Partner/worker/equity movement boundary | ✅ **Complete** |
+| **OPERATOR-ROLLOUT-OR09** | Closing families boundary (tier 6) | ✅ **Complete** |
+| **OPERATOR-ROLLOUT-OR10** | `COMMIT_MODE_RECONCILIATION=boundary` staging | ✅ **Complete** |
+| **OPERATOR-ROLLOUT-OR11** | `COMMIT_MODE_VOID_CASCADE=boundary` staging (final tier) | ✅ **Complete** |
+
+**Audit (OR-11):** [OPERATOR_ROLLOUT_OR11_COMMIT_MODE_VOID_STAGING.md](./docs/OPERATOR_ROLLOUT_OR11_COMMIT_MODE_VOID_STAGING.md) · **Tag:** `operator-rollout-or11-commit-mode-void-staging`
+
+**Operator rollout status:** All staging slices **OR-01–OR11 complete**. Production cutover requires operator sign-off.
 
 **Audit (OR-01):** [OPERATOR_ROLLOUT_OR01_REACT_READ_STAGING.md](./docs/OPERATOR_ROLLOUT_OR01_REACT_READ_STAGING.md) · **Tests:** `tests/test_operator_rollout_or01_react_read_staging.py` · **Tag:** `operator-rollout-or01-react-read-staging`
 
@@ -1517,7 +1526,7 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 
 **Audit (OR-05):** [OPERATOR_ROLLOUT_OR05_COMMIT_MODE_EXPENSE_STAGING.md](./docs/OPERATOR_ROLLOUT_OR05_COMMIT_MODE_EXPENSE_STAGING.md) · **Tests:** `tests/test_operator_rollout_or05_commit_mode_expense_staging.py` · **Tag:** `operator-rollout-or05-commit-mode-expense-staging`
 
-**Next stage:** **OPERATOR-ROLLOUT-OR06** — `COMMIT_MODE_POST_PURCHASE` + `POST_PAYABLE_PAYMENT` boundary.
+**Next stage:** None — operator rollout staging sequence **complete** (OR-01–OR11). Production flags require sign-off.
 
 ---
 
@@ -3608,6 +3617,8 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **OPERATOR-ROLLOUT-OR11 (closure)** — Final tier `COMMIT_MODE_VOID_CASCADE=boundary`; all 14 families in staging template. Tag: `operator-rollout-or11-commit-mode-void-staging`. **Operator rollout staging complete.** |
+| 2026-06-05 | **OPERATOR-ROLLOUT-OR06–OR10 (closure)** — COMMIT_MODE tiers 3–7 staging (purchase through reconciliation). Tags: `operator-rollout-or06-commit-mode-purchase-staging` … `operator-rollout-or10-commit-mode-reconciliation-staging`. |
 | 2026-06-05 | **OPERATOR-ROLLOUT-OR05 (closure)** — Staging `COMMIT_MODE_POST_EXPENSE=boundary` (tier 2); cumulative with OR-04 in `api.env.example`; OR-05 gate + frozen OR-04 still-commented snapshot. Tag: `operator-rollout-or05-commit-mode-expense-staging`. Next: **OR-06**. |
 | 2026-06-05 | **OPERATOR-ROLLOUT-OR04 (closure)** — Staging `COMMIT_MODE_POST_CASH_SALE=boundary` in `config/staging/api.env.example`; OR-04 gate + P0 cash sale characterization. Tag: `operator-rollout-or04-commit-mode-cash-sale-staging`. Next: **OR-05**. |
 | 2026-06-05 | **OPERATOR-ROLLOUT-OR03 (closure)** — Staging API write sales: `ERP_API_WRITE_SALES=1` + `VITE_ERP_REACT_WRITE_SALES=1` in `config/staging/*`; OR-03 gate tests. No COMMIT_MODE flip. Tag: `operator-rollout-or03-api-write-sales-staging`. Next: **OR-04**. |

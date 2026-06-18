@@ -75,12 +75,12 @@ def test_staging_api_enables_cumulative_commit_modes(api_env_text, flag_line):
     assert flag_line in api_env_text
 
 
-def test_staging_api_keeps_later_commit_modes_off(api_env_text):
-    for prefix in rollout.OR05_STILL_COMMENTED_COMMIT_MODES:
-        for line in api_env_text.splitlines():
-            stripped = line.strip()
-            if stripped.startswith(f"{prefix}="):
-                assert stripped.startswith("#"), stripped
+def test_or05_expense_still_enabled_after_later_slices(api_env_text):
+    assert "COMMIT_MODE_POST_EXPENSE=boundary" in api_env_text
+
+
+def test_or05_frozen_still_commented_snapshot_in_contract():
+    assert "COMMIT_MODE_POST_PURCHASE" in rollout.OR05_STILL_COMMENTED_COMMIT_MODES
 
 
 def test_or03_write_flags_preserved_in_staging_api(api_env_text):

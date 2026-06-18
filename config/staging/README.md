@@ -62,3 +62,11 @@ See `docs/OPERATOR_ROLLOUT_OR04_COMMIT_MODE_CASH_SALE_STAGING.md`.
 Adds `COMMIT_MODE_POST_EXPENSE=boundary` (tier 2; cumulative with OR-04).
 
 See `docs/OPERATOR_ROLLOUT_OR05_COMMIT_MODE_EXPENSE_STAGING.md`.
+
+## OR-06–OR11 — COMMIT_MODE tiers 3–8 (staging)
+
+Full cumulative `COMMIT_MODE_*=boundary` template (14 families) in `config/staging/api.env.example`.
+
+Final slice: [OPERATOR_ROLLOUT_OR11_COMMIT_MODE_VOID_STAGING.md](./docs/OPERATOR_ROLLOUT_OR11_COMMIT_MODE_VOID_STAGING.md)
+
+**Production:** requires operator sign-off — do not copy staging env to production.

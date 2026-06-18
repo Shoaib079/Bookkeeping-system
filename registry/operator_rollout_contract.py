@@ -259,3 +259,140 @@ OR05_STILL_COMMENTED_COMMIT_MODES: tuple[str, ...] = (
     "COMMIT_MODE_RECONCILIATION",
     "COMMIT_MODE_VOID_CASCADE",
 )
+
+# Frozen for OR-06 audit tests (do not mutate).
+OR06_DEFERRED_ITEMS: tuple[str, ...] = (
+    "OPERATOR-ROLLOUT-OR07",
+    "production operator sign-off",
+    "production COMMIT_MODE_* flip",
+)
+
+OR06_CUMULATIVE_COMMIT_MODES_ENABLED: tuple[str, ...] = (
+    "COMMIT_MODE_POST_CASH_SALE=boundary",
+    "COMMIT_MODE_POST_EXPENSE=boundary",
+    "COMMIT_MODE_POST_PURCHASE=boundary",
+    "COMMIT_MODE_POST_PAYABLE_PAYMENT=boundary",
+)
+
+OR06_P0_GATE_TEST: Final[str] = (
+    "tests/test_fastapi_p0_commit_ownership_purchase_payable.py"
+)
+
+OR06_STILL_COMMENTED_COMMIT_MODES: tuple[str, ...] = (
+    "COMMIT_MODE_POST_RECEIVABLE_PAYMENT",
+    "COMMIT_MODE_BANK_TRANSACTION",
+    "COMMIT_MODE_POST_PARTNER_MOVEMENT",
+    "COMMIT_MODE_POST_WORKER_MOVEMENT",
+    "COMMIT_MODE_POST_EQUITY_MOVEMENT",
+    "COMMIT_MODE_PROFIT_ALLOCATION",
+    "COMMIT_MODE_PERIOD_CLOSE",
+    "COMMIT_MODE_YEAR_END_CLOSE",
+    "COMMIT_MODE_RECONCILIATION",
+    "COMMIT_MODE_VOID_CASCADE",
+)
+
+OR07_DEFERRED_ITEMS: tuple[str, ...] = (
+    "OPERATOR-ROLLOUT-OR08",
+    "production operator sign-off",
+    "production COMMIT_MODE_* flip",
+)
+
+OR07_CUMULATIVE_COMMIT_MODES_ENABLED: tuple[str, ...] = (
+    *OR06_CUMULATIVE_COMMIT_MODES_ENABLED,
+    "COMMIT_MODE_POST_RECEIVABLE_PAYMENT=boundary",
+    "COMMIT_MODE_BANK_TRANSACTION=boundary",
+)
+
+OR07_P0_GATE_TESTS: tuple[str, ...] = (
+    "tests/test_fastapi_p0_commit_ownership_receivable_payment.py",
+    "tests/test_fastapi_p0_commit_ownership_banking.py",
+)
+
+OR07_STILL_COMMENTED_COMMIT_MODES: tuple[str, ...] = (
+    "COMMIT_MODE_POST_PARTNER_MOVEMENT",
+    "COMMIT_MODE_POST_WORKER_MOVEMENT",
+    "COMMIT_MODE_POST_EQUITY_MOVEMENT",
+    "COMMIT_MODE_PROFIT_ALLOCATION",
+    "COMMIT_MODE_PERIOD_CLOSE",
+    "COMMIT_MODE_YEAR_END_CLOSE",
+    "COMMIT_MODE_RECONCILIATION",
+    "COMMIT_MODE_VOID_CASCADE",
+)
+
+OR08_DEFERRED_ITEMS: tuple[str, ...] = (
+    "OPERATOR-ROLLOUT-OR09",
+    "production operator sign-off",
+    "production COMMIT_MODE_* flip",
+)
+
+OR08_CUMULATIVE_COMMIT_MODES_ENABLED: tuple[str, ...] = (
+    *OR07_CUMULATIVE_COMMIT_MODES_ENABLED,
+    "COMMIT_MODE_POST_PARTNER_MOVEMENT=boundary",
+    "COMMIT_MODE_POST_WORKER_MOVEMENT=boundary",
+    "COMMIT_MODE_POST_EQUITY_MOVEMENT=boundary",
+)
+
+OR08_P0_GATE_TEST: Final[str] = (
+    "tests/test_fastapi_p0_commit_ownership_movements.py"
+)
+
+OR08_STILL_COMMENTED_COMMIT_MODES: tuple[str, ...] = (
+    "COMMIT_MODE_PROFIT_ALLOCATION",
+    "COMMIT_MODE_PERIOD_CLOSE",
+    "COMMIT_MODE_YEAR_END_CLOSE",
+    "COMMIT_MODE_RECONCILIATION",
+    "COMMIT_MODE_VOID_CASCADE",
+)
+
+OR09_DEFERRED_ITEMS: tuple[str, ...] = (
+    "OPERATOR-ROLLOUT-OR10",
+    "production operator sign-off",
+    "production COMMIT_MODE_* flip",
+)
+
+OR09_CUMULATIVE_COMMIT_MODES_ENABLED: tuple[str, ...] = (
+    *OR08_CUMULATIVE_COMMIT_MODES_ENABLED,
+    "COMMIT_MODE_PROFIT_ALLOCATION=boundary",
+    "COMMIT_MODE_PERIOD_CLOSE=boundary",
+    "COMMIT_MODE_YEAR_END_CLOSE=boundary",
+)
+
+OR09_P0_GATE_TEST: Final[str] = (
+    "tests/test_fastapi_p0_commit_ownership_close_allocation.py"
+)
+
+OR09_STILL_COMMENTED_COMMIT_MODES: tuple[str, ...] = (
+    "COMMIT_MODE_RECONCILIATION",
+    "COMMIT_MODE_VOID_CASCADE",
+)
+
+OR10_DEFERRED_ITEMS: tuple[str, ...] = (
+    "OPERATOR-ROLLOUT-OR11",
+    "production operator sign-off",
+    "production COMMIT_MODE_* flip",
+)
+
+OR10_CUMULATIVE_COMMIT_MODES_ENABLED: tuple[str, ...] = (
+    *OR09_CUMULATIVE_COMMIT_MODES_ENABLED,
+    "COMMIT_MODE_RECONCILIATION=boundary",
+)
+
+OR10_P0_GATE_TEST: Final[str] = (
+    "tests/test_fastapi_p0_commit_ownership_reconciliation.py"
+)
+
+OR10_STILL_COMMENTED_COMMIT_MODES: tuple[str, ...] = ("COMMIT_MODE_VOID_CASCADE",)
+
+OR11_DEFERRED_ITEMS: tuple[str, ...] = (
+    "production operator sign-off",
+    "production COMMIT_MODE_* flip",
+)
+
+OR11_CUMULATIVE_COMMIT_MODES_ENABLED: tuple[str, ...] = (
+    *OR10_CUMULATIVE_COMMIT_MODES_ENABLED,
+    "COMMIT_MODE_VOID_CASCADE=boundary",
+)
+
+OR11_P0_GATE_TEST: Final[str] = "tests/test_fastapi_p0_commit_ownership_voids.py"
+
+OR11_STILL_COMMENTED_COMMIT_MODES: tuple[str, ...] = ()
