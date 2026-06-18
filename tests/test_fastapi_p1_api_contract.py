@@ -64,6 +64,7 @@ EXPECTED_PATHS = {
     "/api/v1/opening-balances",
     "/api/v1/audit-log",
     "/api/v1/members",
+    "/api/v1/products",
 }
 
 EXPECTED_TAGS = {
@@ -93,6 +94,7 @@ EXPECTED_TAGS = {
     "opening-balances",
     "audit-log",
     "members",
+    "products",
     "writes",
 }
 
@@ -138,6 +140,7 @@ GET_ROUTES = [
     ("/api/v1/opening-balances", {}),
     ("/api/v1/audit-log", {}),
     ("/api/v1/members", {}),
+    ("/api/v1/products", {}),
 ]
 
 

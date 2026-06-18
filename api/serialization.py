@@ -22,6 +22,7 @@ from services.read_reports import (
 )
 from services.read_coa import CoaListPage, CoaRow
 from services.read_customers import CustomerListRow, CustomersListPage
+from services.read_products import ProductListRow, ProductsListPage
 from services.read_bank_accounts import BankAccountListRow, BankAccountsListPage
 from services.read_bank_statement_rows import (
     BankStatementRowListItem,
@@ -549,6 +550,37 @@ def customers_list_to_dict(page: CustomersListPage) -> dict[str, Any]:
     return {
         "rows": [_customer_list_row_to_dict(r) for r in page.rows],
         "row_count": page.row_count,
+    }
+
+
+def _product_list_row_to_dict(row: ProductListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "sku": row.sku,
+        "name": row.name,
+        "category": row.category,
+        "subcategory": row.subcategory,
+        "unit_of_measure": row.unit_of_measure,
+        "quantity": row.quantity,
+        "min_stock": row.min_stock,
+        "stock_status": row.stock_status,
+        "cost_price": row.cost_price,
+        "unit_price": row.unit_price,
+        "is_active": row.is_active,
+        "company_id": row.company_id,
+    }
+
+
+def products_list_to_dict(page: ProductsListPage) -> dict[str, Any]:
+    return {
+        "rows": [_product_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+        "stats": {
+            "total": page.stats.total,
+            "low_stock": page.stats.low_stock,
+            "out_of_stock": page.stats.out_of_stock,
+        },
+        "company_id": page.company_id,
     }
 
 

@@ -1431,11 +1431,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-35** | Opening balances read page | ✅ **Complete** |
 | **FASTAPI-REACT-36** | Audit log read page | ✅ **Complete** |
 | **FASTAPI-REACT-37** | Company members read page | ✅ **Complete** |
-| **FASTAPI-REACT-38+** | React read page expansion or ops slices | 📋 Planned |
+| **FASTAPI-REACT-38** | Inventory read page | ✅ **Complete** |
+| **FASTAPI-REACT-39+** | React read page expansion or ops slices | 📋 Planned |
 
 **Audit:** [FASTAPI_REACT_35_REACT_READ_OPENING_BALANCES_AUDIT.md](./docs/FASTAPI_REACT_35_REACT_READ_OPENING_BALANCES_AUDIT.md) · **Tests:** `tests/test_fastapi_react_35_react_read_opening_balances.py` · **Tag:** `fastapi-react-35-react-read-opening-balances`
 
-**Next slice:** **FASTAPI-REACT-38** — production `COMMIT_MODE_*` flip or next NAV read placeholder; see FR-37 audit §7.
+**Next slice:** **FASTAPI-REACT-39** — production `COMMIT_MODE_*` flip or next NAV read placeholder; see FR-38 audit §7.
 
 ---
 
@@ -3526,6 +3527,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-38 (closure)** — Inventory read page: thin `GET /api/v1/products` + `InventoryPage` at `/inventory` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-38-react-read-inventory`. Next: **FASTAPI-REACT-39**. |
 | 2026-06-05 | **FASTAPI-REACT-37 (closure)** — Company members read page: thin `GET /api/v1/members` + `MembersPage` at `/settings/members` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-37-react-read-members`. Next: **FASTAPI-REACT-38**. |
 | 2026-06-05 | **FASTAPI-REACT-36 (closure)** — Audit log read page: thin `GET /api/v1/audit-log` + `AuditLogPage` at `/settings/audit-log` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-36-react-read-audit-log`. Next: **FASTAPI-REACT-37**. |
 | 2026-06-05 | **FASTAPI-REACT-35 (closure)** — Opening balances read page: thin `GET /api/v1/opening-balances` + `OpeningBalancesPage` at `/books/opening-balances` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-35-react-read-opening-balances`. Next: **FASTAPI-REACT-36**. |

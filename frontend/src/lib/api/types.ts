@@ -221,6 +221,33 @@ export type CustomersListResponse = {
   row_count: number;
 };
 
+export type ProductListRow = {
+  id: number;
+  sku: string | null;
+  name: string;
+  category: string | null;
+  subcategory: string | null;
+  unit_of_measure: string | null;
+  quantity: number;
+  min_stock: number;
+  stock_status: string;
+  cost_price: number;
+  unit_price: number;
+  is_active: boolean;
+  company_id: number;
+};
+
+export type ProductsListResponse = {
+  rows: ProductListRow[];
+  row_count: number;
+  stats: {
+    total: number;
+    low_stock: number;
+    out_of_stock: number;
+  };
+  company_id: number;
+};
+
 export type SalesListRow = {
   id: number;
   date: string;
