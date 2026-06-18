@@ -56,6 +56,12 @@ from services.read_recon_health import (
 )
 from services.read_trial_balance import TrialBalanceRow, TrialBalanceStatement
 from services.read_budget import BudgetVsActualPage, BudgetVsActualRow
+from services.read_permissions import (
+    EffectivePermissionsPage,
+    PermissionMemberRow,
+    PermissionMembersPage,
+    PermissionProvenanceRow,
+)
 from services.read_transaction_history import TransactionHistoryPage, TransactionHistoryRow
 
 
@@ -144,6 +150,47 @@ def budget_vs_actual_to_dict(page: BudgetVsActualPage) -> dict[str, Any]:
         "total_budgeted": page.total_budgeted,
         "total_actual": page.total_actual,
         "total_variance": page.total_variance,
+        "company_id": page.company_id,
+    }
+
+
+def _permission_member_row_to_dict(row: PermissionMemberRow) -> dict[str, Any]:
+    return {
+        "user_id": row.user_id,
+        "username": row.username,
+        "display_name": row.display_name,
+        "role": row.role,
+        "company_id": row.company_id,
+    }
+
+
+def permission_members_page_to_dict(page: PermissionMembersPage) -> dict[str, Any]:
+    return {
+        "rows": [_permission_member_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+        "company_id": page.company_id,
+    }
+
+
+def _permission_provenance_row_to_dict(row: PermissionProvenanceRow) -> dict[str, Any]:
+    return {
+        "permission_key": row.permission_key,
+        "in_template": row.in_template,
+        "is_grant": row.is_grant,
+        "is_deny": row.is_deny,
+        "is_effective": row.is_effective,
+    }
+
+
+def effective_permissions_page_to_dict(page: EffectivePermissionsPage) -> dict[str, Any]:
+    return {
+        "user_id": page.user_id,
+        "role": page.role,
+        "template_count": page.template_count,
+        "grant_count": page.grant_count,
+        "deny_count": page.deny_count,
+        "effective_count": page.effective_count,
+        "rows": [_permission_provenance_row_to_dict(r) for r in page.rows],
         "company_id": page.company_id,
     }
 

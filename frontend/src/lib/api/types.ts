@@ -542,6 +542,39 @@ export type CompanyMembersResponse = {
   company_id: number;
 };
 
+export type PermissionMemberRow = {
+  user_id: number;
+  username: string;
+  display_name: string;
+  role: string;
+  company_id: number;
+};
+
+export type PermissionMembersResponse = {
+  rows: PermissionMemberRow[];
+  row_count: number;
+  company_id: number;
+};
+
+export type PermissionProvenanceRow = {
+  permission_key: string;
+  in_template: boolean;
+  is_grant: boolean;
+  is_deny: boolean;
+  is_effective: boolean;
+};
+
+export type EffectivePermissionsResponse = {
+  user_id: number;
+  role: string | null;
+  template_count: number;
+  grant_count: number;
+  deny_count: number;
+  effective_count: number;
+  rows: PermissionProvenanceRow[];
+  company_id: number;
+};
+
 export type ReceivableRow = {
   id: number;
   invoice_number: string;
