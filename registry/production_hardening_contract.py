@@ -59,7 +59,7 @@ EPIC_SLICES: tuple[tuple[str, str, str], ...] = (
     (
         "PRODUCTION-HARDENING-01-PH03",
         "PostgreSQL matrix execution audit + launch checklist",
-        "planned",
+        "complete",
     ),
     (
         "PRODUCTION-HARDENING-01-PH04",
@@ -97,4 +97,20 @@ PH02_DEFERRED_ITEMS: tuple[str, ...] = (
     "bank_transaction PG matrix",
     "equity_movement PG matrix",
     "production COMMIT_MODE_* flip",
+)
+
+PH03_CONTRACT_DOC: Final[str] = (
+    "docs/PRODUCTION_HARDENING_01_PH03_PG_MATRIX_EXECUTION_AUDIT.md"
+)
+PH03_SLICE_ID: Final[str] = "PRODUCTION-HARDENING-01-PH03"
+PH03_TAG: Final[str] = "production-hardening-01-ph03-pg-matrix-execution"
+PH03_MATRIX_CONTRACT: Final[str] = "registry/pg_matrix_execution_contract.py"
+
+# Frozen for PH-03 audit tests (do not mutate).
+PH03_DEFERRED_ITEMS: tuple[str, ...] = (
+    "PRODUCTION-HARDENING-04",
+    "PRODUCTION-HARDENING-05",
+    "production COMMIT_MODE_* flip",
+    "TD-PS-03",
+    "CI optional_postgres job",
 )
