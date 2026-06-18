@@ -71,6 +71,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Local backup inventory snapshot (owner read).",
     },
     {
+        "name": "my-account",
+        "description": "Self profile snapshot for the active company context.",
+    },
+    {
         "name": "bank-accounts",
         "description": "Bank account directory for write-tab pickers and read-only views.",
     },

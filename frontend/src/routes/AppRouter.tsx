@@ -13,6 +13,7 @@ import { BackupRestorePage } from "../pages/BackupRestorePage";
 import { CompanySettingsPage } from "../pages/CompanySettingsPage";
 import { PermissionsPage } from "../pages/PermissionsPage";
 import { MembersPage } from "../pages/MembersPage";
+import { MyAccountPage } from "../pages/MyAccountPage";
 import { routeSpecs, type RouteSpec } from "../lib/routes";
 import { HomePage } from "../pages/HomePage";
 import { BalanceSheetPage } from "../pages/BalanceSheetPage";
@@ -75,6 +76,7 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/settings/backup-restore": BackupRestorePage,
   "/settings/members": MembersPage,
   "/settings/permissions": PermissionsPage,
+  "/account": MyAccountPage,
 };
 
 const WRITE_PAGES: Record<string, ComponentType> = {

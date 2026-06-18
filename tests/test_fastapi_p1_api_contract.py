@@ -71,6 +71,7 @@ EXPECTED_PATHS = {
     "/api/v1/permissions/effective",
     "/api/v1/company-settings",
     "/api/v1/backup-status",
+    "/api/v1/my-account",
 }
 
 EXPECTED_TAGS = {
@@ -105,6 +106,7 @@ EXPECTED_TAGS = {
     "permissions",
     "company-settings",
     "backup-status",
+    "my-account",
     "writes",
 }
 
@@ -157,6 +159,7 @@ GET_ROUTES = [
     ("/api/v1/permissions/effective", {"user_id": 1}),
     ("/api/v1/company-settings", {}),
     ("/api/v1/backup-status", {}),
+    ("/api/v1/my-account", {}),
 ]
 
 

@@ -30,6 +30,7 @@ from api.serialization import (
     company_members_page_to_dict,
     company_settings_page_to_dict,
     backup_status_page_to_dict,
+    my_account_page_to_dict,
     effective_permissions_page_to_dict,
     partner_statement_to_dict,
     partners_list_to_dict,
@@ -52,7 +53,7 @@ from api.serialization import (
 )
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
-from services import read_ar_ap, read_audit_log, read_backup_status, read_bank_accounts, read_bank_statement_rows, read_budget, read_coa, read_company_members, read_company_settings, read_customers, read_expenses, read_fiscal_periods, read_journal_entries, read_ledger, read_opening_balances, read_partner_statement, read_partners, read_permissions, read_products, read_profit_allocations, read_purchases, read_receivable_sales, read_recon_health, read_reconciliation, read_reports, read_sales, read_transaction_history, read_trial_balance, read_vendors, read_workers, read_year_end_closes
+from services import read_ar_ap, read_audit_log, read_backup_status, read_bank_accounts, read_bank_statement_rows, read_budget, read_coa, read_company_members, read_company_settings, read_customers, read_expenses, read_fiscal_periods, read_journal_entries, read_ledger, read_my_account, read_opening_balances, read_partner_statement, read_partners, read_permissions, read_products, read_profit_allocations, read_purchases, read_receivable_sales, read_recon_health, read_reconciliation, read_reports, read_sales, read_transaction_history, read_trial_balance, read_vendors, read_workers, read_year_end_closes
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
@@ -570,6 +571,18 @@ READ_ENDPOINTS = [
         lambda db, tenant: {"company_id": tenant["company_a_id"]},
     ),
     (
+        "my_account",
+        "/api/v1/my-account",
+        {},
+        read_my_account.compute_my_account_page,
+        my_account_page_to_dict,
+        lambda db, tenant: {
+            "user_id": tenant["owner_id"],
+            "company_id": tenant["company_a_id"],
+            "company_role": "owner",
+        },
+    ),
+    (
         "cash_flow",
         "/api/v1/reports/cash-flow",
         {"start_date": "from_date_iso", "end_date": "to_date_iso"},
@@ -835,6 +848,7 @@ class TestReadEndpointGuards:
             ("/api/v1/permissions/effective", {"user_id": 1}),
             ("/api/v1/company-settings", {}),
             ("/api/v1/backup-status", {}),
+            ("/api/v1/my-account", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
             ("/api/v1/reports/budget-vs-actual", _BUDGET_PARAMS),
@@ -884,6 +898,7 @@ class TestReadEndpointGuards:
             ("/api/v1/permissions/effective", {"user_id": 1}),
             ("/api/v1/company-settings", {}),
             ("/api/v1/backup-status", {}),
+            ("/api/v1/my-account", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
             ("/api/v1/reports/budget-vs-actual", _BUDGET_PARAMS),
@@ -958,6 +973,21 @@ class TestReadEndpointGuards:
         assert resp.status_code == 403
 
 
+class TestMyAccountAllRolesAccess:
+    def test_cashier_can_read_my_account(self, api_client, seeded_tenant):
+        resp = api_client.get(
+            "/api/v1/my-account",
+            headers=api_headers(
+                seeded_tenant["cashier"],
+                company_id=seeded_tenant["company_a_id"],
+            ),
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["username"] == seeded_tenant["cashier"].username
+        assert body["company_role"] == "cashier"
+
+
 class TestReadEndpointNoCommit:
     @pytest.mark.parametrize(
         "path,params",
@@ -991,6 +1021,7 @@ class TestReadEndpointNoCommit:
             ("/api/v1/permissions/effective", {"user_id": 1}),
             ("/api/v1/company-settings", {}),
             ("/api/v1/backup-status", {}),
+            ("/api/v1/my-account", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
             ("/api/v1/reports/budget-vs-actual", _BUDGET_PARAMS),

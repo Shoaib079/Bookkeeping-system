@@ -1437,11 +1437,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-41** | Company settings read page | ✅ **Complete** |
 | **FASTAPI-REACT-42** | Backup & restore read page | ✅ **Complete** |
 | **FASTAPI-REACT-43** | Year-end close read page | ✅ **Complete** |
-| **FASTAPI-REACT-44+** | React read page expansion or ops slices | 📋 Planned |
+| **FASTAPI-REACT-44** | My Account read page | ✅ **Complete** |
+| **FASTAPI-REACT-45+** | React read page expansion or ops slices | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_43_REACT_READ_YEAR_END_CLOSE_AUDIT.md](./docs/FASTAPI_REACT_43_REACT_READ_YEAR_END_CLOSE_AUDIT.md) · **Tests:** `tests/test_fastapi_react_43_react_read_year_end_close.py` · **Tag:** `fastapi-react-43-react-read-year-end-close`
+**Audit:** [FASTAPI_REACT_44_REACT_READ_MY_ACCOUNT_AUDIT.md](./docs/FASTAPI_REACT_44_REACT_READ_MY_ACCOUNT_AUDIT.md) · **Tests:** `tests/test_fastapi_react_44_react_read_my_account.py` · **Tag:** `fastapi-react-44-react-read-my-account`
 
-**Next slice:** **FASTAPI-REACT-44** — production `COMMIT_MODE_*` flip or next NAV read placeholder; see FR-43 audit §7.
+**Next slice:** **FASTAPI-REACT-45** — production `COMMIT_MODE_*` flip or next NAV read placeholder; see FR-44 audit §7.
 
 ---
 
@@ -3532,6 +3533,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-44 (closure)** — My Account read page: thin `GET /api/v1/my-account` + `MyAccountPage` at `/account` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-44-react-read-my-account`. Next: **FASTAPI-REACT-45**. |
 | 2026-06-05 | **FASTAPI-REACT-43 (closure)** — Year-end close read page: thin `GET /api/v1/year-end-closes` + `YearEndClosePage` at `/books/year-end-close` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-43-react-read-year-end-close`. Next: **FASTAPI-REACT-44**. |
 | 2026-06-05 | **FASTAPI-REACT-42 (closure)** — Backup & restore read page: thin `GET /api/v1/backup-status` + `BackupRestorePage` at `/settings/backup-restore` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-42-react-read-backup-restore`. Next: **FASTAPI-REACT-43**. |
 | 2026-06-05 | **FASTAPI-REACT-41 (closure)** — Company settings read page: thin `GET /api/v1/company-settings` + `CompanySettingsPage` at `/settings/company` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-41-react-read-company-settings`. Next: **FASTAPI-REACT-42**. |

@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from api.openapi_tags import OPENAPI_TAGS
-from api.routes import audit_log, auth, backup_status, bank_accounts, bank_statement_rows, bank_transactions, banking, chart_of_accounts, closing, company_settings, customers, expenses, expenses_read, fiscal_periods, journal_entries, ledger, members, opening_balances, partner_movements, partners, payables, permissions, products, profit_allocations, purchases, purchases_read, receivable_payments, receivable_sales, receivables, recon_health, reconciliation, reports, sales, sales_read, transactions, vendors, voids, worker_payments, workers, year_end_closes
+from api.routes import audit_log, auth, backup_status, bank_accounts, bank_statement_rows, bank_transactions, banking, chart_of_accounts, closing, company_settings, customers, expenses, expenses_read, fiscal_periods, journal_entries, ledger, members, my_account, opening_balances, partner_movements, partners, payables, permissions, products, profit_allocations, purchases, purchases_read, receivable_payments, receivable_sales, receivables, recon_health, reconciliation, reports, sales, sales_read, transactions, vendors, voids, worker_payments, workers, year_end_closes
 from services.permissions import PermissionDenied
 
 _API_DESCRIPTION = """\
@@ -67,6 +67,7 @@ def create_app() -> FastAPI:
     app.include_router(permissions.router, prefix="/api/v1/permissions")
     app.include_router(company_settings.router, prefix="/api/v1/company-settings")
     app.include_router(backup_status.router, prefix="/api/v1/backup-status")
+    app.include_router(my_account.router, prefix="/api/v1/my-account")
     app.include_router(vendors.router, prefix="/api/v1/vendors")
     app.include_router(customers.router, prefix="/api/v1/customers")
     app.include_router(products.router, prefix="/api/v1/products")

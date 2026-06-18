@@ -30,6 +30,7 @@ from services.read_bank_statement_rows import (
 )
 from services.read_fiscal_periods import FiscalPeriodListRow, FiscalPeriodsListPage
 from services.read_year_end_closes import YearEndCloseListRow, YearEndClosesListPage
+from services.read_my_account import MyAccountCompanyRow, MyAccountPage
 from services.read_journal_entries import (
     JournalEntriesListPage,
     JournalEntryLineListRow,
@@ -634,6 +635,35 @@ def year_end_closes_list_to_dict(page: YearEndClosesListPage) -> dict[str, Any]:
         "rows": [_year_end_close_list_row_to_dict(r) for r in page.rows],
         "row_count": page.row_count,
         "company_id": page.company_id,
+    }
+
+
+def _my_account_company_row_to_dict(row: MyAccountCompanyRow) -> dict[str, Any]:
+    return {
+        "company_id": row.company_id,
+        "company_name": row.company_name,
+        "role": row.role,
+        "is_default": row.is_default,
+    }
+
+
+def my_account_page_to_dict(page: MyAccountPage) -> dict[str, Any]:
+    return {
+        "user_id": page.user_id,
+        "username": page.username,
+        "display_name": page.display_name,
+        "email": page.email,
+        "phone": page.phone,
+        "company_role": page.company_role,
+        "active_company_id": page.active_company_id,
+        "active_company_name": page.active_company_name,
+        "member_since": page.member_since.isoformat(sep=" ", timespec="minutes")
+        if page.member_since
+        else None,
+        "last_login": page.last_login.isoformat(sep=" ", timespec="minutes")
+        if page.last_login
+        else None,
+        "companies": [_my_account_company_row_to_dict(r) for r in page.companies],
     }
 
 

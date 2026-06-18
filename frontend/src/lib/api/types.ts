@@ -192,6 +192,27 @@ export type YearEndClosesListResponse = {
   company_id: number;
 };
 
+export type MyAccountCompanyRow = {
+  company_id: number;
+  company_name: string;
+  role: string;
+  is_default: boolean;
+};
+
+export type MyAccountResponse = {
+  user_id: number;
+  username: string;
+  display_name: string | null;
+  email: string | null;
+  phone: string | null;
+  company_role: string | null;
+  active_company_id: number | null;
+  active_company_name: string | null;
+  member_since: string | null;
+  last_login: string | null;
+  companies: MyAccountCompanyRow[];
+};
+
 export type JournalEntryLineListRow = {
   id: number;
   account_id: number;
