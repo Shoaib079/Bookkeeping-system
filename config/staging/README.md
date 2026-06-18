@@ -25,3 +25,14 @@ Requires FastAPI read API running with valid JWT + `X-Company-Id`. Streamlit rem
 - `DATABASE_URL` for the app stays SQLite on staging unless explicitly approved for PG runtime.
 
 See `docs/OPERATOR_ROLLOUT_OR01_REACT_READ_STAGING.md` and `registry/operator_rollout_contract.py`.
+
+## OR-02 — PostgreSQL boundary matrix
+
+```bash
+set -a && source config/staging/postgres.env.example && set +a
+pytest tests/test_fastapi_react_07_pg_boundary_matrix.py \
+  tests/test_production_hardening_01_ph03_pg_matrix_execution.py \
+  -m optional_postgres -q
+```
+
+See `docs/OPERATOR_ROLLOUT_OR02_PG_MATRIX_STAGING.md`.

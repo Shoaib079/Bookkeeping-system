@@ -177,3 +177,10 @@ OR01_DEFERRED_ITEMS: tuple[str, ...] = (
     "production operator sign-off",
     "production COMMIT_MODE_* flip",
 )
+
+# Frozen for OR-02 audit tests (do not mutate).
+OR02_DEFERRED_ITEMS: tuple[str, ...] = (
+    "OPERATOR-ROLLOUT-OR03",
+    "production operator sign-off",
+    "production COMMIT_MODE_* flip",
+)

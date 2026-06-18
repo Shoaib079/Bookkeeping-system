@@ -182,7 +182,6 @@ class TestPostgresOptionalBoundaryMatrix:
                     POST_DATE,
                     "Bank",
                     currency="TRY",
-                    company_id=seed.company_id,
                 )
                 app.log_audit(
                     session,
@@ -190,7 +189,6 @@ class TestPostgresOptionalBoundaryMatrix:
                     "EquityMovement",
                     btxn.id,
                     f"Capital Contribution #{btxn.id} · {AMOUNT:,.2f} TRY → {bank.name}",
-                    company_id=seed.company_id,
                 )
 
         sqlite_summary, postgres_summary = dual_engine_parity(
