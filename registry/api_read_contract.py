@@ -49,6 +49,7 @@ READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/products",
     "/api/v1/permissions/members",
     "/api/v1/permissions/effective",
+    "/api/v1/company-settings",
 )
 
 READ_API_TAGS: tuple[str, ...] = (
@@ -80,6 +81,7 @@ READ_API_TAGS: tuple[str, ...] = (
     "members",
     "products",
     "permissions",
+    "company-settings",
 )
 
 ERROR_CONTRACT_MARKERS: tuple[str, ...] = (
@@ -100,6 +102,7 @@ READ_SERVICE_MODULES: tuple[str, ...] = (
     "services/read_trial_balance.py",
     "services/read_budget.py",
     "services/read_permissions.py",
+    "services/read_company_settings.py",
     "services/read_transaction_history.py",
     "services/read_ledger.py",
     "services/read_ar_ap.py",

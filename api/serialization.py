@@ -46,6 +46,7 @@ from services.read_company_members import (
     CompanyMemberListRow,
     CompanyMembersPage,
 )
+from services.read_company_settings import CompanySettingsPage
 from services.read_opening_balances import OpeningBalancesStatusPage
 from services.read_recon_health import (
     ReconHealthBankRow,
@@ -192,6 +193,25 @@ def effective_permissions_page_to_dict(page: EffectivePermissionsPage) -> dict[s
         "effective_count": page.effective_count,
         "rows": [_permission_provenance_row_to_dict(r) for r in page.rows],
         "company_id": page.company_id,
+    }
+
+
+def company_settings_page_to_dict(page: CompanySettingsPage) -> dict[str, Any]:
+    return {
+        "company_id": page.company_id,
+        "slug": page.slug,
+        "display_name": page.display_name,
+        "legal_name": page.legal_name,
+        "logo_url": page.logo_url,
+        "address": page.address,
+        "phone": page.phone,
+        "email": page.email,
+        "tax_number": page.tax_number,
+        "base_currency": page.base_currency,
+        "tax_rate": page.tax_rate,
+        "fiscal_year_label": page.fiscal_year_label,
+        "document_language": page.document_language,
+        "wizard_complete": page.wizard_complete,
     }
 
 

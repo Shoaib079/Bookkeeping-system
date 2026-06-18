@@ -575,6 +575,23 @@ export type EffectivePermissionsResponse = {
   company_id: number;
 };
 
+export type CompanySettingsResponse = {
+  company_id: number;
+  slug: string;
+  display_name: string;
+  legal_name: string | null;
+  logo_url: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  tax_number: string | null;
+  base_currency: string;
+  tax_rate: number;
+  fiscal_year_label: string;
+  document_language: string;
+  wizard_complete: boolean;
+};
+
 export type ReceivableRow = {
   id: number;
   invoice_number: string;

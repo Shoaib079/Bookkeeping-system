@@ -9,6 +9,7 @@ import { AppShell } from "../layouts/AppShell";
 import { AuditLogPage } from "../pages/AuditLogPage";
 import { InventoryPage } from "../pages/InventoryPage";
 import { BudgetPage } from "../pages/BudgetPage";
+import { CompanySettingsPage } from "../pages/CompanySettingsPage";
 import { PermissionsPage } from "../pages/PermissionsPage";
 import { MembersPage } from "../pages/MembersPage";
 import { routeSpecs, type RouteSpec } from "../lib/routes";
@@ -67,6 +68,7 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/inventory": InventoryPage,
   "/purchases": PurchasesPage,
   "/settings/audit-log": AuditLogPage,
+  "/settings/company": CompanySettingsPage,
   "/settings/members": MembersPage,
   "/settings/permissions": PermissionsPage,
 };

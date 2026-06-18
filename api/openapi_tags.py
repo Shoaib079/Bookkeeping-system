@@ -63,6 +63,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Effective permission provenance for members (owner read).",
     },
     {
+        "name": "company-settings",
+        "description": "Company profile and financial settings snapshot (owner read).",
+    },
+    {
         "name": "bank-accounts",
         "description": "Bank account directory for write-tab pickers and read-only views.",
     },
