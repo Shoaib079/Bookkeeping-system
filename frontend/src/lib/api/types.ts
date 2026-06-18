@@ -324,6 +324,25 @@ export type BalanceSheetResponse = {
   imbalance: number;
 };
 
+export type TrialBalanceRow = {
+  account_code: string;
+  account_name: string;
+  account_type: string;
+  debit: number;
+  credit: number;
+};
+
+export type TrialBalanceResponse = {
+  rows: TrialBalanceRow[];
+  total_debit: number;
+  total_credit: number;
+  gl_total_debit: number;
+  gl_total_credit: number;
+  gl_balanced: boolean;
+  gl_difference: number;
+  row_count: number;
+};
+
 export type ReceivableRow = {
   id: number;
   invoice_number: string;

@@ -19,6 +19,7 @@ VITE_FEATURE_FLAG_ENV: Final[str] = "VITE_ERP_REACT_PAGES"
 REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/", "HomePage", "home"),
     ("/books/general-ledger", "LedgerPage", "ledger"),
+    ("/books/trial-balance", "TrialBalancePage", "trial_balance"),
     ("/reports/balance-sheet", "BalanceSheetPage", "balance_sheet"),
     ("/receivables", "ReceivablesPage", "receivables"),
     ("/payables", "PayablesPage", "payables"),
@@ -48,6 +49,10 @@ HOME_READ_API_PATHS: tuple[str, ...] = (
 
 LEDGER_READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/ledger",
+)
+
+TRIAL_BALANCE_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/reports/trial-balance",
 )
 
 BALANCE_SHEET_READ_API_PATHS: tuple[str, ...] = (
@@ -143,6 +148,7 @@ REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/lib/api/types.ts",
     "frontend/src/pages/HomePage.tsx",
     "frontend/src/pages/LedgerPage.tsx",
+    "frontend/src/pages/TrialBalancePage.tsx",
     "frontend/src/pages/BalanceSheetPage.tsx",
     "frontend/src/pages/ReceivablesPage.tsx",
     "frontend/src/pages/PayablesPage.tsx",
@@ -228,7 +234,7 @@ FR19_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 )
 
 DEFERRED_ITEMS: tuple[str, ...] = (
-    "FASTAPI-REACT-33",
+    "FASTAPI-REACT-34",
     "production COMMIT_MODE_* flip",
 )
 
@@ -324,6 +330,16 @@ FR32_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 
 FR32_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-33",
+    "production COMMIT_MODE_* flip",
+)
+
+# Frozen for FR-33 audit tests (do not mutate).
+FR33_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("/books/trial-balance", "TrialBalancePage", "trial_balance"),
+)
+
+FR33_DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-34",
     "production COMMIT_MODE_* flip",
 )
 

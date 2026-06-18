@@ -40,7 +40,7 @@ from services.read_sales import SalesListPage, SalesListRow
 from services.read_expenses import ExpenseListRow, ExpensesListPage
 from services.read_vendors import VendorListRow, VendorsListPage
 from services.read_workers import WorkerListRow, WorkersListPage
-from services.read_transaction_history import TransactionHistoryPage, TransactionHistoryRow
+from services.read_trial_balance import TrialBalanceRow, TrialBalanceStatement
 
 
 def _line_to_dict(line: FinancialStatementLine) -> dict[str, Any]:
@@ -78,6 +78,29 @@ def balance_sheet_to_dict(stmt: BalanceSheetStatement) -> dict[str, Any]:
         "total_equity": stmt.total_equity,
         "balanced": stmt.balanced,
         "imbalance": stmt.imbalance,
+    }
+
+
+def _trial_balance_row_to_dict(row: TrialBalanceRow) -> dict[str, Any]:
+    return {
+        "account_code": row.account_code,
+        "account_name": row.account_name,
+        "account_type": row.account_type,
+        "debit": row.debit,
+        "credit": row.credit,
+    }
+
+
+def trial_balance_to_dict(stmt: TrialBalanceStatement) -> dict[str, Any]:
+    return {
+        "rows": [_trial_balance_row_to_dict(r) for r in stmt.rows],
+        "total_debit": stmt.total_debit,
+        "total_credit": stmt.total_credit,
+        "gl_total_debit": stmt.gl_total_debit,
+        "gl_total_credit": stmt.gl_total_credit,
+        "gl_balanced": stmt.gl_balanced,
+        "gl_difference": stmt.gl_difference,
+        "row_count": stmt.row_count,
     }
 
 

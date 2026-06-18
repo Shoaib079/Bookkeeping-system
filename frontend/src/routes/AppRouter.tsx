@@ -26,6 +26,7 @@ import { ReceivablesPage } from "../pages/ReceivablesPage";
 import { ReportsPage } from "../pages/ReportsPage";
 import { SalesPage } from "../pages/SalesPage";
 import { TransactionLedgerPage } from "../pages/TransactionLedgerPage";
+import { TrialBalancePage } from "../pages/TrialBalancePage";
 import { VendorsPage } from "../pages/VendorsPage";
 import { WorkersPage } from "../pages/WorkersPage";
 import { NewTransactionPage } from "../pages/NewTransactionPage";
@@ -34,6 +35,7 @@ import { PlaceholderPage } from "../pages/PlaceholderPage";
 const READ_PAGES: Record<string, ComponentType> = {
   "/": HomePage,
   "/books/general-ledger": LedgerPage,
+  "/books/trial-balance": TrialBalancePage,
   "/books/chart-of-accounts": ChartOfAccountsPage,
   "/books/fiscal-periods": FiscalPeriodsPage,
   "/books/journal-entries": JournalEntriesPage,

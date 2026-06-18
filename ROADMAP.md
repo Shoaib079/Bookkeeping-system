@@ -1426,11 +1426,12 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-30** | Bank accounts read page | ✅ **Complete** |
 | **FASTAPI-REACT-31** | Fiscal periods read page | ✅ **Complete** |
 | **FASTAPI-REACT-32** | Journal entries read page | ✅ **Complete** |
-| **FASTAPI-REACT-33+** | React read page expansion or ops slices | 📋 Planned |
+| **FASTAPI-REACT-33** | Trial balance read page | ✅ **Complete** |
+| **FASTAPI-REACT-34+** | React read page expansion or ops slices | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_32_REACT_READ_JOURNAL_ENTRIES_AUDIT.md](./docs/FASTAPI_REACT_32_REACT_READ_JOURNAL_ENTRIES_AUDIT.md) · **Tests:** `tests/test_fastapi_react_32_react_read_journal_entries.py` · **Tag:** `fastapi-react-32-react-read-journal-entries`
+**Audit:** [FASTAPI_REACT_33_REACT_READ_TRIAL_BALANCE_AUDIT.md](./docs/FASTAPI_REACT_33_REACT_READ_TRIAL_BALANCE_AUDIT.md) · **Tests:** `tests/test_fastapi_react_33_react_read_trial_balance.py` · **Tag:** `fastapi-react-33-react-read-trial-balance`
 
-**Next slice:** **FASTAPI-REACT-33** — production `COMMIT_MODE_*` flip or next NAV read placeholder; see FR-32 audit §7.
+**Next slice:** **FASTAPI-REACT-34** — production `COMMIT_MODE_*` flip or next NAV read placeholder; see FR-33 audit §7.
 
 ---
 
@@ -3521,6 +3522,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **FASTAPI-REACT-33 (closure)** — Trial balance read page: thin `GET /api/v1/reports/trial-balance` + `TrialBalancePage` at `/books/trial-balance` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-33-react-read-trial-balance`. Next: **FASTAPI-REACT-34**. |
 | 2026-06-05 | **FASTAPI-REACT-32 (closure)** — Journal entries read page: thin `GET /api/v1/journal-entries` + `JournalEntriesPage` at `/books/journal-entries` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-32-react-read-journal-entries`. Next: **FASTAPI-REACT-33**. |
 | 2026-06-05 | **FASTAPI-REACT-31 (closure)** — Fiscal periods read page: `FiscalPeriodsPage` wired to existing `GET /api/v1/fiscal-periods` at `/books/fiscal-periods` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-31-react-read-fiscal-periods`. Next: **FASTAPI-REACT-32**. |
 | 2026-06-05 | **FASTAPI-REACT-30 (closure)** — Bank accounts read page: `BankAccountsPage` wired to existing `GET /api/v1/bank-accounts` at `/banking/accounts` (hidden NAV route) behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-30-react-read-bank-accounts`. Next: **FASTAPI-REACT-31**. |
