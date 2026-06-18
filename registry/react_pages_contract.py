@@ -344,7 +344,7 @@ FR19_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 )
 
 DEFERRED_ITEMS: tuple[str, ...] = (
-    "FASTAPI-REACT-42",
+    "PRODUCTION-HARDENING-02",
     "production COMMIT_MODE_* flip",
 )
 

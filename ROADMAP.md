@@ -285,10 +285,11 @@ docker-compose down
 | **POSTING-SERVICE-01** | ✅ **Complete** — PS-P0–P6-5 + **FASTAPI-REACT-01** (PS-P7 boundary); TD-PS-01/03 deferred, **not a blocker** · [POSTING_SERVICE_01_STATUS](./docs/POSTING_SERVICE_01_STATUS.md) |
 | **REPORTS-SERVICE-01** | 🟡 **Partial** — query/read layer in `services/read_*`; Streamlit presentation (`render_*`, trial balance loop) remains in `app.py` until React |
 | **BANKING-SERVICE-01** | 🟡 **Partial** — `write_banking` + `write_reconciliation` + `read_reconciliation` shipped; **BS-02 ✅** · **BS-04 ✅** · `match_post` / `company_card` `_app()` coupling remains · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) |
-| **FastAPI foundation** | 🟡 **Partial (strong)** — P0/P1/P2 routes + 38+ `test_fastapi_*` files; writes feature-flagged; Streamlit primary; **not production-complete** |
+| **FastAPI foundation** | 🟡 **Partial (strong)** — P0/P1/P2 routes + React read/write behind flags; Streamlit primary; **not production API-primary** |
 | **FASTAPI-REACT-00** | ✅ **Audit complete** — baseline migration snapshot; see [§ FASTAPI-REACT-00](#fastapi-react-00--migration-baseline-audit) |
+| **PRODUCTION-HARDENING-01** | 🟢 **Active** — PH-01 ✅ register cleanup · PH-02–05 📋 planned; see [§ PRODUCTION-HARDENING-01](#production-hardening-01--launch-readiness) |
 | **PostgreSQL runtime** | 🟡 **Partial** — **production cutover ✅ (testing)** · flag-gated PG runtime wired · SQLite rollback preserved |
-| **React migration** | ⬜ **Not started** — `ERP_DS_05` spec only; no SPA; preceded by [NAV-ARCH](#nav-arch--navigation-single-source-of-truth) |
+| **React migration** | 🟡 **Partial** — **42 read pages ✅** (FR-06–50) · **write tabs partial** (FR-08–24) · Streamlit primary · `VITE_ERP_REACT_PAGES=1` |
 | **FULL-SERVICE-READINESS-AUDIT** | ✅ **Recorded (2026-06-05)** — whole-repo service-extraction snapshot · [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) |
 | **DOCS-MIGRATION-CHECKPOINT-01** | ✅ **Recorded (2026-06)** — register drift fix after FASTAPI-READINESS-CHECKPOINT · [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) |
 | **FUTURE-MIGRATION-AUDIT-01** | 📊 **Recorded (2026-06-13 baseline)** — score **62/100**; historical snapshot — blocker list superseded by [DOCS_MIGRATION_CHECKPOINT_01](./docs/DOCS_MIGRATION_CHECKPOINT_01.md) · [TECH_DEBT](./docs/TECH_DEBT_AND_MIGRATION_CLEANUP.md) |
@@ -1410,6 +1411,10 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-10** | Card/credit sale + bank expense | ✅ **Complete** |
 | **FASTAPI-REACT-11** | Void write tab (New Transaction) | ✅ **Complete** |
 | **FASTAPI-REACT-12** | Purchase write tab (New Transaction) | ✅ **Complete** |
+| **FASTAPI-REACT-13** | Receivable payment write tab (New Transaction) | ✅ **Complete** |
+| **FASTAPI-REACT-14** | Bank transaction write tab (New Transaction) | ✅ **Complete** |
+| **FASTAPI-REACT-15** | Partner + worker write tabs (New Transaction) | ✅ **Complete** |
+| **FASTAPI-REACT-16** | Reconciliation + closing write tabs (New Transaction) | ✅ **Complete** |
 | **FASTAPI-REACT-17** | Read expansion (balance sheet + AR/AP) | ✅ **Complete** |
 | **FASTAPI-REACT-18** | Partner statement + banking readiness | ✅ **Complete** |
 | **FASTAPI-REACT-19** | Reports hub + profit & loss read pages | ✅ **Complete** |
@@ -1444,11 +1449,36 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **FASTAPI-REACT-48** | Recurring expenses read page | ✅ **Complete** |
 | **FASTAPI-REACT-49** | Staff expense capture read page | ✅ **Complete** |
 | **FASTAPI-REACT-50** | Recipe costing read pages | ✅ **Complete** |
-| **FASTAPI-REACT-51+** | Ops slices or production rollout | 📋 Planned |
 
-**Audit:** [FASTAPI_REACT_50_REACT_READ_RECIPE_COSTING_AUDIT.md](./docs/FASTAPI_REACT_50_REACT_READ_RECIPE_COSTING_AUDIT.md) · **Tests:** `tests/test_fastapi_react_50_react_read_recipe_costing.py` · **Tag:** `fastapi-react-50-react-read-recipe-costing`
+**FASTAPI-REACT epic:** ✅ **Complete** (FR-00–50) — 42 real React read pages, write tabs FR-08–24; post-FR-50 ops folded into **PRODUCTION-HARDENING-01**.
 
-**Next slice:** **FASTAPI-REACT-51** — production `COMMIT_MODE_*` flip or next epic ops slice; all NAV read placeholders are now wired.
+**Audit (FR-50 closure):** [FASTAPI_REACT_50_REACT_READ_RECIPE_COSTING_AUDIT.md](./docs/FASTAPI_REACT_50_REACT_READ_RECIPE_COSTING_AUDIT.md) · **Tests:** `tests/test_fastapi_react_50_react_read_recipe_costing.py` · **Tag:** `fastapi-react-50-react-read-recipe-costing`
+
+**Next epic:** **PRODUCTION-HARDENING-01** — see [§ PRODUCTION-HARDENING-01](#production-hardening-01--launch-readiness).
+
+---
+
+## PRODUCTION-HARDENING-01 — Launch Readiness
+
+**Status:** 🟢 **Active** — PH-01 complete; PH-02–05 planned  
+**Priority:** High — gates FastAPI/React API-write production cutover (Streamlit-primary launch unaffected)  
+**Depends on:** FASTAPI-REACT-00–50 complete
+
+**Goal:** Close production blockers for API-write rollout without accounting/GL/posting changes — characterization, PG matrix verification, operator `COMMIT_MODE_*` guidance, launch gate.
+
+**Audit (PH-01):** [PRODUCTION_HARDENING_01_PH01_REGISTER_CLEANUP_AUDIT.md](./docs/PRODUCTION_HARDENING_01_PH01_REGISTER_CLEANUP_AUDIT.md) · **Tests:** `tests/test_production_hardening_01_ph01_register_cleanup.py` · **Tag:** `production-hardening-01-ph01-register-cleanup`
+
+**Hard rules:** No accounting changes · no GL changes · no posting math changes · no React redesign · no new ERP features · Streamlit remains primary until operator cutover.
+
+| Slice | Scope | Status |
+|-------|--------|--------|
+| **PRODUCTION-HARDENING-01-PH01** | ROADMAP + stale contract deferred cleanup | ✅ **Complete** |
+| **PRODUCTION-HARDENING-01-PH02** | `bank_transaction` + `equity_movement` commit characterization beyond scaffold | 📋 Planned |
+| **PRODUCTION-HARDENING-01-PH03** | PostgreSQL matrix execution audit + launch-readiness checklist | 📋 Planned |
+| **PRODUCTION-HARDENING-01-PH04** | `COMMIT_MODE_*` operator rollout characterization (test/staging only) | 📋 Planned |
+| **PRODUCTION-HARDENING-01-PH05** | Launch-readiness verification gate + epic closure | 📋 Planned |
+
+**Next slice:** **PRODUCTION-HARDENING-01-PH02** — extend scaffold commit families.
 
 ---
 
@@ -3539,7 +3569,8 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
-| 2026-06-05 | **FASTAPI-REACT-50 (closure)** — Recipe costing read pages: thin `GET /api/v1/recipe-ingredients`, `/api/v1/recipes`, `/api/v1/recipe-cost-breakdowns`, `/api/v1/menu-profitability` + four React pages under `/recipes/*` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-50-react-read-recipe-costing`. Next: **FASTAPI-REACT-51**. |
+| 2026-06-05 | **PRODUCTION-HARDENING-01-PH01 (closure)** — Register cleanup: ROADMAP FR-13–16 rows, PRODUCTION-HARDENING-01 epic, React/FastAPI status register; stale `DEFERRED_ITEMS` in `react_pages_contract`, `react_write_contract`, `pg_boundary_contract`; `registry/production_hardening_contract.py` + audit doc. Docs/contracts only. Tag: `production-hardening-01-ph01-register-cleanup`. Next: **PH-02**. |
+| 2026-06-05 | **FASTAPI-REACT-50 (closure)** — Recipe costing read pages: thin `GET /api/v1/recipe-ingredients`, `/api/v1/recipes`, `/api/v1/recipe-cost-breakdowns`, `/api/v1/menu-profitability` + four React pages under `/recipes/*` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-50-react-read-recipe-costing`. Next: **PRODUCTION-HARDENING-01**. |
 | 2026-06-05 | **FASTAPI-REACT-49 (closure)** — Staff expense capture read page: thin `GET /api/v1/staff-expense-drafts` + `StaffCapturePage` at `/expenses/staff-capture` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-49-react-read-staff-capture`. Next: **FASTAPI-REACT-50**. |
 | 2026-06-05 | **FASTAPI-REACT-48 (closure)** — Recurring expenses read page: thin `GET /api/v1/recurring-expenses` + `RecurringExpensesPage` at `/expenses/recurring` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-48-react-read-recurring-expenses`. Next: **FASTAPI-REACT-49**. |
 | 2026-06-05 | **FASTAPI-REACT-47 (closure)** — External sales verification read page: thin `GET /api/v1/external-sales-verifications` + `ExternalSalesPage` at `/closings/external-sales` behind `VITE_ERP_REACT_PAGES=1`. Tag: `fastapi-react-47-react-read-external-sales`. Next: **FASTAPI-REACT-48**. |

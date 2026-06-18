@@ -85,7 +85,12 @@ class TestStatusAtAGlance:
         glance = _section_after("## Status at a glance", text, limit=16000)
         assert "FastAPI foundation" in glance
         assert "Partial" in glance
-        assert "not production-complete" in glance
+        assert "not production API-primary" in glance
+
+    def test_production_hardening_epic_active(self, text: str):
+        glance = _section_after("## Status at a glance", text, limit=16000)
+        assert "PRODUCTION-HARDENING-01" in glance
+        assert "PH-01" in glance or "PH-02" in glance
 
     def test_postgres_production_cutover_recorded(self, text: str):
         glance = _section_after("## Status at a glance", text, limit=16000)
@@ -107,11 +112,12 @@ class TestStatusAtAGlance:
         assert "PostgreSQL runtime" in glance
         assert "dry run" in glance.lower() or "cutover" in glance.lower()
 
-    def test_react_not_started(self, text: str):
+    def test_react_partial_read_complete(self, text: str):
         glance = _section_after("## Status at a glance", text, limit=16000)
         assert "React migration" in glance
-        assert "Not started" in glance
-        assert "ERP_DS_05" in glance
+        assert "Partial" in glance
+        assert "42" in glance or "read pages" in glance.lower()
+        assert "VITE_ERP_REACT_PAGES" in glance
 
 
 class TestCurrentPriority:

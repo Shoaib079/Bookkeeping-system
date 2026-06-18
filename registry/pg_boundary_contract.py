@@ -77,7 +77,6 @@ POSTGRES_OPTIONAL_DOC: Final[str] = "docs/POSTGRES_PG_BUILD_DUAL_RUN_PARITY.md"
 
 DEFERRED_ITEMS: tuple[str, ...] = (
     "production COMMIT_MODE_* flip",
-    "React write pages",
     "TD-PS-03",
     "bank_transaction PG matrix",
     "equity_movement PG matrix",
