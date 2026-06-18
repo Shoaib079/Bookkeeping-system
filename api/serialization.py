@@ -36,6 +36,7 @@ from services.read_cash_reconciliations import (
     CashReconciliationListRow,
     CashReconciliationsListPage,
 )
+from services.read_external_sales_verifications import ExternalSalesVerificationsListPage
 from services.read_journal_entries import (
     JournalEntriesListPage,
     JournalEntryLineListRow,
@@ -727,6 +728,18 @@ def cash_reconciliations_list_to_dict(page: CashReconciliationsListPage) -> dict
         "start_date": page.start_date.isoformat() if page.start_date else None,
         "end_date": page.end_date.isoformat() if page.end_date else None,
         "status": page.status,
+    }
+
+
+def external_sales_verifications_list_to_dict(
+    page: ExternalSalesVerificationsListPage,
+) -> dict[str, Any]:
+    return {
+        "rows": [row.to_dict() for row in page.rows],
+        "row_count": page.row_count,
+        "company_id": page.company_id,
+        "start_date": page.start_date.isoformat() if page.start_date else None,
+        "end_date": page.end_date.isoformat() if page.end_date else None,
     }
 
 

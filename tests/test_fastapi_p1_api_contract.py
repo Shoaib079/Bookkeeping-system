@@ -74,6 +74,7 @@ EXPECTED_PATHS = {
     "/api/v1/my-account",
     "/api/v1/end-of-day-closes",
     "/api/v1/cash-reconciliations",
+    "/api/v1/external-sales-verifications",
 }
 
 EXPECTED_TAGS = {
@@ -111,6 +112,7 @@ EXPECTED_TAGS = {
     "my-account",
     "end-of-day-closes",
     "cash-reconciliations",
+    "external-sales-verifications",
     "writes",
 }
 
@@ -170,6 +172,10 @@ GET_ROUTES = [
     ),
     (
         "/api/v1/cash-reconciliations",
+        {"start_date": FROM_DATE.isoformat(), "end_date": TO_DATE.isoformat()},
+    ),
+    (
+        "/api/v1/external-sales-verifications",
         {"start_date": FROM_DATE.isoformat(), "end_date": TO_DATE.isoformat()},
     ),
 ]

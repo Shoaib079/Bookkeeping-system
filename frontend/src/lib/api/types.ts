@@ -263,6 +263,41 @@ export type CashReconciliationsListResponse = {
   status: string | null;
 };
 
+export type ExternalSalesVerificationListRow = {
+  id: number;
+  company_id: number;
+  business_date: string;
+  source_name: string;
+  source_type: string | null;
+  branch_location: string | null;
+  status: string;
+  external_total: number | null;
+  z_report_total: number | null;
+  external_cash: number | null;
+  external_card: number | null;
+  external_online: number | null;
+  erp_total: number | null;
+  erp_cash: number | null;
+  erp_card: number | null;
+  erp_credit: number | null;
+  variance_total: number | null;
+  variance_cash: number | null;
+  variance_card: number | null;
+  variance_online: number | null;
+  z_report_variance: number | null;
+  variance_type: string | null;
+  within_tolerance: boolean | null;
+  variance_acknowledged: boolean | null;
+};
+
+export type ExternalSalesVerificationsListResponse = {
+  rows: ExternalSalesVerificationListRow[];
+  row_count: number;
+  company_id: number;
+  start_date: string | null;
+  end_date: string | null;
+};
+
 export type JournalEntryLineListRow = {
   id: number;
   account_id: number;
