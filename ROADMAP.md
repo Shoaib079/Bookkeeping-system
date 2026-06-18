@@ -1504,7 +1504,8 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **OPERATOR-ROLLOUT-OR02** | PG boundary matrix on disposable test DB | ✅ **Complete** |
 | **OPERATOR-ROLLOUT-OR03** | `ERP_API_WRITE_SALES=1` + `VITE_ERP_REACT_WRITE_SALES=1` staging | ✅ **Complete** |
 | **OPERATOR-ROLLOUT-OR04** | `COMMIT_MODE_POST_CASH_SALE=boundary` staging | ✅ **Complete** |
-| **OPERATOR-ROLLOUT-OR05–OR11** | COMMIT_MODE tiers 2–8 per PH-04 | ⬜ Pending |
+| **OPERATOR-ROLLOUT-OR05** | `COMMIT_MODE_POST_EXPENSE=boundary` staging | ✅ **Complete** |
+| **OPERATOR-ROLLOUT-OR06–OR11** | COMMIT_MODE tiers 3–8 per PH-04 | ⬜ Pending |
 
 **Audit (OR-01):** [OPERATOR_ROLLOUT_OR01_REACT_READ_STAGING.md](./docs/OPERATOR_ROLLOUT_OR01_REACT_READ_STAGING.md) · **Tests:** `tests/test_operator_rollout_or01_react_read_staging.py` · **Tag:** `operator-rollout-or01-react-read-staging`
 
@@ -1514,7 +1515,9 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 
 **Audit (OR-04):** [OPERATOR_ROLLOUT_OR04_COMMIT_MODE_CASH_SALE_STAGING.md](./docs/OPERATOR_ROLLOUT_OR04_COMMIT_MODE_CASH_SALE_STAGING.md) · **Tests:** `tests/test_operator_rollout_or04_commit_mode_cash_sale_staging.py` · **Tag:** `operator-rollout-or04-commit-mode-cash-sale-staging`
 
-**Next stage:** **OPERATOR-ROLLOUT-OR05** — `COMMIT_MODE_POST_EXPENSE=boundary`.
+**Audit (OR-05):** [OPERATOR_ROLLOUT_OR05_COMMIT_MODE_EXPENSE_STAGING.md](./docs/OPERATOR_ROLLOUT_OR05_COMMIT_MODE_EXPENSE_STAGING.md) · **Tests:** `tests/test_operator_rollout_or05_commit_mode_expense_staging.py` · **Tag:** `operator-rollout-or05-commit-mode-expense-staging`
+
+**Next stage:** **OPERATOR-ROLLOUT-OR06** — `COMMIT_MODE_POST_PURCHASE` + `POST_PAYABLE_PAYMENT` boundary.
 
 ---
 
@@ -3605,6 +3608,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **OPERATOR-ROLLOUT-OR05 (closure)** — Staging `COMMIT_MODE_POST_EXPENSE=boundary` (tier 2); cumulative with OR-04 in `api.env.example`; OR-05 gate + frozen OR-04 still-commented snapshot. Tag: `operator-rollout-or05-commit-mode-expense-staging`. Next: **OR-06**. |
 | 2026-06-05 | **OPERATOR-ROLLOUT-OR04 (closure)** — Staging `COMMIT_MODE_POST_CASH_SALE=boundary` in `config/staging/api.env.example`; OR-04 gate + P0 cash sale characterization. Tag: `operator-rollout-or04-commit-mode-cash-sale-staging`. Next: **OR-05**. |
 | 2026-06-05 | **OPERATOR-ROLLOUT-OR03 (closure)** — Staging API write sales: `ERP_API_WRITE_SALES=1` + `VITE_ERP_REACT_WRITE_SALES=1` in `config/staging/*`; OR-03 gate tests. No COMMIT_MODE flip. Tag: `operator-rollout-or03-api-write-sales-staging`. Next: **OR-04**. |
 | 2026-06-05 | **OPERATOR-ROLLOUT-OR02 (closure)** — PG boundary matrix green on disposable DB (4/4 flows); `config/staging/postgres.env.example`; PH-03 equity PG test kwargs fix (test-only). Tag: `operator-rollout-or02-pg-matrix-staging`. Next: **OR-03**. |

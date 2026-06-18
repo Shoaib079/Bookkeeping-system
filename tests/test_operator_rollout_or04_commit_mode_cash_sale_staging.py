@@ -23,19 +23,7 @@ def _load_rollout_contract():
     return mod
 
 
-def _load_commit_rollout_contract():
-    path = ROOT / "registry/commit_mode_rollout_contract.py"
-    spec = importlib.util.spec_from_file_location(
-        "commit_mode_rollout_contract_or04", path
-    )
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules["commit_mode_rollout_contract_or04"] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-
 rollout = _load_rollout_contract()
-commit_rollout = _load_commit_rollout_contract()
 
 REQUIRED_AUDIT_SECTIONS = (
     "Executive summary",
@@ -43,12 +31,6 @@ REQUIRED_AUDIT_SECTIONS = (
     "Gate verification",
     "What must NOT change",
     "Test plan",
-)
-
-OTHER_COMMIT_MODE_PREFIXES = tuple(
-    commit_rollout.commit_mode_env_var(spec.family)
-    for spec in commit_rollout.ROLLOUT_FAMILIES
-    if spec.family != "post_cash_sale"
 )
 
 
@@ -93,12 +75,13 @@ def test_staging_api_enables_cash_sale_boundary(api_env_text, flag_line):
     assert flag_line in api_env_text
 
 
-def test_staging_api_keeps_other_commit_modes_off(api_env_text):
-    for line in api_env_text.splitlines():
-        stripped = line.strip()
-        for prefix in OTHER_COMMIT_MODE_PREFIXES:
-            if stripped.startswith(f"{prefix}="):
-                assert stripped.startswith("#"), stripped
+def test_or04_cash_sale_still_enabled_after_later_slices(api_env_text):
+    """Cumulative staging must retain tier-1 boundary from OR-04."""
+    assert "COMMIT_MODE_POST_CASH_SALE=boundary" in api_env_text
+
+
+def test_or04_frozen_still_commented_snapshot_in_contract():
+    assert "COMMIT_MODE_POST_EXPENSE" in rollout.OR04_STILL_COMMENTED_COMMIT_MODES
 
 
 def test_or03_write_flags_preserved_in_staging_api(api_env_text):

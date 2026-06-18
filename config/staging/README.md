@@ -56,3 +56,9 @@ pytest tests/test_fastapi_p0_commit_ownership_cash_sale.py -q
 ```
 
 See `docs/OPERATOR_ROLLOUT_OR04_COMMIT_MODE_CASH_SALE_STAGING.md`.
+
+## OR-05 — COMMIT_MODE expense boundary (staging)
+
+Adds `COMMIT_MODE_POST_EXPENSE=boundary` (tier 2; cumulative with OR-04).
+
+See `docs/OPERATOR_ROLLOUT_OR05_COMMIT_MODE_EXPENSE_STAGING.md`.
