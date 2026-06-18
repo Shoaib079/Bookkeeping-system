@@ -55,6 +55,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Company audit trail entries (owner/manager read).",
     },
     {
+        "name": "members",
+        "description": "Company membership roster (owner read).",
+    },
+    {
         "name": "bank-accounts",
         "description": "Bank account directory for write-tab pickers and read-only views.",
     },

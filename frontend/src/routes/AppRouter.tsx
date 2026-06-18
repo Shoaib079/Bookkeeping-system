@@ -7,6 +7,7 @@ import {
 } from "../config/featureFlags";
 import { AppShell } from "../layouts/AppShell";
 import { AuditLogPage } from "../pages/AuditLogPage";
+import { MembersPage } from "../pages/MembersPage";
 import { routeSpecs, type RouteSpec } from "../lib/routes";
 import { HomePage } from "../pages/HomePage";
 import { BalanceSheetPage } from "../pages/BalanceSheetPage";
@@ -61,6 +62,7 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/customers": CustomersPage,
   "/purchases": PurchasesPage,
   "/settings/audit-log": AuditLogPage,
+  "/settings/members": MembersPage,
 };
 
 const WRITE_PAGES: Record<string, ComponentType> = {

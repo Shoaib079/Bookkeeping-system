@@ -25,6 +25,7 @@ from api.serialization import (
     ledger_page_to_dict,
     opening_balances_status_to_dict,
     audit_log_list_to_dict,
+    company_members_page_to_dict,
     partner_statement_to_dict,
     partners_list_to_dict,
     payables_page_to_dict,
@@ -44,7 +45,7 @@ from api.serialization import (
 )
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
-from services import read_ar_ap, read_audit_log, read_bank_accounts, read_bank_statement_rows, read_coa, read_customers, read_expenses, read_fiscal_periods, read_journal_entries, read_ledger, read_opening_balances, read_partner_statement, read_partners, read_profit_allocations, read_purchases, read_receivable_sales, read_recon_health, read_reconciliation, read_reports, read_sales, read_transaction_history, read_trial_balance, read_vendors, read_workers
+from services import read_ar_ap, read_audit_log, read_bank_accounts, read_bank_statement_rows, read_coa, read_company_members, read_customers, read_expenses, read_fiscal_periods, read_journal_entries, read_ledger, read_opening_balances, read_partner_statement, read_partners, read_profit_allocations, read_purchases, read_receivable_sales, read_recon_health, read_reconciliation, read_reports, read_sales, read_transaction_history, read_trial_balance, read_vendors, read_workers
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
@@ -509,6 +510,14 @@ READ_ENDPOINTS = [
         lambda db, tenant: {"company_id": tenant["company_a_id"]},
     ),
     (
+        "company_members",
+        "/api/v1/members",
+        {},
+        read_company_members.compute_company_members_page,
+        company_members_page_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
         "cash_flow",
         "/api/v1/reports/cash-flow",
         {"start_date": "from_date_iso", "end_date": "to_date_iso"},
@@ -746,6 +755,7 @@ class TestReadEndpointGuards:
             ("/api/v1/reconciliation/health", {}),
             ("/api/v1/opening-balances", {}),
             ("/api/v1/audit-log", {}),
+            ("/api/v1/members", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
             ("/api/v1/transactions", _DATE_PARAMS),
@@ -787,6 +797,7 @@ class TestReadEndpointGuards:
             ("/api/v1/reconciliation/health", {}),
             ("/api/v1/opening-balances", {}),
             ("/api/v1/audit-log", {}),
+            ("/api/v1/members", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
             ("/api/v1/transactions", _DATE_PARAMS),
@@ -822,6 +833,7 @@ class TestReadEndpointGuards:
             ("/api/v1/reconciliation/health", {}),
             ("/api/v1/opening-balances", {}),
             ("/api/v1/audit-log", {}),
+            ("/api/v1/members", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
             ("/api/v1/transactions", _DATE_PARAMS),
@@ -878,6 +890,7 @@ class TestReadEndpointNoCommit:
             ("/api/v1/reconciliation/health", {}),
             ("/api/v1/opening-balances", {}),
             ("/api/v1/audit-log", {}),
+            ("/api/v1/members", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
             ("/api/v1/transactions", _DATE_PARAMS),

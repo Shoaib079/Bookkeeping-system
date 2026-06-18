@@ -41,6 +41,10 @@ from services.read_expenses import ExpenseListRow, ExpensesListPage
 from services.read_vendors import VendorListRow, VendorsListPage
 from services.read_workers import WorkerListRow, WorkersListPage
 from services.read_audit_log import AuditLogListPage, AuditLogListRow
+from services.read_company_members import (
+    CompanyMemberListRow,
+    CompanyMembersPage,
+)
 from services.read_opening_balances import OpeningBalancesStatusPage
 from services.read_recon_health import (
     ReconHealthBankRow,
@@ -271,6 +275,39 @@ def audit_log_list_to_dict(page: AuditLogListPage) -> dict[str, Any]:
         "rows": [_audit_log_list_row_to_dict(r) for r in page.rows],
         "row_count": page.row_count,
         "limit": page.limit,
+    }
+
+
+def _company_member_list_row_to_dict(row: CompanyMemberListRow) -> dict[str, Any]:
+    return {
+        "membership_id": row.membership_id,
+        "user_id": row.user_id,
+        "username": row.username,
+        "display_name": row.display_name,
+        "role": row.role,
+        "is_active": row.is_active,
+        "last_login": row.last_login.isoformat(sep=" ", timespec="minutes")
+        if row.last_login
+        else None,
+        "invited_by": row.invited_by,
+        "member_since": row.member_since.isoformat(sep=" ", timespec="minutes")
+        if row.member_since
+        else None,
+        "company_id": row.company_id,
+    }
+
+
+def company_members_page_to_dict(page: CompanyMembersPage) -> dict[str, Any]:
+    return {
+        "rows": [_company_member_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+        "stats": {
+            "total": page.stats.total,
+            "active": page.stats.active,
+            "inactive": page.stats.inactive,
+            "by_role": page.stats.by_role,
+        },
+        "company_id": page.company_id,
     }
 
 

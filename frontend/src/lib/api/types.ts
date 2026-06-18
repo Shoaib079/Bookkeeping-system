@@ -466,6 +466,31 @@ export type AuditLogListResponse = {
   limit: number;
 };
 
+export type CompanyMemberRow = {
+  membership_id: number;
+  user_id: number;
+  username: string;
+  display_name: string;
+  role: string;
+  is_active: boolean;
+  last_login: string | null;
+  invited_by: string;
+  member_since: string | null;
+  company_id: number;
+};
+
+export type CompanyMembersResponse = {
+  rows: CompanyMemberRow[];
+  row_count: number;
+  stats: {
+    total: number;
+    active: number;
+    inactive: number;
+    by_role: Record<string, number>;
+  };
+  company_id: number;
+};
+
 export type ReceivableRow = {
   id: number;
   invoice_number: string;
