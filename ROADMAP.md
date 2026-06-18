@@ -1492,6 +1492,26 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 
 ---
 
+## Operator rollout (post PH-05)
+
+**Status:** 🟡 **In progress** — staging flag sequence per Operator Rollout Readiness Audit  
+**Authority:** [PH-05 launch gate](./docs/PRODUCTION_HARDENING_01_PH05_LAUNCH_READINESS_AUDIT.md) · `registry/operator_rollout_contract.py`  
+**Hard rules:** No accounting / GL / posting math changes · no React redesign · no new ERP features · Streamlit primary until operator cutover · production flags require sign-off
+
+| Stage | Scope | Status |
+|-------|--------|--------|
+| **OPERATOR-ROLLOUT-OR01** | `VITE_ERP_REACT_PAGES=1` staging template + read gate | ✅ **Complete** |
+| **OPERATOR-ROLLOUT-OR02** | PG boundary matrix on disposable test DB | ⬜ Pending |
+| **OPERATOR-ROLLOUT-OR03** | `ERP_API_WRITE_SALES=1` + `VITE_ERP_REACT_WRITE_SALES=1` staging | ⬜ Pending |
+| **OPERATOR-ROLLOUT-OR04** | `COMMIT_MODE_POST_CASH_SALE=boundary` staging | ⬜ Pending |
+| **OPERATOR-ROLLOUT-OR05–OR11** | COMMIT_MODE tiers 2–8 per PH-04 | ⬜ Pending |
+
+**Audit (OR-01):** [OPERATOR_ROLLOUT_OR01_REACT_READ_STAGING.md](./docs/OPERATOR_ROLLOUT_OR01_REACT_READ_STAGING.md) · **Tests:** `tests/test_operator_rollout_or01_react_read_staging.py` · **Tag:** `operator-rollout-or01-react-read-staging`
+
+**Next stage:** **OPERATOR-ROLLOUT-OR02** — PostgreSQL matrix.
+
+---
+
 ## FUTURE UX / NAVIGATION VISION
 
 **Status:** Planned Future Work  
@@ -3579,6 +3599,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **OPERATOR-ROLLOUT-OR01 (closure)** — Staging React read enable: `config/staging/frontend.env.example` with `VITE_ERP_REACT_PAGES=1`, `registry/operator_rollout_contract.py`, OR-01 gate tests. No write/commit flags. Tag: `operator-rollout-or01-react-read-staging`. Next: **OR-02**. |
 | 2026-06-05 | **PRODUCTION-HARDENING-01 (epic closure)** — PH-05 launch-readiness gate: `registry/launch_readiness_gate_contract.py`, epic slice inventory, Streamlit **0 launch blockers** / API-write **operator deferrals only** verdict. Tag: `production-hardening-01-ph05-launch-readiness`. **PRODUCTION-HARDENING-01 complete.** |
 | 2026-06-05 | **PRODUCTION-HARDENING-01-PH04 (closure)** — COMMIT_MODE_* operator rollout: `registry/commit_mode_rollout_contract.py`, env precedence + 14-family rollout order, staging preflight checklist. No production flip. Tag: `production-hardening-01-ph04-commit-mode-rollout`. Next: **PH-05**. |
 | 2026-06-05 | **PRODUCTION-HARDENING-01-PH03 (closure)** — PG matrix execution audit + launch checklist: `registry/pg_matrix_execution_contract.py`, optional PG parity for `bank_transaction` + `post_equity_movement`, operator guide for `ERP_TEST_POSTGRES_URL`. Tag: `production-hardening-01-ph03-pg-matrix-execution`. Next: **PH-04**. |
