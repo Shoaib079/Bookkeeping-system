@@ -29,6 +29,7 @@ from services.read_bank_statement_rows import (
 )
 from services.read_fiscal_periods import FiscalPeriodListRow, FiscalPeriodsListPage
 from services.read_profit_allocations import ProfitAllocationListRow, ProfitAllocationsListPage
+from services.read_purchases import PurchaseListRow, PurchasesListPage
 from services.read_receivable_sales import ReceivableSaleListRow, ReceivableSalesListPage
 from services.read_sales import SalesListPage, SalesListRow
 from services.read_expenses import ExpenseListRow, ExpensesListPage
@@ -349,6 +350,29 @@ def _expense_list_row_to_dict(row: ExpenseListRow) -> dict[str, Any]:
 def expenses_list_to_dict(page: ExpensesListPage) -> dict[str, Any]:
     return {
         "rows": [_expense_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+    }
+
+
+def _purchase_list_row_to_dict(row: PurchaseListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "date": row.date.isoformat(),
+        "vendor_name": row.vendor_name,
+        "purchase_number": row.purchase_number,
+        "purchase_type": row.purchase_type,
+        "gl_debit": row.gl_debit,
+        "amount": row.amount,
+        "description": row.description,
+        "is_void": row.is_void,
+        "currency": row.currency,
+        "company_id": row.company_id,
+    }
+
+
+def purchases_list_to_dict(page: PurchasesListPage) -> dict[str, Any]:
+    return {
+        "rows": [_purchase_list_row_to_dict(r) for r in page.rows],
         "row_count": page.row_count,
     }
 

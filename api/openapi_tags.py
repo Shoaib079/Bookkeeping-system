@@ -79,6 +79,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Expense register read-only list.",
     },
     {
+        "name": "purchases",
+        "description": "Purchase register read-only list.",
+    },
+    {
         "name": "profit-allocations",
         "description": "Profit allocation directory for closing void pickers.",
     },

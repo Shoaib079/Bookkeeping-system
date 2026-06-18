@@ -235,6 +235,25 @@ export type ExpensesListResponse = {
   row_count: number;
 };
 
+export type PurchaseListRow = {
+  id: number;
+  date: string;
+  vendor_name: string;
+  purchase_number: string | null;
+  purchase_type: string;
+  gl_debit: string;
+  amount: number;
+  description: string;
+  is_void: boolean;
+  currency: string | null;
+  company_id: number;
+};
+
+export type PurchasesListResponse = {
+  rows: PurchaseListRow[];
+  row_count: number;
+};
+
 export type ReceivableSaleListRow = {
   id: number;
   invoice_number: string;

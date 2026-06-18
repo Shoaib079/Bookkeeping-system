@@ -34,11 +34,12 @@ from api.serialization import (
     transaction_history_page_to_dict,
     vendors_list_to_dict,
     customers_list_to_dict,
+    purchases_list_to_dict,
     workers_list_to_dict,
 )
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
-from services import read_ar_ap, read_bank_accounts, read_bank_statement_rows, read_coa, read_customers, read_expenses, read_fiscal_periods, read_ledger, read_partner_statement, read_partners, read_profit_allocations, read_receivable_sales, read_reconciliation, read_reports, read_sales, read_transaction_history, read_vendors, read_workers
+from services import read_ar_ap, read_bank_accounts, read_bank_statement_rows, read_coa, read_customers, read_expenses, read_fiscal_periods, read_ledger, read_partner_statement, read_partners, read_profit_allocations, read_purchases, read_receivable_sales, read_reconciliation, read_reports, read_sales, read_transaction_history, read_vendors, read_workers
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
@@ -281,6 +282,17 @@ def seeded_tenant(db):
                 payment_method="Cash",
                 company_id=co_a.id,
                 is_void=False,
+            ),
+            models.Purchase(
+                date=POST_DATE,
+                vendor_id=vendor_a.id,
+                purchase_number="PO-100",
+                amount=500.0,
+                description="Stock",
+                purchase_type="Credit",
+                gl_debit="Inventory",
+                is_void=False,
+                company_id=co_a.id,
             ),
         ]
     )
@@ -580,6 +592,14 @@ READ_ENDPOINTS = [
         lambda db, tenant: {"company_id": tenant["company_a_id"]},
     ),
     (
+        "purchases_list",
+        "/api/v1/purchases",
+        {},
+        read_purchases.compute_purchases_list,
+        purchases_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
         "profit_allocations_list",
         "/api/v1/profit-allocations",
         {},
@@ -672,6 +692,7 @@ class TestReadEndpointGuards:
             ("/api/v1/customers", {}),
             ("/api/v1/sales", {}),
             ("/api/v1/expenses", {}),
+            ("/api/v1/purchases", {}),
             ("/api/v1/receivable-sales", {}),
             ("/api/v1/profit-allocations", {}),
             ("/api/v1/workers", {}),
@@ -707,6 +728,7 @@ class TestReadEndpointGuards:
             ("/api/v1/customers", {}),
             ("/api/v1/sales", {}),
             ("/api/v1/expenses", {}),
+            ("/api/v1/purchases", {}),
             ("/api/v1/receivable-sales", {}),
             ("/api/v1/profit-allocations", {}),
             ("/api/v1/workers", {}),
@@ -788,6 +810,7 @@ class TestReadEndpointNoCommit:
             ("/api/v1/customers", {}),
             ("/api/v1/sales", {}),
             ("/api/v1/expenses", {}),
+            ("/api/v1/purchases", {}),
             ("/api/v1/receivable-sales", {}),
             ("/api/v1/profit-allocations", {}),
             ("/api/v1/workers", {}),
