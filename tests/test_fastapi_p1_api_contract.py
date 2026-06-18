@@ -40,6 +40,7 @@ EXPECTED_PATHS = {
     "/api/v1/reports/balance-sheet",
     "/api/v1/reports/cash-flow",
     "/api/v1/reports/trial-balance",
+    "/api/v1/reports/budget-vs-actual",
     "/api/v1/transactions",
     "/api/v1/ledger",
     "/api/v1/chart-of-accounts",
@@ -110,6 +111,7 @@ GET_ROUTES = [
         {"start_date": FROM_DATE.isoformat(), "end_date": TO_DATE.isoformat()},
     ),
     ("/api/v1/reports/trial-balance", {}),
+    ("/api/v1/reports/budget-vs-actual", {"year": FROM_DATE.year, "month": FROM_DATE.month}),
     (
         "/api/v1/transactions",
         {"start_date": FROM_DATE.isoformat(), "end_date": TO_DATE.isoformat()},

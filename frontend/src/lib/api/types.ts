@@ -370,6 +370,30 @@ export type TrialBalanceResponse = {
   row_count: number;
 };
 
+export type BudgetVsActualRow = {
+  account_id: number;
+  account_code: string;
+  account_name: string;
+  budgeted: number;
+  actual: number;
+  variance: number;
+  used_pct: number | null;
+  status: string;
+};
+
+export type BudgetVsActualResponse = {
+  year: number;
+  month: number;
+  month_start: string;
+  month_end: string;
+  rows: BudgetVsActualRow[];
+  row_count: number;
+  total_budgeted: number;
+  total_actual: number;
+  total_variance: number;
+  company_id: number;
+};
+
 export type ReconHealthSectionResponse = {
   gl_balance: number;
   subledger_balance: number;

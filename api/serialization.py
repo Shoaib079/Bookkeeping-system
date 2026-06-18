@@ -55,6 +55,7 @@ from services.read_recon_health import (
     ReconHealthSection,
 )
 from services.read_trial_balance import TrialBalanceRow, TrialBalanceStatement
+from services.read_budget import BudgetVsActualPage, BudgetVsActualRow
 from services.read_transaction_history import TransactionHistoryPage, TransactionHistoryRow
 
 
@@ -116,6 +117,34 @@ def trial_balance_to_dict(stmt: TrialBalanceStatement) -> dict[str, Any]:
         "gl_balanced": stmt.gl_balanced,
         "gl_difference": stmt.gl_difference,
         "row_count": stmt.row_count,
+    }
+
+
+def _budget_vs_actual_row_to_dict(row: BudgetVsActualRow) -> dict[str, Any]:
+    return {
+        "account_id": row.account_id,
+        "account_code": row.account_code,
+        "account_name": row.account_name,
+        "budgeted": row.budgeted,
+        "actual": row.actual,
+        "variance": row.variance,
+        "used_pct": row.used_pct,
+        "status": row.status,
+    }
+
+
+def budget_vs_actual_to_dict(page: BudgetVsActualPage) -> dict[str, Any]:
+    return {
+        "year": page.year,
+        "month": page.month,
+        "month_start": page.month_start.isoformat(),
+        "month_end": page.month_end.isoformat(),
+        "rows": [_budget_vs_actual_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+        "total_budgeted": page.total_budgeted,
+        "total_actual": page.total_actual,
+        "total_variance": page.total_variance,
+        "company_id": page.company_id,
     }
 
 

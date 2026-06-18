@@ -18,6 +18,7 @@ from api.main import create_app
 from api.serialization import (
     bank_accounts_list_to_dict,
     bank_statement_rows_list_to_dict,
+    budget_vs_actual_to_dict,
     cash_flow_to_dict,
     coa_list_to_dict,
     fiscal_periods_list_to_dict,
@@ -46,7 +47,7 @@ from api.serialization import (
 )
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
-from services import read_ar_ap, read_audit_log, read_bank_accounts, read_bank_statement_rows, read_coa, read_company_members, read_customers, read_expenses, read_fiscal_periods, read_journal_entries, read_ledger, read_opening_balances, read_partner_statement, read_partners, read_products, read_profit_allocations, read_purchases, read_receivable_sales, read_recon_health, read_reconciliation, read_reports, read_sales, read_transaction_history, read_trial_balance, read_vendors, read_workers
+from services import read_ar_ap, read_audit_log, read_bank_accounts, read_bank_statement_rows, read_budget, read_coa, read_company_members, read_customers, read_expenses, read_fiscal_periods, read_journal_entries, read_ledger, read_opening_balances, read_partner_statement, read_partners, read_products, read_profit_allocations, read_purchases, read_receivable_sales, read_recon_health, read_reconciliation, read_reports, read_sales, read_transaction_history, read_trial_balance, read_vendors, read_workers
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
@@ -447,6 +448,8 @@ def seeded_tenant(db):
         "profit_allocation_id": profit_alloc.id,
         "from_date_iso": FROM_DATE.isoformat(),
         "to_date_iso": TO_DATE.isoformat(),
+        "budget_year": FROM_DATE.year,
+        "budget_month": FROM_DATE.month,
     }
 
 
@@ -545,6 +548,18 @@ READ_ENDPOINTS = [
         read_trial_balance.compute_trial_balance,
         trial_balance_to_dict,
         lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
+        "budget_vs_actual",
+        "/api/v1/reports/budget-vs-actual",
+        {"year": "budget_year", "month": "budget_month"},
+        read_budget.compute_budget_vs_actual,
+        budget_vs_actual_to_dict,
+        lambda db, tenant: {
+            "company_id": tenant["company_a_id"],
+            "year": tenant["budget_year"],
+            "month": tenant["budget_month"],
+        },
     ),
     (
         "transactions",
@@ -737,6 +752,7 @@ _DATE_PARAMS = {
     "start_date": FROM_DATE.isoformat(),
     "end_date": TO_DATE.isoformat(),
 }
+_BUDGET_PARAMS = {"year": FROM_DATE.year, "month": FROM_DATE.month}
 
 
 class TestReadEndpointGuards:
@@ -768,6 +784,7 @@ class TestReadEndpointGuards:
             ("/api/v1/products", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
+            ("/api/v1/reports/budget-vs-actual", _BUDGET_PARAMS),
             ("/api/v1/transactions", _DATE_PARAMS),
             (
                 "/api/v1/partners/1/statement",
@@ -811,6 +828,7 @@ class TestReadEndpointGuards:
             ("/api/v1/products", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
+            ("/api/v1/reports/budget-vs-actual", _BUDGET_PARAMS),
             ("/api/v1/transactions", _DATE_PARAMS),
             (
                 "/api/v1/partners/1/statement",
@@ -848,6 +866,7 @@ class TestReadEndpointGuards:
             ("/api/v1/products", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
+            ("/api/v1/reports/budget-vs-actual", _BUDGET_PARAMS),
             ("/api/v1/transactions", _DATE_PARAMS),
             (
                 f"/api/v1/partners/{{partner_id}}/statement",
@@ -906,6 +925,7 @@ class TestReadEndpointNoCommit:
             ("/api/v1/products", {}),
             ("/api/v1/reports/cash-flow", _DATE_PARAMS),
             ("/api/v1/reports/trial-balance", {}),
+            ("/api/v1/reports/budget-vs-actual", _BUDGET_PARAMS),
             ("/api/v1/transactions", _DATE_PARAMS),
             ("/api/v1/partners/{partner_id}/statement", None),
         ],

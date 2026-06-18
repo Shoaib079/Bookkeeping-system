@@ -5,13 +5,19 @@ from __future__ import annotations
 import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from api.dependencies import get_db, get_request_context
 from api.guards import require_company_read_access
-from api.serialization import balance_sheet_to_dict, cash_flow_to_dict, profit_loss_to_dict, trial_balance_to_dict
-from services import read_reports, read_trial_balance
+from api.serialization import (
+    balance_sheet_to_dict,
+    budget_vs_actual_to_dict,
+    cash_flow_to_dict,
+    profit_loss_to_dict,
+    trial_balance_to_dict,
+)
+from services import read_budget, read_reports, read_trial_balance
 from services.context import RequestContext
 
 router = APIRouter(tags=["reports"])
@@ -104,3 +110,29 @@ def get_trial_balance(
         company_id=company_id,
     )
     return trial_balance_to_dict(stmt)
+
+
+@router.get(
+    "/budget-vs-actual",
+    summary="Budget vs actual",
+    description="Monthly expense budget compared to GL actuals per account.",
+)
+def get_budget_vs_actual(
+    year: Annotated[int, Query(ge=2020, le=2030)],
+    month: Annotated[int, Query(ge=1, le=12)],
+    session: Annotated[Session, Depends(get_db)],
+    context: Annotated[RequestContext, Depends(get_request_context)],
+) -> dict:
+    company_id = require_company_read_access(
+        session,
+        context,
+        "manage_budget",
+        "view_management_reports",
+    )
+    page = read_budget.compute_budget_vs_actual(
+        session,
+        company_id=company_id,
+        year=year,
+        month=month,
+    )
+    return budget_vs_actual_to_dict(page)
