@@ -64,13 +64,28 @@ EPIC_SLICES: tuple[tuple[str, str, str], ...] = (
     (
         "PRODUCTION-HARDENING-01-PH04",
         "COMMIT_MODE_* operator rollout characterization",
-        "planned",
+        "complete",
     ),
     (
         "PRODUCTION-HARDENING-01-PH05",
         "Launch-readiness verification gate + epic closure",
         "planned",
     ),
+)
+
+PH04_CONTRACT_DOC: Final[str] = (
+    "docs/PRODUCTION_HARDENING_01_PH04_COMMIT_MODE_ROLLOUT_AUDIT.md"
+)
+PH04_SLICE_ID: Final[str] = "PRODUCTION-HARDENING-01-PH04"
+PH04_TAG: Final[str] = "production-hardening-01-ph04-commit-mode-rollout"
+PH04_ROLLOUT_CONTRACT: Final[str] = "registry/commit_mode_rollout_contract.py"
+
+# Frozen for PH-04 audit tests (do not mutate).
+PH04_DEFERRED_ITEMS: tuple[str, ...] = (
+    "PRODUCTION-HARDENING-05",
+    "production operator sign-off",
+    "TD-PS-03",
+    "CI optional_postgres job",
 )
 
 PH02_CONTRACT_DOC: Final[str] = (

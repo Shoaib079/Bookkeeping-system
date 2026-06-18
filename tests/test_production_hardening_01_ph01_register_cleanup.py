@@ -111,12 +111,12 @@ def test_stale_deferred_removed_from_active_contracts(stale):
         assert stale not in pg_contract.DEFERRED_ITEMS
 
 
-def test_active_pages_deferred_points_at_ph04():
-    assert "PRODUCTION-HARDENING-04" in pages_contract.DEFERRED_ITEMS
+def test_active_pages_deferred_points_at_ph05():
+    assert "PRODUCTION-HARDENING-05" in pages_contract.DEFERRED_ITEMS
 
 
-def test_active_write_deferred_points_at_ph04():
-    assert "PRODUCTION-HARDENING-04" in write_contract.DEFERRED_ITEMS
+def test_active_write_deferred_points_at_ph05():
+    assert "PRODUCTION-HARDENING-05" in write_contract.DEFERRED_ITEMS
 
 
 def test_roadmap_react_migration_status_updated(roadmap_text):

@@ -287,7 +287,7 @@ docker-compose down
 | **BANKING-SERVICE-01** | 🟡 **Partial** — `write_banking` + `write_reconciliation` + `read_reconciliation` shipped; **BS-02 ✅** · **BS-04 ✅** · `match_post` / `company_card` `_app()` coupling remains · [BANKING_SERVICE_01_AUDIT](./docs/BANKING_SERVICE_01_AUDIT.md) |
 | **FastAPI foundation** | 🟡 **Partial (strong)** — P0/P1/P2 routes + React read/write behind flags; Streamlit primary; **not production API-primary** |
 | **FASTAPI-REACT-00** | ✅ **Audit complete** — baseline migration snapshot; see [§ FASTAPI-REACT-00](#fastapi-react-00--migration-baseline-audit) |
-| **PRODUCTION-HARDENING-01** | 🟢 **Active** — PH-01–03 ✅ · PH-04–05 📋 planned; see [§ PRODUCTION-HARDENING-01](#production-hardening-01--launch-readiness) |
+| **PRODUCTION-HARDENING-01** | 🟢 **Active** — PH-01–04 ✅ · PH-05 📋 planned; see [§ PRODUCTION-HARDENING-01](#production-hardening-01--launch-readiness) |
 | **PostgreSQL runtime** | 🟡 **Partial** — **production cutover ✅ (testing)** · flag-gated PG runtime wired · SQLite rollback preserved |
 | **React migration** | 🟡 **Partial** — **42 read pages ✅** (FR-06–50) · **write tabs partial** (FR-08–24) · Streamlit primary · `VITE_ERP_REACT_PAGES=1` |
 | **FULL-SERVICE-READINESS-AUDIT** | ✅ **Recorded (2026-06-05)** — whole-repo service-extraction snapshot · [FULL_SERVICE_READINESS_AUDIT](./docs/FULL_SERVICE_READINESS_AUDIT.md) |
@@ -1460,7 +1460,7 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 
 ## PRODUCTION-HARDENING-01 — Launch Readiness
 
-**Status:** 🟢 **Active** — PH-01–03 complete; PH-04–05 planned  
+**Status:** 🟢 **Active** — PH-01–04 complete; PH-05 planned  
 **Priority:** High — gates FastAPI/React API-write production cutover (Streamlit-primary launch unaffected)  
 **Depends on:** FASTAPI-REACT-00–50 complete
 
@@ -1475,14 +1475,16 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 | **PRODUCTION-HARDENING-01-PH01** | ROADMAP + stale contract deferred cleanup | ✅ **Complete** |
 | **PRODUCTION-HARDENING-01-PH02** | `bank_transaction` + `equity_movement` commit characterization beyond scaffold | ✅ **Complete** |
 | **PRODUCTION-HARDENING-01-PH03** | PostgreSQL matrix execution audit + launch-readiness checklist | ✅ **Complete** |
-| **PRODUCTION-HARDENING-01-PH04** | `COMMIT_MODE_*` operator rollout characterization (test/staging only) | 📋 Planned |
+| **PRODUCTION-HARDENING-01-PH04** | `COMMIT_MODE_*` operator rollout characterization (test/staging only) | ✅ **Complete** |
 | **PRODUCTION-HARDENING-01-PH05** | Launch-readiness verification gate + epic closure | 📋 Planned |
 
 **Audit (PH-02):** [PRODUCTION_HARDENING_01_PH02_COMMIT_CHARACTERIZATION_AUDIT.md](./docs/PRODUCTION_HARDENING_01_PH02_COMMIT_CHARACTERIZATION_AUDIT.md) · **Tests:** `tests/test_production_hardening_01_ph02_commit_characterization.py` · **Tag:** `production-hardening-01-ph02-commit-characterization`
 
 **Audit (PH-03):** [PRODUCTION_HARDENING_01_PH03_PG_MATRIX_EXECUTION_AUDIT.md](./docs/PRODUCTION_HARDENING_01_PH03_PG_MATRIX_EXECUTION_AUDIT.md) · **Tests:** `tests/test_production_hardening_01_ph03_pg_matrix_execution.py` · **Tag:** `production-hardening-01-ph03-pg-matrix-execution`
 
-**Next slice:** **PRODUCTION-HARDENING-01-PH04** — `COMMIT_MODE_*` operator rollout characterization.
+**Audit (PH-04):** [PRODUCTION_HARDENING_01_PH04_COMMIT_MODE_ROLLOUT_AUDIT.md](./docs/PRODUCTION_HARDENING_01_PH04_COMMIT_MODE_ROLLOUT_AUDIT.md) · **Tests:** `tests/test_production_hardening_01_ph04_commit_mode_rollout.py` · **Tag:** `production-hardening-01-ph04-commit-mode-rollout`
+
+**Next slice:** **PRODUCTION-HARDENING-01-PH05** — launch-readiness verification gate + epic closure.
 
 ---
 
@@ -3573,6 +3575,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **PRODUCTION-HARDENING-01-PH04 (closure)** — COMMIT_MODE_* operator rollout: `registry/commit_mode_rollout_contract.py`, env precedence + 14-family rollout order, staging preflight checklist, env-driven write_sales smoke. No production flip. Tag: `production-hardening-01-ph04-commit-mode-rollout`. Next: **PH-05**. |
 | 2026-06-05 | **PRODUCTION-HARDENING-01-PH03 (closure)** — PG matrix execution audit + launch checklist: `registry/pg_matrix_execution_contract.py`, optional PG parity for `bank_transaction` + `post_equity_movement`, operator guide for `ERP_TEST_POSTGRES_URL`. Tag: `production-hardening-01-ph03-pg-matrix-execution`. Next: **PH-04**. |
 | 2026-06-05 | **PRODUCTION-HARDENING-01-PH02 (closure)** — Extended P0 commit characterization for `bank_transaction` (`test_fastapi_p0_commit_ownership_banking.py`) and `post_equity_movement` (mapped to existing movements test); updated `commit_boundary_contract.py`. Tests/contracts only. Tag: `production-hardening-01-ph02-commit-characterization`. Next: **PH-03**. |
 | 2026-06-05 | **PRODUCTION-HARDENING-01-PH01 (closure)** — Register cleanup: ROADMAP FR-13–16 rows, PRODUCTION-HARDENING-01 epic, React/FastAPI status register; stale `DEFERRED_ITEMS` in `react_pages_contract`, `react_write_contract`, `pg_boundary_contract`; `registry/production_hardening_contract.py` + audit doc. Docs/contracts only. Tag: `production-hardening-01-ph01-register-cleanup`. Next: **PH-02**. |

@@ -366,6 +366,6 @@ FR24_DEFERRED_ITEMS: tuple[str, ...] = (
 )
 
 DEFERRED_ITEMS: tuple[str, ...] = (
-    "PRODUCTION-HARDENING-04",
-    "production COMMIT_MODE_* flip",
+    "PRODUCTION-HARDENING-05",
+    "production operator sign-off",
 )

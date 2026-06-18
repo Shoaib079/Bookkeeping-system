@@ -344,8 +344,8 @@ FR19_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 )
 
 DEFERRED_ITEMS: tuple[str, ...] = (
-    "PRODUCTION-HARDENING-04",
-    "production COMMIT_MODE_* flip",
+    "PRODUCTION-HARDENING-05",
+    "production operator sign-off",
 )
 
 # Frozen for FR-24 audit tests (pages contract; do not mutate).
