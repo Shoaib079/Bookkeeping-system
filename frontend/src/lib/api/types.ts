@@ -166,6 +166,32 @@ export type FiscalPeriodsListResponse = {
   row_count: number;
 };
 
+export type YearEndCloseListRow = {
+  id: number;
+  fiscal_year: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  closed_by_name: string | null;
+  closed_at: string;
+  notes: string | null;
+  period_count: number;
+  allocation_count: number;
+  net_income_snapshot: number;
+  re_balance_at_close: number;
+  is_void: boolean;
+  voided_by_name: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
+  company_id: number;
+};
+
+export type YearEndClosesListResponse = {
+  rows: YearEndCloseListRow[];
+  row_count: number;
+  company_id: number;
+};
+
 export type JournalEntryLineListRow = {
   id: number;
   account_id: number;

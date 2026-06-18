@@ -29,6 +29,7 @@ from services.read_bank_statement_rows import (
     BankStatementRowsListPage,
 )
 from services.read_fiscal_periods import FiscalPeriodListRow, FiscalPeriodsListPage
+from services.read_year_end_closes import YearEndCloseListRow, YearEndClosesListPage
 from services.read_journal_entries import (
     JournalEntriesListPage,
     JournalEntryLineListRow,
@@ -601,6 +602,38 @@ def fiscal_periods_list_to_dict(page: FiscalPeriodsListPage) -> dict[str, Any]:
     return {
         "rows": [_fiscal_period_list_row_to_dict(r) for r in page.rows],
         "row_count": page.row_count,
+    }
+
+
+def _year_end_close_list_row_to_dict(row: YearEndCloseListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "fiscal_year": row.fiscal_year,
+        "start_date": row.start_date.isoformat(),
+        "end_date": row.end_date.isoformat(),
+        "status": row.status,
+        "closed_by_name": row.closed_by_name,
+        "closed_at": row.closed_at.isoformat(sep=" ", timespec="minutes"),
+        "notes": row.notes,
+        "period_count": row.period_count,
+        "allocation_count": row.allocation_count,
+        "net_income_snapshot": row.net_income_snapshot,
+        "re_balance_at_close": row.re_balance_at_close,
+        "is_void": row.is_void,
+        "voided_by_name": row.voided_by_name,
+        "voided_at": row.voided_at.isoformat(sep=" ", timespec="minutes")
+        if row.voided_at
+        else None,
+        "void_reason": row.void_reason,
+        "company_id": row.company_id,
+    }
+
+
+def year_end_closes_list_to_dict(page: YearEndClosesListPage) -> dict[str, Any]:
+    return {
+        "rows": [_year_end_close_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+        "company_id": page.company_id,
     }
 
 

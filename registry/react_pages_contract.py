@@ -38,6 +38,7 @@ REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
     ("/purchases", "PurchasesPage", "purchases"),
     ("/banking/accounts", "BankAccountsPage", "bank_accounts"),
     ("/books/fiscal-periods", "FiscalPeriodsPage", "fiscal_periods"),
+    ("/books/year-end-close", "YearEndClosePage", "year_end_close"),
     ("/books/journal-entries", "JournalEntriesPage", "journal_entries"),
     ("/books/recon-health", "ReconHealthPage", "recon_health"),
     ("/books/opening-balances", "OpeningBalancesPage", "opening_balances"),
@@ -127,6 +128,10 @@ BANK_ACCOUNTS_READ_API_PATHS: tuple[str, ...] = (
 
 FISCAL_PERIODS_READ_API_PATHS: tuple[str, ...] = (
     "/api/v1/fiscal-periods",
+)
+
+YEAR_END_CLOSES_READ_API_PATHS: tuple[str, ...] = (
+    "/api/v1/year-end-closes",
 )
 
 JOURNAL_ENTRIES_READ_API_PATHS: tuple[str, ...] = (
@@ -484,6 +489,16 @@ FR42_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
 
 FR42_DEFERRED_ITEMS: tuple[str, ...] = (
     "FASTAPI-REACT-43",
+    "production COMMIT_MODE_* flip",
+)
+
+# Frozen for FR-43 audit tests (do not mutate).
+FR43_REAL_PAGE_ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("/books/year-end-close", "YearEndClosePage", "year_end_close"),
+)
+
+FR43_DEFERRED_ITEMS: tuple[str, ...] = (
+    "FASTAPI-REACT-44",
     "production COMMIT_MODE_* flip",
 )
 

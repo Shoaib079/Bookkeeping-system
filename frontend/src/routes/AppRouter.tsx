@@ -36,6 +36,7 @@ import { ReportsPage } from "../pages/ReportsPage";
 import { SalesPage } from "../pages/SalesPage";
 import { TransactionLedgerPage } from "../pages/TransactionLedgerPage";
 import { TrialBalancePage } from "../pages/TrialBalancePage";
+import { YearEndClosePage } from "../pages/YearEndClosePage";
 import { VendorsPage } from "../pages/VendorsPage";
 import { WorkersPage } from "../pages/WorkersPage";
 import { NewTransactionPage } from "../pages/NewTransactionPage";
@@ -50,6 +51,7 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/books/budget": BudgetPage,
   "/books/chart-of-accounts": ChartOfAccountsPage,
   "/books/fiscal-periods": FiscalPeriodsPage,
+  "/books/year-end-close": YearEndClosePage,
   "/books/journal-entries": JournalEntriesPage,
   "/reports/balance-sheet": BalanceSheetPage,
   "/receivables": ReceivablesPage,

@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from api.openapi_tags import OPENAPI_TAGS
-from api.routes import audit_log, auth, backup_status, bank_accounts, bank_statement_rows, bank_transactions, banking, chart_of_accounts, closing, company_settings, customers, expenses, expenses_read, fiscal_periods, journal_entries, ledger, members, opening_balances, partner_movements, partners, payables, permissions, products, profit_allocations, purchases, purchases_read, receivable_payments, receivable_sales, receivables, recon_health, reconciliation, reports, sales, sales_read, transactions, vendors, voids, worker_payments, workers
+from api.routes import audit_log, auth, backup_status, bank_accounts, bank_statement_rows, bank_transactions, banking, chart_of_accounts, closing, company_settings, customers, expenses, expenses_read, fiscal_periods, journal_entries, ledger, members, opening_balances, partner_movements, partners, payables, permissions, products, profit_allocations, purchases, purchases_read, receivable_payments, receivable_sales, receivables, recon_health, reconciliation, reports, sales, sales_read, transactions, vendors, voids, worker_payments, workers, year_end_closes
 from services.permissions import PermissionDenied
 
 _API_DESCRIPTION = """\
@@ -59,6 +59,7 @@ def create_app() -> FastAPI:
     app.include_router(bank_accounts.router, prefix="/api/v1/bank-accounts")
     app.include_router(bank_statement_rows.router, prefix="/api/v1/bank-statement-rows")
     app.include_router(fiscal_periods.router, prefix="/api/v1/fiscal-periods")
+    app.include_router(year_end_closes.router, prefix="/api/v1/year-end-closes")
     app.include_router(journal_entries.router, prefix="/api/v1/journal-entries")
     app.include_router(opening_balances.router, prefix="/api/v1/opening-balances")
     app.include_router(audit_log.router, prefix="/api/v1/audit-log")
