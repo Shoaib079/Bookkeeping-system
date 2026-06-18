@@ -449,6 +449,23 @@ export type OpeningBalancesStatusResponse = {
   company_id: number;
 };
 
+export type AuditLogListRow = {
+  id: number;
+  timestamp: string;
+  action: string;
+  entity_type: string | null;
+  entity_id: number | null;
+  description: string;
+  performed_by: string | null;
+  company_id: number;
+};
+
+export type AuditLogListResponse = {
+  rows: AuditLogListRow[];
+  row_count: number;
+  limit: number;
+};
+
 export type ReceivableRow = {
   id: number;
   invoice_number: string;

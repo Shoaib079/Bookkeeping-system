@@ -6,6 +6,7 @@ import {
   reactWriteEnabled,
 } from "../config/featureFlags";
 import { AppShell } from "../layouts/AppShell";
+import { AuditLogPage } from "../pages/AuditLogPage";
 import { routeSpecs, type RouteSpec } from "../lib/routes";
 import { HomePage } from "../pages/HomePage";
 import { BalanceSheetPage } from "../pages/BalanceSheetPage";
@@ -59,6 +60,7 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/workers": WorkersPage,
   "/customers": CustomersPage,
   "/purchases": PurchasesPage,
+  "/settings/audit-log": AuditLogPage,
 };
 
 const WRITE_PAGES: Record<string, ComponentType> = {

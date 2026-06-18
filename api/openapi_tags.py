@@ -51,6 +51,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Opening balance equity summary and OB posting status.",
     },
     {
+        "name": "audit-log",
+        "description": "Company audit trail entries (owner/manager read).",
+    },
+    {
         "name": "bank-accounts",
         "description": "Bank account directory for write-tab pickers and read-only views.",
     },

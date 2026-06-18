@@ -40,6 +40,7 @@ from services.read_sales import SalesListPage, SalesListRow
 from services.read_expenses import ExpenseListRow, ExpensesListPage
 from services.read_vendors import VendorListRow, VendorsListPage
 from services.read_workers import WorkerListRow, WorkersListPage
+from services.read_audit_log import AuditLogListPage, AuditLogListRow
 from services.read_opening_balances import OpeningBalancesStatusPage
 from services.read_recon_health import (
     ReconHealthBankRow,
@@ -249,6 +250,27 @@ def opening_balances_status_to_dict(page: OpeningBalancesStatusPage) -> dict[str
             for row in page.loan_rows
         ],
         "company_id": page.company_id,
+    }
+
+
+def _audit_log_list_row_to_dict(row: AuditLogListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "timestamp": row.timestamp.isoformat(sep=" ", timespec="minutes"),
+        "action": row.action,
+        "entity_type": row.entity_type,
+        "entity_id": row.entity_id,
+        "description": row.description,
+        "performed_by": row.performed_by,
+        "company_id": row.company_id,
+    }
+
+
+def audit_log_list_to_dict(page: AuditLogListPage) -> dict[str, Any]:
+    return {
+        "rows": [_audit_log_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+        "limit": page.limit,
     }
 
 
