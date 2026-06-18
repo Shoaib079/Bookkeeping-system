@@ -63,6 +63,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Vendor directory for reconciliation pickers.",
     },
     {
+        "name": "customers",
+        "description": "Customer directory read-only list.",
+    },
+    {
         "name": "receivable-sales",
         "description": "Open credit sales for receivable payment pickers.",
     },

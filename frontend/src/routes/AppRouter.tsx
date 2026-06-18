@@ -12,6 +12,7 @@ import { BalanceSheetPage } from "../pages/BalanceSheetPage";
 import { BankingReadinessPage } from "../pages/BankingReadinessPage";
 import { CashFlowPage } from "../pages/CashFlowPage";
 import { ChartOfAccountsPage } from "../pages/ChartOfAccountsPage";
+import { CustomersPage } from "../pages/CustomersPage";
 import { ExpensesPage } from "../pages/ExpensesPage";
 import { LedgerPage } from "../pages/LedgerPage";
 import { PartnerStatementPage } from "../pages/PartnerStatementPage";
@@ -43,6 +44,7 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/sales": SalesPage,
   "/expenses": ExpensesPage,
   "/workers": WorkersPage,
+  "/customers": CustomersPage,
 };
 
 const WRITE_PAGES: Record<string, ComponentType> = {

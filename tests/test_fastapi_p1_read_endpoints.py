@@ -33,11 +33,12 @@ from api.serialization import (
     statement_readiness_list_to_dict,
     transaction_history_page_to_dict,
     vendors_list_to_dict,
+    customers_list_to_dict,
     workers_list_to_dict,
 )
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
-from services import read_ar_ap, read_bank_accounts, read_bank_statement_rows, read_coa, read_expenses, read_fiscal_periods, read_ledger, read_partner_statement, read_partners, read_profit_allocations, read_receivable_sales, read_reconciliation, read_reports, read_sales, read_transaction_history, read_vendors, read_workers
+from services import read_ar_ap, read_bank_accounts, read_bank_statement_rows, read_coa, read_customers, read_expenses, read_fiscal_periods, read_ledger, read_partner_statement, read_partners, read_profit_allocations, read_receivable_sales, read_reconciliation, read_reports, read_sales, read_transaction_history, read_vendors, read_workers
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
@@ -208,7 +209,15 @@ def seeded_tenant(db):
 
     vendor_a = models.Vendor(name="Vendor A", company_id=co_a.id, is_active=True)
     vendor_b = models.Vendor(name="Vendor B", company_id=co_b.id, is_active=True)
-    db.add_all([vendor_a, vendor_b])
+    customer_a = models.Customer(
+        name="Customer A",
+        contact="Alice",
+        phone="555-0100",
+        email="alice@example.com",
+        company_id=co_a.id,
+        is_active=True,
+    )
+    db.add_all([vendor_a, vendor_b, customer_a])
     db.flush()
 
     db.add_all(
@@ -539,6 +548,14 @@ READ_ENDPOINTS = [
         lambda db, tenant: {"company_id": tenant["company_a_id"]},
     ),
     (
+        "customers_list",
+        "/api/v1/customers",
+        {},
+        read_customers.compute_customers_list,
+        customers_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
         "receivable_sales_list",
         "/api/v1/receivable-sales",
         {},
@@ -652,6 +669,7 @@ class TestReadEndpointGuards:
             ("/api/v1/bank-statement-rows", {}),
             ("/api/v1/fiscal-periods", {}),
             ("/api/v1/vendors", {}),
+            ("/api/v1/customers", {}),
             ("/api/v1/sales", {}),
             ("/api/v1/expenses", {}),
             ("/api/v1/receivable-sales", {}),
@@ -686,6 +704,7 @@ class TestReadEndpointGuards:
             ("/api/v1/bank-statement-rows", {}),
             ("/api/v1/fiscal-periods", {}),
             ("/api/v1/vendors", {}),
+            ("/api/v1/customers", {}),
             ("/api/v1/sales", {}),
             ("/api/v1/expenses", {}),
             ("/api/v1/receivable-sales", {}),
@@ -766,6 +785,7 @@ class TestReadEndpointNoCommit:
             ("/api/v1/bank-statement-rows", {}),
             ("/api/v1/fiscal-periods", {}),
             ("/api/v1/vendors", {}),
+            ("/api/v1/customers", {}),
             ("/api/v1/sales", {}),
             ("/api/v1/expenses", {}),
             ("/api/v1/receivable-sales", {}),

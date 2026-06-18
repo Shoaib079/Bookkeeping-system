@@ -52,6 +52,7 @@ EXPECTED_PATHS = {
     "/api/v1/bank-statement-rows",
     "/api/v1/fiscal-periods",
     "/api/v1/vendors",
+    "/api/v1/customers",
     "/api/v1/profit-allocations",
     "/api/v1/workers",
     "/api/v1/partners/{partner_id}/statement",
@@ -75,6 +76,7 @@ EXPECTED_TAGS = {
     "bank-statement-rows",
     "fiscal-periods",
     "vendors",
+    "customers",
     "profit-allocations",
     "workers",
     "banking",
@@ -109,6 +111,7 @@ GET_ROUTES = [
     ("/api/v1/bank-statement-rows", {}),
     ("/api/v1/fiscal-periods", {}),
     ("/api/v1/vendors", {}),
+    ("/api/v1/customers", {}),
     ("/api/v1/workers", {}),
     (
         "/api/v1/partners/{partner_id}/statement",

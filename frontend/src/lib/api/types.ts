@@ -178,6 +178,22 @@ export type VendorsListResponse = {
   row_count: number;
 };
 
+export type CustomerListRow = {
+  id: number;
+  name: string;
+  contact: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  is_active: boolean;
+  company_id: number;
+};
+
+export type CustomersListResponse = {
+  rows: CustomerListRow[];
+  row_count: number;
+};
+
 export type SalesListRow = {
   id: number;
   date: string;

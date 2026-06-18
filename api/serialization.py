@@ -21,6 +21,7 @@ from services.read_reports import (
     ProfitLossStatement,
 )
 from services.read_coa import CoaListPage, CoaRow
+from services.read_customers import CustomerListRow, CustomersListPage
 from services.read_bank_accounts import BankAccountListRow, BankAccountsListPage
 from services.read_bank_statement_rows import (
     BankStatementRowListItem,
@@ -258,6 +259,26 @@ def _vendor_list_row_to_dict(row: VendorListRow) -> dict[str, Any]:
 def vendors_list_to_dict(page: VendorsListPage) -> dict[str, Any]:
     return {
         "rows": [_vendor_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+    }
+
+
+def _customer_list_row_to_dict(row: CustomerListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "name": row.name,
+        "contact": row.contact,
+        "phone": row.phone,
+        "email": row.email,
+        "address": row.address,
+        "is_active": row.is_active,
+        "company_id": row.company_id,
+    }
+
+
+def customers_list_to_dict(page: CustomersListPage) -> dict[str, Any]:
+    return {
+        "rows": [_customer_list_row_to_dict(r) for r in page.rows],
         "row_count": page.row_count,
     }
 
