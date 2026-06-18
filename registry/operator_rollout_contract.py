@@ -196,3 +196,16 @@ OR03_WRITE_FLAGS_ENABLED: tuple[str, ...] = (
     "VITE_ERP_REACT_WRITE_SALES=1",
     "ERP_API_WRITE_SALES=1",
 )
+
+# Frozen for OR-04 audit tests (do not mutate).
+OR04_DEFERRED_ITEMS: tuple[str, ...] = (
+    "OPERATOR-ROLLOUT-OR05",
+    "production operator sign-off",
+    "production COMMIT_MODE_* flip",
+)
+
+OR04_COMMIT_MODE_ENABLED: tuple[str, ...] = ("COMMIT_MODE_POST_CASH_SALE=boundary",)
+
+OR04_P0_GATE_TEST: Final[str] = (
+    "tests/test_fastapi_p0_commit_ownership_cash_sale.py"
+)

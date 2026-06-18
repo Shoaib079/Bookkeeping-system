@@ -45,3 +45,14 @@ set -a && source config/staging/api.env.example && set +a
 ```
 
 See `docs/OPERATOR_ROLLOUT_OR03_API_WRITE_SALES_STAGING.md`.
+
+## OR-04 — COMMIT_MODE cash sale boundary (staging)
+
+`config/staging/api.env.example` sets `COMMIT_MODE_POST_CASH_SALE=boundary` (tier 1 per PH-04).
+
+```bash
+set -a && source config/staging/api.env.example && set +a
+pytest tests/test_fastapi_p0_commit_ownership_cash_sale.py -q
+```
+
+See `docs/OPERATOR_ROLLOUT_OR04_COMMIT_MODE_CASH_SALE_STAGING.md`.
