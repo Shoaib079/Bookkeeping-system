@@ -16,6 +16,7 @@ import { ChartOfAccountsPage } from "../pages/ChartOfAccountsPage";
 import { CustomersPage } from "../pages/CustomersPage";
 import { ExpensesPage } from "../pages/ExpensesPage";
 import { FiscalPeriodsPage } from "../pages/FiscalPeriodsPage";
+import { JournalEntriesPage } from "../pages/JournalEntriesPage";
 import { LedgerPage } from "../pages/LedgerPage";
 import { PartnerStatementPage } from "../pages/PartnerStatementPage";
 import { PayablesPage } from "../pages/PayablesPage";
@@ -35,6 +36,7 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/books/general-ledger": LedgerPage,
   "/books/chart-of-accounts": ChartOfAccountsPage,
   "/books/fiscal-periods": FiscalPeriodsPage,
+  "/books/journal-entries": JournalEntriesPage,
   "/reports/balance-sheet": BalanceSheetPage,
   "/receivables": ReceivablesPage,
   "/payables": PayablesPage,

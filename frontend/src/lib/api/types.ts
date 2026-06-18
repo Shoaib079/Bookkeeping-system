@@ -166,6 +166,33 @@ export type FiscalPeriodsListResponse = {
   row_count: number;
 };
 
+export type JournalEntryLineListRow = {
+  id: number;
+  account_id: number;
+  account_code: string;
+  account_name: string;
+  debit: number;
+  credit: number;
+  company_id: number;
+};
+
+export type JournalEntryListRow = {
+  id: number;
+  entry_date: string;
+  description: string;
+  reference_type: string | null;
+  reference_id: number | null;
+  total_debit: number;
+  total_credit: number;
+  company_id: number;
+  lines: JournalEntryLineListRow[];
+};
+
+export type JournalEntriesListResponse = {
+  rows: JournalEntryListRow[];
+  row_count: number;
+};
+
 export type VendorListRow = {
   id: number;
   name: string;

@@ -59,6 +59,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Fiscal period directory for closing pickers.",
     },
     {
+        "name": "journal-entries",
+        "description": "Posted journal entries with debit/credit lines.",
+    },
+    {
         "name": "vendors",
         "description": "Vendor directory for reconciliation pickers.",
     },

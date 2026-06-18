@@ -21,6 +21,7 @@ from api.serialization import (
     cash_flow_to_dict,
     coa_list_to_dict,
     fiscal_periods_list_to_dict,
+    journal_entries_list_to_dict,
     ledger_page_to_dict,
     partner_statement_to_dict,
     partners_list_to_dict,
@@ -39,7 +40,7 @@ from api.serialization import (
 )
 from db import Base
 from registry.coa_seed import seed_chart_of_accounts_for_company
-from services import read_ar_ap, read_bank_accounts, read_bank_statement_rows, read_coa, read_customers, read_expenses, read_fiscal_periods, read_ledger, read_partner_statement, read_partners, read_profit_allocations, read_purchases, read_receivable_sales, read_reconciliation, read_reports, read_sales, read_transaction_history, read_vendors, read_workers
+from services import read_ar_ap, read_bank_accounts, read_bank_statement_rows, read_coa, read_customers, read_expenses, read_fiscal_periods, read_journal_entries, read_ledger, read_partner_statement, read_partners, read_profit_allocations, read_purchases, read_receivable_sales, read_reconciliation, read_reports, read_sales, read_transaction_history, read_vendors, read_workers
 from services import tokens as token_service
 from tests.fastapi_p1_jwt import TEST_JWT_SECRET, api_headers, password_hash_for_tests
 
@@ -552,6 +553,14 @@ READ_ENDPOINTS = [
         lambda db, tenant: {"company_id": tenant["company_a_id"]},
     ),
     (
+        "journal_entries_list",
+        "/api/v1/journal-entries",
+        {},
+        read_journal_entries.compute_journal_entries_list,
+        journal_entries_list_to_dict,
+        lambda db, tenant: {"company_id": tenant["company_a_id"]},
+    ),
+    (
         "vendors_list",
         "/api/v1/vendors",
         {},
@@ -688,6 +697,7 @@ class TestReadEndpointGuards:
             ("/api/v1/bank-accounts", {}),
             ("/api/v1/bank-statement-rows", {}),
             ("/api/v1/fiscal-periods", {}),
+            ("/api/v1/journal-entries", {}),
             ("/api/v1/vendors", {}),
             ("/api/v1/customers", {}),
             ("/api/v1/sales", {}),
@@ -724,6 +734,7 @@ class TestReadEndpointGuards:
             ("/api/v1/bank-accounts", {}),
             ("/api/v1/bank-statement-rows", {}),
             ("/api/v1/fiscal-periods", {}),
+            ("/api/v1/journal-entries", {}),
             ("/api/v1/vendors", {}),
             ("/api/v1/customers", {}),
             ("/api/v1/sales", {}),
@@ -806,6 +817,7 @@ class TestReadEndpointNoCommit:
             ("/api/v1/bank-accounts", {}),
             ("/api/v1/bank-statement-rows", {}),
             ("/api/v1/fiscal-periods", {}),
+            ("/api/v1/journal-entries", {}),
             ("/api/v1/vendors", {}),
             ("/api/v1/customers", {}),
             ("/api/v1/sales", {}),

@@ -28,6 +28,11 @@ from services.read_bank_statement_rows import (
     BankStatementRowsListPage,
 )
 from services.read_fiscal_periods import FiscalPeriodListRow, FiscalPeriodsListPage
+from services.read_journal_entries import (
+    JournalEntriesListPage,
+    JournalEntryLineListRow,
+    JournalEntryListRow,
+)
 from services.read_profit_allocations import ProfitAllocationListRow, ProfitAllocationsListPage
 from services.read_purchases import PurchaseListRow, PurchasesListPage
 from services.read_receivable_sales import ReceivableSaleListRow, ReceivableSalesListPage
@@ -244,6 +249,39 @@ def _fiscal_period_list_row_to_dict(row: FiscalPeriodListRow) -> dict[str, Any]:
 def fiscal_periods_list_to_dict(page: FiscalPeriodsListPage) -> dict[str, Any]:
     return {
         "rows": [_fiscal_period_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+    }
+
+
+def _journal_entry_line_list_row_to_dict(row: JournalEntryLineListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "account_id": row.account_id,
+        "account_code": row.account_code,
+        "account_name": row.account_name,
+        "debit": row.debit,
+        "credit": row.credit,
+        "company_id": row.company_id,
+    }
+
+
+def _journal_entry_list_row_to_dict(row: JournalEntryListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "entry_date": row.entry_date.isoformat(),
+        "description": row.description,
+        "reference_type": row.reference_type,
+        "reference_id": row.reference_id,
+        "total_debit": row.total_debit,
+        "total_credit": row.total_credit,
+        "company_id": row.company_id,
+        "lines": [_journal_entry_line_list_row_to_dict(line) for line in row.lines],
+    }
+
+
+def journal_entries_list_to_dict(page: JournalEntriesListPage) -> dict[str, Any]:
+    return {
+        "rows": [_journal_entry_list_row_to_dict(r) for r in page.rows],
         "row_count": page.row_count,
     }
 
