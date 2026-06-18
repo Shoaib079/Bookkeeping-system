@@ -75,6 +75,10 @@ OPENAPI_TAGS: list[dict[str, str]] = [
         "description": "Self profile snapshot for the active company context.",
     },
     {
+        "name": "end-of-day-closes",
+        "description": "End-of-day close history for the active company.",
+    },
+    {
         "name": "bank-accounts",
         "description": "Bank account directory for write-tab pickers and read-only views.",
     },

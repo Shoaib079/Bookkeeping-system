@@ -72,6 +72,7 @@ EXPECTED_PATHS = {
     "/api/v1/company-settings",
     "/api/v1/backup-status",
     "/api/v1/my-account",
+    "/api/v1/end-of-day-closes",
 }
 
 EXPECTED_TAGS = {
@@ -107,6 +108,7 @@ EXPECTED_TAGS = {
     "company-settings",
     "backup-status",
     "my-account",
+    "end-of-day-closes",
     "writes",
 }
 
@@ -160,6 +162,10 @@ GET_ROUTES = [
     ("/api/v1/company-settings", {}),
     ("/api/v1/backup-status", {}),
     ("/api/v1/my-account", {}),
+    (
+        "/api/v1/end-of-day-closes",
+        {"start_date": FROM_DATE.isoformat(), "end_date": TO_DATE.isoformat()},
+    ),
 ]
 
 

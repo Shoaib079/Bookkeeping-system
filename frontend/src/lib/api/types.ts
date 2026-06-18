@@ -213,6 +213,31 @@ export type MyAccountResponse = {
   companies: MyAccountCompanyRow[];
 };
 
+export type EodCloseListRow = {
+  id: number;
+  date: string;
+  status: string;
+  closed_by_name: string | null;
+  closed_at: string;
+  had_warnings: boolean;
+  total_sales: number;
+  total_expenses: number;
+  net_cash_movement: number;
+  recon_status: string | null;
+  notes_preview: string | null;
+  is_void: boolean;
+  is_stale: boolean;
+  company_id: number;
+};
+
+export type EodClosesListResponse = {
+  rows: EodCloseListRow[];
+  row_count: number;
+  company_id: number;
+  start_date: string | null;
+  end_date: string | null;
+};
+
 export type JournalEntryLineListRow = {
   id: number;
   account_id: number;

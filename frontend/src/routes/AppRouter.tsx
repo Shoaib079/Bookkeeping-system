@@ -22,6 +22,7 @@ import { BankingReadinessPage } from "../pages/BankingReadinessPage";
 import { CashFlowPage } from "../pages/CashFlowPage";
 import { ChartOfAccountsPage } from "../pages/ChartOfAccountsPage";
 import { CustomersPage } from "../pages/CustomersPage";
+import { EodClosePage } from "../pages/EodClosePage";
 import { ExpensesPage } from "../pages/ExpensesPage";
 import { FiscalPeriodsPage } from "../pages/FiscalPeriodsPage";
 import { JournalEntriesPage } from "../pages/JournalEntriesPage";
@@ -71,6 +72,7 @@ const READ_PAGES: Record<string, ComponentType> = {
   "/customers": CustomersPage,
   "/inventory": InventoryPage,
   "/purchases": PurchasesPage,
+  "/closings/eod": EodClosePage,
   "/settings/audit-log": AuditLogPage,
   "/settings/company": CompanySettingsPage,
   "/settings/backup-restore": BackupRestorePage,

@@ -31,6 +31,7 @@ from services.read_bank_statement_rows import (
 from services.read_fiscal_periods import FiscalPeriodListRow, FiscalPeriodsListPage
 from services.read_year_end_closes import YearEndCloseListRow, YearEndClosesListPage
 from services.read_my_account import MyAccountCompanyRow, MyAccountPage
+from services.read_eod_closes import EodCloseListRow, EodClosesListPage
 from services.read_journal_entries import (
     JournalEntriesListPage,
     JournalEntryLineListRow,
@@ -664,6 +665,35 @@ def my_account_page_to_dict(page: MyAccountPage) -> dict[str, Any]:
         if page.last_login
         else None,
         "companies": [_my_account_company_row_to_dict(r) for r in page.companies],
+    }
+
+
+def _eod_close_list_row_to_dict(row: EodCloseListRow) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "date": row.date.isoformat(),
+        "status": row.status,
+        "closed_by_name": row.closed_by_name,
+        "closed_at": row.closed_at.isoformat(sep=" ", timespec="minutes"),
+        "had_warnings": row.had_warnings,
+        "total_sales": row.total_sales,
+        "total_expenses": row.total_expenses,
+        "net_cash_movement": row.net_cash_movement,
+        "recon_status": row.recon_status,
+        "notes_preview": row.notes_preview,
+        "is_void": row.is_void,
+        "is_stale": row.is_stale,
+        "company_id": row.company_id,
+    }
+
+
+def eod_closes_list_to_dict(page: EodClosesListPage) -> dict[str, Any]:
+    return {
+        "rows": [_eod_close_list_row_to_dict(r) for r in page.rows],
+        "row_count": page.row_count,
+        "company_id": page.company_id,
+        "start_date": page.start_date.isoformat() if page.start_date else None,
+        "end_date": page.end_date.isoformat() if page.end_date else None,
     }
 
 
