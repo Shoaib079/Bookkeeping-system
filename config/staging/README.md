@@ -36,3 +36,12 @@ pytest tests/test_fastapi_react_07_pg_boundary_matrix.py \
 ```
 
 See `docs/OPERATOR_ROLLOUT_OR02_PG_MATRIX_STAGING.md`.
+
+## OR-03 — API write sales (staging)
+
+```bash
+set -a && source config/staging/frontend.env.example && set +a
+set -a && source config/staging/api.env.example && set +a
+```
+
+See `docs/OPERATOR_ROLLOUT_OR03_API_WRITE_SALES_STAGING.md`.

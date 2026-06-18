@@ -68,11 +68,8 @@ def test_audit_documents_deferred_items(audit_text, item):
 
 
 def test_staging_frontend_env_enables_read_pages(frontend_env_text):
+    """OR-01 gate: read pages flag (cumulative staging file may add later write flags)."""
     assert "VITE_ERP_REACT_PAGES=1" in frontend_env_text
-    for line in frontend_env_text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("VITE_ERP_REACT_WRITE"):
-            assert stripped.startswith("#"), f"Write flag must stay commented in OR-01: {stripped!r}"
 
 
 def test_staging_readme_documents_or01():

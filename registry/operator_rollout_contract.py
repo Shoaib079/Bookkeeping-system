@@ -184,3 +184,15 @@ OR02_DEFERRED_ITEMS: tuple[str, ...] = (
     "production operator sign-off",
     "production COMMIT_MODE_* flip",
 )
+
+# Frozen for OR-03 audit tests (do not mutate).
+OR03_DEFERRED_ITEMS: tuple[str, ...] = (
+    "OPERATOR-ROLLOUT-OR04",
+    "production operator sign-off",
+    "production COMMIT_MODE_* flip",
+)
+
+OR03_WRITE_FLAGS_ENABLED: tuple[str, ...] = (
+    "VITE_ERP_REACT_WRITE_SALES=1",
+    "ERP_API_WRITE_SALES=1",
+)

@@ -1502,7 +1502,7 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 |-------|--------|--------|
 | **OPERATOR-ROLLOUT-OR01** | `VITE_ERP_REACT_PAGES=1` staging template + read gate | ✅ **Complete** |
 | **OPERATOR-ROLLOUT-OR02** | PG boundary matrix on disposable test DB | ✅ **Complete** |
-| **OPERATOR-ROLLOUT-OR03** | `ERP_API_WRITE_SALES=1` + `VITE_ERP_REACT_WRITE_SALES=1` staging | ⬜ Pending |
+| **OPERATOR-ROLLOUT-OR03** | `ERP_API_WRITE_SALES=1` + `VITE_ERP_REACT_WRITE_SALES=1` staging | ✅ **Complete** |
 | **OPERATOR-ROLLOUT-OR04** | `COMMIT_MODE_POST_CASH_SALE=boundary` staging | ⬜ Pending |
 | **OPERATOR-ROLLOUT-OR05–OR11** | COMMIT_MODE tiers 2–8 per PH-04 | ⬜ Pending |
 
@@ -1510,7 +1510,9 @@ Current parity tests mitigate drift, but architecture still relies on hand-synce
 
 **Audit (OR-02):** [OPERATOR_ROLLOUT_OR02_PG_MATRIX_STAGING.md](./docs/OPERATOR_ROLLOUT_OR02_PG_MATRIX_STAGING.md) · **Tests:** `tests/test_operator_rollout_or02_pg_matrix_staging.py` · **Tag:** `operator-rollout-or02-pg-matrix-staging`
 
-**Next stage:** **OPERATOR-ROLLOUT-OR03** — API write sales staging.
+**Audit (OR-03):** [OPERATOR_ROLLOUT_OR03_API_WRITE_SALES_STAGING.md](./docs/OPERATOR_ROLLOUT_OR03_API_WRITE_SALES_STAGING.md) · **Tests:** `tests/test_operator_rollout_or03_api_write_sales_staging.py` · **Tag:** `operator-rollout-or03-api-write-sales-staging`
+
+**Next stage:** **OPERATOR-ROLLOUT-OR04** — `COMMIT_MODE_POST_CASH_SALE=boundary`.
 
 ---
 
@@ -3601,6 +3603,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-05 | **OPERATOR-ROLLOUT-OR03 (closure)** — Staging API write sales: `ERP_API_WRITE_SALES=1` + `VITE_ERP_REACT_WRITE_SALES=1` in `config/staging/*`; OR-03 gate tests. No COMMIT_MODE flip. Tag: `operator-rollout-or03-api-write-sales-staging`. Next: **OR-04**. |
 | 2026-06-05 | **OPERATOR-ROLLOUT-OR02 (closure)** — PG boundary matrix green on disposable DB (4/4 flows); `config/staging/postgres.env.example`; PH-03 equity PG test kwargs fix (test-only). Tag: `operator-rollout-or02-pg-matrix-staging`. Next: **OR-03**. |
 | 2026-06-05 | **OPERATOR-ROLLOUT-OR01 (closure)** — Staging React read enable: `config/staging/frontend.env.example` with `VITE_ERP_REACT_PAGES=1`, `registry/operator_rollout_contract.py`, OR-01 gate tests. No write/commit flags. Tag: `operator-rollout-or01-react-read-staging`. Next: **OR-02**. |
 | 2026-06-05 | **PRODUCTION-HARDENING-01 (epic closure)** — PH-05 launch-readiness gate: `registry/launch_readiness_gate_contract.py`, epic slice inventory, Streamlit **0 launch blockers** / API-write **operator deferrals only** verdict. Tag: `production-hardening-01-ph05-launch-readiness`. **PRODUCTION-HARDENING-01 complete.** |
