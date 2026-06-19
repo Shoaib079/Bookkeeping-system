@@ -1,5 +1,6 @@
 import type { ReadSession } from "./session";
 import { ApiError } from "./client";
+import { normalizeApiErrorDetail } from "./apiError";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -33,22 +34,14 @@ export async function apiPost<T>(
   });
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as {
-      detail?: string | { message?: string };
+      detail?: unknown;
     };
-    let detail = response.statusText;
-    if (typeof payload.detail === "string") {
-      detail = payload.detail;
-    } else if (
-      payload.detail &&
-      typeof payload.detail === "object" &&
-      "message" in payload.detail &&
-      payload.detail.message
-    ) {
-      detail = payload.detail.message;
-    }
     const err: ApiError = {
       status: response.status,
-      detail,
+      detail:
+        normalizeApiErrorDetail(payload.detail) ||
+        response.statusText ||
+        "Request failed.",
     };
     throw err;
   }

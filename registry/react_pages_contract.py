@@ -246,6 +246,8 @@ PICKER_FRONTEND_FILES: tuple[str, ...] = (
 
 REQUIRED_FRONTEND_FILES: tuple[str, ...] = (
     "frontend/src/config/featureFlags.ts",
+    "frontend/src/lib/api/apiError.ts",
+    "frontend/src/lib/api/client.ts",
     "frontend/src/lib/api/session.ts",
     "frontend/src/lib/api/types.ts",
     "frontend/src/pages/HomePage.tsx",

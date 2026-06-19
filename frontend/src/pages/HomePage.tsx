@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ReadApiSetup } from "../components/ReadApiSetup";
 import { apiGet } from "../lib/api/client";
+import { errorMessageFromCatch } from "../lib/api/apiError";
 import { getReadSession } from "../lib/api/session";
 import type {
   CompaniesResponse,
@@ -62,10 +63,10 @@ export function HomePage() {
         }
       } catch (err) {
         if (!cancelled) {
-          const detail =
-            err && typeof err === "object" && "detail" in err
-              ? String((err as { detail: string }).detail)
-              : "Failed to load dashboard data.";
+          const detail = errorMessageFromCatch(
+            err,
+            "Failed to load dashboard data.",
+          );
           setError(detail);
         }
       } finally {

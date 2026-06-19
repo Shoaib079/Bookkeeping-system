@@ -1,4 +1,5 @@
 import type { ReadSession } from "./session";
+import { normalizeApiErrorDetail } from "./apiError";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -41,11 +42,14 @@ export async function apiGet<T>(
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as {
-      detail?: string;
+      detail?: unknown;
     };
     const err: ApiError = {
       status: response.status,
-      detail: body.detail ?? response.statusText,
+      detail:
+        normalizeApiErrorDetail(body.detail) ||
+        response.statusText ||
+        "Request failed.",
     };
     throw err;
   }
