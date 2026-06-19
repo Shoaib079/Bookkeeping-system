@@ -740,22 +740,27 @@ Host `pytest tests/` — **1551 passed, 2 xfailed**.
 
 ---
 
-## POST-LAUNCH-STABILITY-01 — Stop report (2026-06-19)
+## POST-LAUNCH-STABILITY-01
 
-**Status:** OBS-001 pushed · OBS-002 + OBS-003 pushed (`d466622` … `3c46a29`) · full suite **7091 passed**
+**Status:** ✅ **COMPLETE** (2026-06-19) · Tag: `post-launch-stability-01-complete` · Full suite **7091 passed**
 
-**Standing rule:** Every bug fix includes a connected-surface audit before implementation (characterize path, search duplicate helpers, check prior commits/tests, explain why old fix did not prevent recurrence).
+**Standing rule (permanent):** Every bug fix includes a connected-surface audit before implementation — characterize path, search duplicate/stale helpers, check prior commits/tests, explain why an old fix did not prevent recurrence.
 
-| Issue | Root cause | Scope | Fix / action |
-|-------|------------|-------|--------------|
-| **OBS-001** | `_at_resolve_submit_date()` wrote to `at_date` after widget instantiation | Global | Pushed `0344125` · tag `obs-001-fix-add-transaction-at-date-submit` |
-| **OBS-002** | Stale `at_date_follows_today` + rollover clobbered backdated desktop date before capture | Global | Pushed `d466622` · tag `obs-002-fix-add-transaction-selected-date-posting` |
-| **OBS-003** | TXH edit dirty check: `abs(float - Decimal)` on save | Global | Pushed `0561f85` · tag `obs-003-fix-transaction-history-edit-decimal-amount` |
-| **Login refresh** | `ERP_SESSION_RESTORE_SECRET` unset — restore intentionally disabled | Config | Set secret per `docs/AUTH_SESSION_01_OPERATOR.md`; not an OBS regression |
+| Slice | Fix | Verification |
+|-------|-----|--------------|
+| **OBS-001** | Widget key mutation fix (`_at_resolve_submit_date` no longer writes `at_date` after widget instantiation) | Pushed · `0344125` · tag `obs-001-fix-add-transaction-at-date-submit` |
+| **OBS-002** | Backdated date ownership fix (`at_date_follows_today` sync + rollover preserves deliberate backdates) | Verified via Company 5 smoke · `d466622` · tag `obs-002-fix-add-transaction-selected-date-posting` |
+| **OBS-003** | Decimal UI seam fix (`_txh_edit_amount_changed` / `decimal_equal` on Sale, Expense, Purchase TXH edit panels) | Verified via Company 5 smoke · `0561f85` · tag `obs-003-fix-transaction-history-edit-decimal-amount` |
 
-**Company 5 smoke (Spice Corner Production):** backdated AT sale + JE date = selected historical date; TXH date-only edit on Decimal amounts — no crash; session restore passes with secret set, blocked without.
+**Result:**
 
-**Verdict:** Production friction was a **cascade of distinct global seams**, not the same bugs resurfacing. OBS-002 and OBS-003 shipped together 2026-06-19 after company 5 smoke + full suite green.
+- Add Transaction stable
+- Transaction History stable
+- Date ownership verified (selected historical date → sale + JE `entry_date`)
+- Decimal migration verified (float UI input vs `NUMERIC_MONEY` ORM on TXH edit save)
+- Session restore verified (works with `ERP_SESSION_RESTORE_SECRET` set; blocked when unset — config, not OBS regression)
+
+**Verdict:** Production friction on company 5 (*Spice Corner Production*) was a **cascade of distinct global seams**, not the same bugs resurfacing.
 
 ---
 
@@ -3676,6 +3681,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-19 | **POST-LAUNCH-STABILITY-01 (closure)** — OBS-001/002/003 production stability fixes verified (Company 5 smoke + full suite). Add Transaction + Transaction History stable; date ownership + Decimal UI seam + session restore verified. Tag: `post-launch-stability-01-complete`. |
 | 2026-06-19 | **OBS-003 (fix)** — Transaction History edit: Decimal-safe amount dirty check via `decimal_equal` / `_txh_edit_amount_changed` (Sale, Expense, Purchase panels). Tests: `test_obs_003_txh_edit_decimal_amount.py`. Tag: `obs-003-fix-transaction-history-edit-decimal-amount`. |
 | 2026-06-19 | **OBS-002 (fix)** — Add Transaction backdated posting: sync `at_date_follows_today` from desktop `st.date_input` on_change; rollover preserves deliberate backdates; capture pins widget date without clobber. Tests: `test_obs_002_at_date_selected_posting.py`. Tag: `obs-002-fix-add-transaction-selected-date-posting`. |
 | 2026-06-19 | **OBS-001 (fix)** — Add Transaction submit crash: `_at_resolve_submit_date()` no longer assigns `st.session_state["at_date"]` after widget instantiation; submit uses read-only pinned `at_submit_resolved_date` or widget value. Tests: `test_obs_001_at_date_submit_crash.py`. Tag: `obs-001-fix-add-transaction-at-date-submit`. |
