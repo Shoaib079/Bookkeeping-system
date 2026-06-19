@@ -454,7 +454,7 @@ from services.session_policy import (
     compute_session_expiry,
     should_extend_idle,
 )
-from services.money import line_money, money_to_float, persist_money, rate_to_float
+from services.money import decimal_equal, line_money, money_to_float, persist_money, rate_to_float
 
 _log = logging.getLogger(__name__)
 
@@ -15711,6 +15711,11 @@ def _txh_render_view_edit_history_block(edit_logs: list) -> None:
             )
 
 
+def _txh_edit_amount_changed(new_amt, stored_amt) -> bool:
+    """Decimal-safe dirty check for Transaction History amount edits."""
+    return not decimal_equal(new_amt, stored_amt)
+
+
 def _txh_render_row_panels(
     session,
     *,
@@ -15859,7 +15864,7 @@ def _txh_render_row_panels(
                     else:
                         _f = {}
                         if _new_date != eobj.date: _f["date"] = _new_date
-                        if abs(_new_amt - eobj.amount) > 0.001: _f["amount"] = _new_amt
+                        if _txh_edit_amount_changed(_new_amt, eobj.amount): _f["amount"] = _new_amt
                         if _new_pm != eobj.sale_type: _f["sale_type"] = _new_pm
                         if _new_pm == "Credit" and _new_cust.strip() != eobj.customer_name:
                             _f["customer_name"] = _new_cust.strip()
@@ -15908,7 +15913,7 @@ def _txh_render_row_panels(
                     else:
                         _f = {}
                         if _new_date != eobj.date: _f["date"] = _new_date
-                        if abs(_new_amt - eobj.amount) > 0.001: _f["amount"] = _new_amt
+                        if _txh_edit_amount_changed(_new_amt, eobj.amount): _f["amount"] = _new_amt
                         if _new_pm != (eobj.payment_method or "Cash"): _f["payment_method"] = _new_pm
                         if _new_cat_obj and _new_cat_obj.id != eobj.tx_category_id:
                             _f["tx_category_id"] = _new_cat_obj.id
@@ -15966,7 +15971,7 @@ def _txh_render_row_panels(
                     else:
                         _f = {}
                         if _new_date != eobj.date: _f["date"] = _new_date
-                        if abs(_new_amt - eobj.amount) > 0.001: _f["amount"] = _new_amt
+                        if _txh_edit_amount_changed(_new_amt, eobj.amount): _f["amount"] = _new_amt
                         if _new_vendor and _new_vendor.id != eobj.vendor_id: _f["vendor_id"] = _new_vendor.id
                         if _new_pt != (eobj.purchase_type or "Credit"): _f["purchase_type"] = _new_pt
                         if _new_pcat_obj and _new_pcat_obj.id != eobj.tx_category_id:
