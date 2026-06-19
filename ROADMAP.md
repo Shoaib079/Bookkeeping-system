@@ -740,6 +740,25 @@ Host `pytest tests/` — **1551 passed, 2 xfailed**.
 
 ---
 
+## POST-LAUNCH-STABILITY-01 — Stop report (2026-06-19)
+
+**Status:** OBS-001 pushed · OBS-002 + OBS-003 pushed (`d466622` … `3c46a29`) · full suite **7091 passed**
+
+**Standing rule:** Every bug fix includes a connected-surface audit before implementation (characterize path, search duplicate helpers, check prior commits/tests, explain why old fix did not prevent recurrence).
+
+| Issue | Root cause | Scope | Fix / action |
+|-------|------------|-------|--------------|
+| **OBS-001** | `_at_resolve_submit_date()` wrote to `at_date` after widget instantiation | Global | Pushed `0344125` · tag `obs-001-fix-add-transaction-at-date-submit` |
+| **OBS-002** | Stale `at_date_follows_today` + rollover clobbered backdated desktop date before capture | Global | Pushed `d466622` · tag `obs-002-fix-add-transaction-selected-date-posting` |
+| **OBS-003** | TXH edit dirty check: `abs(float - Decimal)` on save | Global | Pushed `0561f85` · tag `obs-003-fix-transaction-history-edit-decimal-amount` |
+| **Login refresh** | `ERP_SESSION_RESTORE_SECRET` unset — restore intentionally disabled | Config | Set secret per `docs/AUTH_SESSION_01_OPERATOR.md`; not an OBS regression |
+
+**Company 5 smoke (Spice Corner Production):** backdated AT sale + JE date = selected historical date; TXH date-only edit on Decimal amounts — no crash; session restore passes with secret set, blocked without.
+
+**Verdict:** Production friction was a **cascade of distinct global seams**, not the same bugs resurfacing. OBS-002 and OBS-003 shipped together 2026-06-19 after company 5 smoke + full suite green.
+
+---
+
 ## SETUP & Onboarding phase
 
 ### SETUP-01 — Company Creation Wizard 🟡 **HIGH** (design approved)
