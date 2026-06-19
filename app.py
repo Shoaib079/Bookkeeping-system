@@ -11316,6 +11316,12 @@ def _at_entry_date_error() -> str | None:
 
 def _at_capture_submit_resolved_date() -> None:
     """Pin resolved entry date at submit click (before rerender can clobber widget state)."""
+    d = st.session_state.get("at_date")
+    if isinstance(d, datetime.date):
+        if d != datetime.date.today():
+            st.session_state["at_date_follows_today"] = False
+        st.session_state["at_submit_resolved_date"] = d
+        return
     st.session_state["at_submit_resolved_date"] = _at_resolve_entry_date()
 
 
@@ -11380,6 +11386,13 @@ def _at_resolve_entry_date() -> datetime.date:
     return d
 
 
+def _at_on_desktop_date_change() -> None:
+    """Sync DATE-01 follow flag when the native desktop date picker changes."""
+    d = st.session_state.get("at_date")
+    if isinstance(d, datetime.date):
+        st.session_state["at_date_follows_today"] = d == datetime.date.today()
+
+
 def _at_render_desktop_date_field() -> None:
     """ADD-TXN date UX — one native date picker inside the entry form."""
     _mob_at_apply_date_follow_today()
@@ -11393,6 +11406,7 @@ def _at_render_desktop_date_field() -> None:
         key="at_date",
         format=streamlit_date_input_format(_active_user_date_format()),
         help=_t("txn.date_help"),
+        on_change=_at_on_desktop_date_change,
     )
 
 
@@ -12294,7 +12308,18 @@ def _mob_at_apply_date_follow_today() -> None:
     """DATE-01 — roll at_date forward when user left it pinned to Today."""
     if st.session_state.get("at_date_follows_today", True) is False:
         return
-    st.session_state["at_date"] = datetime.date.today()
+    today = datetime.date.today()
+    d = st.session_state.get("at_date")
+    if not isinstance(d, datetime.date):
+        st.session_state["at_date"] = today
+        return
+    if d >= today:
+        st.session_state["at_date"] = today
+        return
+    if d == today - datetime.timedelta(days=1):
+        st.session_state["at_date"] = today
+        return
+    st.session_state["at_date_follows_today"] = False
 
 
 def _mob_at_date_is_backdated() -> bool:

@@ -725,6 +725,7 @@ Host `pytest tests/` — **1551 passed, 2 xfailed**.
 | Screen | Task | Issue | Frequency | Impact |
 |--------|------|-------|-----------|--------|
 | Add Transaction | Save transaction | `StreamlitAPIException`: `st.session_state.at_date` cannot be modified after widget `key=at_date` instantiated — `_at_resolve_submit_date()` wrote pinned date back to widget key on submit | 1 → **fixed OBS-001** | High — blocks all AT saves on fresh company |
+| Add Transaction | Save backdated txn | Selected date ignored; posts **today** — stale `at_date_follows_today` + `_mob_at_apply_date_follow_today()` clobbered widget date before capture | 1 → **fixed OBS-002** | High — wrong GL/reporting dates |
 
 **Impact scale (suggested):** Low = annoyance · Medium = extra steps or errors recoverable · High = blocks daily workflow or risks bad data.
 
@@ -3655,6 +3656,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-19 | **OBS-002 (fix)** — Add Transaction backdated posting: sync `at_date_follows_today` from desktop `st.date_input` on_change; rollover preserves deliberate backdates; capture pins widget date without clobber. Tests: `test_obs_002_at_date_selected_posting.py`. Tag: `obs-002-fix-add-transaction-selected-date-posting`. |
 | 2026-06-19 | **OBS-001 (fix)** — Add Transaction submit crash: `_at_resolve_submit_date()` no longer assigns `st.session_state["at_date"]` after widget instantiation; submit uses read-only pinned `at_submit_resolved_date` or widget value. Tests: `test_obs_001_at_date_submit_crash.py`. Tag: `obs-001-fix-add-transaction-at-date-submit`. |
 | 2026-06-05 | **OPERATOR-ROLLOUT-OR06–OR10 (closure)** — COMMIT_MODE tiers 3–7 staging (purchase through reconciliation). Tags: `operator-rollout-or06-commit-mode-purchase-staging` … `operator-rollout-or10-commit-mode-reconciliation-staging`. |
 | 2026-06-05 | **OPERATOR-ROLLOUT-OR05 (closure)** — Staging `COMMIT_MODE_POST_EXPENSE=boundary` (tier 2); cumulative with OR-04 in `api.env.example`; OR-05 gate + frozen OR-04 still-commented snapshot. Tag: `operator-rollout-or05-commit-mode-expense-staging`. Next: **OR-06**. |

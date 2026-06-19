@@ -89,15 +89,30 @@ def test_custom_clears_follow_flag(monkeypatch):
 
 
 def test_followed_today_rolls_over_on_date_boundary(monkeypatch):
+    yesterday = datetime.date.today() - datetime.timedelta(days=1)
     state = _FakeSessionState(
         {
-            "at_date": datetime.date(2000, 1, 1),
+            "at_date": yesterday,
             "at_date_follows_today": True,
         }
     )
     monkeypatch.setattr(erp.st, "session_state", state)
     erp._mob_at_apply_date_follow_today()
     assert state["at_date"] == datetime.date.today()
+
+
+def test_stale_follow_flag_preserves_backdated_desktop_pick(monkeypatch):
+    backdate = datetime.date.today() - datetime.timedelta(days=10)
+    state = _FakeSessionState(
+        {
+            "at_date": backdate,
+            "at_date_follows_today": True,
+        }
+    )
+    monkeypatch.setattr(erp.st, "session_state", state)
+    erp._mob_at_apply_date_follow_today()
+    assert state["at_date"] == backdate
+    assert state["at_date_follows_today"] is False
 
 
 def test_explicit_yesterday_survives_date_boundary(monkeypatch):
