@@ -725,7 +725,7 @@ Host `pytest tests/` — **1551 passed, 2 xfailed**.
 | Screen | Task | Issue | Frequency | Impact |
 |--------|------|-------|-----------|--------|
 | Add Transaction | Save transaction | `StreamlitAPIException`: `st.session_state.at_date` cannot be modified after widget `key=at_date` instantiated — `_at_resolve_submit_date()` wrote pinned date back to widget key on submit | 1 → **fixed OBS-001** | High — blocks all AT saves on fresh company |
-| Add Transaction | Save backdated txn | Selected date ignored; posts **today** — stale `at_date_follows_today` + `_mob_at_apply_date_follow_today()` clobbered widget date before capture | 1 → **fixed OBS-002** | High — wrong GL/reporting dates |
+| Add Transaction | Save backdated txn | Selected date ignored; posts **today** — stale `at_date_follows_today` + `_mob_at_apply_date_follow_today()` clobbered widget date before capture | 1 → **fixed OBS-002 / OBS-004** | High — wrong GL/reporting dates |
 | Transaction History | Edit amount/date | `TypeError` comparing `float` (`amount_input`) to `Decimal` (`NUMERIC_MONEY` ORM) on save | 1 → **fixed OBS-003** | High — blocks date correction workflow |
 
 **Impact scale (suggested):** Low = annoyance · Medium = extra steps or errors recoverable · High = blocks daily workflow or risks bad data.
@@ -761,6 +761,26 @@ Host `pytest tests/` — **1551 passed, 2 xfailed**.
 - Session restore verified (works with `ERP_SESSION_RESTORE_SECRET` set; blocked when unset — config, not OBS regression)
 
 **Verdict:** Production friction on company 5 (*Spice Corner Production*) was a **cascade of distinct global seams**, not the same bugs resurfacing.
+
+---
+
+## OBS-004 — Add Transaction date ownership (root-cause)
+
+**Status:** ✅ **COMPLETE** (local) · Tag: `obs-004-fix-at-date-ownership` · Full suite **7108 passed**
+
+**Goal:** Centralize Add Transaction date ownership so selection, DATE-01 rollover, desktop/mobile render, and submit posting share one safe path (`services/at_date_ownership.py`).
+
+| Criterion | Proof |
+|-----------|-------|
+| No widget key mutation | `resolve_submit_date` read-only; OBS-001 tests green |
+| No callbacks inside `at_entry_form` | Desktop `st.date_input(key=at_date)` has no `on_change`; form scan test |
+| No DATE-01 overwrite | Rollover preserves deliberate backdates; follow flag synced at submit capture |
+| Selected date posts | OBS-002 + OBS-004 integration tests; Company 5 smoke |
+| JE `entry_date` matches | Sale + JE date assertions in OBS-002/004 tests + smoke |
+| Desktop/mobile parity | Both use `pre_render_date_sync` + `capture_submit_resolved_date` SSOT |
+| Regression coverage | `test_obs_004_at_date_ownership.py` + OBS-001/002 suites |
+
+**Key changes:** `services/at_date_ownership.py`; `_at_pre_render_date_sync` at `render_add_transaction` entry; mobile helpers delegate to SSOT; removed desktop date `on_change` callback.
 
 ---
 
@@ -3681,6 +3701,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-19 | **OBS-004 (fix)** — Centralized AT date SSOT in `services/at_date_ownership.py`: `pre_render_date_sync`, submit capture/resolve, DATE-01 rollover; no form callbacks on date widget. Tests: `test_obs_004_at_date_ownership.py`. Tag: `obs-004-fix-at-date-ownership`. |
 | 2026-06-19 | **POST-LAUNCH-STABILITY-01 (closure)** — OBS-001/002/003 production stability fixes verified (Company 5 smoke + full suite). Add Transaction + Transaction History stable; date ownership + Decimal UI seam + session restore verified. Tag: `post-launch-stability-01-complete`. |
 | 2026-06-19 | **OBS-003 (fix)** — Transaction History edit: Decimal-safe amount dirty check via `decimal_equal` / `_txh_edit_amount_changed` (Sale, Expense, Purchase panels). Tests: `test_obs_003_txh_edit_decimal_amount.py`. Tag: `obs-003-fix-transaction-history-edit-decimal-amount`. |
 | 2026-06-19 | **OBS-002 (fix)** — Add Transaction backdated posting: sync `at_date_follows_today` from desktop `st.date_input` on_change; rollover preserves deliberate backdates; capture pins widget date without clobber. Tests: `test_obs_002_at_date_selected_posting.py`. Tag: `obs-002-fix-add-transaction-selected-date-posting`. |

@@ -455,6 +455,16 @@ from services.session_policy import (
     should_extend_idle,
 )
 from services.money import decimal_equal, line_money, money_to_float, persist_money, rate_to_float
+from services.at_date_ownership import (
+    apply_follow_today_rollover as _at_apply_follow_today_rollover,
+    capture_submit_resolved_date as _at_capture_submit_resolved_date_core,
+    ensure_at_date_seed as _at_ensure_at_date_seed,
+    is_backdated as _at_is_backdated,
+    pre_render_date_sync as _at_pre_render_date_sync,
+    read_at_date as _at_read_at_date,
+    resolve_submit_date as _at_resolve_submit_date_core,
+    set_date_choice as _at_set_date_choice,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -11316,30 +11326,28 @@ def _at_entry_date_error() -> str | None:
 
 def _at_capture_submit_resolved_date() -> None:
     """Pin resolved entry date at submit click (before rerender can clobber widget state)."""
-    d = st.session_state.get("at_date")
-    if isinstance(d, datetime.date):
-        if d != datetime.date.today():
-            st.session_state["at_date_follows_today"] = False
-        st.session_state["at_submit_resolved_date"] = d
-        return
-    st.session_state["at_submit_resolved_date"] = _at_resolve_entry_date()
+    _at_capture_submit_resolved_date_core(st.session_state)
 
 
 def _at_resolve_submit_date() -> datetime.date:
-    """Return submit-pinned date when present, else read ``at_date`` without mutating it.
+    """Return submit-pinned date without mutating ``at_date`` (OBS-001 / OBS-004)."""
+    return _at_resolve_submit_date_core(st.session_state)
 
-    ``at_date`` is owned by the date widget (UX-STABILIZE-03). After
-    ``st.date_input(key="at_date")`` is instantiated, Streamlit forbids assigning
-    to ``st.session_state["at_date"]`` — submit uses ``at_submit_resolved_date``
-    (captured on save click) or a read-only fallback from the widget value.
-    """
-    cached = st.session_state.pop("at_submit_resolved_date", None)
-    if isinstance(cached, datetime.date):
-        return cached
-    d = st.session_state.get("at_date")
-    if isinstance(d, datetime.date):
-        return d
-    return datetime.date.today()
+
+def _at_resolve_entry_date() -> datetime.date:
+    """Read entry date; seeds missing ``at_date`` only (pre-widget)."""
+    _at_ensure_at_date_seed(st.session_state)
+    return _at_read_at_date(st.session_state)
+
+
+def _at_render_desktop_date_field() -> None:
+    """ADD-TXN date UX — native date picker inside form (no callbacks; OBS-004)."""
+    st.date_input(
+        _t("col.date"),
+        key="at_date",
+        format=streamlit_date_input_format(_active_user_date_format()),
+        help=_t("txn.date_help"),
+    )
 
 
 def _at_resolve_submit_subcategory(
@@ -11368,46 +11376,6 @@ def _at_resolve_submit_subcategory(
         return cur, subcats_list
 
     return subcats_list[0].name, subcats_list
-
-
-def _at_resolve_entry_date() -> datetime.date:
-    """Resolve entry date from ``at_date`` session state (widget SSOT).
-
-    Desktop: ``st.date_input(key="at_date")`` writes directly; mobile date sheet
-    also writes ``at_date``. Updates ``at_date_follows_today`` when date != today.
-    """
-    d = st.session_state.get("at_date")
-    if not isinstance(d, datetime.date):
-        d = datetime.date.today()
-        st.session_state["at_date"] = d
-    today = datetime.date.today()
-    if d != today:
-        st.session_state["at_date_follows_today"] = False
-    return d
-
-
-def _at_on_desktop_date_change() -> None:
-    """Sync DATE-01 follow flag when the native desktop date picker changes."""
-    d = st.session_state.get("at_date")
-    if isinstance(d, datetime.date):
-        st.session_state["at_date_follows_today"] = d == datetime.date.today()
-
-
-def _at_render_desktop_date_field() -> None:
-    """ADD-TXN date UX — one native date picker inside the entry form."""
-    _mob_at_apply_date_follow_today()
-    if "at_date" not in st.session_state or not isinstance(
-        st.session_state.get("at_date"), datetime.date
-    ):
-        st.session_state["at_date"] = datetime.date.today()
-
-    st.date_input(
-        _t("col.date"),
-        key="at_date",
-        format=streamlit_date_input_format(_active_user_date_format()),
-        help=_t("txn.date_help"),
-        on_change=_at_on_desktop_date_change,
-    )
 
 
 def _mob_at_render_picker_hdr(title: str) -> bool:
@@ -12298,33 +12266,16 @@ def _mob_at_date_quick_label(i18n_key: str, fallback: str, d: datetime.date) -> 
 def _mob_at_set_date_choice(
     chosen: datetime.date, *, follows_today: bool
 ) -> None:
-    st.session_state["at_date"] = chosen
-    st.session_state["at_date_follows_today"] = follows_today
-    st.session_state.pop("mob_at_date_custom", None)
-    st.session_state["mob_at_date_custom_pick"] = chosen
+    _at_set_date_choice(st.session_state, chosen, follows_today=follows_today)
 
 
 def _mob_at_apply_date_follow_today() -> None:
-    """DATE-01 — roll at_date forward when user left it pinned to Today."""
-    if st.session_state.get("at_date_follows_today", True) is False:
-        return
-    today = datetime.date.today()
-    d = st.session_state.get("at_date")
-    if not isinstance(d, datetime.date):
-        st.session_state["at_date"] = today
-        return
-    if d >= today:
-        st.session_state["at_date"] = today
-        return
-    if d == today - datetime.timedelta(days=1):
-        st.session_state["at_date"] = today
-        return
-    st.session_state["at_date_follows_today"] = False
+    """DATE-01 rollover — delegates to OBS-004 SSOT."""
+    _at_apply_follow_today_rollover(st.session_state)
 
 
 def _mob_at_date_is_backdated() -> bool:
-    d = st.session_state.get("at_date", datetime.date.today())
-    return isinstance(d, datetime.date) and d != datetime.date.today()
+    return _at_is_backdated(st.session_state)
 
 
 def _mob_at_render_date_closed_period_notice(session, entry_date: datetime.date) -> None:
@@ -13565,7 +13516,6 @@ def _render_add_transaction_mobile(
     type_display_map: dict,
 ) -> bool:
     """Mobile entry screen: today summary + fixed bottom panel. Returns True if save clicked."""
-    _mob_at_apply_date_follow_today()
     today = datetime.date.today()
     if "mob_at_tab" not in st.session_state:
         idx = st.session_state.get("at_type_idx", 0)
@@ -13879,6 +13829,7 @@ def render_add_transaction(session):
     _mob_at_ensure_defaults(session, txn_type, currency_default, vendors)
     if txn_type == "Expense":
         _at_presync_salary_expense_mode()
+    _at_pre_render_date_sync(st.session_state)
 
     # ── Category / Subcategory lookup (must stay outside layout for live rerender)
     at_cat       = None

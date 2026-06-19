@@ -18,15 +18,15 @@
 
 | Concern | Mechanism | Location (app.py, 2026-06-17) |
 |---|---|---|
-| **Primary router** | `_PAGE_DISPATCH` dict → `render_*` per `nav_selection` — **derived from `registry/navigation.py`** | `26001`; dispatch call `26272` |
-| **Desktop sidebar render** | `_render_navigation_tree(st.sidebar, …)` (custom button accordion) | def `3185`; call `26224` |
+| **Primary router** | `_PAGE_DISPATCH` dict → `render_*` per `nav_selection` — **derived from `registry/navigation.py`** | `25952`; dispatch call `26223` |
+| **Desktop sidebar render** | `_render_navigation_tree(st.sidebar, …)` (custom button accordion) | def `3195`; call `26180` |
 | **`st.sidebar` usage (only 2 sites)** | date-range filters; nav tree | `1008-1009`, `26224` |
 | **`option_menu`** | **Not used** — no `streamlit-option-menu` dependency; nav is a custom button tree | (none) |
 | **radio / selectbox page selection** | **Not the primary router.** Sub-page pickers only: banking section picker (`_banking_section_select`), reports exec picker / `st.tabs` | (banking/reports render fns) |
-| **Accordion groups** | `_NAV_ACCORDION` (8 groups) — **derived from registry** | `3177` |
+| **Accordion groups** | `_NAV_ACCORDION` (8 groups) — **derived from registry** | `3187` |
 | **Direct (top-level) pages** | `_NAV_DIRECT_PAGES` — **derived from registry** | `3179` |
-| **Role visibility** | `_NAV_ROLE_PAGES` (owner/manager/cashier/partner/viewer) — **derived from registry** | `3182` |
-| **Mobile bottom nav** | `_MOBILE_BOTTOM_NAV` (5 slots) — **derived from registry** | `3165` |
+| **Role visibility** | `_NAV_ROLE_PAGES` (owner/manager/cashier/partner/viewer) — **derived from registry** | `3192` |
+| **Mobile bottom nav** | `_MOBILE_BOTTOM_NAV` (5 slots) — **derived from registry** | `3175` |
 | **Mobile hubs** | `_MOBILE_HUB_CONFIG` (money/reports/people/more) — **derived from registry** | `3174` |
 | **Sidebar layout** | `SIDEBAR_LAYOUT` — frozen desktop visual sequence | `registry/sidebar_layout.py`; render loop in `_render_navigation_tree` |
 | **Canonical route keys** | `NAV_*` constants + `ALL_NAV_PAGE_KEYS` + `LEGACY_NAV_ALIASES` + `normalize_nav_key` | `registry/nav_keys.py` |

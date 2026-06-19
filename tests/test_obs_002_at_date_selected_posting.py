@@ -20,6 +20,7 @@ import models
 from db import Base
 from registry.categories_seed import seed_default_categories_for_company
 from registry.coa_seed import seed_chart_of_accounts_for_company
+from services import at_date_ownership as at_date
 
 SELECTED = datetime.date(2026, 6, 10)
 
@@ -99,9 +100,9 @@ def _vendor(db, co, name="Acme Vendor"):
 
 
 def _simulate_desktop_submit_pipeline():
-    """Render-order guard: rollover runs before capture on the submit rerun."""
-    erp._mob_at_apply_date_follow_today()
-    erp._at_capture_submit_resolved_date()
+    """Render-order guard: pre-render rollover then capture on submit."""
+    at_date.pre_render_date_sync(erp.st.session_state)
+    at_date.capture_submit_resolved_date(erp.st.session_state)
 
 
 def _assert_record_and_je_dates(
@@ -134,28 +135,29 @@ def _assert_record_and_je_dates(
     assert je.entry_date == expected
 
 
-def test_desktop_date_change_clears_stale_follow_flag():
+def test_capture_clears_stale_follow_flag_on_backdated_desktop_pick():
     erp.st.session_state["at_date"] = SELECTED
     erp.st.session_state["at_date_follows_today"] = True
 
-    erp._at_on_desktop_date_change()
+    at_date.capture_submit_resolved_date(erp.st.session_state, today=datetime.date.today())
 
     assert erp.st.session_state["at_date_follows_today"] is False
+    assert erp.st.session_state["at_submit_resolved_date"] == SELECTED
 
 
-def test_desktop_date_change_keeps_follow_flag_for_today():
+def test_capture_sets_follow_flag_when_date_is_today():
     today = datetime.date.today()
     erp.st.session_state["at_date"] = today
     erp.st.session_state["at_date_follows_today"] = False
 
-    erp._at_on_desktop_date_change()
+    at_date.capture_submit_resolved_date(erp.st.session_state, today=today)
 
     assert erp.st.session_state["at_date_follows_today"] is True
 
 
-def test_desktop_date_input_wires_on_change_callback():
+def test_desktop_date_input_has_no_on_change_callback():
     src = inspect.getsource(erp._at_render_desktop_date_field)
-    assert "on_change=_at_on_desktop_date_change" in src
+    assert "on_change" not in src
 
 
 def test_submit_pipeline_preserves_selected_date_with_stale_follow_flag(db):

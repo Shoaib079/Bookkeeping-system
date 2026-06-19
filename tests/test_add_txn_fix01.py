@@ -141,13 +141,15 @@ def test_at_resolve_entry_date_reads_at_date(monkeypatch):
     assert erp._at_resolve_entry_date() == datetime.date(2026, 6, 5)
 
 
-def test_at_resolve_entry_date_backdated_clears_follow_flag(monkeypatch):
+def test_at_capture_submit_clears_follow_flag_for_backdated_pick(monkeypatch):
     state = {
         "at_date": datetime.date(2026, 3, 15),
         "at_date_follows_today": True,
     }
     monkeypatch.setattr(erp.st, "session_state", state)
-    erp._at_resolve_entry_date()
+    from services import at_date_ownership as at_date
+
+    at_date.capture_submit_resolved_date(state)
     assert state["at_date_follows_today"] is False
 
 

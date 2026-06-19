@@ -268,5 +268,4 @@ def test_desktop_date_field_is_single_native_date_input():
         assert banned not in date_helper
     desktop_host = src.split('with st.container(key="erp_at_desktop_host")', 1)[1]
     assert "_mob_at_render_date_picker_sheet" not in desktop_host
-    mobile_src = inspect.getsource(erp._render_add_transaction_mobile)
-    assert "_mob_at_apply_date_follow_today" in mobile_src
+    assert "_at_pre_render_date_sync(st.session_state)" in src
