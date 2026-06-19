@@ -11320,12 +11320,20 @@ def _at_capture_submit_resolved_date() -> None:
 
 
 def _at_resolve_submit_date() -> datetime.date:
-    """Return submit-pinned date when present, else resolve from current session state."""
+    """Return submit-pinned date when present, else read ``at_date`` without mutating it.
+
+    ``at_date`` is owned by the date widget (UX-STABILIZE-03). After
+    ``st.date_input(key="at_date")`` is instantiated, Streamlit forbids assigning
+    to ``st.session_state["at_date"]`` — submit uses ``at_submit_resolved_date``
+    (captured on save click) or a read-only fallback from the widget value.
+    """
     cached = st.session_state.pop("at_submit_resolved_date", None)
     if isinstance(cached, datetime.date):
-        st.session_state["at_date"] = cached
         return cached
-    return _at_resolve_entry_date()
+    d = st.session_state.get("at_date")
+    if isinstance(d, datetime.date):
+        return d
+    return datetime.date.today()
 
 
 def _at_resolve_submit_subcategory(

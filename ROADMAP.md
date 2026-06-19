@@ -724,7 +724,7 @@ Host `pytest tests/` — **1551 passed, 2 xfailed**.
 
 | Screen | Task | Issue | Frequency | Impact |
 |--------|------|-------|-----------|--------|
-| *(add entries during daily use)* | | | | |
+| Add Transaction | Save transaction | `StreamlitAPIException`: `st.session_state.at_date` cannot be modified after widget `key=at_date` instantiated — `_at_resolve_submit_date()` wrote pinned date back to widget key on submit | 1 → **fixed OBS-001** | High — blocks all AT saves on fresh company |
 
 **Impact scale (suggested):** Low = annoyance · Medium = extra steps or errors recoverable · High = blocks daily workflow or risks bad data.
 
@@ -3655,7 +3655,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
-| 2026-06-05 | **OPERATOR-ROLLOUT-OR11 (closure)** — Final tier `COMMIT_MODE_VOID_CASCADE=boundary`; all 14 families in staging template. Tag: `operator-rollout-or11-commit-mode-void-staging`. **Operator rollout staging complete.** |
+| 2026-06-19 | **OBS-001 (fix)** — Add Transaction submit crash: `_at_resolve_submit_date()` no longer assigns `st.session_state["at_date"]` after widget instantiation; submit uses read-only pinned `at_submit_resolved_date` or widget value. Tests: `test_obs_001_at_date_submit_crash.py`. Tag: `obs-001-fix-add-transaction-at-date-submit`. |
 | 2026-06-05 | **OPERATOR-ROLLOUT-OR06–OR10 (closure)** — COMMIT_MODE tiers 3–7 staging (purchase through reconciliation). Tags: `operator-rollout-or06-commit-mode-purchase-staging` … `operator-rollout-or10-commit-mode-reconciliation-staging`. |
 | 2026-06-05 | **OPERATOR-ROLLOUT-OR05 (closure)** — Staging `COMMIT_MODE_POST_EXPENSE=boundary` (tier 2); cumulative with OR-04 in `api.env.example`; OR-05 gate + frozen OR-04 still-commented snapshot. Tag: `operator-rollout-or05-commit-mode-expense-staging`. Next: **OR-06**. |
 | 2026-06-05 | **OPERATOR-ROLLOUT-OR04 (closure)** — Staging `COMMIT_MODE_POST_CASH_SALE=boundary` in `config/staging/api.env.example`; OR-04 gate + P0 cash sale characterization. Tag: `operator-rollout-or04-commit-mode-cash-sale-staging`. Next: **OR-05**. |
