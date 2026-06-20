@@ -1,4 +1,9 @@
-"""REACT-LOCAL-OBS-01 — API error display audit and regression guards."""
+"""REACT-LOCAL-OBS-01/02 — React local Home error display and route-shell guards.
+
+OBS-01: Shared ``apiError.ts`` normalizer; no ``[object Object]`` from ``String(detail)``.
+OBS-02: Home intentionally uses ``errorMessageFromCatch`` (6cf9925); route shell stays on
+``PlaceholderPage`` when ``VITE_ERP_REACT_PAGES`` is off; Home is a real read page when on.
+"""
 
 from __future__ import annotations
 
@@ -17,8 +22,13 @@ WRITE_CLIENT = "frontend/src/lib/api/writeClient.ts"
 HOME_PAGE = "frontend/src/pages/HomePage.tsx"
 WRITE_PAGE = "frontend/src/pages/NewTransactionPage.tsx"
 
+ROUTER = "frontend/src/routes/AppRouter.tsx"
+PLACEHOLDER_PAGE = "frontend/src/pages/PlaceholderPage.tsx"
+
 # Prior inline fix (FASTAPI-REACT-08) — must not reappear as a second formatter.
 LEGACY_WRITE_CLIENT_OBJECT_BRANCH = '"message" in payload.detail'
+LEGACY_HOME_STRING_DETAIL_COERCION = "String((err as { detail: string }).detail)"
+OBJECT_OBJECT_LITERAL = "[object Object]"
 
 
 def _load_contract():
@@ -33,33 +43,43 @@ def _load_contract():
 contract = _load_contract()
 
 
-def test_prior_fix_was_write_client_not_home():
-    """FASTAPI-REACT-08 normalized object detail only on POST (writeClient)."""
-    history = (
-        ROOT / "docs" / "FASTAPI_REACT_08_REACT_WRITE_AUDIT.md"
-    ).read_text(encoding="utf-8")
-    assert "writeClient.ts" in history
-    assert "apiPost" in history
-    committed_home = (
-        __import__("subprocess")
-        .run(
-            ["git", "show", "HEAD:frontend/src/pages/HomePage.tsx"],
-            capture_output=True,
-            text=True,
-            cwd=ROOT,
-            check=True,
-        )
-        .stdout
-    )
-    assert 'String((err as { detail: string }).detail)' in committed_home
-
-
-def test_home_read_path_bypassed_write_client_normalizer():
-    """Home uses apiGet (read client), not writeClient — object detail leaked."""
+def test_home_uses_shared_error_normalizer_intentionally():
+    """REACT-LOCAL-OBS-02 — Home migrated to shared normalizer in 6cf9925 (not interim-only writeClient fix)."""
     home = (ROOT / HOME_PAGE).read_text(encoding="utf-8")
+    assert "errorMessageFromCatch" in home
+    assert LEGACY_HOME_STRING_DETAIL_COERCION not in home
+    assert OBJECT_OBJECT_LITERAL not in home
+
+
+def test_router_route_shell_when_pages_flag_off():
+    """Unimplemented or flag-gated routes render PlaceholderPage (route shell)."""
+    router = (ROOT / ROUTER).read_text(encoding="utf-8")
+    placeholder = (ROOT / PLACEHOLDER_PAGE).read_text(encoding="utf-8")
+    assert "PlaceholderPage" in router
+    assert "!reactPagesEnabled()" in router
+    assert "Route shell" in placeholder
+    assert "Page implementation deferred" in placeholder
+
+
+def test_home_wired_as_real_read_page_when_flag_on():
+    """Home is FR-06 read dashboard — not a deferred placeholder when pages are enabled."""
+    router = (ROOT / ROUTER).read_text(encoding="utf-8")
+    home = (ROOT / HOME_PAGE).read_text(encoding="utf-8")
+    assert '"/": HomePage' in router
+    assert "READ_PAGES" in router
+    assert "Read-only dashboard (P1 API)" in home
+    for path in contract.HOME_READ_API_PATHS:
+        assert path in home
+
+
+def test_home_read_path_uses_read_client_with_normalizer():
+    """Home uses apiGet; read client normalizes detail before pages render errors."""
+    home = (ROOT / HOME_PAGE).read_text(encoding="utf-8")
+    read_client = (ROOT / READ_CLIENT).read_text(encoding="utf-8")
     assert "apiGet" in home
     assert "writeClient" not in home
     assert "/auth/me" in home
+    assert "normalizeApiErrorDetail(body.detail)" in read_client
 
 
 def test_single_shared_normalizer_module_exists():
@@ -81,7 +101,9 @@ def test_read_and_write_clients_delegate_to_shared_normalizer():
 def test_home_uses_catch_helper_not_string_coercion():
     src = (ROOT / HOME_PAGE).read_text(encoding="utf-8")
     assert "errorMessageFromCatch" in src
-    assert "String((err as { detail: string }).detail)" not in src
+    assert LEGACY_HOME_STRING_DETAIL_COERCION not in src
+    assert "erp-error" in src
+    assert "{error}" in src
 
 
 def test_write_page_relies_on_normalized_api_error_detail():
@@ -100,9 +122,9 @@ def test_write_page_relies_on_normalized_api_error_detail():
     ),
 )
 def test_read_pages_do_not_stringify_object_detail(rel_path):
-    """Pages still using String(detail) are safe only when client normalizes first."""
+    """Pages must not coerce object detail with String(); client or catch helper normalizes first."""
     src = (ROOT / rel_path).read_text(encoding="utf-8")
-    if "String((err as { detail: string }).detail)" in src:
+    if LEGACY_HOME_STRING_DETAIL_COERCION in src:
         client = (ROOT / READ_CLIENT).read_text(encoding="utf-8")
         assert "normalizeApiErrorDetail(body.detail)" in client
 
