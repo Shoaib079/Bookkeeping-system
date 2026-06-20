@@ -1,7 +1,7 @@
 # ERP Development Roadmap
 
 **Project:** `streamlit_accounting_erp`  
-**Last updated:** 2026-06-19 (DUAL-RUNTIME-01 — operating model documented)  
+**Last updated:** 2026-06-20 (BANKING-IMPORT-IDENTITY-01 — deferred architecture recorded)  
 **Companion docs:** [ARCHITECTURE_HANDOFF.md](./ARCHITECTURE_HANDOFF.md) · [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) · [docs/NAVIGATION_AUDIT.md](./docs/NAVIGATION_AUDIT.md)
 
 This roadmap defines **what is done**, **what is active**, and **what comes next** — in order. Do not skip phases without an explicit architecture decision.
@@ -223,6 +223,7 @@ docker-compose down
 | **BANKING-UX-02** — POS Settlement Transparency | ✅ **Complete** — P1 preview · P1B focused entry · P2 clearing visibility · P3 unsettled list · P4 match check (no posting changes) |
 | **BANKING-UX-03** — Reconciliation Cockpit & Queue | ✅ **P1–P2 shipped** · 📋 **P3 future** — see [BANKING_UX_03_ROADMAP](./docs/BANKING_UX_03_ROADMAP.md) |
 | **BANKING-UX-04** — Configurable Banking Workflow | ✅ **Complete** — S1–S4; see [§ BANKING-UX-04](#banking-ux-04--configurable-banking-workflow) |
+| **BANKING-IMPORT-IDENTITY-01** — Deferred Architecture | 📋 **Designed — not implemented** · global document identity + duplicate-owner architecture deferred during stabilization; see [§ BANKING-IMPORT-IDENTITY-01](#banking-import-identity-01-deferred-architecture) |
 | **ERP Core Principles (Locked)** | ✅ **Approved** — 10 locked principles; see [§ ERP Core Principles](#erp-core-principles-locked) |
 | **RETENTION-01** — Add Transaction post-save policy | ✅ **Shipped** — keep type + date; reset all other fields |
 | **DATE OWNERSHIP** — Submit-time date capture | ✅ **Shipped** — single resolved date through GL/bank/reports |
@@ -827,6 +828,73 @@ Host `pytest tests/` — **1551 passed, 2 xfailed**.
 **Canonical owner:** `ui/banking.py` — `banking_apply_statement_import_upload_route()` / `banking_navigate_statement_import_upload()`. Cockpit/readiness drill-throughs to match/review unchanged.
 
 **Stale paths consolidated (not removed):** inline `banking_section=import` without `bsi_section` on POS go_import, settings go_import, legacy Bank Statement Import reroute, `at_navigate_banking_statement_import`.
+
+---
+
+## BANKING-IMPORT-IDENTITY-01 (Deferred Architecture)
+
+**Status:** DESIGNED — NOT IMPLEMENTED
+
+**Reason:** Post-launch observation mode. Banking imports are a high-risk accounting workflow. This architecture must not be implemented during stabilization without a dedicated architecture phase.
+
+**Problem summary:** Current banking import identity is implied by importer path rather than globally stored document identity.
+
+**Audit findings:**
+
+- `BankStatementImport` stores `bank_account_id` + `file_hash` but no `document_type` / `source_type`.
+- `SettlementStatementImport` is a parallel import flow with separate dedup logic.
+- Credit card issuer statement import does not exist.
+- Multiple bank accounts and multiple company credit cards are supported.
+- Ambiguous uploads can be misclassified.
+- Current audit classification: **DANGEROUS** for ambiguous uploads.
+
+**Approved architecture direction — global document identity:**
+
+- `bank_statement`
+- `cc_issuer_statement`
+- `pos_settlement`
+- `external_sales`
+- `ai_ocr` (future)
+
+**Supporting identity:**
+
+- `source_type`
+- `source_name` / provider (vendor-neutral free text)
+- `target_ref`
+- statement period
+- `file_hash`
+- `company_id`
+
+**Approved workflow direction:**
+
+1. Phase 1: Manual classification gate before parsing.
+2. Phase 2: Automatic metadata extraction / suggestions: bank name, IBAN/account number, card identifier, statement period, currency.
+3. Phase 3: User confirmation.
+4. Phase 4: Parse → Review → Match → Post.
+
+**Mandatory future requirements:**
+
+- Bank statement imports require explicit target bank account.
+- Credit card issuer statements get a dedicated workflow.
+- POS settlement reports cannot enter `BankStatementImport`.
+- Service-level validation required.
+- One global document identity owner.
+- One global duplicate-prevention owner.
+- No vendor lock-in.
+
+**Implementation preconditions:**
+
+1. Architecture review.
+2. Duplicate-prevention review.
+3. FastAPI/React impact review.
+4. Migration-safety review.
+5. Re-characterize existing banking import flows before implementation.
+
+**Overlaps / cross-references:** This item does not replace shipped Phase 18 bank statement import or settlement import. It cross-references and constrains future work in [18-MVP-2](#setup--onboarding-phase), [18-MVP-4](#setup--onboarding-phase), [BANKING-UX-05](#banking-ux-05--ai-statement-matching), [POS-CONFIG-01](#pos-config-01--sales-source--reconciliation-settings), and [POST-LAUNCH-STABILITY-03](#post-launch-stability-03).
+
+**References:** BANKING-DOCUMENT-CLASSIFICATION-AUDIT · BANKING-IMPORT-ARCHITECTURE-01 · POST-LAUNCH-STABILITY observations.
+
+**Decision:** Architecture recorded for memory only. Implementation is deferred until a dedicated banking-import architecture phase is explicitly approved.
 
 ---
 
@@ -2040,9 +2108,9 @@ Full design: [PHASE_18_DESIGN_REVIEW.md](../PHASE_18_DESIGN_REVIEW.md) (APPROVED
 **MVP build order (trimmed from the 18A–18G blueprint — deterministic, no ML/rules yet):**
 
 - **18-MVP-1 — Clearing migration + toggles. ✅ (June 5, 2026)** Added `banking.*` settings (all OFF = today's behaviour); added **Card Sales Clearing** (1150) + **Bank Charges** (5800) accounts and an idempotent `ensure_phase18_accounts` startup backfill; when `banking.card_settlement_enabled` is on, card-sale posting routes to clearing (`DR Card Sales Clearing / CR Sales Revenue`, no bank deposit yet) — when off, card sales post directly to Bank as today; added `is_reconciled` / `statement_ref` / `charge_subtype` to `BankTransaction`. **Deviation from the doc's automatic one-time backfill:** historical card-sale treatment is now an explicit, user-chosen setting (`banking.card_sales_clearing_backfill` = `none` | `reclassify_to_clearing`) applied only via an owner/manager "Apply migration now" button — never automatic, guarded by a per-company `MigrationFlag`, idempotent, posting through `create_journal_entry`. Settlement → Bank + Bank Charges ← clearing lands in 18-MVP-4.
-- **18-MVP-2 — Import to staging + provenance. ✅ (June 5, 2026)** `BankStatementImport` + `BankStatementRow` tables; raw file on disk under `uploads/statements/` + SHA-256; `raw_line_text` per row; CSV/Excel parse with column mapping UI in Advanced → Bank Statement Import (gated by `banking.reconciliation_enabled`); soft duplicate flags on composite key (date + amount + normalized description + balance); permissions `import_bank_statement` / `view_bank_statement_import`. **No GL posting** — matching/posting is MVP-3. CC/settlement import pipelines deferred.
+- **18-MVP-2 — Import to staging + provenance. ✅ (June 5, 2026)** `BankStatementImport` + `BankStatementRow` tables; raw file on disk under `uploads/statements/` + SHA-256; `raw_line_text` per row; CSV/Excel parse with column mapping UI in Advanced → Bank Statement Import (gated by `banking.reconciliation_enabled`); soft duplicate flags on composite key (date + amount + normalized description + balance); permissions `import_bank_statement` / `view_bank_statement_import`. **No GL posting** — matching/posting is MVP-3. CC/settlement import pipelines deferred. **Identity architecture cross-reference:** future document classification / global duplicate owner is deferred to [BANKING-IMPORT-IDENTITY-01](#banking-import-identity-01-deferred-architecture).
 - **18-MVP-3 — Manual match & post (deterministic). ✅ (June 5, 2026)** Step **③ Match & post** on Bank Statement Import; deposits match card sales in clearing (multi-select, amounts must tie); other deposits post DR Bank / CR user-selected account; withdrawals assign vendor + open `Payable` **or** ad-hoc expense; confirm-everything; posts via `create_journal_entry`; `BankTransaction.statement_ref=bsr:{row_id}`; row status → `posted`; `AuditLog` on each post. Bank charges / fee shortfalls deferred to 18-MVP-4.
-- **18-MVP-4 — Bank charges + settlement statement. ✅ (June 5, 2026)** Merchant settlement import (`SettlementStatementImport` / `SettlementStatementRow`) with gross/fee/net column mapping under Upload expander (gated by `banking.card_settlement_enabled`); clearing match books **Bank Charges** when deposit &lt; clearing — exact fee from linked settlement batch or inferred difference with user confirmation (gated by `banking.bank_charges_enabled`); cross-check settlement gross↔clearing and net↔deposit; `BankTransaction.charge_subtype=card_settlement_fee`; provenance link `bank_statement_rows.settlement_row_id`.
+- **18-MVP-4 — Bank charges + settlement statement. ✅ (June 5, 2026)** Merchant settlement import (`SettlementStatementImport` / `SettlementStatementRow`) with gross/fee/net column mapping under Upload expander (gated by `banking.card_settlement_enabled`); clearing match books **Bank Charges** when deposit &lt; clearing — exact fee from linked settlement batch or inferred difference with user confirmation (gated by `banking.bank_charges_enabled`); cross-check settlement gross↔clearing and net↔deposit; `BankTransaction.charge_subtype=card_settlement_fee`; provenance link `bank_statement_rows.settlement_row_id`. **Identity architecture cross-reference:** future `pos_settlement` document identity and source/provider fields are deferred to [BANKING-IMPORT-IDENTITY-01](#banking-import-identity-01-deferred-architecture).
 - **18-MVP-5 — Company credit card (optional). ✅ (June 5, 2026)** `BankAccount.kind="credit_card"` for bank-like UX; **Credit Card Payable** (2110) GL; expenses/purchases/payable payments by card credit the liability when `banking.company_card_enabled`; bank-statement **KK ödeme** posts DR CC Payable / CR Bank via Match & post with card-account picker.
 - **Deferred to post-MVP:** rule engine, fuzzy/ML suggestions, receipt auto-matching, PDF/OCR import, advanced report suite, multi-currency conversion (store original amount/currency now, leave base = original until Phase 17 FX).
 
@@ -3767,6 +3835,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-20 | **BANKING-IMPORT-IDENTITY-01 (defer)** — Architecture recorded only: global document identity and duplicate-prevention ownership are required before expanding banking imports. Implementation deferred during post-launch stabilization because ambiguous uploads are high-risk and currently classified **DANGEROUS** by audit. No runtime code. |
 | 2026-06-20 | **GLOBAL-STABILITY-HARDENING-01 (contract tests)** — No-bypass contracts S1–S5 from audit stop report: date, money, error formatting, banking import ownership, audit doc. Tests only; no runtime bypasses found. Tag: `global-stability-hardening-01-contract-tests`. Not pushed. |
 | 2026-06-20 | **OBS-011 (fix)** — Banking POS settlement go_import restored upload tab: `banking_navigate_statement_import_upload()` clears stale `bsi_section=match` / POS keys. Prior BANKING-UX-02 P1B audited; empty Statement Import picker prevented. Tag: `obs-011-fix-banking-statement-import-route`. |
 | 2026-06-05 | **POST-LAUNCH-STABILITY-02 (closure)** — OBS-005/006/007/009/010 implemented; OBS-008 deferred (staff ops = normal Expense path). Full suite **7178 passed**. Tag: `post-launch-stability-02-complete`. Pushed. |
