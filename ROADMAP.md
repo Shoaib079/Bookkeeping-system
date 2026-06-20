@@ -830,6 +830,26 @@ Host `pytest tests/` — **1551 passed, 2 xfailed**.
 
 ---
 
+## GLOBAL-STABILITY-HARDENING-01
+
+**Status:** ✅ **COMPLETE** (local, contract tests only) · Tag: `global-stability-hardening-01-contract-tests` · **Not pushed**
+
+**Goal:** Prevent old fixes from reappearing by adding no-bypass contract tests for the highest-risk global rules identified in `docs/GLOBAL_STABILITY_AUDIT_01_STOP_REPORT.md`. **No runtime changes** unless a test exposes an actual bypass (none found in this slice).
+
+| Slice | Contract | Owner / markers | Verification |
+|-------|----------|-----------------|--------------|
+| **S1** | Date no-bypass | `registry/date_utils.py`, `ui/date_input.py`, `services/at_date_ownership.py`; scoped surfaces: AT, TXH filters/edit, Staff Capture submit, Banking unsettled dates | `tests/test_global_stability_hardening_01.py::TestS1*` + `tests/global_stability_hardening_contract.py` |
+| **S2** | Money input no-bypass | `amount_input` / `_parse_amount_str` on TXH edit, AT submit, Staff Capture; classified `st.number_input` exceptions (cash recon, BSI header rows, JE line count) | `TestS2*` |
+| **S3** | Error formatting no-bypass | React `errorMessageFromCatch` / `normalizeApiErrorDetail`; frozen legacy `String(detail)` allowlist (40 read pages); Python `_bsi_statement_post_error_message` | `TestS3*` |
+| **S4** | Banking import ownership | `banking_navigate_statement_import_upload()`; upload tab `bsi_file_uploader`; recon-on staging vs recon-off legacy CSV explicitly classified | `TestS4*` + `test_obs_011_banking_statement_import_route.py` |
+| **S5** | Audit stop report | `docs/GLOBAL_STABILITY_AUDIT_01_STOP_REPORT.md` + `tests/test_global_stability_audit_01_stop_report.py` | `TestS5*` |
+
+**Classified debt (documented, not fixed):** AT/TXH native calendar exceptions; 40 React read pages on legacy error pattern; recon-off quick-CSV branch remains separate path (telemetry/deprecation only per audit).
+
+**Rule:** Contract tests first — fail the build when a new screen bypasses canonical helpers.
+
+---
+
 ## SETUP & Onboarding phase
 
 ### SETUP-01 — Company Creation Wizard 🟡 **HIGH** (design approved)
@@ -3747,6 +3767,7 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
+| 2026-06-20 | **GLOBAL-STABILITY-HARDENING-01 (contract tests)** — No-bypass contracts S1–S5 from audit stop report: date, money, error formatting, banking import ownership, audit doc. Tests only; no runtime bypasses found. Tag: `global-stability-hardening-01-contract-tests`. Not pushed. |
 | 2026-06-20 | **OBS-011 (fix)** — Banking POS settlement go_import restored upload tab: `banking_navigate_statement_import_upload()` clears stale `bsi_section=match` / POS keys. Prior BANKING-UX-02 P1B audited; empty Statement Import picker prevented. Tag: `obs-011-fix-banking-statement-import-route`. |
 | 2026-06-05 | **POST-LAUNCH-STABILITY-02 (closure)** — OBS-005/006/007/009/010 implemented; OBS-008 deferred (staff ops = normal Expense path). Full suite **7178 passed**. Tag: `post-launch-stability-02-complete`. Pushed. |
 | 2026-06-05 | **OBS-008 (defer)** — Staff operational purchases use normal Expense category/subcategory in New Transaction; Staff Expenses approval module unchanged; no new staff-specific AT flow in this slice. |
