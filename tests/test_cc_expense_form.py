@@ -89,10 +89,12 @@ class TestCcVisibility:
         assert "Credit Card" not in erp_app._at_expense_pay_methods(db)
         assert "Credit Card" not in erp_app._business_pay_methods(db)
 
-    def test_cc_visible_when_ready(self, db):
+    def test_cc_hidden_from_expense_entry_when_ready(self, db):
+        """OBS-007 — CC posting remains; Expense entry UI excludes company CC."""
         _company(db, cc_enabled=True, with_card=True)
         assert erp_app._company_cc_charge_ready(db)
-        assert "Credit Card" in erp_app._at_expense_pay_methods(db)
+        assert "Credit Card" not in erp_app._at_expense_pay_methods(db)
+        assert "Credit Card" not in erp_app._expense_form_pay_methods(db)
         assert "Credit Card" in erp_app._business_pay_methods(db)
 
 

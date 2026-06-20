@@ -1097,6 +1097,40 @@ div[data-baseweb="calendar"] [aria-selected="true"] div {
   font-weight: 700 !important;
 }
 
+/* OBS-005 — company switch confirm: universal front-layer modal (desktop + mobile) */
+[data-testid="stAppViewContainer"]:has(.erp-co-switch-confirm-host)::before {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10090 !important;
+  background: color-mix(in srgb, var(--theme-text) 42%, transparent) !important;
+  pointer-events: auto !important;
+}
+[data-testid="stMain"] [class*="st-key-"][class*="confirm_shell"] {
+  position: fixed !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 10095 !important;
+  width: min(420px, calc(100vw - 48px)) !important;
+  max-width: calc(100vw - 48px) !important;
+  max-height: min(80vh, calc(100vh - 48px)) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  background: var(--theme-card) !important;
+  border: 1px solid var(--theme-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--theme-shadow) 80%, transparent) !important;
+  padding: 12px 14px !important;
+  margin: 0 !important;
+}
+[data-testid="stMain"] [class*="st-key-"][class*="confirm_shell"]
+  [data-testid="stVerticalBlockBorderWrapper"] {
+  border: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
 /* Mobile header shell layout — keyed st.columns rows (TXH grids → mobile_txn_history.css) */
 @media (max-width: 968px),
   ((max-width: 1366px) and (hover: none) and (pointer: coarse)),
@@ -1121,38 +1155,15 @@ div[data-baseweb="calendar"] [aria-selected="true"] div {
     width: 100% !important;
   }
 
-  /* Company switch confirm — fixed above header, popovers, and bottom nav */
-  [data-testid="stAppViewContainer"]:has(.erp-co-switch-confirm-host)::before {
-    content: "" !important;
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 10090 !important;
-    background: color-mix(in srgb, var(--theme-text) 42%, transparent) !important;
-    pointer-events: auto !important;
-  }
+  /* OBS-005 mobile — confirm shell below header (overrides desktop centering) */
   [data-testid="stMain"] [class*="st-key-"][class*="confirm_shell"] {
-    position: fixed !important;
     left: 12px !important;
     right: 12px !important;
     top: calc(var(--hdr-h) + 12px) !important;
-    z-index: 10095 !important;
+    transform: none !important;
     width: auto !important;
     max-width: calc(100vw - 24px) !important;
     max-height: calc(100vh - var(--hdr-h) - var(--bottom-nav-h) - 24px) !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    background: var(--theme-card) !important;
-    border: 1px solid var(--theme-border) !important;
-    border-radius: 12px !important;
-    box-shadow: 0 12px 40px color-mix(in srgb, var(--theme-shadow) 80%, transparent) !important;
-    padding: 12px 14px !important;
-    margin: 0 !important;
-  }
-  [data-testid="stMain"] [class*="st-key-"][class*="confirm_shell"]
-    [data-testid="stVerticalBlockBorderWrapper"] {
-    border: none !important;
-    padding: 0 !important;
-    background: transparent !important;
   }
 
   /* Confirm active — suppress hub/header sheets, scrim, dim bottom nav */

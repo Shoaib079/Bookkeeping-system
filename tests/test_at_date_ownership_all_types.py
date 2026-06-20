@@ -424,7 +424,7 @@ def test_past_date_bank_deposit(db):
 # ── Subcategory widget safety ─────────────────────────────────────────────────
 
 
-def test_gather_submit_resolves_default_subcat_without_widget_write(db, monkeypatch):
+def test_gather_submit_subcat_none_when_unpicked(db, monkeypatch):
     co = _setup_company(db)
     cat = _expense_cat(db, co)
     writes: list[tuple[str, object]] = []
@@ -445,13 +445,7 @@ def test_gather_submit_resolves_default_subcat_without_widget_write(db, monkeypa
     )
     monkeypatch.setattr(erp.st, "session_state", state)
     ctx = erp._at_gather_submit_fields(db, "Expense", "TRY", [], [], [])
-    first = (
-        db.query(models.TransactionSubcategory)
-        .filter_by(category_id=cat.id, is_active=True)
-        .order_by(models.TransactionSubcategory.name)
-        .first()
-    )
-    assert ctx["at_subcat_name"] == first.name
+    assert ctx["at_subcat_name"] is None
     assert not any(k == "at_subcat" for k, _ in writes)
 
 

@@ -1297,6 +1297,7 @@ def _render_company_switch_confirm(*, key_prefix: str = "co_sw") -> None:
                         if _activate_company_in_session(
                             _sw_session, _u["id"], _target, membership_count=_cnt
                         ):
+                            _on_company_switch_success()
                             st.rerun()
             if _expand:
                 _start_create_company_wizard()
@@ -4230,7 +4231,31 @@ _COMPANY_SCOPED_AT_KEYS = (
     "at_pm",
     "at_notes_field",
     "at_picker_mode",
+    "at_worker_id",
+    "mob_at_worker_id",
+    "at_worker_gross",
+    "mob_at_worker_gross",
+    "at_worker_ded",
+    "mob_at_worker_ded",
+    "at_worker_adv_rec",
+    "mob_at_worker_adv_rec",
+    "at_worker_period",
+    "mob_at_worker_period",
+    "at_worker_mv_type",
+    "at_pending_attachment",
+    "at_desktop_receipt_upload",
 )
+
+
+def _on_company_switch_success() -> None:
+    """OBS-006 — land on Home and drop page-specific navigation state."""
+    st.session_state["nav_selection"] = NAV_HOME
+    st.session_state.pop("advanced_subpage", None)
+    st.session_state.pop("sidebar_group", None)
+    st.session_state.pop("rpt_exec_sel", None)
+    st.session_state.pop("mob_reports_tab", None)
+    st.session_state.pop("banking_section", None)
+    _mobile_close_app_surfaces()
 
 
 def _clear_company_scoped_session_state() -> None:
@@ -4685,6 +4710,7 @@ def render_company_picker(session) -> None:
                         _m.company_id,
                         membership_count=len(memberships),
                     ):
+                        _on_company_switch_success()
                         st.rerun()
                 else:
                     st.error(_t("picker.unavailable"))
@@ -4922,17 +4948,19 @@ def _business_pay_methods(session) -> list[str]:
     return methods
 
 
+def _expense_form_pay_methods(session) -> list[str]:
+    """OBS-007 — legacy Expenses page; no manual company CC (statement/AI workflow later)."""
+    return ["Cash", "Bank", "Mobile Money", "Other"]
+
+
 def _at_sale_pay_methods(session) -> list[str]:
     """New Transaction — Sale payment methods."""
     return ["Cash", "Card", "Credit"]
 
 
 def _at_expense_pay_methods(session) -> list[str]:
-    """New Transaction — Expense payment chips (excludes customer Card sale type)."""
-    methods = ["Cash", "Bank"]
-    if _company_cc_charge_ready(session):
-        methods.append(_COMPANY_CC_METHOD)
-    return methods
+    """New Transaction — Expense payment methods (OBS-007: no company CC)."""
+    return ["Cash", "Bank"]
 
 
 def _at_purchase_pay_methods(session) -> list[str]:
@@ -4966,6 +4994,34 @@ def _at_pm_chip_labels(txn_type: str, methods: list[str]) -> list[tuple[str, str
     return [(pm, _at_payment_method_label(txn_type, pm)) for pm in methods]
 
 
+def _at_render_pm_selectbox(
+    container,
+    session,
+    txn_type: str,
+    *,
+    label: str,
+) -> None:
+    """Desktop AT payment method — placeholder until user picks (OBS-010)."""
+    methods = _at_allowed_pay_methods(session, txn_type)
+    if not methods:
+        return
+    cur = st.session_state.get("at_pm")
+    common = {
+        "label": label,
+        "options": methods,
+        "format_func": lambda v: _at_payment_method_label(txn_type, v),
+        "key": "at_pm",
+    }
+    if cur in methods:
+        container.selectbox(**common, index=methods.index(cur))
+    else:
+        container.selectbox(
+            **common,
+            index=None,
+            placeholder=_t("txn.select_pm_ph"),
+        )
+
+
 _AT_PM_TXN_TYPES = frozenset({
     "Sale", "Expense", "Purchase", "Supplier Payment", "Customer Payment",
 })
@@ -4987,7 +5043,7 @@ _AT_TYPE_I18N: dict[str, str] = {
 }
 
 
-_AT_COMPANY_CC_TXN_TYPES = frozenset({"Expense", "Purchase", "Supplier Payment"})
+_AT_COMPANY_CC_TXN_TYPES = frozenset({"Purchase", "Supplier Payment"})
 
 
 def _at_txn_allows_company_cc(txn_type: str) -> bool:
@@ -5073,6 +5129,8 @@ def _coerce_at_payment_method(session, txn_type: str) -> None:
         return
     st.session_state["_mob_at_coerce_pm_type"] = txn_type
     pm = st.session_state.get("at_pm")
+    if pm is None:
+        return
     if pm in allowed:
         _at_clear_stale_payment_account_keys(pm)
         return
@@ -5159,6 +5217,8 @@ def _at_validate_payment_method_for_submit(session, txn_type: str) -> str | None
     _coerce_at_payment_method(session, txn_type)
     allowed = _at_allowed_pay_methods(session, txn_type)
     pm = st.session_state.get("at_pm")
+    if not pm:
+        return _t("txn.pm_required")
     if pm in allowed:
         return None
     return _t(
@@ -5234,6 +5294,7 @@ _AT_POST_SAVE_CLEAR_KEYS = (
     "mob_at_date_custom_pick",
     "_mob_at_coerce_pm_type",
     "at_pending_attachment",
+    "at_desktop_receipt_upload",
 )
 
 
@@ -11375,7 +11436,7 @@ def _at_resolve_submit_subcategory(
     if cur and cur in [s.name for s in subcats_list]:
         return cur, subcats_list
 
-    return subcats_list[0].name, subcats_list
+    return None, []
 
 
 def _mob_at_render_picker_hdr(title: str) -> bool:
@@ -11566,23 +11627,8 @@ def _mob_at_seed_visible_category(session, txn_type: str) -> None:
 
 
 def _mob_at_apply_default_subcategory(session, cat_id: int | None) -> None:
-    """Desktop parity: when a category has subcategories, default the first if none chosen."""
-    if session is None or not cat_id:
-        return
-    sid = st.session_state.get("mob_at_subcat_id")
-    if sid:
-        sub = session.get(TransactionSubcategory, sid)
-        if sub and sub.category_id == cat_id and sub.is_active:
-            return
-        st.session_state.pop("mob_at_subcat_id", None)
-        _at_defer_subcat_clear()
-    subcats = _mob_at_subcategory_options(session, cat_id)
-    if not subcats:
-        return
-    first = subcats[0]
-    if first.subcat_id:
-        st.session_state["mob_at_subcat_id"] = first.subcat_id
-        _at_defer_subcat_default(first.label)
+    """OBS-010 — no auto subcategory preselection."""
+    return
 
 
 def _mob_at_apply_category_pick(
@@ -12198,7 +12244,6 @@ def _mob_at_c_apply_type(idx: int) -> None:
     _at_clear_category_session_state()
     if idx == _MOB_AT_SALARY_IDX:
         st.session_state["at_expense_mode"] = "worker"
-        st.session_state["at_worker_mv_type"] = "Salary"
     else:
         _at_clear_worker_entry_session_state()
         if idx == 1:
@@ -12468,7 +12513,6 @@ def _at_presync_salary_expense_mode() -> None:
     """Align session flags when mobile Salary type (or synced tabs) implies worker entry."""
     if _mob_at_is_salary_mode():
         st.session_state["at_expense_mode"] = "worker"
-        st.session_state.setdefault("at_worker_mv_type", "Salary")
 
 
 def _at_on_desktop_expense_mode_change() -> None:
@@ -12561,26 +12605,46 @@ def _at_render_worker_expense_panel(
     workers = _at_list_active_workers(session)
     if workers:
         w_labels = {w.id: w.name for w in workers}
-        st.selectbox(
-            _t("worker.mv_worker_label"),
-            options=list(w_labels.keys()),
-            format_func=lambda i: w_labels[i],
-            key=worker_key,
-            label_visibility="collapsed" if mobile else "visible",
-        )
+        w_ids = list(w_labels.keys())
+        w_cur = st.session_state.get(worker_key)
+        w_common = {
+            "label": _t("worker.mv_worker_label"),
+            "options": w_ids,
+            "format_func": lambda i: w_labels[i],
+            "key": worker_key,
+            "label_visibility": "collapsed" if mobile else "visible",
+        }
+        if w_cur in w_ids:
+            st.selectbox(**w_common, index=w_ids.index(w_cur))
+        else:
+            st.selectbox(
+                **w_common,
+                index=None,
+                placeholder=_t("txn.select_worker_ph"),
+            )
     else:
         _at_render_worker_expense_no_workers(
             mobile=mobile,
             key_prefix="mob_at" if mobile else "at",
         )
 
-    st.selectbox(
-        _t("worker.mv_type_label"),
-        ["Salary", "Advance"],
-        format_func=lambda v: _i18n_db(_WORKER_MOVEMENT_TYPE_I18N, v),
-        key="at_worker_mv_type",
-        label_visibility="collapsed" if mobile else "visible",
-    )
+    _mv_opts = ["Salary", "Advance"]
+    _mv_cur = st.session_state.get("at_worker_mv_type")
+    _mv_common = {
+        "label": _t("worker.mv_type_label"),
+        "options": _mv_opts,
+        "format_func": lambda v: _i18n_db(_WORKER_MOVEMENT_TYPE_I18N, v),
+        "key": "at_worker_mv_type",
+        "label_visibility": "collapsed" if mobile else "visible",
+    }
+    if _mv_cur in _mv_opts:
+        st.selectbox(**_mv_common, index=_mv_opts.index(_mv_cur))
+    else:
+        st.selectbox(
+            **_mv_common,
+            index=None,
+            placeholder=_t("txn.select_worker_mv_ph"),
+        )
 
     if st.session_state.get("at_worker_mv_type") == "Salary":
         _at_render_worker_salary_amount_fields(mobile=mobile)
@@ -12684,7 +12748,7 @@ def _mob_at_render_pm_chip_row(session, txn_type: str) -> bool:
     methods = _mob_at_pm_chip_methods(session, txn_type)
     if not methods:
         return False
-    current = st.session_state.get("at_pm", "Cash")
+    current = st.session_state.get("at_pm")
     labels = _at_pm_chip_labels(txn_type, methods)
     with st.container(border=False, key="mob_at_pm_row"):
         cols = st.columns(len(labels), gap="small")
@@ -13148,7 +13212,6 @@ def _mob_at_sync_type_from_tab() -> None:
     st.session_state["at_type_idx"] = _mob_at_tab_to_type_idx(mob_tab, more_idx)
     if _mob_at_is_salary_mode():
         st.session_state["at_expense_mode"] = "worker"
-        st.session_state["at_worker_mv_type"] = "Salary"
     elif mob_tab == 1:
         st.session_state["at_expense_mode"] = "general"
 
@@ -13182,13 +13245,12 @@ def _mob_at_ensure_defaults(session, txn_type: str, currency_default: str, vendo
     st.session_state.setdefault("at_picker_mode", "")
     if txn_type == "Sale":
         st.session_state.setdefault("at_cust", "Walk-in Customer")
-    if txn_type in _AT_PM_TXN_TYPES:
-        st.session_state.setdefault("at_pm", _at_default_pay_method(session, txn_type))
     if txn_type == "Supplier Payment":
         _at_clear_category_session_state()
     if txn_type == "Bank Transaction":
         st.session_state.setdefault("at_bank_sub", "Deposit")
-    _coerce_at_payment_method(session, txn_type)
+    if txn_type in _AT_PM_TXN_TYPES and st.session_state.get("at_pm") is not None:
+        _coerce_at_payment_method(session, txn_type)
 
 
 def _at_gather_submit_fields(
@@ -13204,7 +13266,7 @@ def _at_gather_submit_fields(
     _mob_at_sync_select_widgets()
     date = _at_resolve_submit_date()
     at_notes = st.session_state.get("at_notes_field", "") or ""
-    at_payment_method = st.session_state.get("at_pm", "Cash")
+    at_payment_method = st.session_state.get("at_pm")
     at_fx_rate = float(st.session_state.get("at_fx_rate_val") or 1.0)
 
     customer_name_val = ""
@@ -13351,7 +13413,6 @@ def _at_process_submit(
     if _at_is_worker_expense_entry():
         st.session_state["at_expense_mode"] = "worker"
         _mob_at_sync_select_widgets()
-        st.session_state.setdefault("at_worker_mv_type", "Salary")
         st.session_state["at_worker_gross"] = (
             st.session_state.get("mob_at_worker_gross")
             or st.session_state.get("at_worker_gross")
@@ -13385,10 +13446,15 @@ def _at_process_submit(
         st.error(_cr_cust_err)
         _at_set_flash("error", _cr_cust_err)
     elif _at_is_worker_expense_entry() and not st.session_state.get("at_worker_id"):
-        st.error(_t("txn.expense_worker_required"))
+        _w_err = _t("txn.expense_worker_required")
+        st.error(_w_err)
+        _at_set_flash("error", _w_err)
+    elif _at_is_worker_expense_entry() and not st.session_state.get("at_worker_mv_type"):
+        st.error(_t("txn.expense_worker_mv_required"))
+        _at_set_flash("error", _t("txn.expense_worker_mv_required"))
     elif (
         _at_is_worker_expense_entry()
-        and st.session_state.get("at_worker_mv_type", "Salary") == "Salary"
+        and st.session_state.get("at_worker_mv_type") == "Salary"
         and not _parse_amount_str(
             st.session_state.get("at_worker_gross")
             or st.session_state.get("mob_at_worker_gross", "")
@@ -14011,11 +14077,11 @@ def render_add_transaction(session):
                         # ── CONDITIONAL FIELDS BY TRANSACTION TYPE ─────────────────────
                         if txn_type == "Sale":
                             fc1, fc2 = st.columns(2)
-                            at_payment_method = fc1.selectbox(
-                                "💳 " + _t("form.payment_method"), ["Cash", "Card", "Credit"],
-                                format_func=lambda v: _at_payment_method_label("Sale", v),
-                                key="at_pm",
+                            _at_render_pm_selectbox(
+                                fc1, session, "Sale",
+                                label="💳 " + _t("form.payment_method"),
                             )
+                            at_payment_method = st.session_state.get("at_pm")
                             fc2.selectbox(
                                 "💱 " + _t("txn.currency_label"), CURRENCIES,
                                 index=CURRENCIES.index(currency_default) if currency_default in CURRENCIES else 0,
@@ -14052,12 +14118,11 @@ def render_add_transaction(session):
 
                         elif txn_type == "Expense":
                             fc1, fc2 = st.columns(2)
-                            at_payment_method = fc1.selectbox(
-                                "💳 " + _t("form.payment_method"),
-                                _at_expense_pay_methods(session),
-                                format_func=lambda v: _at_payment_method_label("Expense", v),
-                                key="at_pm",
+                            _at_render_pm_selectbox(
+                                fc1, session, "Expense",
+                                label="💳 " + _t("form.payment_method"),
                             )
+                            at_payment_method = st.session_state.get("at_pm")
                             fc2.selectbox("💱 " + _t("txn.currency_label"), CURRENCIES,
                                           index=CURRENCIES.index(currency_default) if currency_default in CURRENCIES else 0,
                                           key="at_currency")
@@ -14077,19 +14142,30 @@ def render_add_transaction(session):
                                     session, at_cat, inside_form=True
                                 )
                             _at_render_bank_pay_select(bank_accounts)
-                            _at_render_company_cc_select(session, txn_type="Expense")
+                            if _can("upload_attachment"):
+                                _desk_upload = st.file_uploader(
+                                    _t("txn.attach_receipt_btn"),
+                                    type=["pdf", "jpg", "jpeg", "png"],
+                                    key="at_desktop_receipt_upload",
+                                )
+                                if _desk_upload is not None:
+                                    st.session_state["at_pending_attachment"] = {
+                                        "bytes": _desk_upload.getvalue(),
+                                        "name": _desk_upload.name,
+                                        "mime": _desk_upload.type or "application/octet-stream",
+                                        "category": "receipt",
+                                    }
 
                         elif txn_type == "Purchase":
                             vendor_name_val = _inline_vendor_row(
                                 session, vendors, inside_form=True
                             )
                             fc1, fc2 = st.columns(2)
-                            at_payment_method = fc1.selectbox(
-                                "💳 " + _t("form.payment_method"),
-                                _at_purchase_pay_methods(session),
-                                format_func=lambda v: _at_payment_method_label("Purchase", v),
-                                key="at_pm",
+                            _at_render_pm_selectbox(
+                                fc1, session, "Purchase",
+                                label="💳 " + _t("form.payment_method"),
                             )
+                            at_payment_method = st.session_state.get("at_pm")
                             fc2.selectbox("💱 " + _t("txn.currency_label"), CURRENCIES,
                                           index=CURRENCIES.index(currency_default) if currency_default in CURRENCIES else 0,
                                           key="at_currency")
@@ -14174,12 +14250,11 @@ def render_add_transaction(session):
                                         st.session_state["at_payable_id"] = None
 
                             fc1, fc2 = st.columns(2)
-                            at_payment_method = fc1.selectbox(
-                                "💳 " + _t("form.payment_method"),
-                                _at_supplier_pay_methods(session),
-                                format_func=lambda v: _at_payment_method_label("Supplier Payment", v),
-                                key="at_pm",
+                            _at_render_pm_selectbox(
+                                fc1, session, "Supplier Payment",
+                                label="💳 " + _t("form.payment_method"),
                             )
+                            at_payment_method = st.session_state.get("at_pm")
                             fc2.selectbox(
                                 "💱 " + _t("txn.currency_label"),
                                 CURRENCIES,
@@ -14221,12 +14296,11 @@ def render_add_transaction(session):
                                                 balance=_sel_sale.balance,
                                             )
                                         )
-                                at_payment_method  = fc2.selectbox(
-                                    "💳 " + _t("form.payment_method"),
-                                    ["Cash", "Bank"],
-                                    format_func=lambda v: _at_payment_method_label("Customer Payment", v),
-                                    key="at_pm",
+                                _at_render_pm_selectbox(
+                                    fc2, session, "Customer Payment",
+                                    label="💳 " + _t("form.payment_method"),
                                 )
+                                at_payment_method = st.session_state.get("at_pm")
                                 fc3.selectbox("💱 " + _t("txn.currency_label"), CURRENCIES,
                                               index=CURRENCIES.index(currency_default) if currency_default in CURRENCIES else 0,
                                               key="at_currency")
@@ -19046,7 +19120,7 @@ def render_expenses(session):
                 net_salary = round(max((gross_salary or 0.0) - (deductions or 0.0), 0.0), 2)
                 payment_method = st.selectbox(
                     _t("expense.payment_method"),
-                    _business_pay_methods(session),
+                    _expense_form_pay_methods(session),
                     format_func=lambda v: _t(_PAY_METHOD_I18N.get(v, v)),
                 )
                 expense_cc_card_id = _form_company_cc_card_id(session, payment_method, "expense_cc_card_salary")
@@ -19057,7 +19131,7 @@ def render_expenses(session):
                 amount = amount_input(_t("expense.amount"), key="expense_amount")
                 payment_method = st.selectbox(
                     _t("expense.payment_method"),
-                    _business_pay_methods(session),
+                    _expense_form_pay_methods(session),
                     format_func=lambda v: _t(_PAY_METHOD_I18N.get(v, v)),
                 )
                 expense_cc_card_id = _form_company_cc_card_id(session, payment_method, "expense_cc_card")
@@ -23683,10 +23757,19 @@ def _inline_subcat_row(session, at_cat, *, inside_form: bool = False):
     with col_sel:
         if _sub_names:
             _cur_sub_name = st.session_state.get("at_subcat")
-            _def_idx = _sub_names.index(_cur_sub_name) if _cur_sub_name in _sub_names else 0
-            at_subcat_name = st.selectbox(
-                _t("form.subcategory"), _sub_names, index=_def_idx, key="at_subcat"
-            )
+            _def_idx = _sub_names.index(_cur_sub_name) if _cur_sub_name in _sub_names else None
+            if _def_idx is not None:
+                at_subcat_name = st.selectbox(
+                    _t("form.subcategory"), _sub_names, index=_def_idx, key="at_subcat"
+                )
+            else:
+                at_subcat_name = st.selectbox(
+                    _t("form.subcategory"),
+                    _sub_names,
+                    index=None,
+                    placeholder=_t("txn.select_subcategory_ph"),
+                    key="at_subcat",
+                )
         else:
             st.selectbox(_t("form.subcategory"), [], key="at_subcat", disabled=True,
                          placeholder=_t("cat.no_subcategories_ph"))

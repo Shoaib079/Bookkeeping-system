@@ -784,6 +784,36 @@ Host `pytest tests/` — **1551 passed, 2 xfailed**.
 
 ---
 
+## POST-LAUNCH-STABILITY-02
+
+**Status:** ✅ **COMPLETE** (local) · Tag: `post-launch-stability-02-complete` · Full suite **7178 passed** (1 pre-existing React home contract unrelated)
+
+**Standing rule:** Characterize → audit prior fixes/tests → connected-surface audit → test-gap analysis → fix → verify → ROADMAP → commit/tag. **Not pushed.**
+
+| Slice | Fix | Verification |
+|-------|-----|--------------|
+| **OBS-005** | Company-switch confirm modal: universal front-layer CSS (`ui/widgets.css`) — scrim `10090`, shell `10095`; desktop centered; mobile below header | `test_company_switch_parity.py` + `test_post_launch_stability_02_obs.py` |
+| **OBS-006** | `_on_company_switch_success()` → `NAV_HOME`, clears page nav state + company-scoped AT keys (worker, receipt) | Contract tests + switch confirm handler wiring |
+| **OBS-007** | Remove company CC from Expense / New Transaction PM UI (`_at_expense_pay_methods`, `_expense_form_pay_methods`; `Expense` ∉ `_AT_COMPANY_CC_TXN_TYPES`) — posting/history unchanged | `test_company_cc_safety.py`, `test_ux04b_*`, `test_cc_expense_form.py` |
+| **OBS-008** | **Deferred** — staff operational purchases remain normal Expense via category/subcategory; Staff Expenses approval module unchanged | ROADMAP note only |
+| **OBS-009** | Desktop Expense: `st.file_uploader` → `at_pending_attachment` (reuses mobile flush on save) | `test_post_launch_stability_02_obs.py` |
+| **OBS-010** | Explicit choices policy — no auto worker/movement/subcategory/PM; placeholders + submit validation; post-save clears PM | Test rewrites + `test_post_launch_stability_02_obs.py` |
+
+**OBS-008 decision (deferred):** User confirmed staff-related purchases (clothes, water, food, etc.) should use the **normal Expense** path with category/subcategory — not a separate hard-coded staff flow or approval gate. The Staff Expenses module (draft/approval) stays as-is for workflow expenses; OBS-008 does not expand that into New Transaction in this slice.
+
+**Result:**
+
+- Switch-company confirm modal prominent on desktop + mobile
+- Company switch lands on Home with stale page state cleared
+- Company CC hidden from Expense entry (Purchase/Supplier Payment still support CC)
+- Desktop Expense exposes receipt upload entry point
+- Add Transaction requires explicit worker, movement type, subcategory, and payment method choices
+- Post-save retention: type + date only (PM/categories reset)
+
+**Programmatic smoke:** 6/6 OBS contract checks passed (in-memory; live `erp_data.db` / Company 5 manual UI smoke pending when DB available).
+
+---
+
 ## SETUP & Onboarding phase
 
 ### SETUP-01 — Company Creation Wizard 🟡 **HIGH** (design approved)
@@ -3701,7 +3731,10 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
-| 2026-06-19 | **OBS-004 (fix)** — Centralized AT date SSOT in `services/at_date_ownership.py`: `pre_render_date_sync`, submit capture/resolve, DATE-01 rollover; no form callbacks on date widget. Tests: `test_obs_004_at_date_ownership.py`. Tag: `obs-004-fix-at-date-ownership`. |
+| 2026-06-05 | **POST-LAUNCH-STABILITY-02 (closure)** — OBS-005/006/007/009/010 implemented; OBS-008 deferred (staff ops = normal Expense path). Full suite **7178 passed**. Tag: `post-launch-stability-02-complete`. **Not pushed.** |
+| 2026-06-05 | **OBS-008 (defer)** — Staff operational purchases use normal Expense category/subcategory in New Transaction; Staff Expenses approval module unchanged; no new staff-specific AT flow in this slice. |
+| 2026-06-05 | **OBS-007 (policy)** — Company credit card removed from Expense/New Transaction PM UI; CC posting + history preserved; Purchase/Supplier Payment still offer CC when enabled. |
+| 2026-06-05 | **OBS-010 (policy)** — Add Transaction explicit-choices: no auto worker/movement/subcategory/PM; placeholders + submit validation; RETENTION-01 keeps type+date only. |
 | 2026-06-19 | **POST-LAUNCH-STABILITY-01 (closure)** — OBS-001/002/003 production stability fixes verified (Company 5 smoke + full suite). Add Transaction + Transaction History stable; date ownership + Decimal UI seam + session restore verified. Tag: `post-launch-stability-01-complete`. |
 | 2026-06-19 | **OBS-003 (fix)** — Transaction History edit: Decimal-safe amount dirty check via `decimal_equal` / `_txh_edit_amount_changed` (Sale, Expense, Purchase panels). Tests: `test_obs_003_txh_edit_decimal_amount.py`. Tag: `obs-003-fix-transaction-history-edit-decimal-amount`. |
 | 2026-06-19 | **OBS-002 (fix)** — Add Transaction backdated posting: sync `at_date_follows_today` from desktop `st.date_input` on_change; rollover preserves deliberate backdates; capture pins widget date without clobber. Tests: `test_obs_002_at_date_selected_posting.py`. Tag: `obs-002-fix-add-transaction-selected-date-posting`. |

@@ -89,7 +89,7 @@ def test_mob_at_c_apply_type_salary_sets_worker_and_clears_categories(monkeypatc
     erp._mob_at_c_apply_type(erp._MOB_AT_SALARY_IDX)
     assert state["at_type_idx"] == erp._MOB_AT_SALARY_IDX
     assert state["at_expense_mode"] == "worker"
-    assert state["at_worker_mv_type"] == "Salary"
+    assert "at_worker_mv_type" not in state
     assert "mob_at_cat_id" not in state
     assert "at_cat" not in state
 

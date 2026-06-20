@@ -177,12 +177,22 @@ def test_opening_co_switch_clears_profile_sheet(monkeypatch):
     assert state.get("mob_co_switch_open") is True
 
 
+def test_company_switch_confirm_css_universal_front_layer():
+    """OBS-005 — scrim + confirm shell exist outside mobile-only media query."""
+    widgets = (ROOT / "ui" / "widgets.css").read_text(encoding="utf-8")
+    marker = "/* OBS-005 — company switch confirm: universal front-layer modal"
+    assert marker in widgets
+    universal = widgets.split(marker, 1)[1].split("@media (max-width: 968px)", 1)[0]
+    assert "erp-co-switch-confirm-host" in universal
+    assert "z-index: 10095" in universal
+    assert "z-index: 10090" in universal
+    assert "confirm_shell" in universal
+    assert "translate(-50%, -50%)" in universal
+
+
 def test_mobile_company_switch_confirm_css_fixed_above_chrome():
     widgets = (ROOT / "ui" / "widgets.css").read_text(encoding="utf-8")
-    marker = "/* Company switch confirm — fixed above header"
-    assert marker in widgets
-    confirm_idx = widgets.index("erp-co-switch-confirm-host")
-    assert widgets.rfind("@media (max-width: 968px)", 0, confirm_idx) != -1
-    assert "z-index: 10095" in widgets
-    assert "z-index: 10090" in widgets
-    assert "confirm_shell" in widgets
+    mobile_block = widgets.split("@media (max-width: 968px)", 1)[1]
+    assert "OBS-005 mobile" in mobile_block
+    assert "erp_mob_co_switch_sheet" in mobile_block
+    assert "z-index: 10085" in (ROOT / "ui" / "mobile_shell.css").read_text(encoding="utf-8")

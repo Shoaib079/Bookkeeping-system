@@ -153,13 +153,14 @@ def test_cc_expense_save_resets_payment_and_card_state(db, monkeypatch):
 
     assert erp.st.session_state["at_type_idx"] == 1
     assert erp.st.session_state["at_date"] == PAST
-    assert erp.st.session_state["at_pm"] == "Cash"
+    assert "at_pm" not in erp.st.session_state
     assert "at_cc_card_id" not in erp.st.session_state
     assert "mob_at_cc_card_id" not in erp.st.session_state
     assert "at_amount_display" not in erp.st.session_state
     assert erp.st.session_state.get("at_notes_field") == ""
     assert "mob_at_cat_id" not in erp.st.session_state
 
+    erp.st.session_state["at_pm"] = "Cash"
     ctx = erp._at_gather_submit_fields(db, "Expense", "TRY", [], [], [])
     assert ctx["at_payment_method"] == "Cash"
     assert ctx["at_subcat_name"] is None
@@ -210,7 +211,7 @@ def test_purchase_credit_save_resets_vendor_and_payable_state(db, monkeypatch):
 
     assert erp.st.session_state["at_type_idx"] == 2
     assert erp.st.session_state["at_date"] == PAST
-    assert erp.st.session_state["at_pm"] == "Credit"
+    assert "at_pm" not in erp.st.session_state
     assert "at_vendor" not in erp.st.session_state
     assert "at_payable_id" not in erp.st.session_state
     assert "mob_at_vendor_sel" not in erp.st.session_state
@@ -235,7 +236,7 @@ def test_credit_sale_save_resets_customer_and_payment_state(db, monkeypatch):
 
     assert erp.st.session_state["at_type_idx"] == 0
     assert erp.st.session_state["at_date"] == PAST
-    assert erp.st.session_state["at_pm"] == "Cash"
+    assert "at_pm" not in erp.st.session_state
     assert erp.st.session_state.get("at_cust") == "Walk-in Customer"
     assert "at_cust_sel" not in erp.st.session_state
 

@@ -133,7 +133,7 @@ def test_post_save_retains_type_and_date_only(monkeypatch):
     assert "at_bank_acct" not in state
     erp._mob_at_ensure_defaults(MagicMock(), "Expense", "TRY", [])
     assert state["at_currency"] == "TRY"
-    assert state["at_pm"] == "Cash"
+    assert "at_pm" not in state
 
 
 def test_post_save_clear_keys_include_last_cat_id():

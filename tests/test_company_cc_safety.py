@@ -91,13 +91,13 @@ class TestPayMethodHelpers:
         assert "Credit Card" not in erp_app._at_purchase_pay_methods(db)
         assert "Credit Card" not in erp_app._at_supplier_pay_methods(db)
 
-    def test_cc_visible_when_enabled(self, db):
+    def test_cc_hidden_from_expense_entry_when_enabled(self, db):
         _company(db, cc_enabled=True)
         assert erp_app._company_cc_charge_ready(db)
+        assert "Credit Card" not in erp_app._at_expense_pay_methods(db)
+        assert "Credit Card" not in erp_app._expense_form_pay_methods(db)
         assert "Credit Card" in erp_app._business_pay_methods(db)
-        assert "Credit Card" in erp_app._at_expense_pay_methods(db)
         assert "Credit Card" in erp_app._at_purchase_pay_methods(db)
-        assert "Credit Card" in erp_app._at_supplier_pay_methods(db)
 
     def test_cc_hidden_when_enabled_without_card_account(self, db):
         co = _company(db, cc_enabled=True)
@@ -115,7 +115,7 @@ class TestPayMethodHelpers:
         assert expense == erp_app._at_expense_pay_methods(db)
         assert purchase == erp_app._at_purchase_pay_methods(db)
         assert supplier == erp_app._at_supplier_pay_methods(db)
-        assert expense[-1] == "Credit Card"
+        assert expense == ["Cash", "Bank"]
         assert purchase[-1] == "Credit Card"
         assert supplier[-1] == "Credit Card"
 

@@ -47,10 +47,12 @@ def test_expense_pm_chip_methods_without_cc(monkeypatch):
     assert erp._mob_at_pm_chip_methods(MagicMock(), "Expense") == ["Cash", "Bank"]
 
 
-def test_expense_pm_chip_methods_with_cc(monkeypatch):
+def test_expense_pm_chip_methods_exclude_cc_even_when_enabled(monkeypatch):
+    """OBS-007 — company CC never appears on Expense entry."""
     monkeypatch.setattr(erp, "_company_cc_charge_ready", lambda _s: True)
     methods = erp._mob_at_pm_chip_methods(MagicMock(), "Expense")
-    assert methods == ["Cash", "Bank", erp._COMPANY_CC_METHOD]
+    assert methods == ["Cash", "Bank"]
+    assert erp._COMPANY_CC_METHOD not in methods
 
 
 def test_purchase_pm_chip_methods_with_cc(monkeypatch):
@@ -121,7 +123,7 @@ def test_post_save_resets_payment_method(monkeypatch):
     assert "at_amount_display" not in state
     assert "at_notes_field" not in state
     erp._mob_at_ensure_defaults(MagicMock(), "Expense", "TRY", [])
-    assert state["at_pm"] == "Cash"
+    assert "at_pm" not in state
 
 
 def test_row1_has_three_buttons_only():
@@ -158,7 +160,7 @@ def test_desktop_at_still_uses_selectbox_for_pm():
     mobile = inspect.getsource(erp._render_add_transaction_mobile)
     assert "_mob_at_render_pm_chip_row" in mobile
     assert "_mob_at_render_pm_chip_row" not in desktop
-    assert 'key="at_pm"' in desktop
+    assert "_at_render_pm_selectbox" in desktop
 
 
 def test_pm_chip_row_css_contract():

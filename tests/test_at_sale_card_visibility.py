@@ -31,7 +31,7 @@ def test_sale_card_deposit_accounts_exclude_company_cc():
 def test_at_txn_allows_company_cc_only_on_outflows():
     assert not erp._at_txn_allows_company_cc("Sale")
     assert not erp._at_txn_allows_company_cc("Customer Payment")
-    assert erp._at_txn_allows_company_cc("Expense")
+    assert not erp._at_txn_allows_company_cc("Expense")  # OBS-007
     assert erp._at_txn_allows_company_cc("Purchase")
     assert erp._at_txn_allows_company_cc("Supplier Payment")
 

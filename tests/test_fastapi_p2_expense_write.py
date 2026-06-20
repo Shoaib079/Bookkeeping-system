@@ -206,6 +206,12 @@ def _journal_balanced(db) -> bool:
 
 
 def _streamlit_cash_expense(db, company_id, category_id):
+    sub = (
+        db.query(models.TransactionSubcategory)
+        .filter_by(category_id=category_id, is_active=True)
+        .order_by(models.TransactionSubcategory.name)
+        .first()
+    )
     sys.modules["streamlit"].session_state.clear()
     sys.modules["streamlit"].session_state["auth_user"] = dict(erp_app._DEV_USER)
     sys.modules["streamlit"].session_state["active_company_id"] = company_id
@@ -219,6 +225,7 @@ def _streamlit_cash_expense(db, company_id, category_id):
             "at_date": EXPENSE_DATE,
             "at_expense_mode": "general",
             "mob_at_cat_id": category_id,
+            "mob_at_subcat_id": sub.id if sub else None,
             "at_notes_field": "Streamlit expense",
         }
     )

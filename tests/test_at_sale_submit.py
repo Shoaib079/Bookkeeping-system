@@ -169,6 +169,12 @@ def test_expense_cash_still_records(db):
         .order_by(models.TransactionCategory.name)
         .first()
     )
+    exp_sub = (
+        db.query(models.TransactionSubcategory)
+        .filter_by(category_id=exp_cat.id, is_active=True)
+        .order_by(models.TransactionSubcategory.name)
+        .first()
+    )
     erp.st.session_state.update(
         {
             "at_type_idx": 1,
@@ -179,6 +185,7 @@ def test_expense_cash_still_records(db):
             "at_date": datetime.date.today(),
             "at_expense_mode": "general",
             "mob_at_cat_id": exp_cat.id,
+            "mob_at_subcat_id": exp_sub.id,
             "at_notes_field": "",
         }
     )

@@ -49,7 +49,7 @@ def test_presync_sets_worker_mode_for_mobile_salary_flags():
     with patch.object(erp.st, "session_state", state):
         erp._at_presync_salary_expense_mode()
     assert state["at_expense_mode"] == "worker"
-    assert state["at_worker_mv_type"] == "Salary"
+    assert "at_worker_mv_type" not in state
 
 
 def test_is_worker_true_when_salary_flags_but_expense_mode_general():
