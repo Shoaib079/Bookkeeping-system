@@ -88,7 +88,7 @@ class TestFocusedPosSettlementSection:
         src = inspect.getsource(erp._render_banking_pos_settlement_section)
         assert "banking.pos_entry.no_rows_focused" in src
         assert "banking.pos_entry.go_import" in src
-        assert 'banking_section"] = "import"' in src
+        assert "banking_navigate_statement_import_upload()" in src
 
     def test_focused_section_filters_deposit_rows_only(self):
         src = inspect.getsource(erp._render_banking_pos_settlement_section)

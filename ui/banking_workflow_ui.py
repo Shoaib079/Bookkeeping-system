@@ -199,10 +199,11 @@ def at_apply_add_transaction_landing(workflow_mode: str) -> None:
 
 
 def at_navigate_banking_statement_import() -> None:
+    from ui.banking import banking_navigate_statement_import_upload
+
     st.session_state["nav_selection"] = NAV_BANKING
-    st.session_state["banking_section"] = "import"
     st.session_state.pop("banking_landing_applied", None)
-    st.rerun()
+    banking_navigate_statement_import_upload()
 
 
 def at_render_statement_workflow_callout(

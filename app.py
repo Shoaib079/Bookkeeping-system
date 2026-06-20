@@ -297,6 +297,7 @@ from ui.banking_workflow_ui import (
 )
 from ui.banking import (
     apply_banking_pos_settlement_route as _apply_banking_pos_settlement_route,
+    banking_apply_statement_import_upload_route as _banking_apply_statement_import_upload_route,
     banking_apply_default_import_tab as _banking_apply_default_import_tab,
     banking_match_failure_label as _banking_match_failure_label,
     banking_match_kind_confidence as _banking_match_kind_confidence,
@@ -24583,7 +24584,7 @@ def _render_banking_page_settings(session, cid: int):
 
         if rec_on and _can("view_bank_statement_import"):
             if st.button(_t("bank.settings.go_import"), key="bank_go_import_tab"):
-                st.session_state["banking_section"] = "import"
+                _banking_apply_statement_import_upload_route()
                 st.rerun()
 
     with st.container(border=True):
@@ -26219,7 +26220,7 @@ def main():
             banking_section="import",
         )
         st.session_state["nav_selection"] = NAV_BANKING
-        st.session_state["banking_section"] = "import"
+        _banking_apply_statement_import_upload_route()
         selection = NAV_BANKING
 
     # Legacy Accounting Tools picker → statement or Books routes (AD-UI-001 D1 / D2-P1).

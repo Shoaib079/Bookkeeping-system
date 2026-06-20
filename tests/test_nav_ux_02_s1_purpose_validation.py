@@ -197,7 +197,9 @@ def test_statement_routes_dispatch_to_statement_wrappers():
 def test_legacy_bank_statement_import_reroutes_to_banking():
     main_src = inspect.getsource(erp.main)
     assert '"Bank Statement Import"' in main_src
-    assert 'st.session_state["banking_section"] = "import"' in main_src
+    assert 'st.session_state["banking_section"] = "import"' in main_src or (
+        "_banking_apply_statement_import_upload_route()" in main_src
+    )
 
 
 def test_working_routes_include_all_non_hidden_dispatch_keys():

@@ -58,7 +58,7 @@ def test_today_summary_still_reroutes_to_reports_exec():
 def test_bank_statement_import_reroute_preserves_import_section():
     main_src = inspect.getsource(erp.main)
     assert '"Bank Statement Import"' in main_src
-    assert 'st.session_state["banking_section"] = "import"' in main_src
+    assert "_banking_apply_statement_import_upload_route()" in main_src
     assert LEGACY_NAV_ALIASES["Bank Statement Import"] == NAV_BANKING
     assert LEGACY_NAV_ALIASES["📥 Bank Statement Import"] == NAV_BANKING
 

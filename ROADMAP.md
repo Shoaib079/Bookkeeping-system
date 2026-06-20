@@ -814,6 +814,22 @@ Host `pytest tests/` — **1551 passed, 2 xfailed**.
 
 ---
 
+## POST-LAUNCH-STABILITY-03
+
+**Status:** ✅ **COMPLETE** (local) · Tag: `obs-011-fix-banking-statement-import-route` · Full suite **7199 passed**
+
+| Slice | Fix | Verification |
+|-------|-----|--------------|
+| **OBS-011** | Banking POS/Card Settlement → Import Bank Statement: canonical `banking_navigate_statement_import_upload()` sets `bsi_section=upload` and clears stale POS/match keys; wired from POS go_import, AT callout, settings link, legacy nav reroute | `tests/test_obs_011_banking_statement_import_route.py` + banking UX regressions |
+
+**Root cause:** `apply_banking_pos_settlement_route()` left `bsi_section=match`; POS **Import bank statement** only set `banking_section=import`, so users landed on empty Match picker (no `file_uploader`). Prior BANKING-UX-02 P1B fix assumed match tab; upload tab is the canonical import owner (`render_bank_statement_import` upload section).
+
+**Canonical owner:** `ui/banking.py` — `banking_apply_statement_import_upload_route()` / `banking_navigate_statement_import_upload()`. Cockpit/readiness drill-throughs to match/review unchanged.
+
+**Stale paths consolidated (not removed):** inline `banking_section=import` without `bsi_section` on POS go_import, settings go_import, legacy Bank Statement Import reroute, `at_navigate_banking_statement_import`.
+
+---
+
 ## SETUP & Onboarding phase
 
 ### SETUP-01 — Company Creation Wizard 🟡 **HIGH** (design approved)
@@ -3731,7 +3747,8 @@ Register: [TECH_DEBT_AND_MIGRATION_CLEANUP.md § P2-HARDEN-01](./docs/TECH_DEBT_
 
 | Date | Decision |
 |------|----------|
-| 2026-06-05 | **POST-LAUNCH-STABILITY-02 (closure)** — OBS-005/006/007/009/010 implemented; OBS-008 deferred (staff ops = normal Expense path). Full suite **7178 passed**. Tag: `post-launch-stability-02-complete`. **Not pushed.** |
+| 2026-06-20 | **OBS-011 (fix)** — Banking POS settlement go_import restored upload tab: `banking_navigate_statement_import_upload()` clears stale `bsi_section=match` / POS keys. Prior BANKING-UX-02 P1B audited; empty Statement Import picker prevented. Tag: `obs-011-fix-banking-statement-import-route`. |
+| 2026-06-05 | **POST-LAUNCH-STABILITY-02 (closure)** — OBS-005/006/007/009/010 implemented; OBS-008 deferred (staff ops = normal Expense path). Full suite **7178 passed**. Tag: `post-launch-stability-02-complete`. Pushed. |
 | 2026-06-05 | **OBS-008 (defer)** — Staff operational purchases use normal Expense category/subcategory in New Transaction; Staff Expenses approval module unchanged; no new staff-specific AT flow in this slice. |
 | 2026-06-05 | **OBS-007 (policy)** — Company credit card removed from Expense/New Transaction PM UI; CC posting + history preserved; Purchase/Supplier Payment still offer CC when enabled. |
 | 2026-06-05 | **OBS-010 (policy)** — Add Transaction explicit-choices: no auto worker/movement/subcategory/PM; placeholders + submit validation; RETENTION-01 keeps type+date only. |

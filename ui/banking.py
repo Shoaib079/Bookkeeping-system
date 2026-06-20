@@ -342,6 +342,29 @@ def banking_cockpit_drill_to(section: str) -> None:
     st.rerun()
 
 
+_BSI_POS_MATCH_STALE_KEYS = (
+    "bsi_pos_entry",
+    "bsi_match_kind",
+    "bsi_match_kind_row",
+    "bsi_match_row",
+    "bsi_queue_sel_row",
+)
+
+
+def banking_apply_statement_import_upload_route() -> None:
+    """Session keys for Statement import upload tab (OBS-011 canonical owner)."""
+    st.session_state["banking_section"] = "import"
+    st.session_state["bsi_section"] = "upload"
+    for key in _BSI_POS_MATCH_STALE_KEYS:
+        st.session_state.pop(key, None)
+
+
+def banking_navigate_statement_import_upload() -> None:
+    """Navigate to Statement import upload — clears stale POS/match picker state."""
+    banking_apply_statement_import_upload_route()
+    st.rerun()
+
+
 BANKING_STATEMENT_TIE_OUT_TOLERANCE = _read_recon_svc.TIE_OUT_TOLERANCE
 _BANKING_TERMINAL_ROW_STATUSES = _read_recon_svc.TERMINAL_ROW_STATUSES
 _BANKING_NON_TERMINAL_ROW_STATUSES = _read_recon_svc.NON_TERMINAL_ROW_STATUSES
@@ -999,8 +1022,7 @@ def render_banking_pos_settlement_section(session) -> None:
             type="primary",
             key="bank_pos_go_import",
         ):
-            st.session_state["banking_section"] = "import"
-            st.rerun()
+            banking_navigate_statement_import_upload()
         return
     row_labels = {
         r.id: (
